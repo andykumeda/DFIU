@@ -5,7 +5,11 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Missing Supabase environment variables')
+  console.error('CRITICAL: Missing Supabase environment variables. App will not function correctly.')
 }
 
-export const supabase = createClient<Database>(supabaseUrl || '', supabaseAnonKey || '')
+// Fallback to avoid top-level crash. Queries will fail gracefully.
+export const supabase = createClient<Database>(
+  supabaseUrl || 'https://placeholder.supabase.co',
+  supabaseAnonKey || 'placeholder'
+)

@@ -69,12 +69,12 @@ export function CourseMap({
     useEffect(() => {
         if (!mapContainer.current) return
 
-        if (!process.env.NEXT_PUBLIC_MAPBOX_TOKEN) {
+        if (!import.meta.env.VITE_MAPBOX_TOKEN) {
             console.error('Mapbox token missing')
             return
         }
 
-        mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN
+        mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN
 
         // Initialize map only once
         if (map.current) return
@@ -283,7 +283,7 @@ export function CourseMap({
                 )}
             </div>
 
-            {!process.env.NEXT_PUBLIC_MAPBOX_TOKEN && (
+            {!import.meta.env.VITE_MAPBOX_TOKEN && (
                 <div className={styles.noToken}>
                     <p>Mapbox token not configured</p>
                     <p className={styles.hint}>Add NEXT_PUBLIC_MAPBOX_TOKEN to .env.local</p>

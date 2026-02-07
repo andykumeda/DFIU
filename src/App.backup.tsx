@@ -15,7 +15,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (loading) {
     return (
       <div className='min-h-screen bg-neutral-950 text-white flex items-center justify-center'>
-        <div className='text-xl font-bold'>Checking Session...</div>
+        <div className='animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white'></div>
       </div>
     )
   }
@@ -31,7 +31,7 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <BrowserRouter>
+        <BrowserRouter><div className="bg-blue-500 text-white p-4 text-center text-xl font-bold border-4 border-yellow-500" style={{ zIndex: 9999, position: "relative" }}>ROUTER MOUNTED</div>
           <Routes>
             <Route path='/login' element={<LoginPage />} />
             <Route path='/signup' element={<SignupPage />} />
