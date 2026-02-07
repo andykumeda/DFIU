@@ -1,0 +1,116 @@
+.uploader {
+    border: 2px dashed #333;
+    border-radius: 12px;
+    padding: 3rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: #111;
+}
+
+.uploader:hover:not(.disabled) {
+    border-color: #0070f3;
+    background: rgba(0, 112, 243, 0.05);
+}
+
+.uploader.dragging {
+    border-color: #0070f3;
+    background: rgba(0, 112, 243, 0.1);
+    transform: scale(1.01);
+}
+
+.uploader.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.fileInput {
+    display: none;
+}
+
+.prompt {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #fff;
+    margin: 0;
+}
+
+.subtitle {
+    font-size: 0.875rem;
+    color: #888;
+    margin: 0;
+}
+
+/* Processing State */
+.processing {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.processing p {
+    color: #888;
+    margin: 0;
+}
+
+.spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid #333;
+    border-top-color: #0070f3;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Error State */
+.errorState {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.errorIcon {
+    font-size: 2rem;
+}
+
+.errorMessage {
+    color: #ff6b6b;
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.retryBtn {
+    background: transparent;
+    border: 1px solid #333;
+    color: #888;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: all 0.2s;
+}
+
+.retryBtn:hover {
+    border-color: #555;
+    color: #fff;
+}
