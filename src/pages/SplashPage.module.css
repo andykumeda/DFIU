@@ -1,0 +1,176 @@
+.main {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #0a0a0a 0%, #111 50%, #0a0a0a 100%);
+  color: white; /* Ensure default text color is white for visibility */
+}
+
+.hero {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 6rem 1.5rem 4rem;
+  text-align: center;
+}
+
+.title {
+  font-size: clamp(2.5rem, 8vw, 4rem);
+  font-weight: 800;
+  background: linear-gradient(135deg, #fff 0%, #ccc 50%, #fff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 1rem 0;
+  letter-spacing: -0.02em;
+}
+
+.tagline {
+  font-size: 1.25rem;
+  color: #0070f3;
+  font-weight: 500;
+  margin: 0 0 1.5rem 0;
+}
+
+.subtitle {
+  font-size: 1.1rem;
+  color: #888;
+  line-height: 1.7;
+  margin: 0 0 2.5rem 0;
+}
+
+.cta {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.primaryBtn {
+  background: linear-gradient(135deg, #0070f3 0%, #00a8ff 100%);
+  color: #fff;
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: all 0.2s;
+  box-shadow: 0 4px 14px rgba(0, 112, 243, 0.4);
+}
+
+.primaryBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 112, 243, 0.5);
+}
+
+.secondaryBtn {
+  background: transparent;
+  color: #fff;
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 1rem;
+  border: 1px solid #333;
+  transition: all 0.2s;
+}
+
+.secondaryBtn:hover {
+  border-color: #555;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Features */
+.features {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 6rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.5rem;
+}
+
+.feature {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid #222;
+  border-radius: 12px;
+  padding: 1.5rem;
+  text-align: center;
+  transition: all 0.2s;
+}
+
+.feature:hover {
+  border-color: #333;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.featureIcon {
+  font-size: 2rem;
+  display: block;
+  margin-bottom: 0.75rem;
+}
+
+.feature h3 {
+  font-size: 1.1rem;
+  color: #fff;
+  margin: 0 0 0.5rem 0;
+}
+
+.feature p {
+  color: #888;
+  font-size: 0.9rem;
+  margin: 0;
+  line-height: 1.5;
+}
+/* Public Races List */
+.publicRaces {
+  grid-column: 1 / -1;
+  margin-bottom: 2rem;
+}
+
+.publicRaces h2 {
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+  color: #fff;
+  text-align: center;
+}
+
+.raceGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.raceCard {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid #222;
+  border-radius: 12px;
+  padding: 1.5rem;
+  text-decoration: none;
+  transition: all 0.2s;
+  display: block;
+}
+
+.raceCard:hover {
+  border-color: #444;
+  background: rgba(255, 255, 255, 0.05);
+  transform: translateY(-2px);
+}
+
+.raceCard h3 {
+  margin: 0 0 0.75rem 0;
+  color: #fff;
+  font-size: 1.25rem;
+}
+
+.raceMeta {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  color: #0070f3;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.raceLocation {
+  margin: 0;
+  color: #888;
+  font-size: 0.9rem;
+}

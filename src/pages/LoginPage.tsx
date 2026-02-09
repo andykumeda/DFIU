@@ -1,4 +1,4 @@
-import { LoginForm } from '../features/auth/LoginFormTailwind'
+import { LoginForm } from '../features/auth/LoginForm'
 
 export default function LoginPage() {
   return (

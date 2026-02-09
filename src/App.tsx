@@ -6,6 +6,7 @@ import SignupPage from './pages/SignupPage'
 import DashboardPage from './pages/DashboardPage'
 import RaceDetailPage from './pages/RaceDetailPage'
 import NewRacePage from './pages/NewRacePage'
+import SplashPage from './pages/SplashPage'
 
 const queryClient = new QueryClient()
 
@@ -59,7 +60,7 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
-            <Route path='/' element={<Navigate to='/dashboard' replace />} />
+            <Route path='/' element={<SplashPage />} />
           </Routes>
         </BrowserRouter>
       </AuthProvider>
