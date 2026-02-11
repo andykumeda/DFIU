@@ -703,7 +703,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
                 {/* Historical Weather Data */}
                 {(race as any)?.weather_history && (() => {
-                  const history = (race as any).weather_history as { normals?: { avg_high: number; avg_low: number; avg_precip: number } | null; past_years?: { year: number; high: number; low: number; precip: number; conditions: string }[] }
+                  const history = (race as any).weather_history as { normals?: { avg_high: number; avg_low: number; avg_precip: number } | null; past_years?: { year: number; date?: string; high: number; low: number; precip: number; conditions: string }[] }
                   return (
                     <div className="mt-4 pt-4 border-t border-neutral-800">
                       {history.normals && (
@@ -730,16 +730,19 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                         <div>
                           <div className="text-neutral-500 text-xs uppercase tracking-wider mb-2">Past Years on This Date</div>
                           <div className="space-y-1.5">
-                            {history.past_years.map((yr) => (
-                              <div key={yr.year} className="flex items-center justify-between bg-neutral-950/50 px-3 py-2 rounded text-sm">
-                                <span className="text-neutral-400 font-mono">{yr.year}</span>
-                                <div className="flex items-center gap-4">
-                                  <span className="text-red-400 font-mono">{yr.high}°</span>
-                                  <span className="text-blue-400 font-mono">{yr.low}°</span>
-                                  <span className="text-neutral-400 text-xs w-24 truncate text-right">{yr.conditions}</span>
+                            {history.past_years.map((yr) => {
+                              const dateLabel = yr.date ? new Date(yr.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''
+                              return (
+                                <div key={yr.year} className="flex items-center justify-between bg-neutral-950/50 px-3 py-2 rounded text-sm">
+                                  <span className="text-neutral-400 font-mono">{dateLabel ? `${dateLabel}, ${yr.year}` : yr.year}</span>
+                                  <div className="flex items-center gap-4">
+                                    <span className="text-red-400 font-mono">{yr.high}°</span>
+                                    <span className="text-blue-400 font-mono">{yr.low}°</span>
+                                    <span className="text-neutral-400 text-xs w-24 truncate text-right">{yr.conditions}</span>
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
+                              )
+                            })}
                           </div>
                         </div>
                       )}

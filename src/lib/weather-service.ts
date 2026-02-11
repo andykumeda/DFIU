@@ -18,6 +18,7 @@ export interface WeatherData {
 
 export interface HistoricalYear {
     year: number
+    date: string  // YYYY-MM-DD of the actual date used
     high: number
     low: number
     precip: number
@@ -137,11 +138,11 @@ export async function fetchWeatherForRace(location: string, dateStr: string): Pr
         }
     }
 
-    // Fetch past 3 years in parallel
+    // Fetch past 3 years — match the nearest same weekday
+    const raceDayOfWeek = raceDate.getDay() // 0=Sun, 6=Sat
     const pastYears: number[] = []
     for (let i = 1; i <= 3; i++) {
         const year = raceYear - i
-        // Don't fetch future years
         if (year <= currentYear) {
             pastYears.push(year)
         }
@@ -149,12 +150,21 @@ export async function fetchWeatherForRace(location: string, dateStr: string): Pr
 
     const pastPromises = pastYears.map(async (year) => {
         try {
-            const pastDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+            // Start with the same calendar date in the past year
+            const candidate = new Date(year, month, day)
+            // Find the offset to the nearest same weekday (-3 to +3 days)
+            let dayDiff = raceDayOfWeek - candidate.getDay()
+            if (dayDiff > 3) dayDiff -= 7
+            if (dayDiff < -3) dayDiff += 7
+            candidate.setDate(candidate.getDate() + dayDiff)
+
+            const pastDate = candidate.toISOString().split('T')[0]
             const data = await fetchDay(location, pastDate)
             if (data.days && data.days.length > 0) {
                 const d = data.days[0]
                 return {
                     year,
+                    date: pastDate,
                     high: Math.round(d.tempmax),
                     low: Math.round(d.tempmin),
                     precip: Math.round(d.precip * 100) / 100,
