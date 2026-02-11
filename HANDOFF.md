@@ -18,7 +18,7 @@
     *   **Hover Sync**: Synchronized hovering between the Map and Elevation Profile.
 
 3.  **UI/UX Updates:**
-    *   **Logo & Branding**: Added custom logo (`public/logo.png`) to the application header. Resized to be larger (`h-12`/`h-14`) and added a translucent white background (`bg-white/10`) to enhance visibility on dark backgrounds.
+    *   **Logo & Branding**: Added custom logo (`public/logo.png`) to the application header. Resized to be larger (`h-12`/`h-14`) for better visibility.
     *   **Navigation**: Clicking the logo/title in the header now navigates to `/dashboard`.
 
 4.  **Code Cleanup:**

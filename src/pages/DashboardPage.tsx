@@ -17,9 +17,7 @@ export default function DashboardPage() {
       <header className='border-b border-neutral-800 bg-neutral-950/50 backdrop-blur-sm sticky top-0 z-10'>
         <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center'>
           <Link to="/dashboard" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <div className="bg-white/10 p-2 rounded-xl backdrop-blur-sm">
-              <img src="/logo.png" alt="DFIU Logo" className="h-12 w-12 object-contain" />
-            </div>
+            <img src="/logo.png" alt="DFIU Logo" className="h-14 w-14 object-contain" />
             <span className='text-3xl font-black bg-gradient-to-br from-blue-500 to-cyan-400 bg-clip-text text-transparent'>
               DFIU
             </span>
