@@ -9,12 +9,13 @@ interface EditWaypointModalProps {
     lat?: number // For new waypoints
     lon?: number // For new waypoints
     mile?: number // Calculated or existing
+    raceDate?: string | null // NEW: For default cutoff date
     onClose: () => void
     onSave: (data: Partial<Waypoint>) => void
     onDelete?: (id: string) => void
 }
 
-export function EditWaypointModal({ waypoint, lat, lon, mile, onClose, onSave, onDelete }: EditWaypointModalProps) {
+export function EditWaypointModal({ waypoint, lat, lon, mile, raceDate, onClose, onSave, onDelete }: EditWaypointModalProps) {
     const [formData, setFormData] = useState<{
         name: string
         type: string
@@ -27,7 +28,8 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, onClose, onSave, o
     }>({
         name: waypoint?.name || '',
         type: waypoint?.type || 'aid_station',
-        cutoff_time: waypoint?.cutoff_time || '',
+        // Default to race start date if no cutoff exists
+        cutoff_time: waypoint?.cutoff_time || (raceDate ? new Date(raceDate).toISOString().slice(0, 16) : ''),
         has_drop_bag: waypoint?.has_drop_bag || false,
         crew_allowed: waypoint?.crew_allowed || false,
         pacer_allowed: waypoint?.pacer_allowed || false,
@@ -41,7 +43,7 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, onClose, onSave, o
                 ...prev,
                 name: waypoint.name || '',
                 type: waypoint.type || 'aid_station',
-                cutoff_time: waypoint.cutoff_time || '',
+                cutoff_time: waypoint.cutoff_time || (raceDate && !waypoint.cutoff_time ? new Date(raceDate).toISOString().slice(0, 16) : prev.cutoff_time),
                 has_drop_bag: waypoint.has_drop_bag || false,
                 crew_allowed: waypoint.crew_allowed || false,
                 pacer_allowed: waypoint.pacer_allowed || false,
@@ -49,7 +51,7 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, onClose, onSave, o
                 mile: waypoint.mile ?? 0
             }))
         }
-    }, [waypoint])
+    }, [waypoint, raceDate])
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
@@ -60,12 +62,15 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, onClose, onSave, o
             return
         }
 
+        // Round mile to 2 decimal places
+        const roundedMile = Math.round(parsedMile * 100) / 100
+
         onSave({
             ...waypoint,
             ...formData,
             lat: lat ?? waypoint?.lat,
             lon: lon ?? waypoint?.lon,
-            mile: parsedMile // Use validated mile
+            mile: roundedMile // Use rounded mile
         })
     }
 

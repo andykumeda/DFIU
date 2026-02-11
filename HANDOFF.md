@@ -59,6 +59,7 @@
 *   `src/lib/geo-utils.ts`: Geometry and distance calculation utilities.
 *   `src/lib/gpx-parser.ts`: GPX parsing and elevation data processing.
 *   `src/features/course/ElevationProfile.tsx`: SVG-based elevation profile chart.
+    *   **Note:** The height of the profile container is set to `h-40` (160px) in `RaceDetail.tsx` and `NewRacePage.tsx`. This was chosen as a balance between visibility and compactness. Internal logic also "flattens" the curve by adding top padding. This may need further adjustment based on user feedback.
 
 ## Scripts
 

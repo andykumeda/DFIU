@@ -85,7 +85,8 @@ export function ElevationProfile({
     const mileMarkerPositions = useMemo(() => {
         if (!showMileMarkers || totalDistance <= 0 || data.length === 0) return []
         const markers: { mile: number; x: number; y: number }[] = []
-        const interval = totalDistance > 100 ? 10 : totalDistance > 50 ? 5 : 1
+        // Rule: 5 miles if < 100, 10 miles if >= 100
+        const interval = totalDistance >= 100 ? 10 : 5
         const width = 100
         const paddingX = 2
         const paddingTop = 25
@@ -240,18 +241,57 @@ export function ElevationProfile({
                     ))}
 
                     {/* Waypoint markers */}
-                    {waypointPositions.map((wp, i) => (
-                        <div
-                            key={`wp-${i}`}
-                            className={styles.waypointMarker}
-                            style={{
-                                left: `${wp.x}%`,
-                                top: `${wp.y}%`,
-                                backgroundColor: getWaypointColor(wp.type)
-                            }}
-                            title={wp.name}
-                        />
-                    ))}
+                    {waypointPositions.map((wp, i) => {
+                        // Render specific icons for start/finish or default dot for others
+                        if (wp.type === 'start') {
+                            return (
+                                <div
+                                    key={`wp-${i}`}
+                                    className={styles.waypointIcon}
+                                    style={{
+                                        left: `${wp.x}%`,
+                                        top: `${wp.y}%`,
+                                        transform: 'translate(-50%, -100%)', // Center horizontally, place bottom on line
+                                        fontSize: '16px',
+                                        position: 'absolute'
+                                    }}
+                                    title="Start"
+                                >
+                                    🏁
+                                </div>
+                            )
+                        } else if (wp.type === 'finish') {
+                            return (
+                                <div
+                                    key={`wp-${i}`}
+                                    className={styles.waypointIcon}
+                                    style={{
+                                        left: `${wp.x}%`,
+                                        top: `${wp.y}%`,
+                                        transform: 'translate(-50%, -100%)',
+                                        fontSize: '16px',
+                                        position: 'absolute'
+                                    }}
+                                    title="Finish"
+                                >
+                                    🏁
+                                </div>
+                            )
+                        } else {
+                            return (
+                                <div
+                                    key={`wp-${i}`}
+                                    className={styles.waypointMarker}
+                                    style={{
+                                        left: `${wp.x}%`,
+                                        top: `${wp.y}%`,
+                                        backgroundColor: getWaypointColor(wp.type)
+                                    }}
+                                    title={wp.name}
+                                />
+                            )
+                        }
+                    })}
 
                     {/* Highlight Dot */}
                     {highlightPoint && (

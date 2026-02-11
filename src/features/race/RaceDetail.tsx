@@ -428,6 +428,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
           lat={editingWaypoint.lat}
           lon={editingWaypoint.lon}
           mile={editingWaypoint.mile}
+          raceDate={race.start_datetime}
           onClose={() => setEditingWaypoint(null)}
           onSave={handleSaveWaypoint}
           onDelete={handleDeleteWaypoint}
@@ -466,7 +467,10 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                         lat: wp.lat,
                         lon: wp.lon,
                         mile: wp.mile,
-                        type: wp.type
+                        type: wp.type,
+                        has_drop_bag: wp.has_drop_bag,
+                        crew_allowed: wp.crew_allowed,
+                        pacer_allowed: wp.pacer_allowed
                       }))}
                       onMapClick={handleMapClick}
                       onWaypointClick={(id) => {

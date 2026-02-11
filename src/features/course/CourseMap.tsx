@@ -25,6 +25,9 @@ interface CourseMapProps {
         lon: number
         mile: number
         type: string
+        has_drop_bag?: boolean
+        crew_allowed?: boolean
+        pacer_allowed?: boolean
     }[]
     onHover?: (mile: number | null) => void
     highlightMile?: number
@@ -287,14 +290,15 @@ export function CourseMap({
         markersRef.current = []
 
         waypoints.forEach(wp => {
+            // Container for marker + badges
+            const container = document.createElement('div')
+            container.className = styles.markerContainer
+
             const el = document.createElement('div')
             el.className = styles.marker
 
             // Icon Logic
             const iconMarkup = getWaypointIcon(wp.type)
-            // Use Lucide icons for specific types if desired to match RouteSmith exactly
-            // For now, keeping emojis/simple icons but wrapping in HTML for marker
-
             el.innerHTML = iconMarkup
             el.title = wp.name
 
@@ -308,11 +312,36 @@ export function CourseMap({
             else if (wp.type === 'drop_bag') el.style.backgroundColor = '#10b981'
             else if (wp.type === 'medical') el.style.backgroundColor = '#ef4444'
 
+            container.appendChild(el)
+
+            // Badges
+            if (wp.crew_allowed) {
+                const badge = document.createElement('div')
+                badge.className = `${styles.badge} ${styles.badgeCrew}`
+                badge.innerHTML = '👥'
+                badge.title = 'Crew Access'
+                container.appendChild(badge)
+            }
+            if (wp.pacer_allowed) {
+                const badge = document.createElement('div')
+                badge.className = `${styles.badge} ${styles.badgePacer}`
+                badge.innerHTML = '🏃'
+                badge.title = 'Pacer Pickup'
+                container.appendChild(badge)
+            }
+            if (wp.has_drop_bag) {
+                const badge = document.createElement('div')
+                badge.className = `${styles.badge} ${styles.badgeBag}`
+                badge.innerHTML = '🎒'
+                badge.title = 'Drop Bag'
+                container.appendChild(badge)
+            }
+
             const marker = new mapboxgl.Marker({
-                element: el,
+                element: container,
                 draggable: true // Enable dragging
             })
-                .setLngLat([wp.lon, wp.lat])
+                .setLngLat([wp.lon, wp.lat]) // Fixed: used container instead of el
                 .addTo(map.current!)
 
             // Drag End Listener
