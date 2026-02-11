@@ -63,12 +63,6 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
   const handleGpxUpload = async (result: GpxParseResult, rawGpx: string) => {
     try {
-      console.log('GPX Parsed Result:', {
-        stats: result.stats,
-        points: result.coordinates.length,
-        elevationSamples: result.elevationProfile.length,
-        sampleStart: result.elevationProfile.slice(0, 3)
-      })
 
       // Check for missing elevation data
       if (result.elevationProfile.length === 0) {

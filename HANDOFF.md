@@ -1,6 +1,6 @@
 # Handoff Document
 
-**Date:** 2026-02-10
+**Date:** 2026-02-11
 **Status:** Stable / Production Deployed
 **Last Deployed Commit:** (Check `git log`)
 
@@ -28,13 +28,21 @@
         *   **Editing**: `EditRaceModal` updated to support all new data fields.
     *   **Bug Fixes**: Fixed `EditRaceModal` scrolling issue to ensure accessible form fields on smaller screens.
 
-4.  **Code Cleanup:**
+4.  **Geo-Utils & Waypoint Fixes (2026-02-11):**
+    *   **Zero-Length Segment Guard**: Fixed `getNearestPointOnLine` in `geo-utils.ts` to handle duplicate/overlapping track points (zero-length segments) that caused division-by-zero and NaN coordinates, crashing Turf.js. This was specific to GPX files with very high point density (e.g., 55K+ points for a 250-mile course).
+    *   **Direct Geometry Passing**: Updated `getCoordinateAtDistance` to accept `LineString`/`MultiLineString` geometry objects directly, plus implicit LineString objects without a `type` property.
+    *   **Missing Elevation Warning**: Added a user-facing warning in `RaceDetail.tsx` when an uploaded GPX file lacks elevation (`<ele>`) tags.
+    *   **Elevation Profile Empty State**: Improved the `ElevationProfile.tsx` empty state message to clearly indicate the GPX file is missing elevation data.
+    *   **Waypoint Save Fix**: Fixed `cutoff_time` empty string issue causing database errors (coerced to `null`). Added `NaN` guard on `mile` field.
+
+5.  **Code Cleanup:**
     *   Removed unused variables in `utils.ts` and `CourseMap.tsx`.
     *   Fixed lint errors and type assertions in `CourseMap.tsx`.
+    *   Removed debug console.log statements from `RaceDetail.tsx` and `geo-utils.ts`.
 
 ## Current State
 
-*   **Production Deployment:** The app is deployed to `/var/www/dfiu` via `npm run deploy`.
+*   **Production Deployment:** The app is deployed to `/var/www/dfiu` via `sudo ./scripts/deploy.sh`.
 *   **Known Issues**:
     *   **Logo Navigation**: Clicking the logo/title may not reliably navigate to `/dashboard` despite `z-index` fixes. This is a known issue to be revisited.
 
@@ -50,8 +58,9 @@
 *   `src/features/race/RaceDetail.tsx`: Main page for race details, stats, and layout.
 *   `src/lib/geo-utils.ts`: Geometry and distance calculation utilities.
 *   `src/lib/gpx-parser.ts`: GPX parsing and elevation data processing.
+*   `src/features/course/ElevationProfile.tsx`: SVG-based elevation profile chart.
 
 ## Scripts
 
 *   `npm run dev`: Local development.
-*   `npm run deploy`: Deploys to production server.
+*   `sudo ./scripts/deploy.sh`: Deploys to production server.

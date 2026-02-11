@@ -41,10 +41,8 @@ export const getCoordinateAtDistance = (
             geometry: geometry,
             properties: {}
         };
-        // Handle implicit LineString (missing type property but has coordinates)
-        // This handles the case observed in user logs where geometry is just { coordinates: [...] }
+        // Handle implicit LineString (missing type but has coordinates array)
     } else if (!geojson.type && Array.isArray((geojson as any).coordinates)) {
-        // Handle implicit LineString detected (missing type)
         lineFeature = {
             type: 'Feature',
             geometry: {
@@ -62,7 +60,6 @@ export const getCoordinateAtDistance = (
     }
 
     if (!lineFeature) {
-        console.warn('getCoordinateAtDistance: no LineString/MultiLineString feature found', JSON.stringify(geojson).substring(0, 200));
         return null;
     }
 
@@ -71,18 +68,9 @@ export const getCoordinateAtDistance = (
         const total = length(lineFeature, { units: 'kilometers' });
         const target = Math.max(0, Math.min(distKm, total));
 
-        // turf/along only supports LineString. If MultiLineString, we might need to be careful?
-        // Actually turf/along docs say "LineString". 
-        // If we have MultiLineString, we should probably explode it or warn.
-        // But for DFIU, we expect LineString. If it IS MultiLineString, let's try to handle it by using the first line or confusingly.
-        // Better: checking if it works. Turf might throw on MultiLineString.
-
+        // Note: turf/along only supports LineString; MultiLineString is not fully supported
         if (lineFeature.geometry.type === 'MultiLineString') {
-            // Fallback: use length to find which segment it's in? Too complex for now.
-            // Let's just log if it overlaps.
-            // Actually, simplest fix for MultiLineString is to flatten it to LineString if connected.
-            // But let's assume LineString for now and just log if it fails.
-            console.warn('getCoordinateAtDistance: MultiLineString not fully supported yet');
+            console.warn('getCoordinateAtDistance: MultiLineString not fully supported');
         }
 
         // @ts-ignore
