@@ -1,9 +1,10 @@
 import { useState } from 'react'
+import { fetchWeatherForRace } from '@/lib/weather-service'
 import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { Race, Course, Waypoint, TerrainNode } from '@/types/database'
-import { Calendar, MapPin, Globe, ArrowUpRight, CloudSun, Trophy } from 'lucide-react'
+import { Calendar, MapPin, Globe, ArrowUpRight, CloudSun, Trophy, RefreshCw } from 'lucide-react'
 import { CourseMap } from '@/features/course/CourseMap'
 import { ElevationProfile } from '@/features/course/ElevationProfile'
 import { GpxUploader } from '@/features/course/GpxUploader'
@@ -27,6 +28,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   const [editingTerrainNode, setEditingTerrainNode] = useState<Partial<TerrainNode> | null>(null)
 
   const [hoveredMile, setHoveredMile] = useState<number | null>(null)
+  const [fetchingWeather, setFetchingWeather] = useState(false)
 
   // Data Fetching
   const { data: race, isLoading: raceLoading } = useQuery({
@@ -640,9 +642,36 @@ export function RaceDetail({ raceId }: { raceId: string }) {
             {/* Weather & Conditions */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="bg-neutral-900/30 rounded-xl p-6 border border-neutral-800/50">
-                <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                  <CloudSun className="w-5 h-5 text-yellow-500" /> Weather & Conditions
-                </h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                    <CloudSun className="w-5 h-5 text-yellow-500" /> Weather & Conditions
+                  </h3>
+                  {race?.location && race?.start_datetime && (
+                    <button
+                      onClick={async () => {
+                        if (!race?.location || !race?.start_datetime) return
+                        setFetchingWeather(true)
+                        try {
+                          const weather = await fetchWeatherForRace(race.location, race.start_datetime)
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          const { error } = await (supabase.from('races') as any).update(weather).eq('id', race.id)
+                          if (error) throw error
+                          queryClient.invalidateQueries({ queryKey: ['race', raceId] })
+                        } catch (err: any) {
+                          console.error('Weather fetch error:', err)
+                          alert(`Failed to fetch weather: ${err.message}`)
+                        } finally {
+                          setFetchingWeather(false)
+                        }
+                      }}
+                      disabled={fetchingWeather}
+                      className="text-xs bg-neutral-800 hover:bg-neutral-700 text-neutral-300 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 disabled:opacity-50"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${fetchingWeather ? 'animate-spin' : ''}`} />
+                      {fetchingWeather ? 'Fetching...' : 'Fetch Weather'}
+                    </button>
+                  )}
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-neutral-950/50 p-4 rounded-lg">
                     <div className="text-neutral-500 text-xs uppercase tracking-wider mb-1">Avg High</div>
