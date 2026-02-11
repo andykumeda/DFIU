@@ -64,7 +64,7 @@ export function ElevationProfile({
             // Default to minEle if elevation is invalid
             const ele = Number.isFinite(d.elevation) ? d.elevation : minEle
             const x = (d.distance / totalDistance) * (width - paddingX * 2) + paddingX
-            const y = height - paddingBottom - ((ele - minEle) / eleRange) * verticalRange
+            const y = Math.max(paddingTop, height - paddingBottom - ((ele - minEle) / eleRange) * verticalRange)
             return { x, y }
         })
 
@@ -104,7 +104,7 @@ export function ElevationProfile({
                 }
             }
             const x = (mile / totalDistance) * (width - paddingX * 2) + paddingX
-            const y = 100 - paddingBottom - ((elevation - minEle) / eleRange) * verticalRange
+            const y = Math.max(paddingTop, 100 - paddingBottom - ((elevation - minEle) / eleRange) * verticalRange)
             markers.push({ mile, x, y })
         }
         return markers
@@ -135,7 +135,7 @@ export function ElevationProfile({
                         break
                     }
                 }
-                const y = 100 - paddingBottom - ((elevation - minEle) / eleRange) * verticalRange
+                const y = Math.max(paddingTop, 100 - paddingBottom - ((elevation - minEle) / eleRange) * verticalRange)
 
                 return { ...wp, x, y, elevation }
             })
@@ -174,7 +174,7 @@ export function ElevationProfile({
         }
 
         const x = (highlightDistance / totalDistance) * (width - paddingX * 2) + paddingX
-        const y = 100 - paddingBottom - ((elevation - minEle) / eleRange) * verticalRange
+        const y = Math.max(paddingTop, 100 - paddingBottom - ((elevation - minEle) / eleRange) * verticalRange)
         return { x, y }
     }, [highlightDistance, data, totalDistance, minEle, maxEle])
 
