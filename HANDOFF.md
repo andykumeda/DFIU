@@ -18,8 +18,9 @@
     *   **Hover Sync**: Synchronized hovering between the Map and Elevation Profile.
 
 3.  **UI/UX Updates:**
-    *   **Logo & Branding**: Added custom logo (`public/logo.png`) to the application header. Resized to be larger (`h-20` on Dashboard, `h-12` on Header).
-    *   **Typography**: Updated "DFIU" title text to be more dynamic (Italic, Uppercase, Tracking-Tighter) with an **Orange-to-Red Gradient** to match the logo.
+    *   **Logo & Branding**: Added custom logo (`public/logo.png`) to the application header. Resized to be significantly larger (`h-32` on Dashboard, `h-16` on Header).
+    *   **Typography**: Updated "DFIU" title text to be more dynamic (Italic, Uppercase, Tracking-Tighter) with an **Orange-to-Red Gradient** to match the logo. Added padding to prevent text clipping.
+    *   **Navigation**: Clicking the logo/title safely navigates to `/dashboard` (ensured by z-index).
 
 4.  **Code Cleanup:**
     *   Removed unused variables in `utils.ts` and `CourseMap.tsx`.
