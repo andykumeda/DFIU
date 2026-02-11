@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { fetchWeatherForRace } from '@/lib/weather-service'
 import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -30,6 +30,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   const [hoveredMile, setHoveredMile] = useState<number | null>(null)
   const [showMileMarkers, setShowMileMarkers] = useState(false)
   const [fetchingWeather, setFetchingWeather] = useState(false)
+  const [isReimporting, setIsReimporting] = useState(false)
 
   // Data Fetching
   const { data: race, isLoading: raceLoading } = useQuery({
@@ -40,6 +41,31 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       return data as Race
     }
   })
+
+  // Auto-fetch weather if missing
+  useEffect(() => {
+    if (race?.location && race?.start_datetime && !race.avg_temp_high && !fetchingWeather) {
+      const loc = race.location!
+      const date = race.start_datetime!
+      const autoFetch = async () => {
+        setFetchingWeather(true)
+        try {
+          const result = await fetchWeatherForRace(loc, date)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (supabase.from('races') as any).update({
+            ...result.current,
+            weather_history: result.history
+          }).eq('id', raceId)
+          queryClient.invalidateQueries({ queryKey: ['race', raceId] })
+        } catch (err) {
+          console.error('Auto weather fetch failed:', err)
+        } finally {
+          setFetchingWeather(false)
+        }
+      }
+      autoFetch()
+    }
+  }, [race?.location, race?.start_datetime, race?.avg_temp_high, raceId, fetchingWeather, queryClient])
 
   const { data: course } = useQuery({
     queryKey: ['course', raceId],
@@ -106,6 +132,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
       queryClient.invalidateQueries({ queryKey: ['course', raceId] })
       queryClient.invalidateQueries({ queryKey: ['race', raceId] })
+      setIsReimporting(false)
     } catch (err) {
       console.error('Failed to save course:', err)
       alert('Failed to save course')
@@ -512,6 +539,24 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                         </div>
                       </div>
                     )}
+
+                    <div className='mt-4 pt-4 border-t border-neutral-800'>
+                      <button
+                        onClick={() => setIsReimporting(!isReimporting)}
+                        className='w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-medium transition-colors'
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${isReimporting ? 'animate-spin' : ''}`} />
+                        {isReimporting ? 'Cancel Update' : 'Update GPX Route'}
+                      </button>
+                      {isReimporting && (
+                        <div className='mt-4'>
+                          <GpxUploader
+                            onUpload={handleGpxUpload}
+                            className="bg-neutral-950/50 border-neutral-800 min-h-[120px]"
+                          />
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div className='p-4'>
@@ -659,35 +704,8 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-xl font-bold text-white flex items-center gap-2">
                     <CloudSun className="w-5 h-5 text-yellow-500" /> Weather & Conditions
+                    {fetchingWeather && <RefreshCw className="w-4 h-4 text-neutral-500 animate-spin ml-2" />}
                   </h3>
-                  {race?.location && race?.start_datetime && (
-                    <button
-                      onClick={async () => {
-                        if (!race?.location || !race?.start_datetime) return
-                        setFetchingWeather(true)
-                        try {
-                          const result = await fetchWeatherForRace(race.location, race.start_datetime)
-                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                          const { error } = await (supabase.from('races') as any).update({
-                            ...result.current,
-                            weather_history: result.history
-                          }).eq('id', race.id)
-                          if (error) throw error
-                          queryClient.invalidateQueries({ queryKey: ['race', raceId] })
-                        } catch (err: any) {
-                          console.error('Weather fetch error:', err)
-                          alert(`Failed to fetch weather: ${err.message}`)
-                        } finally {
-                          setFetchingWeather(false)
-                        }
-                      }}
-                      disabled={fetchingWeather}
-                      className="text-xs bg-neutral-800 hover:bg-neutral-700 text-neutral-300 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 disabled:opacity-50"
-                    >
-                      <RefreshCw className={`w-3 h-3 ${fetchingWeather ? 'animate-spin' : ''}`} />
-                      {fetchingWeather ? 'Fetching...' : 'Fetch Weather'}
-                    </button>
-                  )}
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-neutral-950/50 p-4 rounded-lg">

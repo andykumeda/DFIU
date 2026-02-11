@@ -189,7 +189,7 @@ export function CourseMap({
         try {
             const line = lineString(coordinates as [number, number][])
             const totalMiles = length(line, { units: 'miles' })
-            const interval = totalMiles > 50 ? 5 : 1
+            const interval = totalMiles > 100 ? 10 : totalMiles > 50 ? 5 : 1
 
             for (let mile = interval; mile < totalMiles; mile += interval) {
                 const pt = along(line, mile, { units: 'miles' })

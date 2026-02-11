@@ -170,7 +170,7 @@ export function parseGpx(gpxString: string): GpxParseResult {
 
                 // Only count change if it exceeds a noise threshold (e.g., 0.5 meters)
                 // This prevents GPS jitter from inflating gain/loss, especially loss
-                const THRESHOLD = 0.5
+                const THRESHOLD = 0.3
 
                 if (Math.abs(eleChangeMeters) > THRESHOLD) {
                     const eleChangeFt = metersToFeet(eleChangeMeters)

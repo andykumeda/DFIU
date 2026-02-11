@@ -82,7 +82,7 @@ export function ElevationProfile({
     const mileMarkers = useMemo(() => {
         if (!showMileMarkers || totalDistance <= 0) return []
         const markers: number[] = []
-        const interval = totalDistance > 50 ? 5 : 1
+        const interval = totalDistance > 100 ? 10 : totalDistance > 50 ? 5 : 1
         for (let mile = interval; mile < totalDistance; mile += interval) {
             markers.push(mile)
         }
@@ -184,7 +184,7 @@ export function ElevationProfile({
                             key={`mile-${mile}`}
                             x1={x} y1={padding}
                             x2={x} y2={100 - padding}
-                            stroke="rgba(255,255,255,0.25)"
+                            stroke="rgba(255,255,255,0.6)"
                             strokeWidth="1"
                             vectorEffect="non-scaling-stroke"
                         />
@@ -205,16 +205,17 @@ export function ElevationProfile({
                     />
                 ))}
 
-                {/* Waypoint dots on the line */}
+                {/* Waypoint markers on the line - using vertical bars that don't stretch as much as circles */}
                 {waypointPositions.map((wp, i) => (
-                    <circle
-                        key={`wp-dot-${i}`}
-                        cx={wp.x}
-                        cy={wp.y}
-                        r="3"
+                    <rect
+                        key={`wp-bar-${i}`}
+                        x={wp.x - 0.25}
+                        y={wp.y - 2}
+                        width={0.5}
+                        height={4}
                         fill={getWaypointColor(wp.type)}
                         stroke="#fff"
-                        strokeWidth="1"
+                        strokeWidth="0.5"
                         vectorEffect="non-scaling-stroke"
                     />
                 ))}
