@@ -652,9 +652,12 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                         if (!race?.location || !race?.start_datetime) return
                         setFetchingWeather(true)
                         try {
-                          const weather = await fetchWeatherForRace(race.location, race.start_datetime)
+                          const result = await fetchWeatherForRace(race.location, race.start_datetime)
                           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                          const { error } = await (supabase.from('races') as any).update(weather).eq('id', race.id)
+                          const { error } = await (supabase.from('races') as any).update({
+                            ...result.current,
+                            weather_history: result.history
+                          }).eq('id', race.id)
                           if (error) throw error
                           queryClient.invalidateQueries({ queryKey: ['race', raceId] })
                         } catch (err: any) {
@@ -691,12 +694,58 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                   </div>
                 </div>
                 {(race?.weather_notes || race?.moon_phase || race?.precip_chance) && (
-                  <div className="mt-4 pt-4 border-t border-neutral-800 grid grid-cols-2 gap-4 text-sm text-neutral-400">
+                  <div className="mt-4 pt-4 border-t border-neutral-800 grid grid-cols-3 gap-4 text-sm text-neutral-400">
                     {race?.moon_phase && <div><span className="text-neutral-500 block text-xs uppercase">Moon</span> {race.moon_phase}</div>}
                     {race?.precip_chance && <div><span className="text-neutral-500 block text-xs uppercase">Precip</span> {race.precip_chance}</div>}
-                    {race?.weather_notes && <div className="col-span-2 mt-2 italic">"{race.weather_notes}"</div>}
+                    {race?.weather_notes && <div><span className="text-neutral-500 block text-xs uppercase">Conditions</span> {race.weather_notes}</div>}
                   </div>
                 )}
+
+                {/* Historical Weather Data */}
+                {(race as any)?.weather_history && (() => {
+                  const history = (race as any).weather_history as { normals?: { avg_high: number; avg_low: number; avg_precip: number } | null; past_years?: { year: number; high: number; low: number; precip: number; conditions: string }[] }
+                  return (
+                    <div className="mt-4 pt-4 border-t border-neutral-800">
+                      {history.normals && (
+                        <div className="mb-3">
+                          <div className="text-neutral-500 text-xs uppercase tracking-wider mb-2">30-Year Climate Normals</div>
+                          <div className="grid grid-cols-3 gap-3">
+                            <div className="bg-neutral-950/50 px-3 py-2 rounded text-center">
+                              <div className="text-neutral-500 text-xs">Avg High</div>
+                              <div className="text-white font-mono text-sm">{history.normals.avg_high}°F</div>
+                            </div>
+                            <div className="bg-neutral-950/50 px-3 py-2 rounded text-center">
+                              <div className="text-neutral-500 text-xs">Avg Low</div>
+                              <div className="text-white font-mono text-sm">{history.normals.avg_low}°F</div>
+                            </div>
+                            <div className="bg-neutral-950/50 px-3 py-2 rounded text-center">
+                              <div className="text-neutral-500 text-xs">Avg Precip</div>
+                              <div className="text-white font-mono text-sm">{history.normals.avg_precip}"</div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {history.past_years && history.past_years.length > 0 && (
+                        <div>
+                          <div className="text-neutral-500 text-xs uppercase tracking-wider mb-2">Past Years on This Date</div>
+                          <div className="space-y-1.5">
+                            {history.past_years.map((yr) => (
+                              <div key={yr.year} className="flex items-center justify-between bg-neutral-950/50 px-3 py-2 rounded text-sm">
+                                <span className="text-neutral-400 font-mono">{yr.year}</span>
+                                <div className="flex items-center gap-4">
+                                  <span className="text-red-400 font-mono">{yr.high}°</span>
+                                  <span className="text-blue-400 font-mono">{yr.low}°</span>
+                                  <span className="text-neutral-400 text-xs w-24 truncate text-right">{yr.conditions}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
               </div>
 
               <div className="bg-neutral-900/30 rounded-xl p-6 border border-neutral-800/50">
