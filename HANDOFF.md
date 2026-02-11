@@ -19,8 +19,14 @@
 
 3.  **UI/UX Updates:**
     *   **Logo & Branding**: Added custom logo (`public/logo.png`) to the application header. Resized to be significantly larger (`h-32` on Dashboard, `h-16` on Header).
-    *   **Typography**: Updated "DFIU" title text to be more dynamic (Italic, Uppercase, Tracking-Tighter) with an **Orange-to-Red Gradient** to match the logo. Used negative margins to tightly space the logo and text.
-    *   **Navigation**: Fixed navigation issues by using `onClick` handlers and ensuring `pointer-events-auto` on high z-index elements.
+    *   **Typography**: Updated "DFIU" title text to be more dynamic (Italic, Uppercase, Tracking-Tighter) with an **Orange-to-Red Gradient** to match the logo. Used `items-center` alignment with tight negative margins.
+    *   **Navigation**: Fixed navigation issues by using `Link` components with `z-[999]` and explicit relative stacking to ensure clickability.
+    *   **Race Overview**: Implemented a comprehensive **Overview Tab** as the default view for races. It integrates:
+        *   **Event Details**: Date, Time, Interactive Location Link.
+        *   **Rich Data**: Weather stats (High/Low/Precip/Moon), Course Records, Cutoffs, and Qualifiers.
+        *   **Actions**: Direct links to Website and Registration.
+        *   **Editing**: `EditRaceModal` updated to support all new data fields.
+    *   **Bug Fixes**: Fixed `EditRaceModal` scrolling issue to ensure accessible form fields on smaller screens.
 
 4.  **Code Cleanup:**
     *   Removed unused variables in `utils.ts` and `CourseMap.tsx`.
@@ -29,7 +35,8 @@
 ## Current State
 
 *   **Production Deployment:** The app is deployed to `/var/www/dfiu` via `npm run deploy`.
-*   **Known Issues:** None at this time. All reported issues (zero stats, overlaps) should be resolved.
+*   **Known Issues**:
+    *   **Logo Navigation**: Clicking the logo/title may not reliably navigate to `/dashboard` despite `z-index` fixes. This is a known issue to be revisited.
 
 ## Next Steps
 

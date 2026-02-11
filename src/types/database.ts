@@ -38,7 +38,20 @@ export interface Database {
                     start_datetime: string | null
                     distance_miles: number | null
                     website_url: string | null
+                    registration_url: string | null
                     packet_pickup_info: string | null
+                    avg_temp_high: string | null
+                    avg_temp_low: string | null
+                    precip_chance: string | null
+                    weather_notes: string | null
+                    moon_phase: string | null
+                    sunrise_time: string | null
+                    sunset_time: string | null
+                    overall_cutoff: string | null
+                    course_record_male: string | null
+                    course_record_female: string | null
+                    qualifies_for: string | null
+                    course_type: string | null
                     is_public: boolean
                     created_at: string
                     updated_at: string
@@ -51,7 +64,20 @@ export interface Database {
                     start_datetime?: string | null
                     distance_miles?: number | null
                     website_url?: string | null
+                    registration_url?: string | null
                     packet_pickup_info?: string | null
+                    avg_temp_high?: string | null
+                    avg_temp_low?: string | null
+                    precip_chance?: string | null
+                    weather_notes?: string | null
+                    moon_phase?: string | null
+                    sunrise_time?: string | null
+                    sunset_time?: string | null
+                    overall_cutoff?: string | null
+                    course_record_male?: string | null
+                    course_record_female?: string | null
+                    qualifies_for?: string | null
+                    course_type?: string | null
                     is_public?: boolean
                     created_at?: string
                     updated_at?: string
@@ -64,7 +90,20 @@ export interface Database {
                     start_datetime?: string | null
                     distance_miles?: number | null
                     website_url?: string | null
+                    registration_url?: string | null
                     packet_pickup_info?: string | null
+                    avg_temp_high?: string | null
+                    avg_temp_low?: string | null
+                    precip_chance?: string | null
+                    weather_notes?: string | null
+                    moon_phase?: string | null
+                    sunrise_time?: string | null
+                    sunset_time?: string | null
+                    overall_cutoff?: string | null
+                    course_record_male?: string | null
+                    course_record_female?: string | null
+                    qualifies_for?: string | null
+                    course_type?: string | null
                     is_public?: boolean
                     created_at?: string
                     updated_at?: string

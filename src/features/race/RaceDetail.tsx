@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { Race, Course, Waypoint } from '@/types/database'
+import { Calendar, MapPin, Globe, ArrowUpRight, CloudSun, Trophy } from 'lucide-react'
 import { CourseMap } from '@/features/course/CourseMap'
 import { ElevationProfile } from '@/features/course/ElevationProfile'
 import { GpxUploader } from '@/features/course/GpxUploader'
@@ -9,14 +11,13 @@ import { EditRaceModal } from '@/features/race/EditRaceModal'
 import { EditWaypointModal } from '@/features/course/EditWaypointModal'
 import { sampleElevationProfile, type GpxParseResult } from '@/lib/gpx-parser'
 import { getNearestPointOnLine, getDistanceFromStart } from '@/lib/geo-utils'
-import type { Race, Course, Waypoint } from '@/types/database'
 import { formatDate } from '@/lib/utils'
 
 type Tab = 'overview' | 'map' | 'plan' | 'docs'
 
 export function RaceDetail({ raceId }: { raceId: string }) {
   const queryClient = useQueryClient()
-  const [activeTab, setActiveTab] = useState<Tab>('map')
+  const [activeTab, setActiveTab] = useState<Tab>('overview')
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingWaypoint, setEditingWaypoint] = useState<Partial<Waypoint> | null>(null)
   const [hoveredMile, setHoveredMile] = useState<number | null>(null)
@@ -374,7 +375,143 @@ export function RaceDetail({ raceId }: { raceId: string }) {
         )}
 
         {activeTab === 'overview' && (
-          <div className='p-8 text-center text-neutral-500'>Race overview and logistics coming soon...</div>
+          <div className="space-y-8 animate-in fade-in duration-500 max-w-5xl mx-auto p-4 md:p-8">
+            {/* Hero / Header Info */}
+            <div className="bg-neutral-900/50 rounded-2xl p-8 border border-neutral-800 relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+                <img src="/logo.png" className="w-64 h-64 object-contain" alt="Background Logo" />
+              </div>
+              <div className="relative z-10">
+                <h1 className="text-4xl md:text-5xl font-black italic tracking-tighter text-white mb-4 uppercase">
+                  {race?.name}
+                </h1>
+                <div className="flex flex-wrap gap-6 text-lg text-neutral-300">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-5 h-5 text-orange-500" />
+                    <span>
+                      {race?.start_datetime ? formatDate(race.start_datetime, 'EEEE, MMMM do, yyyy') : 'Date TBD'}
+                      {race?.start_datetime && ` at ${formatDate(race.start_datetime, 'h:mm a')}`}
+                    </span>
+                  </div>
+                  {race?.location && (
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(race.location)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 hover:text-white transition-colors group"
+                    >
+                      <MapPin className="w-5 h-5 text-orange-500 group-hover:scale-110 transition-transform" />
+                      <span className="border-b border-transparent group-hover:border-neutral-300">{race.location}</span>
+                    </a>
+                  )}
+                </div>
+
+                <div className="flex gap-4 mt-8">
+                  {race?.website_url && (
+                    <a href={race.website_url} target="_blank" rel="noopener noreferrer" className="bg-neutral-800 hover:bg-neutral-700 text-white px-6 py-2.5 rounded-lg font-semibold transition-all flex items-center gap-2 border border-neutral-700">
+                      <Globe className="w-4 h-4" /> Website
+                    </a>
+                  )}
+                  {race?.registration_url && (
+                    <a href={race.registration_url} target="_blank" rel="noopener noreferrer" className="bg-orange-600 hover:bg-orange-500 text-white px-6 py-2.5 rounded-lg font-semibold transition-all shadow-lg shadow-orange-900/20 flex items-center gap-2">
+                      Register Now <ArrowUpRight className="w-4 h-4" />
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Weather & Conditions */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-neutral-900/30 rounded-xl p-6 border border-neutral-800/50">
+                <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                  <CloudSun className="w-5 h-5 text-yellow-500" /> Weather & Conditions
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-neutral-950/50 p-4 rounded-lg">
+                    <div className="text-neutral-500 text-xs uppercase tracking-wider mb-1">Avg High</div>
+                    <div className="text-2xl font-mono text-white">{race?.avg_temp_high || '--'}</div>
+                  </div>
+                  <div className="bg-neutral-950/50 p-4 rounded-lg">
+                    <div className="text-neutral-500 text-xs uppercase tracking-wider mb-1">Avg Low</div>
+                    <div className="text-2xl font-mono text-white">{race?.avg_temp_low || '--'}</div>
+                  </div>
+                  <div className="bg-neutral-950/50 p-4 rounded-lg">
+                    <div className="text-neutral-500 text-xs uppercase tracking-wider mb-1">Sunrise</div>
+                    <div className="text-lg font-mono text-white">{race?.sunrise_time || '--'}</div>
+                  </div>
+                  <div className="bg-neutral-950/50 p-4 rounded-lg">
+                    <div className="text-neutral-500 text-xs uppercase tracking-wider mb-1">Sunset</div>
+                    <div className="text-lg font-mono text-white">{race?.sunset_time || '--'}</div>
+                  </div>
+                </div>
+                {(race?.weather_notes || race?.moon_phase || race?.precip_chance) && (
+                  <div className="mt-4 pt-4 border-t border-neutral-800 grid grid-cols-2 gap-4 text-sm text-neutral-400">
+                    {race?.moon_phase && <div><span className="text-neutral-500 block text-xs uppercase">Moon</span> {race.moon_phase}</div>}
+                    {race?.precip_chance && <div><span className="text-neutral-500 block text-xs uppercase">Precip</span> {race.precip_chance}</div>}
+                    {race?.weather_notes && <div className="col-span-2 mt-2 italic">"{race.weather_notes}"</div>}
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-neutral-900/30 rounded-xl p-6 border border-neutral-800/50">
+                <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                  <Trophy className="w-5 h-5 text-yellow-500" /> Race Stats
+                </h3>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center py-2 border-b border-neutral-800">
+                    <span className="text-neutral-400">Distance</span>
+                    <span className="text-white font-mono">{(course?.total_distance_miles ?? race?.distance_miles ?? 0).toFixed(1)} mi</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-neutral-800">
+                    <span className="text-neutral-400">Elevation Gain</span>
+                    <span className="text-white font-mono">{(course?.total_elevation_gain_ft || 0).toLocaleString()} ft</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-neutral-800">
+                    <span className="text-neutral-400">Overall Cutoff</span>
+                    <span className="text-white font-mono">{race?.overall_cutoff || '--'}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-neutral-800">
+                    <span className="text-neutral-400">Course Type</span>
+                    <span className="text-white">{race?.course_type || '--'}</span>
+                  </div>
+                  {race?.qualifies_for && (
+                    <div className="py-2">
+                      <span className="text-neutral-400 block mb-1">Qualifies For</span>
+                      <div className="flex flex-wrap gap-2">
+                        {race.qualifies_for.split(',').map((q, i) => (
+                          <span key={i} className="bg-neutral-800 text-xs px-2 py-1 rounded border border-neutral-700 text-neutral-300">
+                            {q.trim()}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Records */}
+            {(race?.course_record_male || race?.course_record_female) && (
+              <div className="bg-neutral-900/30 rounded-xl p-6 border border-neutral-800/50">
+                <h3 className="text-xl font-bold text-white mb-4">Course Records</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {race?.course_record_male && (
+                    <div className="flex items-center justify-between bg-neutral-950/50 p-4 rounded-lg border-l-2 border-blue-500">
+                      <span className="text-neutral-400">Men's Record</span>
+                      <span className="text-white font-mono font-bold">{race.course_record_male}</span>
+                    </div>
+                  )}
+                  {race?.course_record_female && (
+                    <div className="flex items-center justify-between bg-neutral-950/50 p-4 rounded-lg border-l-2 border-pink-500">
+                      <span className="text-neutral-400">Women's Record</span>
+                      <span className="text-white font-mono font-bold">{race.course_record_female}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
         {activeTab === 'plan' && (

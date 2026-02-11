@@ -18,10 +18,23 @@ export function EditRaceModal({ race, onClose, onUpdate }: EditRaceModalProps) {
         location: race.location || '',
         start_datetime: race.start_datetime ? new Date(race.start_datetime).toISOString().slice(0, 16) : '', // yyyy-MM-ddThh:mm
         website_url: race.website_url || '',
-        is_public: race.is_public || false
+        is_public: race.is_public || false,
+        registration_url: race.registration_url || '',
+        avg_temp_high: race.avg_temp_high || '',
+        avg_temp_low: race.avg_temp_low || '',
+        precip_chance: race.precip_chance || '',
+        weather_notes: race.weather_notes || '',
+        moon_phase: race.moon_phase || '',
+        sunrise_time: race.sunrise_time || '',
+        sunset_time: race.sunset_time || '',
+        overall_cutoff: race.overall_cutoff || '',
+        course_record_male: race.course_record_male || '',
+        course_record_female: race.course_record_female || '',
+        qualifies_for: race.qualifies_for || '',
+        course_type: race.course_type || ''
     })
 
-    
+
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -36,7 +49,20 @@ export function EditRaceModal({ race, onClose, onUpdate }: EditRaceModalProps) {
                     location: formData.location || null,
                     start_datetime: formData.start_datetime ? new Date(formData.start_datetime).toISOString() : null,
                     website_url: formData.website_url || null,
-                    is_public: formData.is_public
+                    is_public: formData.is_public,
+                    registration_url: formData.registration_url || null,
+                    avg_temp_high: formData.avg_temp_high || null,
+                    avg_temp_low: formData.avg_temp_low || null,
+                    precip_chance: formData.precip_chance || null,
+                    weather_notes: formData.weather_notes || null,
+                    moon_phase: formData.moon_phase || null,
+                    sunrise_time: formData.sunrise_time || null,
+                    sunset_time: formData.sunset_time || null,
+                    overall_cutoff: formData.overall_cutoff || null,
+                    course_record_male: formData.course_record_male || null,
+                    course_record_female: formData.course_record_female || null,
+                    qualifies_for: formData.qualifies_for || null,
+                    course_type: formData.course_type || null
                 })
                 .eq('id', race.id)
                 .select()
@@ -91,13 +117,146 @@ export function EditRaceModal({ race, onClose, onUpdate }: EditRaceModalProps) {
                         />
                     </div>
 
+
+                    <div className={styles.sectionHeader}>Links</div>
+                    <div className={styles.row}>
+                        <div className={styles.field}>
+                            <label>Website URL</label>
+                            <input
+                                type="url"
+                                value={formData.website_url}
+                                onChange={e => setFormData({ ...formData, website_url: e.target.value })}
+                                placeholder="https://..."
+                            />
+                        </div>
+                        <div className={styles.field}>
+                            <label>Registration URL</label>
+                            <input
+                                type="url"
+                                value={formData.registration_url}
+                                onChange={e => setFormData({ ...formData, registration_url: e.target.value })}
+                                placeholder="https://..."
+                            />
+                        </div>
+                    </div>
+
+                    <div className={styles.sectionHeader}>Race Stats</div>
+                    <div className={styles.row}>
+                        <div className={styles.field}>
+                            <label>Course Type</label>
+                            <input
+                                type="text"
+                                value={formData.course_type}
+                                onChange={e => setFormData({ ...formData, course_type: e.target.value })}
+                                placeholder="e.g. Loop, Point-to-Point"
+                            />
+                        </div>
+                        <div className={styles.field}>
+                            <label>Overall Cutoff</label>
+                            <input
+                                type="text"
+                                value={formData.overall_cutoff}
+                                onChange={e => setFormData({ ...formData, overall_cutoff: e.target.value })}
+                                placeholder="e.g. 30 hours"
+                            />
+                        </div>
+                    </div>
+                    <div className={styles.row}>
+                        <div className={styles.field}>
+                            <label>Male Record</label>
+                            <input
+                                type="text"
+                                value={formData.course_record_male}
+                                onChange={e => setFormData({ ...formData, course_record_male: e.target.value })}
+                                placeholder="e.g. 14:30:00 (Runner Name)"
+                            />
+                        </div>
+                        <div className={styles.field}>
+                            <label>Female Record</label>
+                            <input
+                                type="text"
+                                value={formData.course_record_female}
+                                onChange={e => setFormData({ ...formData, course_record_female: e.target.value })}
+                                placeholder="e.g. 16:45:00 (Runner Name)"
+                            />
+                        </div>
+                    </div>
                     <div className={styles.field}>
-                        <label>Website URL</label>
+                        <label>Qualifies For</label>
                         <input
-                            type="url"
-                            value={formData.website_url}
-                            onChange={e => setFormData({ ...formData, website_url: e.target.value })}
-                            placeholder="https://..."
+                            type="text"
+                            value={formData.qualifies_for}
+                            onChange={e => setFormData({ ...formData, qualifies_for: e.target.value })}
+                            placeholder="e.g. Western States, UTMB"
+                        />
+                    </div>
+
+                    <div className={styles.sectionHeader}>Weather & Conditions</div>
+                    <div className={styles.row}>
+                        <div className={styles.field}>
+                            <label>Avg High</label>
+                            <input
+                                type="text"
+                                value={formData.avg_temp_high}
+                                onChange={e => setFormData({ ...formData, avg_temp_high: e.target.value })}
+                                placeholder="e.g. 75°F"
+                            />
+                        </div>
+                        <div className={styles.field}>
+                            <label>Avg Low</label>
+                            <input
+                                type="text"
+                                value={formData.avg_temp_low}
+                                onChange={e => setFormData({ ...formData, avg_temp_low: e.target.value })}
+                                placeholder="e.g. 45°F"
+                            />
+                        </div>
+                        <div className={styles.field}>
+                            <label>Precip Chance</label>
+                            <input
+                                type="text"
+                                value={formData.precip_chance}
+                                onChange={e => setFormData({ ...formData, precip_chance: e.target.value })}
+                                placeholder="e.g. 10%"
+                            />
+                        </div>
+                    </div>
+                    <div className={styles.row}>
+                        <div className={styles.field}>
+                            <label>Sunrise</label>
+                            <input
+                                type="text"
+                                value={formData.sunrise_time}
+                                onChange={e => setFormData({ ...formData, sunrise_time: e.target.value })}
+                                placeholder="e.g. 6:30 AM"
+                            />
+                        </div>
+                        <div className={styles.field}>
+                            <label>Sunset</label>
+                            <input
+                                type="text"
+                                value={formData.sunset_time}
+                                onChange={e => setFormData({ ...formData, sunset_time: e.target.value })}
+                                placeholder="e.g. 8:00 PM"
+                            />
+                        </div>
+                        <div className={styles.field}>
+                            <label>Moon Phase</label>
+                            <input
+                                type="text"
+                                value={formData.moon_phase}
+                                onChange={e => setFormData({ ...formData, moon_phase: e.target.value })}
+                                placeholder="e.g. Full Moon"
+                            />
+                        </div>
+                    </div>
+                    <div className={styles.field}>
+                        <label>Weather Notes</label>
+                        <textarea
+                            value={formData.weather_notes}
+                            onChange={e => setFormData({ ...formData, weather_notes: e.target.value })}
+                            placeholder="Additional weather info..."
+                            rows={2}
                         />
                     </div>
 

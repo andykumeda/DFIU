@@ -16,8 +16,10 @@
     padding: 2rem;
     border-radius: 12px;
     width: 100%;
-    max-width: 500px;
+    max-width: 600px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    max-height: 90vh;
+    overflow-y: auto;
 }
 
 .header {
@@ -25,11 +27,19 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 1.5rem;
+    position: sticky;
+    top: -2rem;
+    background: white;
+    z-index: 10;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    margin-top: -0.5rem;
 }
 
 .header h2 {
     margin: 0;
     font-size: 1.5rem;
+    font-weight: 700;
 }
 
 .closeBtn {
@@ -38,12 +48,36 @@
     font-size: 1.5rem;
     cursor: pointer;
     padding: 0.5rem;
+    color: #666;
+    transition: color 0.2s;
+}
+
+.closeBtn:hover {
+    color: #000;
 }
 
 .form {
     display: flex;
     flex-direction: column;
     gap: 1rem;
+}
+
+.sectionHeader {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-top: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #f0f0f0;
+    color: #333;
+}
+
+.row {
+    display: flex;
+    gap: 1rem;
+}
+
+.row .field {
+    flex: 1;
 }
 
 .field {
@@ -58,20 +92,31 @@
     color: #444;
 }
 
-.field input[type="text"],
-.field input[type="datetime-local"],
-.field input[type="url"] {
+.field input,
+.field select,
+.field textarea {
     padding: 0.75rem;
     border: 1px solid #ddd;
     border-radius: 6px;
-    font-size: 1rem;
+    font-size: 0.95rem;
+    width: 100%;
+    transition: border-color 0.2s;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+    outline: none;
+    border-color: #0070f3;
 }
 
 .checkboxLabel {
+    display: flex;
     flex-direction: row;
     align-items: center;
     gap: 0.75rem;
     cursor: pointer;
+    user-select: none;
 }
 
 .actions {
@@ -79,6 +124,8 @@
     justify-content: flex-end;
     gap: 1rem;
     margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #f0f0f0;
 }
 
 .cancelBtn {
@@ -88,6 +135,12 @@
     border-radius: 6px;
     cursor: pointer;
     font-weight: 500;
+    color: #333;
+    transition: background 0.2s;
+}
+
+.cancelBtn:hover {
+    background: #e5e5e5;
 }
 
 .saveBtn {
@@ -98,6 +151,11 @@
     border-radius: 6px;
     cursor: pointer;
     font-weight: 500;
+    transition: background 0.2s;
+}
+
+.saveBtn:hover {
+    background: #0060df;
 }
 
 .saveBtn:disabled {
