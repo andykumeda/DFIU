@@ -147,10 +147,14 @@ export function getNearestPointOnLine(
         // We want to find t such that A + t(B-A) is the projection of P onto AB
         // t = Dot(P-A, B-A) / |B-A|^2
 
-        let t = ((point.lon - p1.lon) * dx + (point.lat - p1.lat) * dy) / (dx * dx + dy * dy);
+        const lenSq = dx * dx + dy * dy
+        let t = 0
 
-        // Clamping t to segment [0, 1]
-        t = Math.max(0, Math.min(1, t));
+        if (lenSq > 0) {
+            t = ((point.lon - p1.lon) * dx + (point.lat - p1.lat) * dy) / lenSq
+            // Clamping t to segment [0, 1]
+            t = Math.max(0, Math.min(1, t))
+        }
 
         const projectedLon = p1.lon + t * dx;
         const projectedLat = p1.lat + t * dy;

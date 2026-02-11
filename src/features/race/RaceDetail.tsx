@@ -199,38 +199,24 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
   // Map Interactions
   const handleMapClick = (lat: number, lon: number, type?: string) => {
-    console.log('Map Click:', { lat, lon, type })
-    if (!course?.geometry) {
-      console.warn('Map Click: No course geometry')
-      return
-    }
+    if (!course?.geometry) return
     const coordinates = (course.geometry as { coordinates: [number, number][] }).coordinates
-    if (!coordinates || coordinates.length === 0) {
-      console.warn('Map Click: No coordinates in geometry')
-      return
-    }
+    if (!coordinates || coordinates.length === 0) return
 
     const nearest = getNearestPointOnLine({ lat, lon }, coordinates)
-    console.log('Nearest Point:', nearest)
 
-    if (nearest) {
-      console.log('Distance to line:', nearest.distance, 'miles')
-      if (nearest.distance < 0.5) {
-        const mile = getDistanceFromStart(coordinates, nearest.index, { lat: nearest.lat, lon: nearest.lon })
-        console.log('Calculated Mile:', mile)
-        setEditingWaypoint({
-          course_id: course.id,
-          lat: nearest.lat,
-          lon: nearest.lon,
-          mile: mile,
-          type: type || 'aid_station'
-        })
-      } else {
-        console.warn('Click too far from route:', nearest.distance)
-        alert('Click closer to the route line to add a waypoint.')
-      }
-    } else {
-      console.warn('Could not find nearest point')
+    if (nearest && nearest.distance < 0.5) {
+      const mile = getDistanceFromStart(coordinates, nearest.index, { lat: nearest.lat, lon: nearest.lon })
+      setEditingWaypoint({
+        course_id: course.id,
+        lat: nearest.lat,
+        lon: nearest.lon,
+        mile: mile,
+        type: type || 'aid_station'
+      })
+    } else if (nearest) {
+      // Optional: helpful to tell user if they are too far
+      // console.warn('Click too far from route:', nearest.distance)
     }
   }
 
