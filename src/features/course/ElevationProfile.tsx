@@ -71,7 +71,7 @@ export function ElevationProfile({
     if (data.length === 0) {
         return (
             <div className={`${styles.container} ${className || ''}`}>
-                <div className={styles.empty}>No elevation data available</div>
+                <div className={styles.empty}>No elevation data found in the uploaded route file.</div>
             </div>
         )
     }

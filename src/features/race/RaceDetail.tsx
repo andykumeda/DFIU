@@ -70,6 +70,11 @@ export function RaceDetail({ raceId }: { raceId: string }) {
         sampleStart: result.elevationProfile.slice(0, 3)
       })
 
+      // Check for missing elevation data
+      if (result.elevationProfile.length === 0) {
+        alert('Warning: The uploaded GPX file does not contain elevation data. The elevation profile will be empty.')
+      }
+
       if (course) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { error } = await (supabase.from('courses') as any).update({
