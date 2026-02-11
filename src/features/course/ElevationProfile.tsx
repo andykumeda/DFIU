@@ -78,16 +78,31 @@ export function ElevationProfile({
         return { path, minEle, maxEle, areaPath }
     }, [data, totalDistance])
 
-    // Compute mile marker positions
-    const mileMarkers = useMemo(() => {
-        if (!showMileMarkers || totalDistance <= 0) return []
-        const markers: number[] = []
+    // Compute mile marker positions on the elevation profile
+    const mileMarkerPositions = useMemo(() => {
+        if (!showMileMarkers || totalDistance <= 0 || data.length === 0) return []
+        const markers: { mile: number; x: number; y: number }[] = []
         const interval = totalDistance > 100 ? 10 : totalDistance > 50 ? 5 : 1
+        const width = 100
+        const padding = 2
+        const eleRange = (maxEle - minEle) || 1
+
         for (let mile = interval; mile < totalDistance; mile += interval) {
-            markers.push(mile)
+            // Find elevation at this mile by interpolation
+            let elevation = minEle
+            for (let i = 0; i < data.length - 1; i++) {
+                if (data[i].distance <= mile && data[i + 1].distance >= mile) {
+                    const t = (mile - data[i].distance) / (data[i + 1].distance - data[i].distance)
+                    elevation = data[i].elevation + t * (data[i + 1].elevation - data[i].elevation)
+                    break
+                }
+            }
+            const x = (mile / totalDistance) * (width - padding * 2) + padding
+            const y = 100 - padding - ((elevation - minEle) / eleRange) * (100 - padding * 2)
+            markers.push({ mile, x, y })
         }
         return markers
-    }, [showMileMarkers, totalDistance])
+    }, [showMileMarkers, totalDistance, data, minEle, maxEle])
 
     // Compute waypoint positions on the elevation profile
     const waypointPositions = useMemo(() => {
@@ -129,6 +144,28 @@ export function ElevationProfile({
         onHover?.(null)
     }
 
+    // Find elevation at highlight distance
+    const highlightPoint = useMemo(() => {
+        if (highlightDistance === undefined || data.length === 0) return null
+        const padding = 2
+        const width = 100
+        const eleRange = (maxEle - minEle) || 1
+
+        // Find elevation by interpolation
+        let elevation = minEle
+        for (let i = 0; i < data.length - 1; i++) {
+            if (data[i].distance <= highlightDistance && data[i + 1].distance >= highlightDistance) {
+                const t = (highlightDistance - data[i].distance) / (data[i + 1].distance - data[i].distance)
+                elevation = data[i].elevation + t * (data[i + 1].elevation - data[i].elevation)
+                break
+            }
+        }
+
+        const x = (highlightDistance / totalDistance) * (width - padding * 2) + padding
+        const y = 100 - padding - ((elevation - minEle) / eleRange) * (100 - padding * 2)
+        return { x, y }
+    }, [highlightDistance, data, totalDistance, minEle, maxEle])
+
     if (data.length === 0) {
         return (
             <div className={`${styles.container} ${className || ''}`}>
@@ -137,7 +174,6 @@ export function ElevationProfile({
         )
     }
 
-    const padding = 2
 
     return (
         <div className={`${styles.container} ${className || ''}`}>
@@ -146,94 +182,74 @@ export function ElevationProfile({
                 <span className={styles.minEle}>{Math.round(minEle).toLocaleString()} ft</span>
             </div>
 
-            <svg
-                className={styles.chart}
-                viewBox="0 0 100 100"
-                preserveAspectRatio="none"
-                onMouseMove={handleMouseMove}
-                onMouseLeave={handleMouseLeave}
-            >
-                {/* Gradient definition */}
-                <defs>
-                    <linearGradient id="elevationGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stopColor="rgba(0, 112, 243, 0.4)" />
-                        <stop offset="100%" stopColor="rgba(0, 112, 243, 0.05)" />
-                    </linearGradient>
-                </defs>
+            <div className={styles.chartContainer}>
+                <svg
+                    className={styles.chart}
+                    viewBox="0 0 100 100"
+                    preserveAspectRatio="none"
+                    onMouseMove={handleMouseMove}
+                    onMouseLeave={handleMouseLeave}
+                >
+                    {/* Gradient definition */}
+                    <defs>
+                        <linearGradient id="elevationGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stopColor="rgba(0, 112, 243, 0.4)" />
+                            <stop offset="100%" stopColor="rgba(0, 112, 243, 0.05)" />
+                        </linearGradient>
+                    </defs>
 
-                {/* Filled area */}
-                <path
-                    d={areaPath}
-                    fill="url(#elevationGradient)"
-                />
-
-                {/* Line */}
-                <path
-                    d={path}
-                    fill="none"
-                    stroke="#0070f3"
-                    strokeWidth="0.5"
-                    vectorEffect="non-scaling-stroke"
-                />
-
-                {/* Mile markers */}
-                {mileMarkers.map(mile => {
-                    const x = (mile / totalDistance) * (100 - padding * 2) + padding
-                    return (
-                        <line
-                            key={`mile-${mile}`}
-                            x1={x} y1={padding}
-                            x2={x} y2={100 - padding}
-                            stroke="rgba(255,255,255,0.6)"
-                            strokeWidth="1"
-                            vectorEffect="non-scaling-stroke"
-                        />
-                    )
-                })}
-
-                {/* Waypoint markers */}
-                {waypointPositions.map((wp, i) => (
-                    <line
-                        key={`wp-${i}`}
-                        x1={wp.x} y1={padding}
-                        x2={wp.x} y2={100 - padding}
-                        stroke={getWaypointColor(wp.type)}
-                        strokeWidth="1.5"
-                        vectorEffect="non-scaling-stroke"
-                        strokeDasharray="4 3"
-                        opacity="0.8"
+                    {/* Filled area */}
+                    <path
+                        d={areaPath}
+                        fill="url(#elevationGradient)"
                     />
-                ))}
 
-                {/* Waypoint markers on the line - using vertical bars that don't stretch as much as circles */}
-                {waypointPositions.map((wp, i) => (
-                    <rect
-                        key={`wp-bar-${i}`}
-                        x={wp.x - 0.25}
-                        y={wp.y - 2}
-                        width={0.5}
-                        height={4}
-                        fill={getWaypointColor(wp.type)}
-                        stroke="#fff"
+                    {/* Line */}
+                    <path
+                        d={path}
+                        fill="none"
+                        stroke="#0070f3"
                         strokeWidth="0.5"
                         vectorEffect="non-scaling-stroke"
                     />
-                ))}
+                </svg>
 
-                {/* Highlight line */}
-                {highlightDistance !== undefined && (
-                    <line
-                        x1={(highlightDistance / totalDistance) * 96 + 2}
-                        y1="2"
-                        x2={(highlightDistance / totalDistance) * 96 + 2}
-                        y2="98"
-                        stroke="#fff"
-                        strokeWidth="0.3"
-                        vectorEffect="non-scaling-stroke"
-                        strokeDasharray="2 2"
-                    />
-                )}
-            </svg>
+                {/* Marker Overlay - Using HTML for non-stretching symbols */}
+                <div className={styles.markerOverlay}>
+                    {/* Mile markers */}
+                    {mileMarkerPositions.map(m => (
+                        <div
+                            key={`mile-${m.mile}`}
+                            className={styles.mileMarker}
+                            style={{ left: `${m.x}%`, top: `${m.y}%` }}
+                        >
+                            {m.mile}
+                        </div>
+                    ))}
+
+                    {/* Waypoint markers */}
+                    {waypointPositions.map((wp, i) => (
+                        <div
+                            key={`wp-${i}`}
+                            className={styles.waypointMarker}
+                            style={{
+                                left: `${wp.x}%`,
+                                top: `${wp.y}%`,
+                                backgroundColor: getWaypointColor(wp.type)
+                            }}
+                            title={wp.name}
+                        />
+                    ))}
+
+                    {/* Highlight Dot */}
+                    {highlightPoint && (
+                        <div
+                            className={styles.highlightDot}
+                            style={{ left: `${highlightPoint.x}%`, top: `${highlightPoint.y}%` }}
+                        />
+                    )}
+                </div>
+            </div>
 
             <div className={styles.xLabels}>
                 <span>0 mi</span>
