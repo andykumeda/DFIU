@@ -28,7 +28,16 @@ interface CourseMapProps {
     highlightPoint?: { lat: number, lon: number } | null
     onMapClick?: (lat: number, lon: number, type?: string) => void
     onWaypointClick?: (id: string) => void
+    onWaypointMove?: (id: string, lat: number, lon: number, mile: number) => void
     className?: string
+    terrainNodes?: {
+        id: string
+        mile: number
+        type: string
+        lat: number
+        lon: number
+    }[]
+    onTerrainNodeClick?: (id: string) => void
 }
 
 export function CourseMap({
@@ -37,9 +46,12 @@ export function CourseMap({
     waypoints = [],
     onMapClick,
     onWaypointClick,
+    onWaypointMove,
     onHover,
     highlightMile,
-    className
+    className,
+    terrainNodes = [],
+    onTerrainNodeClick
 }: CourseMapProps) {
     const mapContainer = useRef<HTMLDivElement>(null)
     const map = useRef<mapboxgl.Map | null>(null)
@@ -144,7 +156,106 @@ export function CourseMap({
                 showUserHeading: true
             })
             map.current!.addControl(geolocate, 'top-right')
+            // Controls already added above
         })
+
+        // Terrain Segments Visualization
+        const updateTerrainLayer = async () => {
+            if (!map.current || !mapLoaded || coordinates.length === 0 || terrainNodes.length === 0) return
+
+            const m = map.current
+            if (m.getSource('terrain-segments')) {
+                m.removeLayer('terrain-segments')
+                m.removeSource('terrain-segments')
+            }
+
+            // We need to split coordinates based on miles.
+            // Helper to find index for mile
+            const { getCoordinateAtDistance, getNearestPointOnLine } = await import('@/lib/geo-utils')
+            // Build GeoJSON for utils
+            const geoJson = {
+                type: 'FeatureCollection',
+                features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates } }]
+            } as any
+
+            // Sort nodes by mile
+            const sortedNodes = [...terrainNodes].sort((a, b) => a.mile - b.mile)
+
+            // Create segments
+            const segments: any[] = []
+            let startIndex = 0
+
+            for (const node of sortedNodes) {
+                // Find index of this node on the line
+                const coord = getCoordinateAtDistance(geoJson, node.mile * 1609.34)
+                if (!coord) continue // Should not happen if valid mile
+
+                const nearest = getNearestPointOnLine({ lat: coord[1], lon: coord[0] }, coordinates)
+                if (!nearest) continue
+
+                const endIndex = nearest.index
+
+                // Slice coordinates
+                // Ensure we include the end point of previous and start point of current to avoid gaps?
+                // slice(start, end + 1) covers up to end index. 
+                const segmentCoords = coordinates.slice(startIndex, endIndex + 1)
+                // Push the exact node coord as the last point to close gap? 
+                segmentCoords.push([coord[0], coord[1]])
+
+                segments.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'LineString',
+                        coordinates: segmentCoords
+                    },
+                    properties: {
+                        type: node.type,
+                        color: getTerrainColor(node.type)
+                    }
+                })
+
+                startIndex = endIndex
+            }
+
+            // Add last segment if needed (to finish)
+            // Check if last node is at end? 
+            // Logic assumes last node IS the finish if user set it up right, but we should handle "rest of course"
+            // But if we want *everything* to be covered by nodes, user must add them. 
+            // Or we imply default 'dirt' for remainder? 
+            // Let's visualize what defines. If gap remains, show default route line (red) underneath.
+            // Actually, the main 'route' layer is visible underneath. 
+            // So these segments will overlay it.
+
+            m.addSource('terrain-segments', {
+                type: 'geojson',
+                data: {
+                    type: 'FeatureCollection',
+                    features: segments
+                }
+            })
+
+            m.addLayer({
+                id: 'terrain-segments',
+                type: 'line',
+                source: 'terrain-segments',
+                layout: {
+                    'line-join': 'round',
+                    'line-cap': 'round'
+                },
+                paint: {
+                    'line-color': ['get', 'color'],
+                    'line-width': 6 // Slightly wider than base route to cover it
+                }
+            }, 'route-hit-area') // Under hit area, above base route? 
+            // 'route-hit-area' is transparent top. 'route' is base. 
+            // We want this ON TOP of 'route'.
+            // If we don't specify 'before', it goes to top. 
+            // But we want it below markers.
+        }
+
+        if (mapLoaded && terrainNodes.length > 0) {
+            updateTerrainLayer()
+        }
 
         return () => {
             if (map.current) {
@@ -179,25 +290,47 @@ export function CourseMap({
             if (wp.type === 'start') el.style.backgroundColor = '#16a34a'
             else if (wp.type === 'finish') el.style.backgroundColor = '#dc2626'
             else if (wp.type === 'aid_station') el.style.backgroundColor = '#2563eb'
-            else if (wp.type === 'water') el.style.backgroundColor = '#3b82f6'
+            else if (wp.type === 'water_only') el.style.backgroundColor = '#3b82f6'
+            else if (wp.type === 'crew') el.style.backgroundColor = '#a855f7'
+            else if (wp.type === 'pacer') el.style.backgroundColor = '#f59e0b'
+            else if (wp.type === 'drop_bag') el.style.backgroundColor = '#10b981'
             else if (wp.type === 'medical') el.style.backgroundColor = '#ef4444'
 
-            const marker = new mapboxgl.Marker({ element: el })
+            const marker = new mapboxgl.Marker({
+                element: el,
+                draggable: true // Enable dragging
+            })
                 .setLngLat([wp.lon, wp.lat])
                 .addTo(map.current!)
+
+            // Drag End Listener
+            marker.on('dragend', async () => {
+                const newLngLat = marker.getLngLat()
+
+                // Snap to route
+                if (coordinates.length > 0) {
+                    const { getNearestPointOnLine, getDistanceFromStart } = await import('@/lib/geo-utils')
+                    const nearest = getNearestPointOnLine({ lat: newLngLat.lat, lon: newLngLat.lng }, coordinates)
+
+                    if (nearest) {
+                        // Update marker position visually to snapped point (optional, but good UX)
+                        marker.setLngLat([nearest.lon, nearest.lat])
+
+                        const newMile = getDistanceFromStart(coordinates, nearest.index, { lat: nearest.lat, lon: nearest.lon })
+
+                        if (onWaypointMove) {
+                            onWaypointMove(wp.id, nearest.lat, nearest.lon, newMile)
+                        }
+                    }
+                }
+            })
 
             // Add click listener to the marker element
             el.addEventListener('click', (e) => {
                 e.stopPropagation()
+                // If we just finished dragging, we might trigger click? 
+                // Mapbox usually suppresses click on dragend, but let's be safe later if needed.
                 if (isDeleteModeRef.current) {
-                    // Verify we want to delete? Maybe trigger a callback that handles confirming
-                    if (onWaypointClick) onWaypointClick(wp.id) // Currently opens modal, parent handles delete via modal. 
-                    // To implement "click to delete", we need a separate prop or handle it differently.
-                    // For now, let's open the modal, but user asked for RouteSmith UX.
-                    // RouteSmith calls `removeWaypoint(id)`. 
-                    // I'll stick to opening modal for now as architecture differs (DB sync), 
-                    // or I could add an `onDeleteWaypoint` prop? 
-                    // Let's assume onWaypointClick handles logic. 
                     if (onWaypointClick) onWaypointClick(wp.id)
                 } else {
                     if (onWaypointClick) onWaypointClick(wp.id)
@@ -243,7 +376,36 @@ export function CourseMap({
             }
         }
 
-    }, [waypoints, mapLoaded, onWaypointClick, coordinates]) // Re-run if waypoints change
+        // Terrain Node Markers
+        const terrainMarkers: mapboxgl.Marker[] = []
+        terrainNodes.forEach(node => {
+            const el = document.createElement('div')
+            el.className = styles.terrainMarker // Need to add css
+            el.style.width = '12px'
+            el.style.height = '12px'
+            el.style.backgroundColor = getTerrainColor(node.type)
+            el.style.border = '2px solid white'
+            el.style.borderRadius = '50%' // Circle for now
+            el.style.cursor = 'pointer'
+            el.title = `${node.type} (${node.mile.toFixed(1)}m)`
+
+            const marker = new mapboxgl.Marker({ element: el })
+                .setLngLat([node.lon, node.lat])
+                .addTo(map.current!)
+
+            el.addEventListener('click', (e) => {
+                e.stopPropagation()
+                if (onTerrainNodeClick) onTerrainNodeClick(node.id)
+            })
+
+            terrainMarkers.push(marker)
+        })
+
+        return () => {
+            // Cleanup terrain markers
+            terrainMarkers.forEach(m => m.remove())
+        }
+    }, [waypoints, mapLoaded, onWaypointClick, coordinates, terrainNodes, onTerrainNodeClick]) // Re-run if waypoints/terrain change
 
     // Map Hover & Sync Logic
     useEffect(() => {
@@ -441,9 +603,10 @@ export function CourseMap({
             <div className={styles.toolbar}>
                 {[
                     { type: 'aid_station', icon: '⛺', label: 'Aid Station', color: '#2563eb' },
-                    { type: 'water', icon: '💧', label: 'Water', color: '#3b82f6' },
-                    { type: 'medical', icon: '🏥', label: 'Medical', color: '#ef4444' },
+                    { type: 'water_only', icon: '💧', label: 'Water', color: '#3b82f6' },
                     { type: 'crew', icon: '👥', label: 'Crew', color: '#a855f7' },
+                    { type: 'pacer', icon: '🏃', label: 'Pacer', color: '#f59e0b' },
+                    { type: 'drop_bag', icon: '🎒', label: 'Drop Bag', color: '#10b981' },
                 ].map((tool) => (
                     <button
                         key={tool.type}
@@ -513,9 +676,22 @@ function getWaypointIcon(type: string): string {
         case 'aid_station': return '⛺' // Tent
         case 'water_only': return '💧'
         case 'crew': return '👥'
+        case 'pacer': return '🏃'
         case 'drop_bag': return '🎒'
         case 'medical': return '🏥'
         case 'landmark': return '📸'
         default: return '📍'
+    }
+}
+
+function getTerrainColor(type: string): string {
+    switch (type) {
+        case 'paved': return '#94a3b8' // Slate 400
+        case 'dirt': return '#d97706' // Amber 600
+        case 'double_track': return '#854d0e' // Yellow 800
+        case 'single_track': return '#166534' // Green 700
+        case 'technical': return '#dc2626' // Red 600
+        case 'other': return '#64748b'
+        default: return '#e11d48'
     }
 }

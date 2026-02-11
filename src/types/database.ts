@@ -200,6 +200,38 @@ export interface Database {
                     created_at?: string
                 }
             }
+            terrain_nodes: {
+                Row: {
+                    id: string
+                    course_id: string
+                    mile: number
+                    lat: number
+                    lon: number
+                    type: 'paved' | 'dirt' | 'technical' | 'double_track' | 'single_track' | 'other'
+                    difficulty: number
+                    created_at: string
+                }
+                Insert: {
+                    id?: string
+                    course_id: string
+                    mile: number
+                    lat: number
+                    lon: number
+                    type?: 'paved' | 'dirt' | 'technical' | 'double_track' | 'single_track' | 'other'
+                    difficulty?: number
+                    created_at?: string
+                }
+                Update: {
+                    id?: string
+                    course_id?: string
+                    mile?: number
+                    lat?: number
+                    lon?: number
+                    type?: 'paved' | 'dirt' | 'technical' | 'double_track' | 'single_track' | 'other'
+                    difficulty?: number
+                    created_at?: string
+                }
+            }
         }
         Views: {
             [_ in never]: never
@@ -218,3 +250,4 @@ export type Profile = Database['public']['Tables']['profiles']['Row']
 export type Race = Database['public']['Tables']['races']['Row']
 export type Course = Database['public']['Tables']['courses']['Row']
 export type Waypoint = Database['public']['Tables']['waypoints']['Row']
+export type TerrainNode = Database['public']['Tables']['terrain_nodes']['Row']

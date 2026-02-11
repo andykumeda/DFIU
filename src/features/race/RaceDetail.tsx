@@ -2,13 +2,14 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { Race, Course, Waypoint } from '@/types/database'
+import { Race, Course, Waypoint, TerrainNode } from '@/types/database'
 import { Calendar, MapPin, Globe, ArrowUpRight, CloudSun, Trophy } from 'lucide-react'
 import { CourseMap } from '@/features/course/CourseMap'
 import { ElevationProfile } from '@/features/course/ElevationProfile'
 import { GpxUploader } from '@/features/course/GpxUploader'
 import { EditRaceModal } from '@/features/race/EditRaceModal'
 import { EditWaypointModal } from '@/features/course/EditWaypointModal'
+import { EditTerrainModal } from '@/features/course/EditTerrainModal'
 import { sampleElevationProfile, type GpxParseResult } from '@/lib/gpx-parser'
 import { getNearestPointOnLine, getDistanceFromStart } from '@/lib/geo-utils'
 import { formatDate } from '@/lib/utils'
@@ -20,6 +21,11 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   const [activeTab, setActiveTab] = useState<Tab>('overview')
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingWaypoint, setEditingWaypoint] = useState<Partial<Waypoint> | null>(null)
+
+  // Terrain State
+  const [terrainNodes, setTerrainNodes] = useState<TerrainNode[]>([])
+  const [editingTerrainNode, setEditingTerrainNode] = useState<Partial<TerrainNode> | null>(null)
+
   const [hoveredMile, setHoveredMile] = useState<number | null>(null)
 
   // Data Fetching
@@ -57,11 +63,18 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
   const handleGpxUpload = async (result: GpxParseResult, rawGpx: string) => {
     try {
+      console.log('GPX Parsed Result:', {
+        stats: result.stats,
+        points: result.coordinates.length,
+        elevationSamples: result.elevationProfile.length,
+        sampleStart: result.elevationProfile.slice(0, 3)
+      })
+
       if (course) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { error } = await (supabase.from('courses') as any).update({
           raw_gpx: rawGpx,
-          geometry: { coordinates: result.coordinates },
+          geometry: { type: 'LineString', coordinates: result.coordinates },
           elevation_samples: result.elevationProfile,
           total_distance_miles: result.stats.totalDistanceMiles,
           total_elevation_gain_ft: result.stats.totalElevationGainFt,
@@ -75,7 +88,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
         const { error } = await (supabase.from('courses') as any).insert({
           race_id: raceId,
           raw_gpx: rawGpx,
-          geometry: { coordinates: result.coordinates },
+          geometry: { type: 'LineString', coordinates: result.coordinates },
           elevation_samples: result.elevationProfile,
           total_distance_miles: result.stats.totalDistanceMiles,
           total_elevation_gain_ft: result.stats.totalElevationGainFt,
@@ -104,7 +117,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
         const { error } = await (supabase.from('waypoints') as any).update({
           name: data.name,
           type: data.type,
-          cutoff_time: data.cutoff_time,
+          cutoff_time: data.cutoff_time || null,
           has_drop_bag: data.has_drop_bag,
           crew_allowed: data.crew_allowed,
           pacer_allowed: data.pacer_allowed,
@@ -113,16 +126,45 @@ export function RaceDetail({ raceId }: { raceId: string }) {
         if (error) throw error
       } else {
         const maxOrder = Math.max(...waypoints.map(w => w.order_index), 0)
+
+        // If lat/lon are missing but we have mile, calculate them
+        let lat = data.lat
+        let lon = data.lon
+
+        if ((!lat || !lon) && data.mile !== undefined && course?.geometry) {
+          const { getCoordinateAtDistance } = await import('@/lib/geo-utils')
+          // Construct GeoJSON from course geometry for the util
+          const geoJson = {
+            type: 'FeatureCollection',
+            features: [{
+              type: 'Feature',
+              geometry: course.geometry
+            }]
+          } as any
+
+          const coord = getCoordinateAtDistance(geoJson, data.mile * 1609.34)
+          if (coord) {
+            lon = coord[0]
+            lat = coord[1]
+          } else {
+            throw new Error(`Could not calculate location for mile ${data.mile}. Ensure it is within the course distance.`)
+          }
+        }
+
+        if (lat === undefined || lon === undefined) {
+          throw new Error('Latitude and Longitude are required. Please enter a valid mile or click on the map.')
+        }
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { error } = await (supabase.from('waypoints') as any).insert({
           course_id: course?.id,
           name: data.name,
           type: data.type,
-          lat: data.lat,
-          lon: data.lon,
+          lat: lat,
+          lon: lon,
           mile: data.mile,
           order_index: maxOrder + 1,
-          cutoff_time: data.cutoff_time,
+          cutoff_time: data.cutoff_time || null,
           has_drop_bag: data.has_drop_bag,
           crew_allowed: data.crew_allowed,
           pacer_allowed: data.pacer_allowed,
@@ -132,9 +174,9 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       }
       setEditingWaypoint(null)
       queryClient.invalidateQueries({ queryKey: ['waypoints', course?.id] })
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error saving waypoint:', err)
-      alert('Failed to save waypoint')
+      alert(`Failed to save waypoint: ${err.message || 'Unknown error'}`)
     }
   }
 
@@ -168,6 +210,104 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       })
     }
   }
+
+  // Handle Drag & Drop of Waypoints
+  const handleWaypointMove = async (id: string, lat: number, lon: number, mile: number) => {
+    // Optimistic update? Or just wait for DB? 
+    // For drag, optimistic is better but let's stick to simple first.
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase.from('waypoints') as any).update({
+        lat,
+        lon,
+        mile
+      }).eq('id', id)
+
+      if (error) throw error
+
+      queryClient.invalidateQueries({ queryKey: ['waypoints', course?.id] })
+    } catch (err) {
+      alert('Failed to move waypoint')
+    }
+  }
+
+
+
+  // Terrain Handlers
+  const handleSaveTerrainNode = async (data: Partial<TerrainNode>) => {
+    try {
+      if (!course?.id) return
+
+      // Improve location calculation if lat/lon missing but mile exists
+      let lat = data.lat
+      let lon = data.lon
+
+      if ((!lat || !lon) && data.mile !== undefined && course?.geometry) {
+        const { getCoordinateAtDistance } = await import('@/lib/geo-utils')
+        // Construct GeoJSON
+        const geoJson = {
+          type: 'FeatureCollection',
+          features: [{ type: 'Feature', geometry: course.geometry }]
+        } as any
+
+        const coord = getCoordinateAtDistance(geoJson, data.mile * 1609.34)
+        if (coord) {
+          lon = coord[0]
+          lat = coord[1]
+        } else {
+          throw new Error(`Invalid mile: ${data.mile}`)
+        }
+      }
+
+      if (data.id) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error } = await (supabase.from('terrain_nodes') as any).update({
+          type: data.type,
+          difficulty: data.difficulty,
+          mile: data.mile,
+          lat,
+          lon
+        }).eq('id', data.id)
+        if (error) throw error
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error } = await (supabase.from('terrain_nodes') as any).insert({
+          course_id: course.id,
+          type: data.type,
+          difficulty: data.difficulty,
+          mile: data.mile,
+          lat,
+          lon
+        })
+        if (error) throw error
+      }
+
+      setEditingTerrainNode(null)
+      // Refresh
+      const { data: tNodes } = await supabase.from('terrain_nodes').select('*').eq('course_id', course.id).order('mile')
+      if (tNodes) setTerrainNodes(tNodes)
+
+    } catch (err: any) {
+      console.error('Error saving terrain node:', err)
+      alert(`Failed to save terrain: ${err.message}`)
+    }
+  }
+
+  const handleDeleteTerrainNode = async (id: string) => {
+    if (!confirm('Delete this terrain change?')) return
+    const { error } = await supabase.from('terrain_nodes').delete().eq('id', id)
+    if (error) {
+      alert('Failed to delete')
+    } else {
+      setEditingTerrainNode(null)
+      // Refresh
+      if (course?.id) {
+        const { data: tNodes } = await supabase.from('terrain_nodes').select('*').eq('course_id', course.id).order('mile')
+        if (tNodes) setTerrainNodes(tNodes)
+      }
+    }
+  }
+
 
   // Derived State
   const coordinates = (course?.geometry as { coordinates?: [number, number][] })?.coordinates || []
@@ -224,6 +364,23 @@ export function RaceDetail({ raceId }: { raceId: string }) {
           onUpdate={() => {
             queryClient.invalidateQueries({ queryKey: ['race', raceId] })
           }}
+          onDelete={async () => {
+            try {
+              // Delete everything related to this race
+              // Supabase should handle cascade if configured, but let's be safe usually
+              // Assuming cascade is ON for race_id foreign keys, which is standard.
+              // If not, we'd need to delete courses, waypoints, etc. first.
+              // Let's assume simplest path: delete race.
+              const { error } = await supabase.from('races').delete().eq('id', race.id)
+              if (error) throw error
+
+              // Redirect to dashboard
+              window.location.href = '/dashboard'
+            } catch (err) {
+              console.error('Failed to delete race:', err)
+              alert('Failed to delete race. Please try again.')
+            }
+          }}
         />
       )}
 
@@ -278,8 +435,15 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                         const wp = waypoints.find(w => w.id === id)
                         if (wp) setEditingWaypoint(wp)
                       }}
+                      onWaypointMove={handleWaypointMove}
                       onHover={setHoveredMile}
                       highlightMile={hoveredMile ?? undefined}
+
+                      terrainNodes={terrainNodes}
+                      onTerrainNodeClick={(id) => {
+                        const node = terrainNodes.find(n => n.id === id)
+                        if (node) setEditingTerrainNode(node)
+                      }}
                     />
                   </div>
                   <div className='h-48 flex-shrink-0 border-t border-neutral-800 bg-neutral-900 z-10 relative'>
@@ -330,7 +494,15 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                   <div className='p-4'>
                     <div className='flex items-center justify-between mb-4'>
                       <h3 className='text-sm font-semibold text-neutral-400 uppercase tracking-wider'>Waypoints</h3>
-                      <span className='text-xs bg-neutral-800 text-neutral-400 px-2 py-1 rounded-full'>{waypoints.length}</span>
+                      <div className="flex items-center gap-2">
+                        <span className='text-xs bg-neutral-800 text-neutral-400 px-2 py-1 rounded-full'>{waypoints.length}</span>
+                        <button
+                          onClick={() => setEditingWaypoint({})}
+                          className="text-xs bg-neutral-800 hover:bg-neutral-700 text-white px-2 py-1 rounded border border-neutral-700 transition-colors"
+                        >
+                          + Add
+                        </button>
+                      </div>
                     </div>
 
                     <div className='space-y-2'>
@@ -359,6 +531,43 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                           Tap anywhere on the route line to add a waypoint.
                         </div>
                       )}
+                    </div>
+
+                    <div className='p-4 border-t border-neutral-800'>
+                      <div className='flex items-center justify-between mb-4'>
+                        <h3 className='text-sm font-semibold text-neutral-400 uppercase tracking-wider'>Terrain</h3>
+                        <button
+                          onClick={() => setEditingTerrainNode({})}
+                          className="text-xs bg-neutral-800 hover:bg-neutral-700 text-white px-2 py-1 rounded border border-neutral-700 transition-colors"
+                        >
+                          + Add Change
+                        </button>
+                      </div>
+                      <div className="space-y-1">
+                        {terrainNodes.length === 0 ? (
+                          <p className="text-xs text-neutral-600 italic">No terrain segments defined. Entire course defaults to 'Dirt' (100%).</p>
+                        ) : (
+                          terrainNodes.map((node, i) => {
+                            // Determine segment start
+                            const startMile = i === 0 ? 0 : terrainNodes[i - 1].mile
+                            return (
+                              <div
+                                key={node.id}
+                                className="p-2 hover:bg-neutral-800 rounded cursor-pointer transition-colors text-xs text-neutral-400 flex justify-between items-center group"
+                                onClick={() => setEditingTerrainNode(node)}
+                              >
+                                <div>
+                                  <span className="text-neutral-500">{startMile.toFixed(1)} - {node.mile.toFixed(1)}m: </span>
+                                  <span className="text-white font-medium capitalize">{node.type.replace('_', ' ')}</span>
+                                </div>
+                                <span className="bg-neutral-900 px-1.5 py-0.5 rounded text-neutral-500 group-hover:text-white border border-neutral-800">
+                                  {node.difficulty}%
+                                </span>
+                              </div>
+                            )
+                          })
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -522,6 +731,14 @@ export function RaceDetail({ raceId }: { raceId: string }) {
           <div className='p-8 text-center text-neutral-500'>Documents and media coming in Epic 3...</div>
         )}
       </main>
+      {editingTerrainNode && (
+        <EditTerrainModal
+          node={editingTerrainNode}
+          onClose={() => setEditingTerrainNode(null)}
+          onSave={handleSaveTerrainNode}
+          onDelete={handleDeleteTerrainNode}
+        />
+      )}
     </div>
   )
 }

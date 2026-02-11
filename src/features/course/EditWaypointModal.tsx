@@ -15,19 +15,28 @@ interface EditWaypointModalProps {
 }
 
 export function EditWaypointModal({ waypoint, lat, lon, mile, onClose, onSave, onDelete }: EditWaypointModalProps) {
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<{
+        name: string
+        type: string
+        cutoff_time: string
+        has_drop_bag: boolean
+        crew_allowed: boolean
+        pacer_allowed: boolean
+        notes: string
+        mile: string | number
+    }>({
         name: waypoint?.name || '',
         type: waypoint?.type || 'aid_station',
         cutoff_time: waypoint?.cutoff_time || '',
         has_drop_bag: waypoint?.has_drop_bag || false,
         crew_allowed: waypoint?.crew_allowed || false,
         pacer_allowed: waypoint?.pacer_allowed || false,
-        notes: waypoint?.notes || ''
+        notes: waypoint?.notes || '',
+        mile: mile ?? waypoint?.mile ?? 0
     })
 
     useEffect(() => {
         if (waypoint) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
             setFormData(prev => ({
                 ...prev,
                 name: waypoint.name || '',
@@ -36,19 +45,27 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, onClose, onSave, o
                 has_drop_bag: waypoint.has_drop_bag || false,
                 crew_allowed: waypoint.crew_allowed || false,
                 pacer_allowed: waypoint.pacer_allowed || false,
-                notes: waypoint.notes || ''
+                notes: waypoint.notes || '',
+                mile: waypoint.mile ?? 0
             }))
         }
     }, [waypoint])
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
+
+        const parsedMile = typeof formData.mile === 'string' ? parseFloat(formData.mile) : formData.mile
+        if (isNaN(parsedMile)) {
+            alert('Please enter a valid mile marker')
+            return
+        }
+
         onSave({
             ...waypoint,
             ...formData,
             lat: lat ?? waypoint?.lat,
             lon: lon ?? waypoint?.lon,
-            mile: mile ?? waypoint?.mile
+            mile: parsedMile // Use validated mile
         })
     }
 
@@ -76,11 +93,14 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, onClose, onSave, o
                         <select
                             value={formData.type}
                             onChange={e => setFormData({ ...formData, type: e.target.value })}
-                            className={styles.select} // We need to ensure this class exists or allow default
+                            className={styles.select}
                             style={{ padding: '0.75rem', borderRadius: '6px', border: '1px solid #ddd' }}
                         >
                             <option value="aid_station">Aid Station</option>
                             <option value="water_only">Water Only</option>
+                            <option value="crew">Crew Access</option>
+                            <option value="pacer">Pacer Exchange</option>
+                            <option value="drop_bag">Drop Bag</option>
                             <option value="landmark">Landmark</option>
                             <option value="start">Start</option>
                             <option value="finish">Finish</option>
@@ -88,15 +108,21 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, onClose, onSave, o
                     </div>
 
                     <div className={styles.row}>
-                        {/* We might need to add .row to css or use flex in style */}
                         <div className={styles.field} style={{ flex: 1 }}>
                             <label>Mile Marker</label>
                             <input
                                 type="number"
                                 step="0.1"
-                                value={mile?.toFixed(1) || 0}
-                                disabled
-                                style={{ background: '#f5f5f5' }}
+                                // If it's a new waypoint (no ID), allow editing. Otherwise disabled.
+                                // Actually, user might want to adjust mile of existing waypoint manually too? 
+                                // The requirement said "enter mileage or to click on route". 
+                                // Let's allow editing for all, but for existing ones it might jump the pin?
+                                // "drag the waypoint to adjust location" is another requirement. 
+                                // Let's allow editing for new waypoints for sure.
+                                disabled={!!waypoint?.id}
+                                value={formData.mile}
+                                onChange={e => setFormData({ ...formData, mile: e.target.value })}
+                                style={{ background: waypoint?.id ? '#f5f5f5' : 'white' }}
                             />
                         </div>
                         <div className={styles.field} style={{ flex: 1 }}>

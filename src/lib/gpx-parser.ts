@@ -195,6 +195,13 @@ export function parseGpx(gpxString: string): GpxParseResult {
     const safeMinEle = Number.isFinite(minEle) ? minEle : 0
     const safeMaxEle = Number.isFinite(maxEle) ? maxEle : 0
 
+    // If profile is massive (e.g. > 10000 points), sample it down to save DB space/bandwidth
+    // A 100-mile race with 10m intervals is ~16k points. 250 miles is ~40k.
+    // Keeping it under 5000 is plenty for a high-res chart unless we need meter-perfect precision for something else.
+    const optimizedProfile = elevationProfile.length > 5000
+        ? sampleElevationProfile(elevationProfile, 5000)
+        : elevationProfile
+
     return {
         name: gpxName,
         tracks,
@@ -207,7 +214,7 @@ export function parseGpx(gpxString: string): GpxParseResult {
             maxElevationFt: Math.round(safeMaxEle)
         },
         coordinates,
-        elevationProfile
+        elevationProfile: optimizedProfile
     }
 }
 

@@ -9,9 +9,10 @@ interface EditRaceModalProps {
     race: Race
     onClose: () => void
     onUpdate: (updatedRace: Race) => void
+    onDelete?: () => void
 }
 
-export function EditRaceModal({ race, onClose, onUpdate }: EditRaceModalProps) {
+export function EditRaceModal({ race, onClose, onUpdate, onDelete }: EditRaceModalProps) {
     const [isLoading, setIsLoading] = useState(false)
     const [formData, setFormData] = useState({
         name: race.name,
@@ -271,11 +272,26 @@ export function EditRaceModal({ race, onClose, onUpdate }: EditRaceModalProps) {
                         </label>
                     </div>
 
-                    <div className={styles.actions}>
-                        <button type="button" onClick={onClose} className={styles.cancelBtn}>Cancel</button>
-                        <button type="submit" disabled={isLoading} className={styles.saveBtn}>
-                            {isLoading ? 'Saving...' : 'Save Changes'}
-                        </button>
+                    <div className={styles.actions} style={{ justifyContent: 'space-between' }}>
+                        {onDelete && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (confirm('Are you sure you want to delete this race? This cannot be undone.')) {
+                                        onDelete()
+                                    }
+                                }}
+                                style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}
+                            >
+                                Delete Race
+                            </button>
+                        )}
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                            <button type="button" onClick={onClose} className={styles.cancelBtn}>Cancel</button>
+                            <button type="submit" disabled={isLoading} className={styles.saveBtn}>
+                                {isLoading ? 'Saving...' : 'Save Changes'}
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>
