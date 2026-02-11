@@ -82,7 +82,7 @@ export function ElevationProfile({
     const mileMarkers = useMemo(() => {
         if (!showMileMarkers || totalDistance <= 0) return []
         const markers: number[] = []
-        const interval = totalDistance > 100 ? 10 : totalDistance > 50 ? 5 : 1
+        const interval = totalDistance > 50 ? 5 : 1
         for (let mile = interval; mile < totalDistance; mile += interval) {
             markers.push(mile)
         }
@@ -97,22 +97,24 @@ export function ElevationProfile({
         const padding = 2
         const eleRange = (maxEle - minEle) || 1
 
-        return waypoints.map(wp => {
-            const x = (wp.mile / totalDistance) * (width - padding * 2) + padding
+        return waypoints
+            .filter(wp => Number.isFinite(wp.mile) && wp.mile >= 0 && wp.mile <= totalDistance)
+            .map(wp => {
+                const x = (wp.mile / totalDistance) * (width - padding * 2) + padding
 
-            // Find elevation at this mile by interpolation
-            let elevation = minEle
-            for (let i = 0; i < data.length - 1; i++) {
-                if (data[i].distance <= wp.mile && data[i + 1].distance >= wp.mile) {
-                    const t = (wp.mile - data[i].distance) / (data[i + 1].distance - data[i].distance)
-                    elevation = data[i].elevation + t * (data[i + 1].elevation - data[i].elevation)
-                    break
+                // Find elevation at this mile by interpolation
+                let elevation = minEle
+                for (let i = 0; i < data.length - 1; i++) {
+                    if (data[i].distance <= wp.mile && data[i + 1].distance >= wp.mile) {
+                        const t = (wp.mile - data[i].distance) / (data[i + 1].distance - data[i].distance)
+                        elevation = data[i].elevation + t * (data[i + 1].elevation - data[i].elevation)
+                        break
+                    }
                 }
-            }
-            const y = 100 - padding - ((elevation - minEle) / eleRange) * (100 - padding * 2)
+                const y = 100 - padding - ((elevation - minEle) / eleRange) * (100 - padding * 2)
 
-            return { ...wp, x, y, elevation }
-        })
+                return { ...wp, x, y, elevation }
+            })
     }, [waypoints, data, totalDistance, minEle, maxEle])
 
     const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
@@ -182,8 +184,8 @@ export function ElevationProfile({
                             key={`mile-${mile}`}
                             x1={x} y1={padding}
                             x2={x} y2={100 - padding}
-                            stroke="rgba(255,255,255,0.15)"
-                            strokeWidth="0.3"
+                            stroke="rgba(255,255,255,0.25)"
+                            strokeWidth="1"
                             vectorEffect="non-scaling-stroke"
                         />
                     )
@@ -196,10 +198,10 @@ export function ElevationProfile({
                         x1={wp.x} y1={padding}
                         x2={wp.x} y2={100 - padding}
                         stroke={getWaypointColor(wp.type)}
-                        strokeWidth="1"
+                        strokeWidth="1.5"
                         vectorEffect="non-scaling-stroke"
-                        strokeDasharray="3 2"
-                        opacity="0.7"
+                        strokeDasharray="4 3"
+                        opacity="0.8"
                     />
                 ))}
 
@@ -209,10 +211,10 @@ export function ElevationProfile({
                         key={`wp-dot-${i}`}
                         cx={wp.x}
                         cy={wp.y}
-                        r="1.2"
+                        r="3"
                         fill={getWaypointColor(wp.type)}
-                        stroke="#000"
-                        strokeWidth="0.3"
+                        stroke="#fff"
+                        strokeWidth="1"
                         vectorEffect="non-scaling-stroke"
                     />
                 ))}

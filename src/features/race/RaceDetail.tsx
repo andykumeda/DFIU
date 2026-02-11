@@ -449,6 +449,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                       onHover={setHoveredMile}
                       highlightMile={hoveredMile ?? undefined}
                       showMileMarkers={showMileMarkers}
+                      onToggleMileMarkers={() => setShowMileMarkers(!showMileMarkers)}
                       totalDistance={course?.total_distance_miles || 0}
                       highlightElevation={hoveredMile != null && sampledProfile.length > 0 ? (() => {
                         for (let i = 0; i < sampledProfile.length - 1; i++) {
@@ -468,18 +469,6 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                     />
                   </div>
                   <div className='h-48 flex-shrink-0 border-t border-neutral-800 bg-neutral-900 z-10 relative'>
-                    {/* Toggle bar */}
-                    <div className='absolute top-2 right-3 z-20 flex items-center gap-2'>
-                      <button
-                        onClick={() => setShowMileMarkers(!showMileMarkers)}
-                        className={`text-xs px-2 py-0.5 rounded border transition-colors ${showMileMarkers
-                          ? 'bg-blue-600/20 border-blue-500/50 text-blue-400'
-                          : 'bg-neutral-800 border-neutral-700 text-neutral-500 hover:text-neutral-300'
-                          }`}
-                      >
-                        Mile Markers
-                      </button>
-                    </div>
                     <ElevationProfile
                       data={sampledProfile}
                       totalDistance={course?.total_distance_miles || 0}

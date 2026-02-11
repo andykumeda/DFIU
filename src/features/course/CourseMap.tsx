@@ -7,7 +7,7 @@ import along from '@turf/along'
 import length from '@turf/length'
 import { lineString } from '@turf/helpers'
 import MapStyleSwitcher from './MapStyleSwitcher'
-import { X, Trash2 } from 'lucide-react'
+import { X, Trash2, MapPin, Milestone } from 'lucide-react'
 import styles from './CourseMap.module.css'
 
 interface CourseMapProps {
@@ -42,6 +42,7 @@ interface CourseMapProps {
     }[]
     onTerrainNodeClick?: (id: string) => void
     showMileMarkers?: boolean
+    onToggleMileMarkers?: () => void
     highlightElevation?: number | null
     totalDistance?: number
 }
@@ -59,6 +60,7 @@ export function CourseMap({
     terrainNodes = [],
     onTerrainNodeClick,
     showMileMarkers = false,
+    onToggleMileMarkers,
     highlightElevation,
     totalDistance
 }: CourseMapProps) {
@@ -187,7 +189,7 @@ export function CourseMap({
         try {
             const line = lineString(coordinates as [number, number][])
             const totalMiles = length(line, { units: 'miles' })
-            const interval = totalMiles > 100 ? 10 : totalMiles > 50 ? 5 : 1
+            const interval = totalMiles > 50 ? 5 : 1
 
             for (let mile = interval; mile < totalMiles; mile += interval) {
                 const pt = along(line, mile, { units: 'miles' })
@@ -611,29 +613,17 @@ export function CourseMap({
 
             {/* Toolbar */}
             <div className={styles.toolbar}>
-                {[
-                    { type: 'aid_station', icon: '⛺', label: 'Aid Station', color: '#2563eb' },
-                    { type: 'water_only', icon: '💧', label: 'Water', color: '#3b82f6' },
-                    { type: 'crew', icon: '👥', label: 'Crew', color: '#a855f7' },
-                    { type: 'pacer', icon: '🏃', label: 'Pacer', color: '#f59e0b' },
-                    { type: 'drop_bag', icon: '🎒', label: 'Drop Bag', color: '#10b981' },
-                ].map((tool) => (
-                    <button
-                        key={tool.type}
-                        onClick={() => {
-                            setIsDeleteMode(false)
-                            setSelectedPOIType(selectedPOIType === tool.type ? null : tool.type)
-                        }}
-                        className={`${styles.toolBtn} ${selectedPOIType === tool.type ? styles.activeTool : ''}`}
-                        title={`Add ${tool.label}`}
-                        type="button"
-                        style={{ color: tool.color }}
-                    >
-                        {tool.icon}
-                    </button>
-                ))}
-
-                <div className={styles.divider} />
+                <button
+                    onClick={() => {
+                        setIsDeleteMode(false)
+                        setSelectedPOIType(selectedPOIType === 'aid_station' ? null : 'aid_station')
+                    }}
+                    className={`${styles.toolBtn} ${selectedPOIType ? styles.activeTool : ''}`}
+                    title="Add Waypoint"
+                    type="button"
+                >
+                    <MapPin size={18} />
+                </button>
 
                 <button
                     onClick={() => {
@@ -641,10 +631,21 @@ export function CourseMap({
                         setIsDeleteMode(!isDeleteMode)
                     }}
                     className={`${styles.toolBtn} ${isDeleteMode ? styles.activeDelete : ''}`}
-                    title="Delete Mode (Click marker to edit/delete)"
+                    title="Delete Mode"
                     type="button"
                 >
                     <Trash2 size={18} />
+                </button>
+
+                <div className={styles.divider} />
+
+                <button
+                    onClick={onToggleMileMarkers}
+                    className={`${styles.toolBtn} ${showMileMarkers ? styles.activeTool : ''}`}
+                    title="Toggle Mile Markers"
+                    type="button"
+                >
+                    <Milestone size={18} />
                 </button>
 
                 {(selectedPOIType || isDeleteMode) && (
