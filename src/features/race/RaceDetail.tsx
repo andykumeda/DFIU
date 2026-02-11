@@ -189,8 +189,8 @@ export function RaceDetail({ raceId }: { raceId: string }) {
         <div className='max-w-7xl mx-auto px-4 py-4 flex justify-between items-center'>
           <div className='flex items-center gap-4'>
             <Link to='/dashboard' className='flex items-center gap-2 text-neutral-400 hover:text-white transition-colors group'>
-              <img src="/logo.png" alt="DFIU Logo" className="h-8 w-8 object-contain" />
-              <span className="font-bold text-lg tracking-tight group-hover:text-white text-neutral-200">DFIU</span>
+              <img src="/logo.png" alt="DFIU Logo" className="h-10 w-10 object-contain" />
+              <span className="font-bold text-xl tracking-tight group-hover:text-white text-neutral-200">DFIU</span>
             </Link>
             <div>
               <div className='flex items-center gap-2'>

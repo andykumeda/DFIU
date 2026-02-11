@@ -18,7 +18,7 @@
     *   **Hover Sync**: Synchronized hovering between the Map and Elevation Profile.
 
 3.  **UI/UX Updates:**
-    *   **Logo & Branding**: Added custom logo (`public/logo.png`) to the application header (Race Detail & Dashboard) and favicon.
+    *   **Logo & Branding**: Added custom logo (`public/logo.png`) to the application header. Resized to be larger than the title text for better visual hierarchy.
     *   **Navigation**: Clicking the logo/title in the header now navigates to `/dashboard`.
 
 4.  **Code Cleanup:**
