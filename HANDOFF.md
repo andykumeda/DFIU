@@ -19,8 +19,8 @@
 
 3.  **UI/UX Updates:**
     *   **Logo & Branding**: Added custom logo (`public/logo.png`) to the application header. Resized to be significantly larger (`h-32` on Dashboard, `h-16` on Header).
-    *   **Typography**: Updated "DFIU" title text to be more dynamic (Italic, Uppercase, Tracking-Tighter) with an **Orange-to-Red Gradient** to match the logo. Added padding to prevent text clipping and reduced gap between logo and text.
-    *   **Navigation**: Clicking the logo/title safely navigates to `/dashboard` (ensured by `z-50` and `relative` positioning).
+    *   **Typography**: Updated "DFIU" title text to be more dynamic (Italic, Uppercase, Tracking-Tighter) with an **Orange-to-Red Gradient** to match the logo. Used negative margins to tightly space the logo and text.
+    *   **Navigation**: Fixed navigation issues by using `onClick` handlers and ensuring `pointer-events-auto` on high z-index elements.
 
 4.  **Code Cleanup:**
     *   Removed unused variables in `utils.ts` and `CourseMap.tsx`.
