@@ -186,11 +186,11 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     <div className='min-h-screen bg-neutral-950 flex flex-col'>
       {/* Header */}
       <header className='border-b border-neutral-800 bg-neutral-950/50 backdrop-blur-sm sticky top-0 z-[100]'>
-        <div className='max-w-7xl mx-auto px-4 py-4 flex justify-between items-end'>
-          <div className='flex items-end gap-4'>
-            <Link to='/dashboard' className='flex items-end hover:opacity-80 transition-opacity cursor-pointer pointer-events-auto pb-1'>
-              <img src="/logo.png" alt="DFIU Logo" className="h-16 w-16 object-contain drop-shadow-md" />
-              <span className="font-black italic tracking-tighter text-3xl uppercase bg-gradient-to-br from-orange-400 to-orange-600 bg-clip-text text-transparent leading-none pb-2 -ml-2">DFIU</span>
+        <div className='max-w-7xl mx-auto px-4 py-4 flex justify-between items-center'>
+          <div className='flex items-center gap-4'>
+            <Link to='/dashboard' className='flex items-center hover:opacity-80 transition-opacity cursor-pointer pointer-events-auto relative z-[999]'>
+              <img src="/logo.png" alt="DFIU Logo" className="h-16 w-16 object-contain drop-shadow-md relative z-10" />
+              <span className="font-black italic tracking-tighter text-3xl uppercase bg-gradient-to-br from-orange-400 to-orange-600 bg-clip-text text-transparent pr-1 -ml-2 relative z-0">DFIU</span>
             </Link>
             <div>
               <div className='flex items-center gap-2'>

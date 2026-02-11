@@ -15,18 +15,16 @@ export default function DashboardPage() {
   return (
     <div className='min-h-screen bg-neutral-950'>
       <header className='border-b border-neutral-800 bg-neutral-950/50 backdrop-blur-sm sticky top-0 z-[100]'>
-        <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-end'>
-          <div
-            onClick={() => navigate('/dashboard')}
-            className="flex items-end -gap-2 hover:opacity-80 transition-opacity cursor-pointer pb-2"
-            role="button"
-            tabIndex={0}
+        <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center'>
+          <Link
+            to="/dashboard"
+            className="flex items-center -gap-2 hover:opacity-80 transition-opacity cursor-pointer relative z-[999] group"
           >
-            <img src="/logo.png" alt="DFIU Logo" className="h-32 w-32 object-contain drop-shadow-lg" />
-            <span className='text-6xl font-black italic tracking-tighter uppercase bg-gradient-to-br from-orange-400 to-orange-600 bg-clip-text text-transparent drop-shadow-sm leading-none pb-4 -ml-6'>
+            <img src="/logo.png" alt="DFIU Logo" className="h-32 w-32 object-contain drop-shadow-lg relative z-10" />
+            <span className='text-6xl font-black italic tracking-tighter uppercase bg-gradient-to-br from-orange-400 to-orange-600 bg-clip-text text-transparent drop-shadow-sm pr-2 -ml-6 relative z-0'>
               DFIU
             </span>
-          </div>
+          </Link>
           <div className='flex items-center gap-4'>
             <span className='text-neutral-400 text-sm hidden sm:block'>{user?.email}</span>
             <button
