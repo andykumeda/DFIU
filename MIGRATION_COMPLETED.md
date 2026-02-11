@@ -19,7 +19,7 @@ The application "Don't F* It Up" (DFIU) has been successfully migrated from a **
 The deployment process is now fully automated and zero-downtime (for the user, as files are swapped instantly).
 
 ### 1. Run the Script
-From the project root (`~/Dev/dfiu-web`):
+From the project root (`~/Dev/DFIU`):
 ```bash
 npm run deploy
 ```

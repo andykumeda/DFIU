@@ -11,7 +11,17 @@ DFIU helps you centralize your course, pace plan, logistics, and crew info in on
 -   **State Management:** TanStack Query v5
 -   **Styling:** Tailwind CSS v4
 -   **Backend / Auth:** Supabase
--   **Maps:** Mapbox GL JS
+-   **Maps:** Mapbox GL JS (with Terrain, Satellite, and 3D support)
+-   **Data Visualization:** Interactive Elevation Profiles
+-   **Analysis:** Route stats (Gain, Lowest Point, Max Elev) automatically calculated from GPX.
+
+## Features
+
+-   **Course Mapping:** Upload GPX files to visualize routes.
+-   **Elevation Profile:** Interactive profile synchronized with the map.
+-   **Waypoints:** Add aid stations, water sources, and crew points.
+-   **Live Stats:** View total distance, gain, loss, and max/min elevation.
+-   **Map Controls:** 3D terrain, satellite view, zoom/bearing controls, and location tracking.
 
 ## Getting Started
 
@@ -25,7 +35,7 @@ DFIU helps you centralize your course, pace plan, logistics, and crew info in on
 1.  Clone the repository:
     ```bash
     git clone <repository_url>
-    cd dfiu-web
+    cd DFIU
     ```
 
 2.  Install dependencies:

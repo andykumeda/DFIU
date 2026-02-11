@@ -37,6 +37,8 @@ export function CourseMap({
     waypoints = [],
     onMapClick,
     onWaypointClick,
+    onHover,
+    highlightMile,
     className
 }: CourseMapProps) {
     const mapContainer = useRef<HTMLDivElement>(null)
@@ -44,6 +46,7 @@ export function CourseMap({
     const [mapLoaded, setMapLoaded] = useState(false)
     const [selectedPOIType, setSelectedPOIType] = useState<string | null>(null)
     const [isDeleteMode, setIsDeleteMode] = useState(false)
+    const [viewState, setViewState] = useState({ zoom: 12, lat: 0, lng: 0 })
 
     // Restore missing refs/state
     const markersRef = useRef<mapboxgl.Marker[]>([])
@@ -88,7 +91,7 @@ export function CourseMap({
 
         map.current.on('load', () => {
             setMapLoaded(true)
-            
+
             if (coordinates.length > 0) {
                 // Add the route source and layer
                 map.current?.addSource('route', {
@@ -131,6 +134,16 @@ export function CourseMap({
                     padding: 50
                 })
             }
+
+            // Add Controls
+            map.current!.addControl(new mapboxgl.NavigationControl(), 'top-right')
+
+            const geolocate = new mapboxgl.GeolocateControl({
+                positionOptions: { enableHighAccuracy: true },
+                trackUserLocation: true,
+                showUserHeading: true
+            })
+            map.current!.addControl(geolocate, 'top-right')
         })
 
         return () => {
@@ -139,7 +152,7 @@ export function CourseMap({
                 map.current = null
             }
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []) // Run once on mount
 
     // Update markers with draggable logic and click handlers respecting delete mode
@@ -194,7 +207,201 @@ export function CourseMap({
             markersRef.current.push(marker)
         })
 
-    }, [waypoints, mapLoaded, onWaypointClick]) // Re-run if waypoints change
+        // Add Start/End Markers from coordinates if they don't exist in waypoints
+        if (coordinates.length > 0) {
+            const startCoord = coordinates[0]
+            const endCoord = coordinates[coordinates.length - 1]
+
+            // Check if we already have start/finish waypoints
+            const hasStart = waypoints.some(wp => wp.type === 'start')
+            const hasFinish = waypoints.some(wp => wp.type === 'finish')
+
+            if (!hasStart) {
+                const el = document.createElement('div')
+                el.className = styles.marker
+                el.innerHTML = getWaypointIcon('start')
+                el.title = 'Start'
+                el.style.backgroundColor = '#16a34a'
+
+                const marker = new mapboxgl.Marker({ element: el })
+                    .setLngLat(startCoord as [number, number])
+                    .addTo(map.current)
+                markersRef.current.push(marker)
+            }
+
+            if (!hasFinish) {
+                const el = document.createElement('div')
+                el.className = styles.marker
+                el.innerHTML = getWaypointIcon('finish')
+                el.title = 'Finish'
+                el.style.backgroundColor = '#dc2626'
+
+                const marker = new mapboxgl.Marker({ element: el })
+                    .setLngLat(endCoord as [number, number])
+                    .addTo(map.current)
+                markersRef.current.push(marker)
+            }
+        }
+
+    }, [waypoints, mapLoaded, onWaypointClick, coordinates]) // Re-run if waypoints change
+
+    // Map Hover & Sync Logic
+    useEffect(() => {
+        if (!map.current || !mapLoaded) return
+
+        const m = map.current
+
+        // Add Hit Area Layer (for easier hovering)
+        if (!m.getLayer('route-hit-area') && m.getSource('route')) {
+            m.addLayer({
+                'id': 'route-hit-area',
+                'type': 'line',
+                'source': 'route',
+                'layout': {
+                    'line-join': 'round',
+                    'line-cap': 'round'
+                },
+                'paint': {
+                    'line-color': 'transparent',
+                    'line-width': 20
+                }
+            }, 'route') // Add below the visible route line? Or above? Above is better for capture.
+            // Actually, if we add it *after* 'route', it's on top.
+            // Let's add it before 'route' if we want the visible line on top, but for hit detection it needs to be accessible?
+            // "transparent" line on top works fine.
+            m.moveLayer('route-hit-area') // Move to top
+        }
+
+        // Add Hover Marker Source & Layer
+        if (!m.getSource('hover-marker')) {
+            m.addSource('hover-marker', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'FeatureCollection',
+                    'features': []
+                }
+            })
+        }
+
+        if (!m.getLayer('hover-marker-point')) {
+            m.addLayer({
+                'id': 'hover-marker-point',
+                'type': 'circle',
+                'source': 'hover-marker',
+                'paint': {
+                    'circle-radius': 6,
+                    'circle-color': '#fff',
+                    'circle-stroke-width': 2,
+                    'circle-stroke-color': '#2563eb'
+                }
+            })
+        }
+
+        // Hover Event Listeners
+        const onMouseMove = (e: mapboxgl.MapMouseEvent) => {
+            if (!onHover) return
+            // Calculate distance along route based on cursor position
+            // We need a way to project the point onto the line
+            // We can use getDistanceAtCoordinate if we have the route geojson
+            // But we only have 'coordinates' prop here. We should reconstruct or use useMemo for GeoJSON
+
+            // For efficiency, let's assume we can use the helper with a constructed GeoJSON
+            // or pass the GeoJSON source data.
+            // @ts-ignore - _data is internal, but we can assume we know what we passed
+            const geoJson = {
+                type: 'FeatureCollection',
+                features: [{
+                    type: 'Feature',
+                    geometry: { type: 'LineString', coordinates }
+                }]
+            } as any
+
+            // Dynamic import to avoid SSR issues if any (but we are client-side)
+            import('@/lib/geo-utils').then(({ getDistanceAtCoordinate }) => {
+                const distMeters = getDistanceAtCoordinate(geoJson, e.lngLat.lng, e.lngLat.lat)
+                if (distMeters !== null) {
+                    onHover(distMeters / 1609.34) // Convert to miles
+                }
+            })
+        }
+
+        const onMouseLeave = () => {
+            if (onHover) onHover(null)
+        }
+
+        m.on('mousemove', 'route-hit-area', onMouseMove)
+        m.on('mouseleave', 'route-hit-area', onMouseLeave)
+        // Also listen on the visible route line just in case
+        m.on('mousemove', 'route', onMouseMove)
+        m.on('mouseleave', 'route', onMouseLeave)
+
+        return () => {
+            m.off('mousemove', 'route-hit-area', onMouseMove)
+            m.off('mouseleave', 'route-hit-area', onMouseLeave)
+            m.off('mousemove', 'route', onMouseMove)
+            m.off('mouseleave', 'route', onMouseLeave)
+        }
+    }, [mapLoaded, coordinates, onHover])
+
+    // Track View State
+    useEffect(() => {
+        if (!map.current) return
+        const m = map.current
+
+        const onMove = () => {
+            const center = m.getCenter()
+            setViewState({
+                zoom: m.getZoom(),
+                lat: center.lat,
+                lng: center.lng
+            })
+        }
+
+        m.on('move', onMove)
+        return () => { m.off('move', onMove) }
+    }, [mapLoaded])
+
+    // Update Hover Marker when highlightMile changes (from external hover)
+    useEffect(() => {
+        if (!map.current || !mapLoaded) return
+
+        const updateMarker = async () => {
+            const m = map.current!
+            const source = m.getSource('hover-marker') as mapboxgl.GeoJSONSource
+
+            if (!source) return
+
+            if (highlightMile !== undefined && highlightMile !== null && coordinates.length > 0) {
+                const { getCoordinateAtDistance } = await import('@/lib/geo-utils')
+
+                const geoJson = {
+                    type: 'FeatureCollection',
+                    features: [{
+                        type: 'Feature',
+                        geometry: { type: 'LineString', coordinates },
+                        properties: {}
+                    }]
+                } as any
+
+
+                const coord = getCoordinateAtDistance(geoJson, highlightMile * 1609.34)
+
+                if (coord) {
+                    source.setData({
+                        type: 'Feature',
+                        geometry: { type: 'Point', coordinates: coord },
+                        properties: {}
+                    })
+                    return
+                }
+            }
+
+            // Hide marker if no highlight or invalid
+            source.setData({ type: 'FeatureCollection', features: [] })
+        }
+
+        updateMarker()
+    }, [mapLoaded, highlightMile, coordinates])
 
     // Map Click Handler for Adding Points
     useEffect(() => {
@@ -218,12 +425,11 @@ export function CourseMap({
 
         map.current.on('click', clickHandler)
         return () => { map.current?.off('click', clickHandler) }
-    }, [mapLoaded, onMapClick]) // Re-bind if onMapClick changes? better use refs if freq change
-
+    }, [mapLoaded, onMapClick])
     return (
         <div className={`${styles.container} ${className || ''}`} style={{ position: 'relative', width: '100%', height: '100%', minHeight: '500px' }}>
             {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-            <MapStyleSwitcher currentStyle={mapStyle as any} onStyleChange={handleStyleChange as any} />
+            < MapStyleSwitcher currentStyle={mapStyle as any} onStyleChange={handleStyleChange as any} />
 
             <div
                 ref={mapContainer}
@@ -283,13 +489,20 @@ export function CourseMap({
                 )}
             </div>
 
-            {!import.meta.env.VITE_MAPBOX_TOKEN && (
-                <div className={styles.noToken}>
-                    <p>Mapbox token not configured</p>
-                    <p className={styles.hint}>Add NEXT_PUBLIC_MAPBOX_TOKEN to .env.local</p>
-                </div>
-            )}
-        </div>
+            {
+                !import.meta.env.VITE_MAPBOX_TOKEN && (
+                    <div className={styles.noToken}>
+                        <p>Mapbox token not configured</p>
+                        <p className={styles.hint}>Add NEXT_PUBLIC_MAPBOX_TOKEN to .env.local</p>
+                    </div>
+                )
+            }
+
+            {/* Info Overlay */}
+            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white/90 backdrop-blur-sm px-4 py-1.5 rounded-full shadow-sm border border-gray-200 text-xs font-mono text-gray-600 z-10 pointer-events-none tabular-nums">
+                Zoom: {viewState.zoom.toFixed(2)} | {viewState.lat.toFixed(4)}, {viewState.lng.toFixed(4)}
+            </div>
+        </div >
     )
 }
 

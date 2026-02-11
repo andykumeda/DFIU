@@ -19,9 +19,14 @@ export function ElevationProfile({
     className
 }: ElevationProfileProps) {
     const { path, minEle, maxEle, areaPath } = useMemo(() => {
-        if (data.length === 0) return { path: '', minEle: 0, maxEle: 0, areaPath: '' }
+        if (!data || data.length === 0) return { path: '', minEle: 0, maxEle: 0, areaPath: '' }
 
-        const elevations = data.map(d => d.elevation)
+        const elevations = data
+            .map(d => d.elevation)
+            .filter(e => Number.isFinite(e))
+
+        if (elevations.length === 0) return { path: '', minEle: 0, maxEle: 0, areaPath: '' }
+
         const minEle = Math.min(...elevations)
         const maxEle = Math.max(...elevations)
         const eleRange = maxEle - minEle || 1
@@ -31,8 +36,10 @@ export function ElevationProfile({
         const padding = 2
 
         const points = data.map(d => {
+            // Default to minEle if elevation is invalid
+            const ele = Number.isFinite(d.elevation) ? d.elevation : minEle
             const x = (d.distance / totalDistance) * (width - padding * 2) + padding
-            const y = height - padding - ((d.elevation - minEle) / eleRange) * (height - padding * 2)
+            const y = height - padding - ((ele - minEle) / eleRange) * (height - padding * 2)
             return { x, y }
         })
 

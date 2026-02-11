@@ -10,7 +10,7 @@ export function formatDate(date: string | null | undefined, formatStr: string = 
   if (!date) return ''
   try {
     return format(new Date(date), formatStr)
-  } catch (e) {
+  } catch {
     return ''
   }
 }

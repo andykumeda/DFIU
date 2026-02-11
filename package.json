@@ -1,5 +1,5 @@
 {
-  "name": "dfiu-web",
+  "name": "DFIU",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -13,6 +13,11 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.95.3",
     "@tanstack/react-query": "^5.90.20",
+    "@turf/along": "^7.3.4",
+    "@turf/distance": "^7.3.4",
+    "@turf/helpers": "^7.3.4",
+    "@turf/length": "^7.3.4",
+    "@turf/nearest-point-on-line": "^7.3.4",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "lucide-react": "^0.563.0",

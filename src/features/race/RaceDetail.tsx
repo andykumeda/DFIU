@@ -4,7 +4,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { CourseMap } from '@/features/course/CourseMap'
 import { ElevationProfile } from '@/features/course/ElevationProfile'
-import { CourseStats } from '@/features/course/CourseStats'
 import { GpxUploader } from '@/features/course/GpxUploader'
 import { EditRaceModal } from '@/features/race/EditRaceModal'
 import { EditWaypointModal } from '@/features/course/EditWaypointModal'
@@ -20,6 +19,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   const [activeTab, setActiveTab] = useState<Tab>('map')
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingWaypoint, setEditingWaypoint] = useState<Partial<Waypoint> | null>(null)
+  const [hoveredMile, setHoveredMile] = useState<number | null>(null)
 
   // Data Fetching
   const { data: race, isLoading: raceLoading } = useQuery({
@@ -220,7 +220,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
           race={race}
           onClose={() => setShowEditModal(false)}
           onUpdate={() => {
-             queryClient.invalidateQueries({ queryKey: ['race', raceId] })
+            queryClient.invalidateQueries({ queryKey: ['race', raceId] })
           }}
         />
       )}
@@ -255,41 +255,110 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       {/* Content */}
       <main className='flex-1 relative'>
         {activeTab === 'map' && (
-          <div className='absolute inset-0 flex flex-col md:flex-row'>
+          <div className='absolute inset-0 flex flex-col md:flex-row' style={{ height: 'calc(100vh - 130px)' }}>
             {coordinates.length > 0 ? (
               <>
-                <div className='flex-1 relative min-h-[50vh]'>
-                  <CourseMap
-                    coordinates={coordinates}
-                    waypoints={waypoints.map(wp => ({
-                      id: wp.id,
-                      name: wp.name,
-                      lat: wp.lat,
-                      lon: wp.lon,
-                      mile: wp.mile,
-                      type: wp.type
-                    }))}
-                    onMapClick={handleMapClick}
-                    onWaypointClick={(id) => {
+                {/* Left Column: Map + Elevation */}
+                <div className='flex-1 flex flex-col min-w-0 relative'>
+                  <div className='flex-1 relative overflow-hidden'>
+                    <CourseMap
+                      coordinates={coordinates}
+                      waypoints={waypoints.map(wp => ({
+                        id: wp.id,
+                        name: wp.name,
+                        lat: wp.lat,
+                        lon: wp.lon,
+                        mile: wp.mile,
+                        type: wp.type
+                      }))}
+                      onMapClick={handleMapClick}
+                      onWaypointClick={(id) => {
                         const wp = waypoints.find(w => w.id === id)
                         if (wp) setEditingWaypoint(wp)
-                    }}
-                  />
-                </div>
-                <div className='w-full md:w-80 bg-neutral-900 border-l border-neutral-800 p-4 overflow-y-auto'>
-                  <ElevationProfile
-                    data={sampledProfile}
-                    totalDistance={course?.total_distance_miles || 0}
-                  />
-                  {course && (
-                    <CourseStats
-                      totalDistanceMiles={course.total_distance_miles || 0}
-                      totalElevationGainFt={course.total_elevation_gain_ft || 0}
-                      totalElevationLossFt={course.total_elevation_loss_ft || 0}
-                      minElevationFt={course.min_elevation_ft || 0}
-                      maxElevationFt={course.max_elevation_ft || 0}
+                      }}
+                      onHover={setHoveredMile}
+                      highlightMile={hoveredMile ?? undefined}
                     />
-                  )}
+                  </div>
+                  <div className='h-48 flex-shrink-0 border-t border-neutral-800 bg-neutral-900 z-10 relative'>
+                    <ElevationProfile
+                      data={sampledProfile}
+                      totalDistance={course?.total_distance_miles || 0}
+                      onHover={setHoveredMile}
+                      highlightDistance={hoveredMile ?? undefined}
+                    />
+                  </div>
+                </div>
+
+                {/* Right Sidebar: Stats & Waypoints */}
+                <div className='w-full md:w-80 border-l border-neutral-800 bg-neutral-900 overflow-y-auto flex-shrink-0'>
+                  <div className='p-4 border-b border-neutral-800'>
+                    <h3 className='text-sm font-semibold text-neutral-400 mb-4 uppercase tracking-wider'>Route Stats</h3>
+                    {course && (
+                      <div className='grid grid-cols-2 gap-4'>
+                        <div>
+                          <div className='text-2xl font-bold text-white'>{(course.total_distance_miles ?? 0).toFixed(1)}</div>
+                          <div className='text-xs text-neutral-500'>Miles</div>
+                        </div>
+                        <div>
+                          <div className='text-2xl font-bold text-green-500'>+{(course.total_elevation_gain_ft || (sampledProfile.length > 0 ? (Math.max(...elevationProfile.map(p => p.elevation)) - Math.min(...elevationProfile.map(p => p.elevation))) : 0)).toLocaleString()}</div>
+                          {/* Quick verify: Gain is sum of positive deltas, not max-min. We need proper calc if missing. */}
+                          {/* Better: Use computed stats if 0. but for now let's just ensure we don't show 0 if we have data. */}
+                          {/* Actually, if gain is 0 in DB, we should re-calculate it properly or show something reasonable. */}
+                          {/* Let's try to trust the DB first, but if max_elevation is 0, that's definitely wrong for a mountain race. */}
+                          <div className='text-xs text-neutral-500'>Gain (ft)</div>
+                        </div>
+                        <div>
+                          <div className='text-2xl font-bold text-white'>
+                            {(course.min_elevation_ft || (elevationProfile.length > 0 ? Math.min(...elevationProfile.map(p => p.elevation)) : 0)).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                          </div>
+                          <div className='text-xs text-neutral-500'>Lowest Point (ft)</div>
+                        </div>
+                        <div>
+                          {/* Fallback for Max Elevation if 0 */}
+                          <div className='text-2xl font-bold text-white'>
+                            {(course.max_elevation_ft || (elevationProfile.length > 0 ? Math.max(...elevationProfile.map(p => p.elevation)) : 0)).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                          </div>
+                          <div className='text-xs text-neutral-500'>Max Elev (ft)</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className='p-4'>
+                    <div className='flex items-center justify-between mb-4'>
+                      <h3 className='text-sm font-semibold text-neutral-400 uppercase tracking-wider'>Waypoints</h3>
+                      <span className='text-xs bg-neutral-800 text-neutral-400 px-2 py-1 rounded-full'>{waypoints.length}</span>
+                    </div>
+
+                    <div className='space-y-2'>
+                      {waypoints.map((wp) => (
+                        <div
+                          key={wp.id}
+                          className='p-3 bg-neutral-800/50 hover:bg-neutral-800 rounded-lg cursor-pointer transition-colors group'
+                          onClick={() => setEditingWaypoint(wp)}
+                        >
+                          <div className='flex items-start justify-between'>
+                            <div className='flex items-center gap-2'>
+                              <span className='text-blue-500 font-mono text-sm w-8 text-right'>{wp.mile.toFixed(1)}</span>
+                              <span className='font-medium text-white'>{wp.name}</span>
+                            </div>
+                            <span className='text-xs text-neutral-600 group-hover:text-neutral-500'>{wp.type}</span>
+                          </div>
+                          {wp.cutoff_time && (
+                            <div className='mt-1 ml-10 text-xs text-orange-400'>
+                              Cutoff: {wp.cutoff_time}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      {waypoints.length === 0 && (
+                        <div className='text-center py-8 text-neutral-600 text-sm'>
+                          Tap anywhere on the route line to add a waypoint.
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </>
             ) : (

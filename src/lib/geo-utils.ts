@@ -1,25 +1,68 @@
+import { point } from '@turf/helpers';
+import distance from '@turf/distance';
+import along from '@turf/along';
+import nearestPointOnLine from '@turf/nearest-point-on-line';
+import length from '@turf/length';
+
 /**
  * Geometric Utility Functions
  */
-
-// Helper to convert degrees to radians
-function toRad(degrees: number): number {
-    return degrees * Math.PI / 180;
-}
 
 /**
  * Calculate distance between two points in miles using Haversine formula
  */
 export function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-    const R = 3958.8; // Radius of Earth in miles
-    const dLat = toRad(lat2 - lat1);
-    const dLon = toRad(lon2 - lon1);
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-        Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
+    const from = point([lon1, lat1]);
+    const to = point([lon2, lat2]);
+    return distance(from, to, { units: 'miles' });
 }
+
+export const getCoordinateAtDistance = (
+    geojson: GeoJSON.FeatureCollection | GeoJSON.Feature<GeoJSON.LineString> | null,
+    distMeters: number
+): [number, number] | null => {
+    if (!geojson) return null;
+    const lineFeature = geojson.type === 'FeatureCollection'
+        ? (geojson.features.find(f => f.geometry.type === 'LineString') as GeoJSON.Feature<GeoJSON.LineString>)
+        : (geojson as GeoJSON.Feature<GeoJSON.LineString>);
+
+    if (!lineFeature) return null;
+    try {
+        const distKm = distMeters / 1000;
+        const total = length(lineFeature, { units: 'kilometers' });
+        const target = Math.max(0, Math.min(distKm, total));
+        const p = along(lineFeature, target, { units: 'kilometers' });
+        return p.geometry.coordinates as [number, number];
+    } catch {
+        return null;
+    }
+};
+
+export const getDistanceAtCoordinate = (
+    geojson: GeoJSON.FeatureCollection | GeoJSON.Feature<GeoJSON.LineString> | null,
+    lng: number,
+    lat: number
+): number | null => {
+    if (!geojson) return null;
+    const lineFeature = geojson.type === 'FeatureCollection'
+        ? (geojson.features.find(f => f.geometry.type === 'LineString') as GeoJSON.Feature<GeoJSON.LineString>)
+        : (geojson as GeoJSON.Feature<GeoJSON.LineString>);
+
+    if (!lineFeature) return null;
+    try {
+        const p = point([lng, lat]);
+        const snapped = nearestPointOnLine(lineFeature, p, { units: 'kilometers' });
+
+        const distKm = snapped.properties?.location;
+        if (typeof distKm === 'number') {
+            return distKm * 1000; // convert to meters
+        }
+        return null;
+    } catch (e) {
+        console.error('Error in getDistanceAtCoordinate', e);
+        return null;
+    }
+};
 
 /**
  * Find the nearest point on a polyline to a given point

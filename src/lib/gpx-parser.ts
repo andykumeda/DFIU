@@ -143,10 +143,14 @@ export function parseGpx(gpxString: string): GpxParseResult {
         coordinates.push([point.lon, point.lat])
 
         // Track elevation extremes
-        if (point.ele !== null) {
+        if (point.ele !== null && Number.isFinite(point.ele)) {
             const eleFt = metersToFeet(point.ele)
-            minEle = Math.min(minEle, eleFt)
-            maxEle = Math.max(maxEle, eleFt)
+
+            // Only update extremes if valid
+            if (Number.isFinite(eleFt)) {
+                minEle = Math.min(minEle, eleFt)
+                maxEle = Math.max(maxEle, eleFt)
+            }
 
             // Add to elevation profile
             elevationProfile.push({
@@ -184,16 +188,23 @@ export function parseGpx(gpxString: string): GpxParseResult {
     if (minEle === Infinity) minEle = 0
     if (maxEle === -Infinity) maxEle = 0
 
+    // Final safety check for NaNs
+    const safeTotalDistance = Number.isFinite(totalDistance) ? totalDistance : 0
+    const safeTotalGain = Number.isFinite(totalGain) ? totalGain : 0
+    const safeTotalLoss = Number.isFinite(totalLoss) ? totalLoss : 0
+    const safeMinEle = Number.isFinite(minEle) ? minEle : 0
+    const safeMaxEle = Number.isFinite(maxEle) ? maxEle : 0
+
     return {
         name: gpxName,
         tracks,
         bounds,
         stats: {
-            totalDistanceMiles: Math.round(totalDistance * 100) / 100,
-            totalElevationGainFt: Math.round(totalGain),
-            totalElevationLossFt: Math.round(totalLoss),
-            minElevationFt: Math.round(minEle),
-            maxElevationFt: Math.round(maxEle)
+            totalDistanceMiles: Math.round(safeTotalDistance * 100) / 100,
+            totalElevationGainFt: Math.round(safeTotalGain),
+            totalElevationLossFt: Math.round(safeTotalLoss),
+            minElevationFt: Math.round(safeMinEle),
+            maxElevationFt: Math.round(safeMaxEle)
         },
         coordinates,
         elevationProfile
@@ -244,10 +255,16 @@ export function sampleElevationProfile(
     profile: { distance: number; elevation: number }[],
     numSamples: number = 200
 ): { distance: number; elevation: number }[] {
+    if (!profile || profile.length === 0) return []
     if (profile.length <= numSamples) return profile
 
+    // Filter out invalid points first
+    const validProfile = profile.filter(p => Number.isFinite(p.distance) && Number.isFinite(p.elevation))
+    if (validProfile.length === 0) return []
+    if (validProfile.length <= numSamples) return validProfile
+
     const result: { distance: number; elevation: number }[] = []
-    const totalDistance = profile[profile.length - 1].distance
+    const totalDistance = validProfile[validProfile.length - 1].distance
     const interval = totalDistance / (numSamples - 1)
 
     let profileIdx = 0
@@ -255,19 +272,22 @@ export function sampleElevationProfile(
         const targetDist = i * interval
 
         // Find the two points surrounding this distance
-        while (profileIdx < profile.length - 1 && profile[profileIdx + 1].distance < targetDist) {
+        while (profileIdx < validProfile.length - 1 && validProfile[profileIdx + 1].distance < targetDist) {
             profileIdx++
         }
 
-        if (profileIdx >= profile.length - 1) {
-            result.push(profile[profile.length - 1])
+        if (profileIdx >= validProfile.length - 1) {
+            result.push(validProfile[validProfile.length - 1])
         } else {
-            const p1 = profile[profileIdx]
-            const p2 = profile[profileIdx + 1]
+            const p1 = validProfile[profileIdx]
+            const p2 = validProfile[profileIdx + 1]
             const ratio = (targetDist - p1.distance) / (p2.distance - p1.distance)
+
+            // Safety check for NaN
+            const ele = p1.elevation + ratio * (p2.elevation - p1.elevation)
             result.push({
                 distance: targetDist,
-                elevation: p1.elevation + ratio * (p2.elevation - p1.elevation)
+                elevation: Number.isFinite(ele) ? ele : p1.elevation
             })
         }
     }

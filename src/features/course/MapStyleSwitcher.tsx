@@ -18,7 +18,7 @@ const MapStyleSwitcher: React.FC<MapStyleSwitcherProps> = ({ currentStyle, onSty
     ]
 
     return (
-        <div className="absolute top-4 right-4 bg-white rounded-md shadow-md p-1 flex flex-col gap-1 z-50 text-gray-800 border border-gray-200">
+        <div className="absolute top-4 left-4 bg-white rounded-md shadow-md p-1 flex flex-col gap-1 z-50 text-gray-800 border border-gray-200">
             {styles.map((style) => (
                 <button
                     key={style.id}
