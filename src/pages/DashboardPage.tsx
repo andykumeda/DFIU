@@ -14,16 +14,16 @@ export default function DashboardPage() {
 
   return (
     <div className='min-h-screen bg-neutral-950'>
-      <header className='border-b border-neutral-800 bg-neutral-950/50 backdrop-blur-sm sticky top-0 z-10'>
-        <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center'>
+      <header className='border-b border-neutral-800 bg-neutral-950/50 backdrop-blur-sm sticky top-0 z-[100]'>
+        <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-end'>
           <div
             onClick={() => navigate('/dashboard')}
-            className="flex items-center -gap-2 hover:opacity-80 transition-opacity z-50 relative cursor-pointer"
+            className="flex items-end -gap-2 hover:opacity-80 transition-opacity cursor-pointer pb-2"
             role="button"
             tabIndex={0}
           >
             <img src="/logo.png" alt="DFIU Logo" className="h-32 w-32 object-contain drop-shadow-lg" />
-            <span className='text-6xl font-black italic tracking-tighter uppercase bg-gradient-to-br from-orange-400 to-orange-600 bg-clip-text text-transparent drop-shadow-sm pb-2 pr-2 -ml-6'>
+            <span className='text-6xl font-black italic tracking-tighter uppercase bg-gradient-to-br from-orange-400 to-orange-600 bg-clip-text text-transparent drop-shadow-sm leading-none pb-4 -ml-6'>
               DFIU
             </span>
           </div>
