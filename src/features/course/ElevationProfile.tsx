@@ -55,13 +55,16 @@ export function ElevationProfile({
 
         const width = 100
         const height = 100
-        const padding = 2
+        const paddingX = 2
+        const paddingTop = 25
+        const paddingBottom = 5
+        const verticalRange = height - paddingTop - paddingBottom
 
         const points = data.map(d => {
             // Default to minEle if elevation is invalid
             const ele = Number.isFinite(d.elevation) ? d.elevation : minEle
-            const x = (d.distance / totalDistance) * (width - padding * 2) + padding
-            const y = height - padding - ((ele - minEle) / eleRange) * (height - padding * 2)
+            const x = (d.distance / totalDistance) * (width - paddingX * 2) + paddingX
+            const y = height - paddingBottom - ((ele - minEle) / eleRange) * verticalRange
             return { x, y }
         })
 
@@ -71,9 +74,9 @@ export function ElevationProfile({
         ).join(' ')
 
         // Create filled area path
-        const firstX = points[0]?.x || padding
-        const lastX = points[points.length - 1]?.x || width - padding
-        const areaPath = `${path} L ${lastX} ${height - padding} L ${firstX} ${height - padding} Z`
+        const firstX = points[0]?.x || paddingX
+        const lastX = points[points.length - 1]?.x || width - paddingX
+        const areaPath = `${path} L ${lastX} ${height - paddingBottom} L ${firstX} ${height - paddingBottom} Z`
 
         return { path, minEle, maxEle, areaPath }
     }, [data, totalDistance])
@@ -84,7 +87,10 @@ export function ElevationProfile({
         const markers: { mile: number; x: number; y: number }[] = []
         const interval = totalDistance > 100 ? 10 : totalDistance > 50 ? 5 : 1
         const width = 100
-        const padding = 2
+        const paddingX = 2
+        const paddingTop = 25
+        const paddingBottom = 5
+        const verticalRange = 100 - paddingTop - paddingBottom
         const eleRange = (maxEle - minEle) || 1
 
         for (let mile = interval; mile < totalDistance; mile += interval) {
@@ -97,8 +103,8 @@ export function ElevationProfile({
                     break
                 }
             }
-            const x = (mile / totalDistance) * (width - padding * 2) + padding
-            const y = 100 - padding - ((elevation - minEle) / eleRange) * (100 - padding * 2)
+            const x = (mile / totalDistance) * (width - paddingX * 2) + paddingX
+            const y = 100 - paddingBottom - ((elevation - minEle) / eleRange) * verticalRange
             markers.push({ mile, x, y })
         }
         return markers
@@ -109,13 +115,16 @@ export function ElevationProfile({
         if (waypoints.length === 0 || data.length === 0 || totalDistance <= 0) return []
 
         const width = 100
-        const padding = 2
+        const paddingX = 2
+        const paddingTop = 25
+        const paddingBottom = 5
+        const verticalRange = 100 - paddingTop - paddingBottom
         const eleRange = (maxEle - minEle) || 1
 
         return waypoints
             .filter(wp => Number.isFinite(wp.mile) && wp.mile >= 0 && wp.mile <= totalDistance)
             .map(wp => {
-                const x = (wp.mile / totalDistance) * (width - padding * 2) + padding
+                const x = (wp.mile / totalDistance) * (width - paddingX * 2) + paddingX
 
                 // Find elevation at this mile by interpolation
                 let elevation = minEle
@@ -126,7 +135,7 @@ export function ElevationProfile({
                         break
                     }
                 }
-                const y = 100 - padding - ((elevation - minEle) / eleRange) * (100 - padding * 2)
+                const y = 100 - paddingBottom - ((elevation - minEle) / eleRange) * verticalRange
 
                 return { ...wp, x, y, elevation }
             })
@@ -147,7 +156,10 @@ export function ElevationProfile({
     // Find elevation at highlight distance
     const highlightPoint = useMemo(() => {
         if (highlightDistance === undefined || data.length === 0) return null
-        const padding = 2
+        const paddingX = 2
+        const paddingTop = 25
+        const paddingBottom = 5
+        const verticalRange = 100 - paddingTop - paddingBottom
         const width = 100
         const eleRange = (maxEle - minEle) || 1
 
@@ -161,8 +173,8 @@ export function ElevationProfile({
             }
         }
 
-        const x = (highlightDistance / totalDistance) * (width - padding * 2) + padding
-        const y = 100 - padding - ((elevation - minEle) / eleRange) * (100 - padding * 2)
+        const x = (highlightDistance / totalDistance) * (width - paddingX * 2) + paddingX
+        const y = 100 - paddingBottom - ((elevation - minEle) / eleRange) * verticalRange
         return { x, y }
     }, [highlightDistance, data, totalDistance, minEle, maxEle])
 
