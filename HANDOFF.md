@@ -17,7 +17,11 @@
     *   **Fallback Calculation**: Implemented a fallback mechanism for "Gain", "Max Elevation", and "Min Elevation". If the database returns `0` or `null`, the app now calculates these values dynamically from the `elevation_samples` (GPX data) to ensure no zero values are shown.
     *   **Hover Sync**: Synchronized hovering between the Map and Elevation Profile.
 
-3.  **Code Cleanup:**
+3.  **UI/UX Updates:**
+    *   **Logo & Branding**: Added custom logo (`public/logo.png`) to the application header and favicon.
+    *   **Navigation**: Clicking the logo/title in the header now navigates to `/dashboard`.
+
+4.  **Code Cleanup:**
     *   Removed unused variables in `utils.ts` and `CourseMap.tsx`.
     *   Fixed lint errors and type assertions in `CourseMap.tsx`.
 
