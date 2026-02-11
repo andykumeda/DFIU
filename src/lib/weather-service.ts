@@ -14,6 +14,7 @@ export interface WeatherData {
     sunset_time: string
     moon_phase: string
     weather_notes: string
+    timezone: string
 }
 
 export interface HistoricalYear {
@@ -59,6 +60,8 @@ interface VisualCrossingDay {
 interface VisualCrossingResponse {
     days: VisualCrossingDay[]
     resolvedAddress: string
+    timezone: string
+    tzoffset: number
 }
 
 /**
@@ -187,7 +190,8 @@ export async function fetchWeatherForRace(location: string, dateStr: string): Pr
         sunrise_time: formatTime(todayData.sunrise),
         sunset_time: formatTime(todayData.sunset),
         moon_phase: getMoonPhaseName(todayData.moonphase),
-        weather_notes: todayData.conditions
+        weather_notes: todayData.conditions,
+        timezone: currentData.timezone
     }
 
     return {

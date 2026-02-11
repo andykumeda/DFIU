@@ -221,7 +221,7 @@ export default function NewRacePage() {
                     🔄
                   </button>
                 </div>
-                <div className='h-32 border-t border-neutral-800'>
+                <div className='h-28 border-t border-neutral-800'>
                   <ElevationProfile
                     data={sampledProfile}
                     totalDistance={gpxData.stats.totalDistanceMiles}

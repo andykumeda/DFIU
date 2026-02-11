@@ -55,6 +55,7 @@ export interface Database {
                     is_public: boolean
                     created_at: string
                     updated_at: string
+                    timezone: string | null
                 }
                 Insert: {
                     id?: string
@@ -81,6 +82,7 @@ export interface Database {
                     is_public?: boolean
                     created_at?: string
                     updated_at?: string
+                    timezone?: string | null
                 }
                 Update: {
                     id?: string
@@ -107,6 +109,7 @@ export interface Database {
                     is_public?: boolean
                     created_at?: string
                     updated_at?: string
+                    timezone?: string | null
                 }
             }
             courses: {

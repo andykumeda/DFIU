@@ -54,7 +54,8 @@ export function RaceDetail({ raceId }: { raceId: string }) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           await (supabase.from('races') as any).update({
             ...result.current,
-            weather_history: result.history
+            weather_history: result.history,
+            timezone: result.current.timezone
           }).eq('id', raceId)
           queryClient.invalidateQueries({ queryKey: ['race', raceId] })
         } catch (err) {
@@ -495,7 +496,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                       }}
                     />
                   </div>
-                  <div className='h-32 flex-shrink-0 border-t border-neutral-800 bg-neutral-900 z-10 relative'>
+                  <div className='h-28 flex-shrink-0 border-t border-neutral-800 bg-neutral-900 z-10 relative'>
                     <ElevationProfile
                       data={sampledProfile}
                       totalDistance={course?.total_distance_miles || 0}
@@ -588,8 +589,19 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                             <span className='text-xs text-neutral-600 group-hover:text-neutral-500'>{wp.type}</span>
                           </div>
                           {wp.cutoff_time && (
-                            <div className='mt-1 ml-10 text-xs text-orange-400'>
-                              Cutoff: {wp.cutoff_time}
+                            <div className='mt-1 ml-10 text-xs text-orange-400 font-mono'>
+                              Cutoff: {(() => {
+                                try {
+                                  return new Intl.DateTimeFormat('en-US', {
+                                    hour: 'numeric',
+                                    minute: '2-digit',
+                                    timeZone: race?.timezone || undefined,
+                                    timeZoneName: 'short'
+                                  }).format(new Date(wp.cutoff_time))
+                                } catch {
+                                  return formatDate(wp.cutoff_time, 'p')
+                                }
+                              })()}
                             </div>
                           )}
                         </div>
