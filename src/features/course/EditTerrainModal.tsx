@@ -13,7 +13,11 @@ interface EditTerrainModalProps {
 }
 
 export function EditTerrainModal({ node, mile, onClose, onSave, onDelete }: EditTerrainModalProps) {
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<{
+        type: TerrainNode['type']
+        difficulty: number
+        mile: string | number
+    }>({
         type: node?.type || 'dirt',
         difficulty: node?.difficulty || 100,
         mile: mile || node?.mile || 0
@@ -32,9 +36,17 @@ export function EditTerrainModal({ node, mile, onClose, onSave, onDelete }: Edit
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
+
+        const parsedMile = typeof formData.mile === 'string' ? parseFloat(formData.mile) : formData.mile
+        if (isNaN(parsedMile)) {
+            alert('Please enter a valid mile marker')
+            return
+        }
+
         onSave({
             ...node,
             ...formData,
+            mile: parsedMile
         })
     }
 
@@ -92,7 +104,7 @@ export function EditTerrainModal({ node, mile, onClose, onSave, onDelete }: Edit
                             step="0.1"
                             disabled={!!node?.id} // Disable changing mile for existing nodes for now to avoid re-sorting complexity
                             value={formData.mile}
-                            onChange={e => setFormData({ ...formData, mile: parseFloat(e.target.value) })}
+                            onChange={e => setFormData({ ...formData, mile: e.target.value })}
                             style={{ background: node?.id ? '#f5f5f5' : 'white' }}
                         />
                         <p style={{ fontSize: '0.8rem', color: '#666', marginTop: '0.25rem' }}>

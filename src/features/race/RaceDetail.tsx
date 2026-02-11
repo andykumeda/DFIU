@@ -255,7 +255,11 @@ export function RaceDetail({ raceId }: { raceId: string }) {
           lon = coord[0]
           lat = coord[1]
         } else {
-          throw new Error(`Invalid mile: ${data.mile}`)
+          const courseLength = course.total_distance_miles || 0
+          if (data.mile > courseLength) {
+            throw new Error(`Mile ${data.mile} is beyond the course length of ${courseLength.toFixed(1)} miles.`)
+          }
+          throw new Error(`Could not calculate location for mile ${data.mile}. Ensure it is within the course distance.`)
         }
       }
 
