@@ -495,7 +495,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                       }}
                     />
                   </div>
-                  <div className='h-48 flex-shrink-0 border-t border-neutral-800 bg-neutral-900 z-10 relative'>
+                  <div className='h-32 flex-shrink-0 border-t border-neutral-800 bg-neutral-900 z-10 relative'>
                     <ElevationProfile
                       data={sampledProfile}
                       totalDistance={course?.total_distance_miles || 0}

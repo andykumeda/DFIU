@@ -176,7 +176,7 @@ export default function NewRacePage() {
             </div>
 
             {gpxData && (
-              <CourseStats 
+              <CourseStats
                 totalDistanceMiles={gpxData.stats.totalDistanceMiles}
                 totalElevationGainFt={gpxData.stats.totalElevationGainFt}
                 totalElevationLossFt={gpxData.stats.totalElevationLossFt}
@@ -221,7 +221,7 @@ export default function NewRacePage() {
                     🔄
                   </button>
                 </div>
-                <div className='h-48 border-t border-neutral-800'>
+                <div className='h-32 border-t border-neutral-800'>
                   <ElevationProfile
                     data={sampledProfile}
                     totalDistance={gpxData.stats.totalDistanceMiles}
