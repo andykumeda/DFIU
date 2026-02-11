@@ -41,6 +41,18 @@ export const getCoordinateAtDistance = (
             geometry: geometry,
             properties: {}
         };
+        // Handle implicit LineString (missing type property but has coordinates)
+        // This handles the case observed in user logs where geometry is just { coordinates: [...] }
+    } else if (!geojson.type && Array.isArray((geojson as any).coordinates)) {
+        console.warn('getCoordinateAtDistance: implicit LineString detected (missing type)');
+        lineFeature = {
+            type: 'Feature',
+            geometry: {
+                type: 'LineString',
+                coordinates: (geojson as any).coordinates
+            },
+            properties: {}
+        };
     } else if (geojson.type === 'FeatureCollection') {
         lineFeature = (geojson as GeoJSON.FeatureCollection).features.find(f =>
             f.geometry.type === 'LineString' || f.geometry.type === 'MultiLineString'
