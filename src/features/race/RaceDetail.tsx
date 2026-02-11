@@ -28,6 +28,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   const [editingTerrainNode, setEditingTerrainNode] = useState<Partial<TerrainNode> | null>(null)
 
   const [hoveredMile, setHoveredMile] = useState<number | null>(null)
+  const [showMileMarkers, setShowMileMarkers] = useState(false)
   const [fetchingWeather, setFetchingWeather] = useState(false)
 
   // Data Fetching
@@ -447,6 +448,17 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                       onWaypointMove={handleWaypointMove}
                       onHover={setHoveredMile}
                       highlightMile={hoveredMile ?? undefined}
+                      showMileMarkers={showMileMarkers}
+                      totalDistance={course?.total_distance_miles || 0}
+                      highlightElevation={hoveredMile != null && sampledProfile.length > 0 ? (() => {
+                        for (let i = 0; i < sampledProfile.length - 1; i++) {
+                          if (sampledProfile[i].distance <= hoveredMile && sampledProfile[i + 1].distance >= hoveredMile) {
+                            const t = (hoveredMile - sampledProfile[i].distance) / (sampledProfile[i + 1].distance - sampledProfile[i].distance)
+                            return sampledProfile[i].elevation + t * (sampledProfile[i + 1].elevation - sampledProfile[i].elevation)
+                          }
+                        }
+                        return null
+                      })() : null}
 
                       terrainNodes={terrainNodes}
                       onTerrainNodeClick={(id) => {
@@ -456,11 +468,25 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                     />
                   </div>
                   <div className='h-48 flex-shrink-0 border-t border-neutral-800 bg-neutral-900 z-10 relative'>
+                    {/* Toggle bar */}
+                    <div className='absolute top-2 right-3 z-20 flex items-center gap-2'>
+                      <button
+                        onClick={() => setShowMileMarkers(!showMileMarkers)}
+                        className={`text-xs px-2 py-0.5 rounded border transition-colors ${showMileMarkers
+                          ? 'bg-blue-600/20 border-blue-500/50 text-blue-400'
+                          : 'bg-neutral-800 border-neutral-700 text-neutral-500 hover:text-neutral-300'
+                          }`}
+                      >
+                        Mile Markers
+                      </button>
+                    </div>
                     <ElevationProfile
                       data={sampledProfile}
                       totalDistance={course?.total_distance_miles || 0}
                       onHover={setHoveredMile}
                       highlightDistance={hoveredMile ?? undefined}
+                      showMileMarkers={showMileMarkers}
+                      waypoints={waypoints.map(wp => ({ mile: wp.mile, name: wp.name, type: wp.type }))}
                     />
                   </div>
                 </div>
@@ -477,24 +503,23 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                         </div>
                         <div>
                           <div className='text-2xl font-bold text-green-500'>+{(course.total_elevation_gain_ft || (sampledProfile.length > 0 ? (Math.max(...elevationProfile.map(p => p.elevation)) - Math.min(...elevationProfile.map(p => p.elevation))) : 0)).toLocaleString()}</div>
-                          {/* Quick verify: Gain is sum of positive deltas, not max-min. We need proper calc if missing. */}
-                          {/* Better: Use computed stats if 0. but for now let's just ensure we don't show 0 if we have data. */}
-                          {/* Actually, if gain is 0 in DB, we should re-calculate it properly or show something reasonable. */}
-                          {/* Let's try to trust the DB first, but if max_elevation is 0, that's definitely wrong for a mountain race. */}
                           <div className='text-xs text-neutral-500'>Gain (ft)</div>
+                        </div>
+                        <div>
+                          <div className='text-2xl font-bold text-red-400'>-{((course as any).total_elevation_loss_ft || 0).toLocaleString()}</div>
+                          <div className='text-xs text-neutral-500'>Loss (ft)</div>
+                        </div>
+                        <div>
+                          <div className='text-2xl font-bold text-white'>
+                            {(course.max_elevation_ft || (elevationProfile.length > 0 ? Math.max(...elevationProfile.map(p => p.elevation)) : 0)).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                          </div>
+                          <div className='text-xs text-neutral-500'>Max Elev (ft)</div>
                         </div>
                         <div>
                           <div className='text-2xl font-bold text-white'>
                             {(course.min_elevation_ft || (elevationProfile.length > 0 ? Math.min(...elevationProfile.map(p => p.elevation)) : 0)).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                           </div>
-                          <div className='text-xs text-neutral-500'>Lowest Point (ft)</div>
-                        </div>
-                        <div>
-                          {/* Fallback for Max Elevation if 0 */}
-                          <div className='text-2xl font-bold text-white'>
-                            {(course.max_elevation_ft || (elevationProfile.length > 0 ? Math.max(...elevationProfile.map(p => p.elevation)) : 0)).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                          </div>
-                          <div className='text-xs text-neutral-500'>Max Elev (ft)</div>
+                          <div className='text-xs text-neutral-500'>Min Elev (ft)</div>
                         </div>
                       </div>
                     )}
@@ -763,6 +788,10 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                   <div className="flex justify-between items-center py-2 border-b border-neutral-800">
                     <span className="text-neutral-400">Elevation Gain</span>
                     <span className="text-white font-mono">{(course?.total_elevation_gain_ft || 0).toLocaleString()} ft</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-neutral-800">
+                    <span className="text-neutral-400">Elevation Loss</span>
+                    <span className="text-white font-mono">{((course as any)?.total_elevation_loss_ft || 0).toLocaleString()} ft</span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-neutral-800">
                     <span className="text-neutral-400">Overall Cutoff</span>

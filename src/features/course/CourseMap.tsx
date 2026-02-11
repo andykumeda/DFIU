@@ -3,6 +3,9 @@
 import { useEffect, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
+import along from '@turf/along'
+import length from '@turf/length'
+import { lineString } from '@turf/helpers'
 import MapStyleSwitcher from './MapStyleSwitcher'
 import { X, Trash2 } from 'lucide-react'
 import styles from './CourseMap.module.css'
@@ -38,6 +41,9 @@ interface CourseMapProps {
         lon: number
     }[]
     onTerrainNodeClick?: (id: string) => void
+    showMileMarkers?: boolean
+    highlightElevation?: number | null
+    totalDistance?: number
 }
 
 export function CourseMap({
@@ -51,7 +57,10 @@ export function CourseMap({
     highlightMile,
     className,
     terrainNodes = [],
-    onTerrainNodeClick
+    onTerrainNodeClick,
+    showMileMarkers = false,
+    highlightElevation,
+    totalDistance
 }: CourseMapProps) {
     const mapContainer = useRef<HTMLDivElement>(null)
     const map = useRef<mapboxgl.Map | null>(null)
@@ -62,6 +71,7 @@ export function CourseMap({
 
     // Restore missing refs/state
     const markersRef = useRef<mapboxgl.Marker[]>([])
+    const mileMarkersRef = useRef<mapboxgl.Marker[]>([])
     const [mapStyle, setMapStyle] = useState<'outdoors' | 'streets' | 'satellite'>('outdoors')
 
     const selectedPOITypeRef = useRef(selectedPOIType)
@@ -159,7 +169,55 @@ export function CourseMap({
             // Controls already added above
         })
 
-        // Terrain Segments Visualization
+        return () => {
+            map.current?.remove()
+            map.current = null
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+
+    // Mile Markers
+    useEffect(() => {
+        // Remove existing mile markers
+        mileMarkersRef.current.forEach(m => m.remove())
+        mileMarkersRef.current = []
+
+        if (!map.current || !mapLoaded || !showMileMarkers || coordinates.length < 2) return
+
+        try {
+            const line = lineString(coordinates as [number, number][])
+            const totalMiles = length(line, { units: 'miles' })
+            const interval = totalMiles > 100 ? 10 : totalMiles > 50 ? 5 : 1
+
+            for (let mile = interval; mile < totalMiles; mile += interval) {
+                const pt = along(line, mile, { units: 'miles' })
+                const [lng, lat] = pt.geometry.coordinates
+
+                const el = document.createElement('div')
+                el.className = 'mile-marker'
+                el.style.cssText = `
+                    width: 20px; height: 20px; border-radius: 50%;
+                    background: rgba(255,255,255,0.9); color: #111;
+                    font-size: 8px; font-weight: 700; font-family: monospace;
+                    display: flex; align-items: center; justify-content: center;
+                    border: 1.5px solid #666; box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+                    pointer-events: none;
+                `
+                el.textContent = String(mile)
+
+                const marker = new mapboxgl.Marker({ element: el })
+                    .setLngLat([lng, lat])
+                    .addTo(map.current!)
+
+                mileMarkersRef.current.push(marker)
+            }
+        } catch (err) {
+            console.warn('Mile marker error:', err)
+        }
+    }, [showMileMarkers, mapLoaded, coordinates])
+
+    // Terrain Segments Visualization
+    useEffect(() => {
         const updateTerrainLayer = async () => {
             if (!map.current || !mapLoaded || coordinates.length === 0 || terrainNodes.length === 0) return
 
@@ -169,102 +227,54 @@ export function CourseMap({
                 m.removeSource('terrain-segments')
             }
 
-            // We need to split coordinates based on miles.
-            // Helper to find index for mile
             const { getCoordinateAtDistance, getNearestPointOnLine } = await import('@/lib/geo-utils')
-            // Build GeoJSON for utils
             const geoJson = {
                 type: 'FeatureCollection',
                 features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates } }]
             } as any
 
-            // Sort nodes by mile
             const sortedNodes = [...terrainNodes].sort((a, b) => a.mile - b.mile)
-
-            // Create segments
             const segments: any[] = []
             let startIndex = 0
 
             for (const node of sortedNodes) {
-                // Find index of this node on the line
                 const coord = getCoordinateAtDistance(geoJson, node.mile * 1609.34)
-                if (!coord) continue // Should not happen if valid mile
+                if (!coord) continue
 
                 const nearest = getNearestPointOnLine({ lat: coord[1], lon: coord[0] }, coordinates)
                 if (!nearest) continue
 
                 const endIndex = nearest.index
-
-                // Slice coordinates
-                // Ensure we include the end point of previous and start point of current to avoid gaps?
-                // slice(start, end + 1) covers up to end index. 
                 const segmentCoords = coordinates.slice(startIndex, endIndex + 1)
-                // Push the exact node coord as the last point to close gap? 
                 segmentCoords.push([coord[0], coord[1]])
 
                 segments.push({
                     type: 'Feature',
-                    geometry: {
-                        type: 'LineString',
-                        coordinates: segmentCoords
-                    },
-                    properties: {
-                        type: node.type,
-                        color: getTerrainColor(node.type)
-                    }
+                    geometry: { type: 'LineString', coordinates: segmentCoords },
+                    properties: { type: node.type, color: getTerrainColor(node.type) }
                 })
 
                 startIndex = endIndex
             }
 
-            // Add last segment if needed (to finish)
-            // Check if last node is at end? 
-            // Logic assumes last node IS the finish if user set it up right, but we should handle "rest of course"
-            // But if we want *everything* to be covered by nodes, user must add them. 
-            // Or we imply default 'dirt' for remainder? 
-            // Let's visualize what defines. If gap remains, show default route line (red) underneath.
-            // Actually, the main 'route' layer is visible underneath. 
-            // So these segments will overlay it.
-
             m.addSource('terrain-segments', {
                 type: 'geojson',
-                data: {
-                    type: 'FeatureCollection',
-                    features: segments
-                }
+                data: { type: 'FeatureCollection', features: segments }
             })
 
             m.addLayer({
                 id: 'terrain-segments',
                 type: 'line',
                 source: 'terrain-segments',
-                layout: {
-                    'line-join': 'round',
-                    'line-cap': 'round'
-                },
-                paint: {
-                    'line-color': ['get', 'color'],
-                    'line-width': 6 // Slightly wider than base route to cover it
-                }
-            }, 'route-hit-area') // Under hit area, above base route? 
-            // 'route-hit-area' is transparent top. 'route' is base. 
-            // We want this ON TOP of 'route'.
-            // If we don't specify 'before', it goes to top. 
-            // But we want it below markers.
+                layout: { 'line-join': 'round', 'line-cap': 'round' },
+                paint: { 'line-color': ['get', 'color'], 'line-width': 6 }
+            })
         }
 
         if (mapLoaded && terrainNodes.length > 0) {
             updateTerrainLayer()
         }
-
-        return () => {
-            if (map.current) {
-                map.current.remove()
-                map.current = null
-            }
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []) // Run once on mount
+    }, [mapLoaded, terrainNodes, coordinates])
 
     // Update markers with draggable logic and click handlers respecting delete mode
     useEffect(() => {
@@ -661,9 +671,18 @@ export function CourseMap({
                 )
             }
 
-            {/* Info Overlay */}
-            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white/90 backdrop-blur-sm px-4 py-1.5 rounded-full shadow-sm border border-gray-200 text-xs font-mono text-gray-600 z-10 pointer-events-none tabular-nums">
-                Zoom: {viewState.zoom.toFixed(2)} | {viewState.lat.toFixed(4)}, {viewState.lng.toFixed(4)}
+            {/* Info Overlay — show mile + elevation on hover, otherwise total distance */}
+            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-black/70 backdrop-blur-sm px-4 py-1.5 rounded-full shadow-sm border border-neutral-700 text-xs font-mono text-neutral-300 z-10 pointer-events-none tabular-nums">
+                {highlightMile !== undefined && highlightMile !== null ? (
+                    <>
+                        Mile {highlightMile.toFixed(1)}
+                        {highlightElevation !== undefined && highlightElevation !== null && (
+                            <> | {Math.round(highlightElevation).toLocaleString()} ft</>
+                        )}
+                    </>
+                ) : (
+                    <>{totalDistance ? `${totalDistance.toFixed(1)} miles` : `${viewState.lat.toFixed(4)}, ${viewState.lng.toFixed(4)}`}</>
+                )}
             </div>
         </div >
     )
