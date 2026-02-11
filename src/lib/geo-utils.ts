@@ -18,7 +18,12 @@ export function getDistance(lat1: number, lon1: number, lat2: number, lon2: numb
 }
 
 export const getCoordinateAtDistance = (
-    geojson: GeoJSON.FeatureCollection | GeoJSON.Feature<GeoJSON.LineString | GeoJSON.MultiLineString> | null,
+    geojson:
+        | GeoJSON.FeatureCollection
+        | GeoJSON.Feature<GeoJSON.LineString | GeoJSON.MultiLineString>
+        | GeoJSON.LineString
+        | GeoJSON.MultiLineString
+        | null,
     distMeters: number
 ): [number, number] | null => {
     if (!geojson) {
@@ -28,16 +33,24 @@ export const getCoordinateAtDistance = (
 
     let lineFeature: GeoJSON.Feature<GeoJSON.LineString | GeoJSON.MultiLineString> | undefined;
 
-    if (geojson.type === 'FeatureCollection') {
-        lineFeature = geojson.features.find(f =>
+    // Handle Geometry directly
+    if (geojson.type === 'LineString' || geojson.type === 'MultiLineString') {
+        const geometry = geojson as GeoJSON.LineString | GeoJSON.MultiLineString;
+        lineFeature = {
+            type: 'Feature',
+            geometry: geometry,
+            properties: {}
+        };
+    } else if (geojson.type === 'FeatureCollection') {
+        lineFeature = (geojson as GeoJSON.FeatureCollection).features.find(f =>
             f.geometry.type === 'LineString' || f.geometry.type === 'MultiLineString'
         ) as GeoJSON.Feature<GeoJSON.LineString | GeoJSON.MultiLineString>;
-    } else {
+    } else if (geojson.type === 'Feature') {
         lineFeature = geojson as GeoJSON.Feature<GeoJSON.LineString | GeoJSON.MultiLineString>;
     }
 
     if (!lineFeature) {
-        console.warn('getCoordinateAtDistance: no LineString/MultiLineString feature found', geojson);
+        console.warn('getCoordinateAtDistance: no LineString/MultiLineString feature found', JSON.stringify(geojson).substring(0, 200));
         return null;
     }
 

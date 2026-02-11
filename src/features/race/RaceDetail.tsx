@@ -244,13 +244,12 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
       if ((!lat || !lon) && data.mile !== undefined && course?.geometry) {
         const { getCoordinateAtDistance } = await import('@/lib/geo-utils')
-        // Construct GeoJSON
-        const geoJson = {
-          type: 'FeatureCollection',
-          features: [{ type: 'Feature', geometry: course.geometry }]
-        } as any
 
-        const coord = getCoordinateAtDistance(geoJson, data.mile * 1609.34)
+        // Pass geometry directly - geo-utils now handles Geometry objects
+        const geometry = course.geometry as any
+
+        const coord = getCoordinateAtDistance(geometry, data.mile * 1609.34)
+
         if (coord) {
           lon = coord[0]
           lat = coord[1]
@@ -259,8 +258,8 @@ export function RaceDetail({ raceId }: { raceId: string }) {
           console.error('Failed to calculate coordinate', {
             mile: data.mile,
             courseLength,
-            geometryType: (course.geometry as any)?.type,
-            coordinatesLength: (course.geometry as any)?.coordinates?.length
+            geometryType: geometry?.type,
+            coordinatesLength: geometry?.coordinates?.length
           })
 
           if (data.mile > courseLength) {
