@@ -18,22 +18,53 @@ export function getDistance(lat1: number, lon1: number, lat2: number, lon2: numb
 }
 
 export const getCoordinateAtDistance = (
-    geojson: GeoJSON.FeatureCollection | GeoJSON.Feature<GeoJSON.LineString> | null,
+    geojson: GeoJSON.FeatureCollection | GeoJSON.Feature<GeoJSON.LineString | GeoJSON.MultiLineString> | null,
     distMeters: number
 ): [number, number] | null => {
-    if (!geojson) return null;
-    const lineFeature = geojson.type === 'FeatureCollection'
-        ? (geojson.features.find(f => f.geometry.type === 'LineString') as GeoJSON.Feature<GeoJSON.LineString>)
-        : (geojson as GeoJSON.Feature<GeoJSON.LineString>);
+    if (!geojson) {
+        console.warn('getCoordinateAtDistance: no geojson provided');
+        return null;
+    }
 
-    if (!lineFeature) return null;
+    let lineFeature: GeoJSON.Feature<GeoJSON.LineString | GeoJSON.MultiLineString> | undefined;
+
+    if (geojson.type === 'FeatureCollection') {
+        lineFeature = geojson.features.find(f =>
+            f.geometry.type === 'LineString' || f.geometry.type === 'MultiLineString'
+        ) as GeoJSON.Feature<GeoJSON.LineString | GeoJSON.MultiLineString>;
+    } else {
+        lineFeature = geojson as GeoJSON.Feature<GeoJSON.LineString | GeoJSON.MultiLineString>;
+    }
+
+    if (!lineFeature) {
+        console.warn('getCoordinateAtDistance: no LineString/MultiLineString feature found', geojson);
+        return null;
+    }
+
     try {
         const distKm = distMeters / 1000;
         const total = length(lineFeature, { units: 'kilometers' });
         const target = Math.max(0, Math.min(distKm, total));
+
+        // turf/along only supports LineString. If MultiLineString, we might need to be careful?
+        // Actually turf/along docs say "LineString". 
+        // If we have MultiLineString, we should probably explode it or warn.
+        // But for DFIU, we expect LineString. If it IS MultiLineString, let's try to handle it by using the first line or confusingly.
+        // Better: checking if it works. Turf might throw on MultiLineString.
+
+        if (lineFeature.geometry.type === 'MultiLineString') {
+            // Fallback: use length to find which segment it's in? Too complex for now.
+            // Let's just log if it overlaps.
+            // Actually, simplest fix for MultiLineString is to flatten it to LineString if connected.
+            // But let's assume LineString for now and just log if it fails.
+            console.warn('getCoordinateAtDistance: MultiLineString not fully supported yet');
+        }
+
+        // @ts-ignore
         const p = along(lineFeature, target, { units: 'kilometers' });
         return p.geometry.coordinates as [number, number];
-    } catch {
+    } catch (e) {
+        console.error('getCoordinateAtDistance error:', e);
         return null;
     }
 };

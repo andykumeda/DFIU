@@ -256,6 +256,13 @@ export function RaceDetail({ raceId }: { raceId: string }) {
           lat = coord[1]
         } else {
           const courseLength = course.total_distance_miles || 0
+          console.error('Failed to calculate coordinate', {
+            mile: data.mile,
+            courseLength,
+            geometryType: (course.geometry as any)?.type,
+            coordinatesLength: (course.geometry as any)?.coordinates?.length
+          })
+
           if (data.mile > courseLength) {
             throw new Error(`Mile ${data.mile} is beyond the course length of ${courseLength.toFixed(1)} miles.`)
           }
