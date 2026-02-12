@@ -123,16 +123,26 @@ export function ElevationProfile({
         const verticalRange = 100 - paddingTop - paddingBottom
         const eleRange = (maxEle - minEle) || 1
 
-        // Create a list of points to render
-        const pointsToRender = [...waypoints]
+        // Create a list of points to render, promoting any waypoint at mile 0 / totalDistance to start/finish
+        const pointsToRender = waypoints.map(wp => {
+            // If a waypoint sits at mile 0 and isn't already typed as start, treat it as start
+            if (wp.mile !== undefined && Math.abs(wp.mile) < 0.1 && wp.type !== 'start' && wp.type !== 'finish') {
+                return { ...wp, type: 'start' as const }
+            }
+            // If a waypoint sits at the final mile and isn't already typed as finish, treat it as finish
+            if (wp.mile !== undefined && Math.abs(wp.mile - totalDistance) < 0.1 && wp.type !== 'start' && wp.type !== 'finish') {
+                return { ...wp, type: 'finish' as const }
+            }
+            return wp
+        })
 
-        // Implicit Start
-        if (!pointsToRender.some(wp => wp.type === 'start' || (wp.mile !== undefined && Math.abs(wp.mile - 0) < 0.1))) {
+        // Add implicit Start if no start-type waypoint exists
+        if (!pointsToRender.some(wp => wp.type === 'start')) {
             pointsToRender.push({ mile: 0, name: 'Start', type: 'start' })
         }
 
-        // Implicit Finish
-        if (!pointsToRender.some(wp => wp.type === 'finish' || (wp.mile !== undefined && Math.abs(wp.mile - totalDistance) < 0.1))) {
+        // Add implicit Finish if no finish-type waypoint exists
+        if (!pointsToRender.some(wp => wp.type === 'finish')) {
             pointsToRender.push({ mile: totalDistance, name: 'Finish', type: 'finish' })
         }
 

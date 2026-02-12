@@ -28,7 +28,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   const [editingTerrainNode, setEditingTerrainNode] = useState<Partial<TerrainNode> | null>(null)
 
   const [hoveredMile, setHoveredMile] = useState<number | null>(null)
-  const [showMileMarkers, setShowMileMarkers] = useState(false)
+  const [showMileMarkers, setShowMileMarkers] = useState(true)
   const [fetchingWeather, setFetchingWeather] = useState(false)
   const [isReimporting, setIsReimporting] = useState(false)
 

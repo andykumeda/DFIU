@@ -665,6 +665,17 @@ export function CourseMap({
                 </button>
 
                 <button
+                    onClick={onToggleMileMarkers}
+                    className={`${styles.toolBtn} ${showMileMarkers ? styles.activeTool : ''}`}
+                    title="Toggle Mile Markers"
+                    type="button"
+                >
+                    <Milestone size={18} />
+                </button>
+
+                <div className={styles.divider} />
+
+                <button
                     onClick={() => {
                         setSelectedPOIType(null)
                         setIsDeleteMode(!isDeleteMode)
@@ -674,17 +685,6 @@ export function CourseMap({
                     type="button"
                 >
                     <Trash2 size={18} />
-                </button>
-
-                <div className={styles.divider} />
-
-                <button
-                    onClick={onToggleMileMarkers}
-                    className={`${styles.toolBtn} ${showMileMarkers ? styles.activeTool : ''}`}
-                    title="Toggle Mile Markers"
-                    type="button"
-                >
-                    <Milestone size={18} />
                 </button>
 
                 {(selectedPOIType || isDeleteMode) && (
