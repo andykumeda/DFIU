@@ -73,7 +73,7 @@ export const getCoordinateAtDistance = (
             console.warn('getCoordinateAtDistance: MultiLineString not fully supported');
         }
 
-        // @ts-ignore
+        // @ts-expect-error - turf/along definition might vary
         const p = along(lineFeature, target, { units: 'kilometers' });
         return p.geometry.coordinates as [number, number];
     } catch (e) {

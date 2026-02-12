@@ -229,23 +229,23 @@ export function ElevationProfile({
                 >
                     {/* Gradient definition */}
                     <defs>
-                        <linearGradient id="elevationGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                            <stop offset="0%" stopColor="rgba(0, 112, 243, 0.4)" />
-                            <stop offset="100%" stopColor="rgba(0, 112, 243, 0.05)" />
+                        <linearGradient id='colorElevation' x1='0' y1='0' x2='0' y2='1'>
+                            <stop offset='5%' stopColor='#f59e0b' stopOpacity={0.3} />
+                            <stop offset='95%' stopColor='#f59e0b' stopOpacity={0} />
                         </linearGradient>
                     </defs>
 
                     {/* Filled area */}
                     <path
                         d={areaPath}
-                        fill="url(#elevationGradient)"
+                        fill="url(#colorElevation)"
                     />
 
                     {/* Line */}
                     <path
                         d={path}
                         fill="none"
-                        stroke="#0070f3"
+                        stroke="#f59e0b" // amber-500
                         strokeWidth="0.5"
                         vectorEffect="non-scaling-stroke"
                     />

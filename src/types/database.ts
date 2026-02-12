@@ -56,6 +56,17 @@ export interface Database {
                     created_at: string
                     updated_at: string
                     timezone: string | null
+                    racebook_url: string | null
+                    racebook_last_updated: string | null
+                    briefing_url: string | null
+                    packet_pickup_url: string | null
+                    past_results_url: string | null
+                    media_url: string | null
+                    entrants_url: string | null
+                    tracking_url: string | null
+                    lodging_info: string | null
+                    packet_pickup_datetime: string | null
+                    briefing_datetime: string | null
                 }
                 Insert: {
                     id?: string
@@ -83,6 +94,15 @@ export interface Database {
                     created_at?: string
                     updated_at?: string
                     timezone?: string | null
+                    racebook_url?: string | null
+                    racebook_last_updated?: string | null
+                    briefing_url?: string | null
+                    packet_pickup_url?: string | null
+                    past_results_url?: string | null
+                    media_url?: string | null
+                    entrants_url?: string | null
+                    tracking_url?: string | null
+                    lodging_info?: string | null
                 }
                 Update: {
                     id?: string
@@ -110,6 +130,15 @@ export interface Database {
                     created_at?: string
                     updated_at?: string
                     timezone?: string | null
+                    racebook_url?: string | null
+                    racebook_last_updated?: string | null
+                    briefing_url?: string | null
+                    packet_pickup_url?: string | null
+                    past_results_url?: string | null
+                    media_url?: string | null
+                    entrants_url?: string | null
+                    tracking_url?: string | null
+                    lodging_info?: string | null
                 }
             }
             courses: {

@@ -14,8 +14,10 @@ import { EditTerrainModal } from '@/features/course/EditTerrainModal'
 import { sampleElevationProfile, type GpxParseResult } from '@/lib/gpx-parser'
 import { getNearestPointOnLine, getDistanceFromStart } from '@/lib/geo-utils'
 import { formatDate } from '@/lib/utils'
+import { PaceCalculator } from '@/features/race/PaceCalculator'
+import { RaceResources } from '@/features/race/RaceResources'
 
-type Tab = 'overview' | 'map' | 'plan' | 'docs'
+type Tab = 'overview' | 'map' | 'plan' | 'resources'
 
 export function RaceDetail({ raceId }: { raceId: string }) {
   const queryClient = useQueryClient()
@@ -355,7 +357,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     { id: 'overview', label: 'Overview' },
     { id: 'map', label: 'Course Map' },
     { id: 'plan', label: 'Pace Plan' },
-    { id: 'docs', label: 'Documents' },
+    { id: 'resources', label: 'Resources' },
   ]
 
   if (raceLoading) return <div className='p-8 text-white'>Loading race...</div>
@@ -587,7 +589,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                         >
                           <div className='flex items-start justify-between'>
                             <div className='flex items-center gap-2'>
-                              <span className='text-blue-500 font-mono text-sm w-8 text-right'>{wp.mile.toFixed(1)}</span>
+                              <span className='text-blue-500 font-mono text-sm w-8 text-right'>{wp.mile.toFixed(2)}</span>
                               <span className='font-medium text-white'>{wp.name}</span>
                             </div>
                             <span className='text-xs text-neutral-600 group-hover:text-neutral-500'>{wp.type}</span>
@@ -632,7 +634,6 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                           <p className="text-xs text-neutral-600 italic">No terrain segments defined. Entire course defaults to 'Dirt' (100%).</p>
                         ) : (
                           terrainNodes.map((node, i) => {
-                            // Determine segment start
                             const startMile = i === 0 ? 0 : terrainNodes[i - 1].mile
                             return (
                               <div
@@ -664,6 +665,32 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                 <GpxUploader onUpload={handleGpxUpload} />
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'plan' && (
+          <div className="animate-in fade-in duration-500">
+            {course ? (
+              <PaceCalculator
+                race={race}
+                course={course}
+                waypoints={waypoints}
+                terrainNodes={terrainNodes}
+              />
+            ) : (
+              <div className="p-12 text-center text-neutral-500">
+                Please upload a course route first.
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'resources' && (
+          <div className="animate-in fade-in duration-500">
+            <RaceResources
+              race={race}
+              onUpdate={() => queryClient.invalidateQueries({ queryKey: ['race', raceId] })}
+            />
           </div>
         )}
 
@@ -773,7 +800,6 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                           </div>
                         </div>
                       )}
-
                       {history.past_years && history.past_years.length > 0 && (
                         <div>
                           <div className="text-neutral-500 text-xs uppercase tracking-wider mb-2">Past Years on This Date</div>
@@ -863,20 +889,16 @@ export function RaceDetail({ raceId }: { raceId: string }) {
           </div>
         )}
 
-        {activeTab === 'plan' && (
-          <div className='p-8 text-center text-neutral-500'>Pace planning coming in Epic 2...</div>
-        )}
-
-        {activeTab === 'docs' && (
-          <div className='p-8 text-center text-neutral-500'>Documents and media coming in Epic 3...</div>
-        )}
       </main>
+
       {editingTerrainNode && (
         <EditTerrainModal
           node={editingTerrainNode}
           onClose={() => setEditingTerrainNode(null)}
           onSave={handleSaveTerrainNode}
-          onDelete={handleDeleteTerrainNode}
+          onDelete={async (id) => {
+            await handleDeleteTerrainNode(id)
+          }}
         />
       )}
     </div>

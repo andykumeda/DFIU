@@ -119,50 +119,7 @@ export function CourseMap({
         map.current.on('load', () => {
             setMapLoaded(true)
 
-            if (coordinates.length > 0) {
-                // Add the route source and layer
-                map.current?.addSource('route', {
-                    'type': 'geojson',
-                    'data': {
-                        'type': 'Feature',
-                        'properties': {},
-                        'geometry': {
-                            'type': 'LineString',
-                            'coordinates': coordinates
-                        }
-                    }
-                })
-
-                map.current?.addLayer({
-                    'id': 'route',
-                    'type': 'line',
-                    'source': 'route',
-                    'layout': {
-                        'line-join': 'round',
-                        'line-cap': 'round'
-                    },
-                    'paint': {
-                        'line-color': '#e11d48',
-                        'line-width': 4
-                    }
-                })
-
-                // Fit bounds
-                const bounds = new mapboxgl.LngLatBounds(
-                    coordinates[0],
-                    coordinates[0]
-                )
-
-                for (const coord of coordinates) {
-                    bounds.extend(coord as [number, number])
-                }
-
-                map.current?.fitBounds(bounds, {
-                    padding: 50
-                })
-            }
-
-            // Add Controls
+            // Controls
             map.current!.addControl(new mapboxgl.NavigationControl(), 'top-right')
 
             const geolocate = new mapboxgl.GeolocateControl({
@@ -171,7 +128,6 @@ export function CourseMap({
                 showUserHeading: true
             })
             map.current!.addControl(geolocate, 'top-right')
-            // Controls already added above
         })
 
         return () => {
@@ -180,6 +136,68 @@ export function CourseMap({
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
+
+    // Reactive Route Update & Fit Bounds
+    useEffect(() => {
+        if (!map.current || !mapLoaded || coordinates.length === 0) return
+
+        const m = map.current
+
+        // Add or Update Source
+        const sourceData = {
+            'type': 'Feature',
+            'properties': {},
+            'geometry': {
+                'type': 'LineString',
+                'coordinates': coordinates
+            }
+        } as any
+
+        if (m.getSource('route')) {
+            (m.getSource('route') as mapboxgl.GeoJSONSource).setData(sourceData)
+        } else {
+            m.addSource('route', {
+                'type': 'geojson',
+                'data': sourceData
+            })
+
+            m.addLayer({
+                'id': 'route',
+                'type': 'line',
+                'source': 'route',
+                'layout': {
+                    'line-join': 'round',
+                    'line-cap': 'round'
+                },
+                'paint': {
+                    'line-color': '#e11d48',
+                    'line-width': 4
+                }
+            })
+        }
+
+        // Fit bounds
+        // Check if we should fit bounds?
+        // We always fit bounds on mount (tab switch) or if coordinates change significantly?
+        // Let's always fit bounds when coordinates update, which covers the tab switch case.
+        try {
+            const bounds = new mapboxgl.LngLatBounds(
+                coordinates[0],
+                coordinates[0]
+            )
+
+            for (const coord of coordinates) {
+                bounds.extend(coord as [number, number])
+            }
+
+            m.fitBounds(bounds, {
+                padding: 50,
+                duration: 1000 // Smooth animation
+            })
+        } catch (e) {
+            console.warn('Error fitting bounds:', e)
+        }
+    }, [mapLoaded, coordinates])
 
     // Mile Markers
     useEffect(() => {
@@ -404,7 +422,7 @@ export function CourseMap({
 
                 const marker = new mapboxgl.Marker({ element: container })
                     .setLngLat(startCoord as [number, number])
-                    .addTo(map.current)
+                    .addTo(map.current!) // Non-null assertion
                 markersRef.current.push(marker)
             }
 
@@ -422,7 +440,7 @@ export function CourseMap({
 
                 const marker = new mapboxgl.Marker({ element: container })
                     .setLngLat(endCoord as [number, number])
-                    .addTo(map.current)
+                    .addTo(map.current!) // Non-null assertion
                 markersRef.current.push(marker)
             }
         }

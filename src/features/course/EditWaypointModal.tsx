@@ -29,7 +29,7 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, raceDate, onClose,
         name: waypoint?.name || '',
         type: waypoint?.type || 'aid_station',
         // Default to race start date if no cutoff exists
-        cutoff_time: waypoint?.cutoff_time || (raceDate ? new Date(raceDate).toISOString().slice(0, 16) : ''),
+        cutoff_time: waypoint?.cutoff_time || (raceDate ? new Date(raceDate).toISOString().slice(0, 10) + 'T00:00' : ''),
         has_drop_bag: waypoint?.has_drop_bag || false,
         crew_allowed: waypoint?.crew_allowed || false,
         pacer_allowed: waypoint?.pacer_allowed || false,
@@ -43,7 +43,7 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, raceDate, onClose,
                 ...prev,
                 name: waypoint.name || '',
                 type: waypoint.type || 'aid_station',
-                cutoff_time: waypoint.cutoff_time || (raceDate && !waypoint.cutoff_time ? new Date(raceDate).toISOString().slice(0, 16) : prev.cutoff_time),
+                cutoff_time: waypoint.cutoff_time || (raceDate && !waypoint.cutoff_time ? new Date(raceDate).toISOString().slice(0, 10) + 'T00:00' : prev.cutoff_time),
                 has_drop_bag: waypoint.has_drop_bag || false,
                 crew_allowed: waypoint.crew_allowed || false,
                 pacer_allowed: waypoint.pacer_allowed || false,
@@ -117,7 +117,7 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, raceDate, onClose,
                             <label>Mile Marker</label>
                             <input
                                 type="number"
-                                step="0.1"
+                                step="0.01"
                                 // If it's a new waypoint (no ID), allow editing. Otherwise disabled.
                                 // Actually, user might want to adjust mile of existing waypoint manually too? 
                                 // The requirement said "enter mileage or to click on route". 

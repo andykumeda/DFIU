@@ -4,6 +4,12 @@
 **Status:** Stable / Production Deployed
 **Last Deployed Commit:** (Check `git log`)
 
+> [!IMPORTANT]
+> **PROTOCOL INSTRUCTION:**
+> 1. Going forward, **IMMEDIATELY** update this `HANDOFF.md` with the current tasks and status in case the connection breaks. Do this **BEFORE** starting any work.
+> 2. **ALWAYS** deploy to production after **EACH** modification using `sudo ./scripts/deploy.sh`.
+
+
 ## Recent Changes
 
 1.  **Map Improvements:**
@@ -34,6 +40,8 @@
     *   **Missing Elevation Warning**: Added a user-facing warning in `RaceDetail.tsx` when an uploaded GPX file lacks elevation (`<ele>`) tags.
     *   **Elevation Profile Empty State**: Improved the `ElevationProfile.tsx` empty state message to clearly indicate the GPX file is missing elevation data.
     *   **Waypoint Save Fix**: Fixed `cutoff_time` empty string issue causing database errors (coerced to `null`). Added `NaN` guard on `mile` field.
+    *   **Race Resources Update**: Added `packet_pickup_datetime` and `briefing_datetime` fields. Updated `RaceResources` component to support date/time selection for these items.
+    *   **Cleanup**: Removed unused dev dependencies (`autoprefixer`, `postcss`). Fixed lint errors/type safety issues in `geo-utils.ts` and `RaceResources.tsx`.
 
 5.  **Code Cleanup:**
     *   Removed unused variables in `utils.ts` and `CourseMap.tsx`.
