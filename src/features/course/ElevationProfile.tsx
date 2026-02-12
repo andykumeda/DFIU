@@ -113,7 +113,8 @@ export function ElevationProfile({
 
     // Compute waypoint positions on the elevation profile
     const waypointPositions = useMemo(() => {
-        if (waypoints.length === 0 || data.length === 0 || totalDistance <= 0) return []
+        if (waypoints.length === 0 && data.length === 0) return []
+        if (totalDistance <= 0) return []
 
         const width = 100
         const paddingX = 2
@@ -122,7 +123,20 @@ export function ElevationProfile({
         const verticalRange = 100 - paddingTop - paddingBottom
         const eleRange = (maxEle - minEle) || 1
 
-        return waypoints
+        // Create a list of points to render
+        const pointsToRender = [...waypoints]
+
+        // Implicit Start
+        if (!pointsToRender.some(wp => wp.type === 'start' || (wp.mile !== undefined && Math.abs(wp.mile - 0) < 0.1))) {
+            pointsToRender.push({ mile: 0, name: 'Start', type: 'start' })
+        }
+
+        // Implicit Finish
+        if (!pointsToRender.some(wp => wp.type === 'finish' || (wp.mile !== undefined && Math.abs(wp.mile - totalDistance) < 0.1))) {
+            pointsToRender.push({ mile: totalDistance, name: 'Finish', type: 'finish' })
+        }
+
+        return pointsToRender
             .filter(wp => Number.isFinite(wp.mile) && wp.mile >= 0 && wp.mile <= totalDistance)
             .map(wp => {
                 const x = (wp.mile / totalDistance) * (width - paddingX * 2) + paddingX
@@ -247,13 +261,15 @@ export function ElevationProfile({
                             return (
                                 <div
                                     key={`wp-${i}`}
-                                    className={styles.waypointIcon}
+                                    className={styles.waypointMarker}
                                     style={{
                                         left: `${wp.x}%`,
                                         top: `${wp.y}%`,
-                                        transform: 'translate(-50%, -100%)', // Center horizontally, place bottom on line
-                                        fontSize: '16px',
-                                        position: 'absolute'
+                                        backgroundColor: '#16a34a', // Green
+                                        zIndex: 30,
+                                        width: '24px',
+                                        height: '24px',
+                                        fontSize: '12px'
                                     }}
                                     title="Start"
                                 >
@@ -264,13 +280,15 @@ export function ElevationProfile({
                             return (
                                 <div
                                     key={`wp-${i}`}
-                                    className={styles.waypointIcon}
+                                    className={styles.waypointMarker}
                                     style={{
                                         left: `${wp.x}%`,
                                         top: `${wp.y}%`,
-                                        transform: 'translate(-50%, -100%)',
-                                        fontSize: '16px',
-                                        position: 'absolute'
+                                        backgroundColor: '#dc2626', // Red
+                                        zIndex: 30,
+                                        width: '24px',
+                                        height: '24px',
+                                        fontSize: '12px'
                                     }}
                                     title="Finish"
                                 >

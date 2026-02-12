@@ -391,26 +391,36 @@ export function CourseMap({
             const hasFinish = waypoints.some(wp => wp.type === 'finish')
 
             if (!hasStart) {
+                const container = document.createElement('div')
+                container.className = styles.markerContainer
+
                 const el = document.createElement('div')
                 el.className = styles.marker
                 el.innerHTML = getWaypointIcon('start')
                 el.title = 'Start'
                 el.style.backgroundColor = '#16a34a'
 
-                const marker = new mapboxgl.Marker({ element: el })
+                container.appendChild(el)
+
+                const marker = new mapboxgl.Marker({ element: container })
                     .setLngLat(startCoord as [number, number])
                     .addTo(map.current)
                 markersRef.current.push(marker)
             }
 
             if (!hasFinish) {
+                const container = document.createElement('div')
+                container.className = styles.markerContainer
+
                 const el = document.createElement('div')
                 el.className = styles.marker
                 el.innerHTML = getWaypointIcon('finish')
                 el.title = 'Finish'
                 el.style.backgroundColor = '#dc2626'
 
-                const marker = new mapboxgl.Marker({ element: el })
+                container.appendChild(el)
+
+                const marker = new mapboxgl.Marker({ element: container })
                     .setLngLat(endCoord as [number, number])
                     .addTo(map.current)
                 markersRef.current.push(marker)
