@@ -4,9 +4,11 @@ import { AuthProvider, useAuth } from './features/auth/AuthContext'
 import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
 import DashboardPage from './pages/DashboardPage'
+import SettingsPage from './features/settings/SettingsPage'
 import RaceDetailPage from './pages/RaceDetailPage'
 import NewRacePage from './pages/NewRacePage'
 import SplashPage from './pages/SplashPage'
+import StravaCallback from './features/auth/StravaCallback'
 
 const queryClient = new QueryClient()
 
@@ -45,6 +47,14 @@ export default function App() {
               }
             />
             <Route
+              path='/settings'
+              element={
+                <ProtectedRoute>
+                  <SettingsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path='/race/new'
               element={
                 <ProtectedRoute>
@@ -52,14 +62,8 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
-            <Route
-              path='/race/:id'
-              element={
-                <ProtectedRoute>
-                  <RaceDetailPage />
-                </ProtectedRoute>
-              }
-            />
+            <Route path='/race/:id' element={<ProtectedRoute><RaceDetailPage /></ProtectedRoute>} />
+            <Route path='/auth/strava/callback' element={<StravaCallback />} />
             <Route path='/' element={<SplashPage />} />
           </Routes>
         </BrowserRouter>

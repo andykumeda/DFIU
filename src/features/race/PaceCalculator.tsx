@@ -3,16 +3,17 @@
 import { useState } from 'react'
 import { Course, Race, TerrainNode, Waypoint } from '@/types/database'
 import { calculatePacePlan, PacingStrategy } from './pace-utils'
-import { Calculator, Clock, TrendingUp, Activity, AlertTriangle } from 'lucide-react'
+import { Calculator, Clock, TrendingUp, Activity, Users, Footprints, Package } from 'lucide-react'
 
 interface PaceCalculatorProps {
     race: Race
     course: Course
     waypoints: Waypoint[]
     terrainNodes: TerrainNode[]
+    clock24h?: boolean
 }
 
-export function PaceCalculator({ race, course, waypoints, terrainNodes }: PaceCalculatorProps) {
+export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h = false }: PaceCalculatorProps) {
     const [strategyMode, setStrategyMode] = useState<PacingStrategy['mode'] | 'cutoff'>('time')
     // Inputs (stored as strings for easier editing)
     const [targetTimeStr, setTargetTimeStr] = useState('24:00') // HH:MM
@@ -20,8 +21,7 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes }: PaceCa
     const [targetGapStr, setTargetGapStr] = useState('11:00') // MM:SS
     const [cutoffBufferStr, setCutoffBufferStr] = useState('00:30') // HH:MM
 
-    const [useDelays, setUseDelays] = useState(true)
-    const [defaultDelay, setDefaultDelay] = useState(5) // minutes
+    // Delays are now handled per-waypoint in properties
 
     const [plan, setPlan] = useState<ReturnType<typeof calculatePacePlan> | null>(null)
 
@@ -69,10 +69,6 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes }: PaceCa
             value: getStrategyValue()
         }
 
-        const delays = {
-            default: useDelays ? defaultDelay : 0
-        }
-
         const profile = course.elevation_samples as { distance: number; elevation: number }[]
         const startTime = race.start_datetime ? new Date(race.start_datetime) : undefined
 
@@ -82,8 +78,9 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes }: PaceCa
             waypoints,
             terrainNodes,
             strategy,
-            delays,
-            startTime
+            startTime,
+            race.timezone || undefined,
+            clock24h
         )
 
         setPlan(result)
@@ -156,31 +153,7 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes }: PaceCa
                         )}
                     </div>
 
-                    {/* Delays Configuration */}
-                    <div className="mb-6 pt-6 border-t border-neutral-800">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-sm font-semibold text-white">Aid Station Delays</h3>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" className="sr-only peer" checked={useDelays} onChange={e => setUseDelays(e.target.checked)} />
-                                <div className="w-9 h-5 bg-neutral-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
-                            </label>
-                        </div>
 
-                        {useDelays && (
-                            <div>
-                                <label className="block text-xs text-neutral-500 mb-1">
-                                    Default Delay per Station (min)
-                                </label>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    className="w-full bg-neutral-950 border border-neutral-800 rounded px-3 py-2 text-white font-mono"
-                                    value={defaultDelay}
-                                    onChange={e => setDefaultDelay(Number(e.target.value))}
-                                />
-                            </div>
-                        )}
-                    </div>
 
                     <button
                         onClick={handleCalculate}
@@ -202,7 +175,7 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes }: PaceCa
                                     <Clock className="w-3 h-3" /> Total Time
                                 </div>
                                 <div className="text-2xl font-black text-white font-mono">
-                                    {Math.floor(plan.totalTime / 60)}:{(plan.totalTime % 60).toFixed(0).padStart(2, '0')}
+                                    {Math.floor(plan.totalTime / 60)}:{Math.floor(plan.totalTime % 60).toString().padStart(2, '0')}
                                 </div>
                             </div>
                             <div className="bg-neutral-800/50 rounded-xl p-4 border border-neutral-800">
@@ -235,11 +208,13 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes }: PaceCa
                                 <table className="w-full text-sm text-left">
                                     <thead className="bg-neutral-950 text-neutral-400 uppercase text-xs font-semibold">
                                         <tr>
-                                            <th className="px-6 py-3">Mile</th>
                                             <th className="px-6 py-3">Location</th>
+                                            <th className="px-6 py-3">Mile</th>
+                                            <th className="px-6 py-3">Seg Mile</th>
                                             <th className="px-6 py-3 text-right">Segment Time</th>
-                                            <th className="px-6 py-3 text-right">Arrival</th>
-                                            <th className="px-6 py-3 text-right">Cutoff Delta</th>
+                                            <th className="px-6 py-3 text-right">Clock Time</th>
+                                            <th className="px-6 py-3 text-right">Elapsed Time</th>
+                                            <th className="px-6 py-3 text-right">Cutoff Time</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-neutral-800">
@@ -247,32 +222,35 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes }: PaceCa
                                             const wp = waypoints.find(w => w.id === arrival.waypointId)
                                             if (!wp) return null
 
-                                            const isNegative = arrival.cutoffDelta !== null && arrival.cutoffDelta < 0
-
                                             return (
                                                 <tr key={arrival.waypointId} className="hover:bg-neutral-800/50 transition-colors">
+                                                    <td className="px-6 py-4">
+                                                        <div className="font-medium text-white flex items-center gap-2">
+                                                            {wp.name}
+                                                            <div className="flex gap-1">
+                                                                {wp.crew_allowed && <span title="Crew Allowed"><Users className="w-4 h-4 text-green-400" /></span>}
+                                                                {wp.pacer_allowed && <span title="Pacer Allowed"><Footprints className="w-4 h-4 text-blue-400" /></span>}
+                                                                {wp.has_drop_bag && <span title="Drop Bag"><Package className="w-4 h-4 text-orange-400" /></span>}
+                                                            </div>
+                                                        </div>
+                                                    </td>
                                                     <td className="px-6 py-4 font-mono text-neutral-300">
                                                         {wp.mile.toFixed(2)}
                                                     </td>
-                                                    <td className="px-6 py-4">
-                                                        <div className="font-medium text-white">{wp.name}</div>
-                                                        <div className="text-xs text-neutral-500 capitalize">{wp.type.replace('_', ' ')}</div>
+                                                    <td className="px-6 py-4 font-mono text-neutral-400">
+                                                        {arrival.segmentMile.toFixed(2)}
                                                     </td>
                                                     <td className="px-6 py-4 text-right font-mono text-neutral-400">
-                                                        --
+                                                        {arrival.segmentTime}
                                                     </td>
                                                     <td className="px-6 py-4 text-right font-mono text-white font-bold">
                                                         {arrival.timeOfDay}
                                                     </td>
-                                                    <td className="px-6 py-4 text-right font-mono">
-                                                        {arrival.cutoffDelta !== null ? (
-                                                            <span className={isNegative ? "text-red-500" : "text-green-500 flex items-center justify-end gap-1"}>
-                                                                {isNegative && <AlertTriangle className="w-3 h-3" />}
-                                                                {isNegative ? '-' : '+'}{Math.floor(Math.abs(arrival.cutoffDelta) / 60)}h {Math.floor(Math.abs(arrival.cutoffDelta) % 60)}m
-                                                            </span>
-                                                        ) : (
-                                                            <span className="text-neutral-600">-</span>
-                                                        )}
+                                                    <td className="px-6 py-4 text-right font-mono text-neutral-400">
+                                                        {Math.floor(arrival.arrivalTime / 60)}:{Math.floor(arrival.arrivalTime % 60).toString().padStart(2, '0')}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right font-mono text-red-400">
+                                                        {arrival.cutoffTime}
                                                     </td>
                                                 </tr>
                                             )
@@ -289,6 +267,6 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes }: PaceCa
                     </div>
                 )}
             </div>
-        </div>
+        </div >
     )
 }

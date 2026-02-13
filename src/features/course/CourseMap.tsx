@@ -446,6 +446,13 @@ export function CourseMap({
                 const marker = new mapboxgl.Marker({ element: container, anchor: 'center', offset: [0, 0] })
                     .setLngLat(startCoord as [number, number])
                     .addTo(map.current!)
+
+                // Add click listener
+                el.addEventListener('click', (e) => {
+                    e.stopPropagation()
+                    if (onMapClick) onMapClick(startCoord[1], startCoord[0], 'start')
+                })
+
                 markersRef.current.push(marker)
             }
 
@@ -472,6 +479,13 @@ export function CourseMap({
                 const marker = new mapboxgl.Marker({ element: container, anchor: 'center', offset: [0, 0] })
                     .setLngLat(endCoord as [number, number])
                     .addTo(map.current!)
+
+                // Add click listener
+                el.addEventListener('click', (e) => {
+                    e.stopPropagation()
+                    if (onMapClick) onMapClick(endCoord[1], endCoord[0], 'finish')
+                })
+
                 markersRef.current.push(marker)
             }
         }

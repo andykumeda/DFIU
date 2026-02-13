@@ -2,9 +2,10 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/features/auth/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { RaceList } from '@/features/race/RaceList'
+import { Settings } from 'lucide-react'
 
 export default function DashboardPage() {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const navigate = useNavigate()
 
   const handleSignOut = async () => {
@@ -26,7 +27,25 @@ export default function DashboardPage() {
             </span>
           </Link>
           <div className='flex items-center gap-4'>
-            <span className='text-neutral-400 text-sm hidden sm:block'>{user?.email}</span>
+            <div className="flex items-center gap-3">
+              {profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt="Profile" className="w-8 h-8 rounded-full border border-neutral-700 object-cover" />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center text-xs font-bold text-neutral-400">
+                  {(profile?.name?.[0] || user?.email?.[0] || '?').toUpperCase()}
+                </div>
+              )}
+              <span className='text-neutral-400 text-sm hidden sm:block'>
+                {profile?.name || user?.user_metadata?.name || user?.user_metadata?.full_name || user?.email}
+              </span>
+            </div>
+            <Link
+              to="/settings"
+              className='text-neutral-400 hover:text-white p-2 rounded-md hover:bg-neutral-800 transition-colors'
+              title="Settings"
+            >
+              <Settings className="w-5 h-5" />
+            </Link>
             <button
               onClick={handleSignOut}
               className='text-neutral-400 hover:text-white text-sm font-medium px-3 py-1.5 rounded-md hover:bg-neutral-800 transition-colors'

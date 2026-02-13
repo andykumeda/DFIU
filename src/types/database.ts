@@ -15,18 +15,30 @@ export interface Database {
                     email: string | null
                     name: string | null
                     created_at: string
+                    units_distance: 'miles' | 'kilometers'
+                    units_elevation: 'feet' | 'meters'
+                    clock_24h: boolean
+                    display_name: string | null
                 }
                 Insert: {
                     id: string
                     email?: string | null
                     name?: string | null
                     created_at?: string
+                    units_distance?: 'miles' | 'kilometers'
+                    units_elevation?: 'feet' | 'meters'
+                    clock_24h?: boolean
+                    display_name?: string | null
                 }
                 Update: {
                     id?: string
                     email?: string | null
                     name?: string | null
                     created_at?: string
+                    units_distance?: 'miles' | 'kilometers'
+                    units_elevation?: 'feet' | 'meters'
+                    clock_24h?: boolean
+                    display_name?: string | null
                 }
             }
             races: {
@@ -204,6 +216,7 @@ export interface Database {
                     pacer_allowed: boolean
                     notes: string | null
                     order_index: number
+                    delay: number | null
                     created_at: string
                 }
                 Insert: {
@@ -220,6 +233,7 @@ export interface Database {
                     pacer_allowed?: boolean
                     notes?: string | null
                     order_index: number
+                    delay?: number | null
                     created_at?: string
                 }
                 Update: {
@@ -236,6 +250,7 @@ export interface Database {
                     pacer_allowed?: boolean
                     notes?: string | null
                     order_index?: number
+                    delay?: number | null
                     created_at?: string
                 }
             }

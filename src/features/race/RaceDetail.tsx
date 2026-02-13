@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { Race, Course, Waypoint, TerrainNode } from '@/types/database'
-import { Calendar, MapPin, Globe, ArrowUpRight, CloudSun, Trophy, RefreshCw } from 'lucide-react'
+import { Calendar, MapPin, Globe, ArrowUpRight, CloudSun, Trophy, RefreshCw, Settings } from 'lucide-react'
 import { CourseMap } from '@/features/course/CourseMap'
 import { ElevationProfile } from '@/features/course/ElevationProfile'
 import { GpxUploader } from '@/features/course/GpxUploader'
@@ -70,6 +70,19 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       autoFetch()
     }
   }, [race?.location, race?.start_datetime, race?.avg_temp_high, raceId, fetchingWeather, queryClient])
+
+  const { data: profile } = useQuery({
+    queryKey: ['profile'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return null
+      const { data, error } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+      if (error) throw error
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return data as any
+    }
+  })
+  const clock24h = profile?.clock_24h ?? false
 
   const { data: course } = useQuery({
     queryKey: ['course', raceId],
@@ -392,30 +405,51 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       {/* Header */}
       <header className='border-b border-neutral-800 bg-neutral-950/50 backdrop-blur-sm sticky top-0 z-[100]'>
         <div className='max-w-7xl mx-auto px-4 py-4 flex justify-between items-center'>
-          <div className='flex items-center gap-4'>
+          <div className='flex items-center gap-6'>
             <Link to='/dashboard' className='flex items-center hover:opacity-80 transition-opacity cursor-pointer pointer-events-auto relative z-[999]'>
               <img src="/logo.png" alt="DFIU Logo" className="h-16 w-16 object-contain drop-shadow-md relative z-10" />
               <span className="font-black italic tracking-tighter text-3xl uppercase bg-gradient-to-br from-orange-400 to-orange-600 bg-clip-text text-transparent pr-1 -ml-2 relative z-0">DFIU</span>
             </Link>
-            <div>
+
+            <div className="flex flex-col gap-1">
               <div className='flex items-center gap-2'>
                 <h1 className='text-xl font-bold text-white'>{race.name}</h1>
                 <button onClick={() => setShowEditModal(true)} className='text-neutral-400 hover:text-white'>
                   ✎
                 </button>
               </div>
-              {race.location && <p className='text-sm text-neutral-500'>{race.location}</p>}
-            </div>
-          </div>
-          <div className='text-right'>
-            {race.start_datetime && (
-              <div className='text-white font-medium'>
-                {formatDate(race.start_datetime, 'EEEE, MMMM d, yyyy')}
+              <div className="flex items-center gap-3 text-sm">
+                {race.start_datetime && (
+                  <div className='text-neutral-400 font-medium flex items-center gap-1'>
+                    <Calendar className="w-3.5 h-3.5" />
+                    {formatDate(race.start_datetime, 'MMM d, yyyy')}
+                  </div>
+                )}
+                {race.distance_miles && (
+                  <div className='text-blue-500 font-medium'>
+                    {race.distance_miles.toFixed(1)} mi
+                  </div>
+                )}
               </div>
-            )}
-            {race.distance_miles && (
-              <div className='text-sm text-blue-500'>{race.distance_miles.toFixed(2)} miles</div>
-            )}
+            </div>
+
+          </div>
+          <div className='flex items-center gap-4'>
+            <Link to="/settings" className="flex items-center gap-3 hover:bg-neutral-900 rounded-lg p-2 transition-colors group">
+              <div className="text-right hidden sm:block">
+                <div className="text-sm font-medium text-white group-hover:text-orange-500 transition-colors">
+                  {profile?.name || 'User'}
+                </div>
+              </div>
+              {profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt="Profile" className="w-9 h-9 rounded-full border border-neutral-700 object-cover" />
+              ) : (
+                <div className="w-9 h-9 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center text-xs font-bold text-neutral-400 group-hover:border-orange-500/50 transition-colors">
+                  {(profile?.name?.[0] || '?').toUpperCase()}
+                </div>
+              )}
+              <Settings className="w-5 h-5 text-neutral-500 group-hover:text-white transition-colors" />
+            </Link>
           </div>
         </div>
       </header>
@@ -455,6 +489,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
           lon={editingWaypoint.lon}
           mile={editingWaypoint.mile}
           raceDate={race.start_datetime}
+          timeZone={race.timezone || undefined}
           onClose={() => setEditingWaypoint(null)}
           onSave={handleSaveWaypoint}
           onDelete={handleDeleteWaypoint}
@@ -697,6 +732,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                 course={course}
                 waypoints={waypoints}
                 terrainNodes={terrainNodes}
+                clock24h={clock24h}
               />
             ) : (
               <div className="p-12 text-center text-neutral-500">
@@ -732,6 +768,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                     <span>
                       {race?.start_datetime ? formatDate(race.start_datetime, 'EEEE, MMMM do, yyyy') : 'Date TBD'}
                       {race?.start_datetime && ` at ${formatDate(race.start_datetime, 'h:mm a')}`}
+                      {race?.timezone && <span className="ml-2 text-neutral-500 font-normal">({race.timezone.replace('_', ' ')})</span>}
                     </span>
                   </div>
                   {race?.location && (
