@@ -30,6 +30,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   const [editingTerrainNode, setEditingTerrainNode] = useState<Partial<TerrainNode> | null>(null)
 
   const [hoveredMile, setHoveredMile] = useState<number | null>(null)
+  const [hoveredWaypointId, setHoveredWaypointId] = useState<string | null>(null) // New state for hover highlight
   const [showMileMarkers, setShowMileMarkers] = useState(true)
   const [fetchingWeather, setFetchingWeather] = useState(false)
   const [isReimporting, setIsReimporting] = useState(false)
@@ -87,7 +88,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
         .from('waypoints')
         .select('*')
         .eq('course_id', course!.id)
-        .order('order_index', { ascending: true })
+        .order('mile', { ascending: true }) // Changed from order_index to mile
       if (error) throw error
       return data as Waypoint[]
     }
@@ -518,6 +519,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                         return null
                       })() : null}
 
+                      highlightedWaypointId={hoveredWaypointId} // Pass prop
                       terrainNodes={terrainNodes}
                       onTerrainNodeClick={(id) => {
                         const node = terrainNodes.find(n => n.id === id)
@@ -591,7 +593,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
                   <div className='p-4'>
                     <div className='flex items-center justify-between mb-4'>
-                      <h3 className='text-sm font-semibold text-neutral-400 uppercase tracking-wider'>Waypoints</h3>
+                      <h3 className='text-sm font-semibold text-neutral-400 uppercase tracking-wider'>Aid Stations</h3>
                       <div className="flex items-center gap-2">
                         <span className='text-xs bg-neutral-800 text-neutral-400 px-2 py-1 rounded-full'>{waypoints.length}</span>
                         <button
@@ -607,32 +609,28 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                       {waypoints.map((wp) => (
                         <div
                           key={wp.id}
-                          className='p-3 bg-neutral-800/50 hover:bg-neutral-800 rounded-lg cursor-pointer transition-colors group'
+                          className={`p-3 bg-neutral-800/50 hover:bg-neutral-800 rounded-lg cursor-pointer transition-colors group ${hoveredWaypointId === wp.id ? 'ring-1 ring-blue-500 bg-neutral-800' : ''}`}
                           onClick={() => setEditingWaypoint(wp)}
+                          onMouseEnter={() => setHoveredWaypointId(wp.id)}
+                          onMouseLeave={() => setHoveredWaypointId(null)}
                         >
                           <div className='flex items-start justify-between'>
                             <div className='flex items-center gap-2'>
-                              <span className='text-blue-500 font-mono text-sm w-8 text-right'>{wp.mile.toFixed(2)}</span>
+                              <span className='text-blue-500 font-mono text-sm w-10 text-right'>{wp.mile.toFixed(1)}</span>
                               <span className='font-medium text-white'>{wp.name}</span>
                             </div>
-                            <span className='text-xs text-neutral-600 group-hover:text-neutral-500'>{wp.type}</span>
-                          </div>
-                          {wp.cutoff_time && (
-                            <div className='mt-1 ml-10 text-xs text-orange-400 font-mono'>
-                              Cutoff: {(() => {
-                                try {
-                                  return new Intl.DateTimeFormat('en-US', {
-                                    hour: 'numeric',
-                                    minute: '2-digit',
-                                    timeZone: race?.timezone || undefined,
-                                    timeZoneName: 'short'
-                                  }).format(new Date(wp.cutoff_time))
-                                } catch {
-                                  return formatDate(wp.cutoff_time, 'p')
-                                }
-                              })()}
+                            {/* Icons for associated items */}
+                            <div className="flex gap-1">
+                              {wp.crew_allowed && <span title="Crew Allowed">👥</span>}
+                              {wp.pacer_allowed && <span title="Pacer Allowed">🏃</span>}
+                              {wp.has_drop_bag && <span title="Drop Bag">🎒</span>}
                             </div>
-                          )}
+                          </div>
+                          {/* Cutoff removed */}
+                          <div className='flex justify-between items-center mt-1 ml-12 text-xs text-neutral-500'>
+                            <span className='capitalize'>{wp.type.replace('_', ' ')}</span>
+
+                          </div>
                         </div>
                       ))}
                       {waypoints.length === 0 && (
@@ -752,10 +750,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
               </div>
 
               <div className="flex flex-wrap gap-4 mt-8">
-                <div className="bg-neutral-800/50 px-4 py-2 rounded-lg border border-neutral-700 text-sm text-neutral-300">
-                  <span className="text-neutral-500 uppercase text-xs font-bold mr-2">Terrain</span>
-                  <span className="capitalize">{race?.terrain_type || 'trail'}</span>
-                </div>
+
                 {race?.website_url && (
                   <a href={race.website_url} target="_blank" rel="noopener noreferrer" className="bg-neutral-800 hover:bg-neutral-700 text-white px-6 py-2.5 rounded-lg font-semibold transition-all flex items-center gap-2 border border-neutral-700">
                     <Globe className="w-4 h-4" /> Website
@@ -878,6 +873,10 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                   <div className="flex justify-between items-center py-2 border-b border-neutral-800">
                     <span className="text-neutral-400">Course Type</span>
                     <span className="text-white">{race?.course_type || '--'}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-neutral-800">
+                    <span className="text-neutral-400">Terrain</span>
+                    <span className="text-white capitalize">{race?.terrain_type || 'trail'}</span>
                   </div>
                   {race?.qualifies_for && (
                     <div className="py-2">

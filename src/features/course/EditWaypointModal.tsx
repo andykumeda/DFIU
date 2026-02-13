@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Waypoint } from '@/types/database'
+import { format } from 'date-fns'
 import styles from '../race/EditRaceModal.module.css' // Reuse consistent styles
 
 interface EditWaypointModalProps {
@@ -29,7 +30,7 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, raceDate, onClose,
         name: waypoint?.name || '',
         type: waypoint?.type || 'aid_station',
         // Default to race start date if no cutoff exists
-        cutoff_time: waypoint?.cutoff_time || (raceDate ? new Date(raceDate).toISOString().slice(0, 10) + 'T00:00' : ''),
+        cutoff_time: waypoint?.cutoff_time || (raceDate ? format(new Date(raceDate), 'yyyy-MM-dd') + 'T00:00' : ''),
         has_drop_bag: waypoint?.has_drop_bag || false,
         crew_allowed: waypoint?.crew_allowed || false,
         pacer_allowed: waypoint?.pacer_allowed || false,
@@ -43,7 +44,7 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, raceDate, onClose,
                 ...prev,
                 name: waypoint.name || '',
                 type: waypoint.type || 'aid_station',
-                cutoff_time: waypoint.cutoff_time || (raceDate && !waypoint.cutoff_time ? new Date(raceDate).toISOString().slice(0, 10) + 'T00:00' : prev.cutoff_time),
+                cutoff_time: waypoint.cutoff_time || (raceDate && !waypoint.cutoff_time ? format(new Date(raceDate), 'yyyy-MM-dd') + 'T00:00' : prev.cutoff_time),
                 has_drop_bag: waypoint.has_drop_bag || false,
                 crew_allowed: waypoint.crew_allowed || false,
                 pacer_allowed: waypoint.pacer_allowed || false,

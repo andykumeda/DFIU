@@ -48,6 +48,7 @@ interface CourseMapProps {
     onToggleMileMarkers?: () => void
     highlightElevation?: number | null
     totalDistance?: number
+    highlightedWaypointId?: string | null // New prop
 }
 
 export function CourseMap({
@@ -65,7 +66,8 @@ export function CourseMap({
     showMileMarkers = false,
     onToggleMileMarkers,
     highlightElevation,
-    totalDistance
+    totalDistance,
+    highlightedWaypointId
 }: CourseMapProps) {
     const mapContainer = useRef<HTMLDivElement>(null)
     const map = useRef<mapboxgl.Map | null>(null)
@@ -312,6 +314,7 @@ export function CourseMap({
             // Container for marker + badges
             const container = document.createElement('div')
             container.className = styles.markerContainer
+            container.dataset.id = wp.id // Store ID for highlighting logic
             // Force absolute position and explicit dimensions
             container.style.position = 'absolute'
             container.style.top = '0'
@@ -503,6 +506,21 @@ export function CourseMap({
             terrainMarkers.forEach(m => m.remove())
         }
     }, [waypoints, mapLoaded, onWaypointClick, coordinates, terrainNodes, onTerrainNodeClick]) // Re-run if waypoints/terrain change
+
+    // Handle Waypoint Highlighting independent of marker recreation
+    useEffect(() => {
+        if (!mapLoaded) return
+
+        markersRef.current.forEach(marker => {
+            const el = marker.getElement()
+            const id = el.dataset.id
+            if (id === highlightedWaypointId) {
+                el.classList.add(styles.highlighted)
+            } else {
+                el.classList.remove(styles.highlighted)
+            }
+        })
+    }, [highlightedWaypointId, mapLoaded])
 
     // Map Hover & Sync Logic
     useEffect(() => {

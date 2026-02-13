@@ -245,3 +245,15 @@
 :global(.mapboxgl-ctrl-icon) {
     filter: invert(1);
 }
+
+.highlighted {
+    z-index: 50 !important;
+}
+
+.highlighted .marker {
+    transform: scale(1.5) !important;
+    border-color: #fbbf24 !important;
+    border-width: 3px !important;
+    box-shadow: 0 0 15px rgba(251, 191, 36, 0.5) !important;
+    transition: all 0.2s ease;
+}
