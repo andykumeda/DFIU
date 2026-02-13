@@ -110,53 +110,37 @@ export const getDistanceAtCoordinate = (
 
 /**
  * Find the nearest point on a polyline to a given point
+ * Uses turf's nearestPointOnLine for accurate geodesic projection
  * Returns the nearest point coordinates, the index of the segment start, and the distance to the point
  */
 export function getNearestPointOnLine(
-    point: { lat: number; lon: number },
+    pt: { lat: number; lon: number },
     line: [number, number][] // [lon, lat] pairs
 ): { lat: number; lon: number, distance: number, index: number } | null {
     if (!line || line.length < 2) return null;
 
-    let minDistance = Infinity;
-    let nearestPoint = { lat: 0, lon: 0 };
-    let nearestIndex = 0;
+    try {
+        const lineFeature = {
+            type: 'Feature' as const,
+            properties: {},
+            geometry: {
+                type: 'LineString' as const,
+                coordinates: line
+            }
+        };
 
-    for (let i = 0; i < line.length - 1; i++) {
-        const p1 = { lon: line[i][0], lat: line[i][1] };
-        const p2 = { lon: line[i + 1][0], lat: line[i + 1][1] };
+        const p = point([pt.lon, pt.lat]);
+        const snapped = nearestPointOnLine(lineFeature, p, { units: 'miles' });
 
-        // Project point onto line segment p1-p2
-        // We use a simplified flat-earth approximation for projection factor t which is sufficient for short segments
-        const dx = p2.lon - p1.lon;
-        const dy = p2.lat - p1.lat;
+        const [lon, lat] = snapped.geometry.coordinates;
+        const dist = snapped.properties?.dist ?? Infinity;
+        const index = snapped.properties?.index ?? 0;
 
-        // Let P be the point, A=p1, B=p2. 
-        // We want to find t such that A + t(B-A) is the projection of P onto AB
-        // t = Dot(P-A, B-A) / |B-A|^2
-
-        const lenSq = dx * dx + dy * dy
-        let t = 0
-
-        if (lenSq > 0) {
-            t = ((point.lon - p1.lon) * dx + (point.lat - p1.lat) * dy) / lenSq
-            // Clamping t to segment [0, 1]
-            t = Math.max(0, Math.min(1, t))
-        }
-
-        const projectedLon = p1.lon + t * dx;
-        const projectedLat = p1.lat + t * dy;
-
-        const dist = getDistance(point.lat, point.lon, projectedLat, projectedLon);
-
-        if (dist < minDistance) {
-            minDistance = dist;
-            nearestPoint = { lat: projectedLat, lon: projectedLon };
-            nearestIndex = i;
-        }
+        return { lat, lon, distance: dist, index };
+    } catch (e) {
+        console.error('getNearestPointOnLine error:', e);
+        return null;
     }
-
-    return { ...nearestPoint, distance: minDistance, index: nearestIndex };
 }
 
 /**

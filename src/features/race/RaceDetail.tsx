@@ -145,10 +145,33 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   const handleSaveWaypoint = async (data: Partial<Waypoint>) => {
     try {
       if (data.id) {
+        // Recalculate lat/lon if mile was changed
+        let lat = data.lat
+        let lon = data.lon
+        const existingWp = waypoints.find(w => w.id === data.id)
+        if (existingWp && data.mile !== undefined && data.mile !== existingWp.mile && course?.geometry) {
+          const { getCoordinateAtDistance, getNearestPointOnLine } = await import('@/lib/geo-utils')
+          const coords = (course.geometry as { coordinates: [number, number][] }).coordinates
+          const coord = getCoordinateAtDistance(course.geometry as any, data.mile * 1609.34)
+          if (coord) {
+            const snapped = getNearestPointOnLine({ lat: coord[1], lon: coord[0] }, coords)
+            if (snapped) {
+              lon = snapped.lon
+              lat = snapped.lat
+            } else {
+              lon = coord[0]
+              lat = coord[1]
+            }
+          }
+        }
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { error } = await (supabase.from('waypoints') as any).update({
           name: data.name,
           type: data.type,
+          mile: data.mile,
+          lat: lat ?? data.lat,
+          lon: lon ?? data.lon,
           cutoff_time: data.cutoff_time || null,
           has_drop_bag: data.has_drop_bag,
           crew_allowed: data.crew_allowed,
@@ -159,25 +182,25 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       } else {
         const maxOrder = Math.max(...waypoints.map(w => w.order_index), 0)
 
-        // If lat/lon are missing but we have mile, calculate them
+        // If we have a mile, calculate lat/lon from the course geometry
         let lat = data.lat
         let lon = data.lon
 
-        if ((!lat || !lon) && data.mile !== undefined && course?.geometry) {
-          const { getCoordinateAtDistance } = await import('@/lib/geo-utils')
-          // Construct GeoJSON from course geometry for the util
-          const geoJson = {
-            type: 'FeatureCollection',
-            features: [{
-              type: 'Feature',
-              geometry: course.geometry
-            }]
-          } as any
-
-          const coord = getCoordinateAtDistance(geoJson, data.mile * 1609.34)
+        if (data.mile !== undefined && course?.geometry) {
+          const { getCoordinateAtDistance, getNearestPointOnLine } = await import('@/lib/geo-utils')
+          const coords = (course.geometry as { coordinates: [number, number][] }).coordinates
+          // Use turf/along to get approximate position at target mile
+          const coord = getCoordinateAtDistance(course.geometry as any, data.mile * 1609.34)
           if (coord) {
-            lon = coord[0]
-            lat = coord[1]
+            // Snap to nearest point on the actual route line for exact positioning
+            const snapped = getNearestPointOnLine({ lat: coord[1], lon: coord[0] }, coords)
+            if (snapped) {
+              lon = snapped.lon
+              lat = snapped.lat
+            } else {
+              lon = coord[0]
+              lat = coord[1]
+            }
           } else {
             throw new Error(`Could not calculate location for mile ${data.mile}. Ensure it is within the course distance.`)
           }
@@ -390,7 +413,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
               </div>
             )}
             {race.distance_miles && (
-              <div className='text-sm text-blue-500'>{race.distance_miles} miles</div>
+              <div className='text-sm text-blue-500'>{race.distance_miles.toFixed(2)} miles</div>
             )}
           </div>
         </div>
@@ -455,12 +478,12 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       {/* Content */}
       <main className='flex-1 relative'>
         {activeTab === 'map' && (
-          <div className='absolute inset-0 flex flex-col md:flex-row' style={{ height: 'calc(100vh - 130px)' }}>
+          <div className='flex flex-col md:flex-row relative md:absolute md:inset-0 md:h-[calc(100vh-130px)]'>
             {coordinates.length > 0 ? (
               <>
                 {/* Left Column: Map + Elevation */}
                 <div className='flex-1 flex flex-col min-w-0 relative'>
-                  <div className='flex-1 relative overflow-hidden'>
+                  <div className='relative overflow-hidden h-[50vh] md:h-auto md:flex-1'>
                     <CourseMap
                       coordinates={coordinates}
                       waypoints={waypoints.map(wp => ({
@@ -521,7 +544,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                     {course && (
                       <div className='grid grid-cols-2 gap-4'>
                         <div>
-                          <div className='text-2xl font-bold text-white'>{(course.total_distance_miles ?? 0).toFixed(1)}</div>
+                          <div className='text-2xl font-bold text-white'>{(course.total_distance_miles ?? 0).toFixed(2)}</div>
                           <div className='text-xs text-neutral-500'>Miles</div>
                         </div>
                         <div>
@@ -642,7 +665,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                                 onClick={() => setEditingTerrainNode(node)}
                               >
                                 <div>
-                                  <span className="text-neutral-500">{startMile.toFixed(1)} - {node.mile.toFixed(1)}m: </span>
+                                  <span className="text-neutral-500">{startMile.toFixed(2)} - {node.mile.toFixed(2)}m: </span>
                                   <span className="text-white font-medium capitalize">{node.type.replace('_', ' ')}</span>
                                 </div>
                                 <span className="bg-neutral-900 px-1.5 py-0.5 rounded text-neutral-500 group-hover:text-white border border-neutral-800">
@@ -726,20 +749,26 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                   )}
                 </div>
 
-                <div className="flex gap-4 mt-8">
-                  {race?.website_url && (
-                    <a href={race.website_url} target="_blank" rel="noopener noreferrer" className="bg-neutral-800 hover:bg-neutral-700 text-white px-6 py-2.5 rounded-lg font-semibold transition-all flex items-center gap-2 border border-neutral-700">
-                      <Globe className="w-4 h-4" /> Website
-                    </a>
-                  )}
-                  {race?.registration_url && (
-                    <a href={race.registration_url} target="_blank" rel="noopener noreferrer" className="bg-orange-600 hover:bg-orange-500 text-white px-6 py-2.5 rounded-lg font-semibold transition-all shadow-lg shadow-orange-900/20 flex items-center gap-2">
-                      Register Now <ArrowUpRight className="w-4 h-4" />
-                    </a>
-                  )}
+              </div>
+
+              <div className="flex flex-wrap gap-4 mt-8">
+                <div className="bg-neutral-800/50 px-4 py-2 rounded-lg border border-neutral-700 text-sm text-neutral-300">
+                  <span className="text-neutral-500 uppercase text-xs font-bold mr-2">Terrain</span>
+                  <span className="capitalize">{race?.terrain_type || 'trail'}</span>
                 </div>
+                {race?.website_url && (
+                  <a href={race.website_url} target="_blank" rel="noopener noreferrer" className="bg-neutral-800 hover:bg-neutral-700 text-white px-6 py-2.5 rounded-lg font-semibold transition-all flex items-center gap-2 border border-neutral-700">
+                    <Globe className="w-4 h-4" /> Website
+                  </a>
+                )}
+                {race?.registration_url && (
+                  <a href={race.registration_url} target="_blank" rel="noopener noreferrer" className="bg-orange-600 hover:bg-orange-500 text-white px-6 py-2.5 rounded-lg font-semibold transition-all shadow-lg shadow-orange-900/20 flex items-center gap-2">
+                    Register Now <ArrowUpRight className="w-4 h-4" />
+                  </a>
+                )}
               </div>
             </div>
+
 
             {/* Weather & Conditions */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -887,9 +916,10 @@ export function RaceDetail({ raceId }: { raceId: string }) {
               </div>
             )}
           </div>
-        )}
+        )
+        }
 
-      </main>
+      </main >
 
       {editingTerrainNode && (
         <EditTerrainModal
@@ -901,6 +931,6 @@ export function RaceDetail({ raceId }: { raceId: string }) {
           }}
         />
       )}
-    </div>
+    </div >
   )
 }

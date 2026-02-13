@@ -34,7 +34,7 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, raceDate, onClose,
         crew_allowed: waypoint?.crew_allowed || false,
         pacer_allowed: waypoint?.pacer_allowed || false,
         notes: waypoint?.notes || '',
-        mile: mile ?? waypoint?.mile ?? 0
+        mile: (mile ?? waypoint?.mile ?? 0).toFixed(2)
     })
 
     useEffect(() => {
@@ -48,7 +48,7 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, raceDate, onClose,
                 crew_allowed: waypoint.crew_allowed || false,
                 pacer_allowed: waypoint.pacer_allowed || false,
                 notes: waypoint.notes || '',
-                mile: waypoint.mile ?? 0
+                mile: (waypoint.mile ?? 0).toFixed(2)
             }))
         }
     }, [waypoint, raceDate])
@@ -118,16 +118,8 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, raceDate, onClose,
                             <input
                                 type="number"
                                 step="0.01"
-                                // If it's a new waypoint (no ID), allow editing. Otherwise disabled.
-                                // Actually, user might want to adjust mile of existing waypoint manually too? 
-                                // The requirement said "enter mileage or to click on route". 
-                                // Let's allow editing for all, but for existing ones it might jump the pin?
-                                // "drag the waypoint to adjust location" is another requirement. 
-                                // Let's allow editing for new waypoints for sure.
-                                disabled={!!waypoint?.id}
                                 value={formData.mile}
                                 onChange={e => setFormData({ ...formData, mile: e.target.value })}
-                                style={{ background: waypoint?.id ? '#f5f5f5' : 'white' }}
                             />
                         </div>
                         <div className={styles.field} style={{ flex: 1 }}>

@@ -14,7 +14,10 @@
 }
 
 .markerContainer {
-    position: relative;
+    position: absolute;
+    top: 0;
+    left: 0;
+    will-change: transform;
     width: 24px;
     height: 24px;
     cursor: pointer;
@@ -23,6 +26,9 @@
 
 .markerContainer:hover {
     z-index: 20;
+}
+
+.markerContainer:hover .marker {
     transform: scale(1.1);
 }
 
@@ -37,6 +43,7 @@
     justify-content: center;
     font-size: 14px;
     background-color: #2563eb;
+    transition: transform 0.2s ease;
     /* default */
 }
 

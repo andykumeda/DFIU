@@ -219,6 +219,7 @@ export function CourseMap({
                 const el = document.createElement('div')
                 el.className = 'mile-marker'
                 el.style.cssText = `
+                    position: absolute; top: 0; left: 0;
                     width: 20px; height: 20px; border-radius: 50%;
                     background: rgba(255,255,255,0.9); color: #111;
                     font-size: 8px; font-weight: 700; font-family: monospace;
@@ -311,6 +312,15 @@ export function CourseMap({
             // Container for marker + badges
             const container = document.createElement('div')
             container.className = styles.markerContainer
+            // Force absolute position and explicit dimensions
+            container.style.position = 'absolute'
+            container.style.top = '0'
+            container.style.left = '0'
+            container.style.width = '24px'
+            container.style.height = '24px'
+            container.style.display = 'flex'
+            container.style.justifyContent = 'center'
+            container.style.alignItems = 'center'
 
             const el = document.createElement('div')
             el.className = styles.marker
@@ -357,7 +367,9 @@ export function CourseMap({
 
             const marker = new mapboxgl.Marker({
                 element: container,
-                draggable: true // Enable dragging
+                draggable: true,
+                anchor: 'center',
+                offset: [0, 0]
             })
                 .setLngLat([wp.lon, wp.lat]) // Fixed: used container instead of el
                 .addTo(map.current!)
@@ -411,6 +423,14 @@ export function CourseMap({
             if (!hasStart) {
                 const container = document.createElement('div')
                 container.className = styles.markerContainer
+                container.style.position = 'absolute'
+                container.style.top = '0'
+                container.style.left = '0'
+                container.style.width = '24px'
+                container.style.height = '24px'
+                container.style.display = 'flex'
+                container.style.justifyContent = 'center'
+                container.style.alignItems = 'center'
 
                 const el = document.createElement('div')
                 el.className = styles.marker
@@ -420,15 +440,23 @@ export function CourseMap({
 
                 container.appendChild(el)
 
-                const marker = new mapboxgl.Marker({ element: container })
+                const marker = new mapboxgl.Marker({ element: container, anchor: 'center', offset: [0, 0] })
                     .setLngLat(startCoord as [number, number])
-                    .addTo(map.current!) // Non-null assertion
+                    .addTo(map.current!)
                 markersRef.current.push(marker)
             }
 
             if (!hasFinish) {
                 const container = document.createElement('div')
                 container.className = styles.markerContainer
+                container.style.position = 'absolute'
+                container.style.top = '0'
+                container.style.left = '0'
+                container.style.width = '24px'
+                container.style.height = '24px'
+                container.style.display = 'flex'
+                container.style.justifyContent = 'center'
+                container.style.alignItems = 'center'
 
                 const el = document.createElement('div')
                 el.className = styles.marker
@@ -438,9 +466,9 @@ export function CourseMap({
 
                 container.appendChild(el)
 
-                const marker = new mapboxgl.Marker({ element: container })
+                const marker = new mapboxgl.Marker({ element: container, anchor: 'center', offset: [0, 0] })
                     .setLngLat(endCoord as [number, number])
-                    .addTo(map.current!) // Non-null assertion
+                    .addTo(map.current!)
                 markersRef.current.push(marker)
             }
         }
@@ -658,7 +686,7 @@ export function CourseMap({
         return () => { map.current?.off('click', clickHandler) }
     }, [mapLoaded, onMapClick])
     return (
-        <div className={`${styles.container} ${className || ''}`} style={{ position: 'relative', width: '100%', height: '100%', minHeight: '500px' }}>
+        <div className={`${styles.container} ${className || ''}`} style={{ position: 'relative', width: '100%', height: '100%', minHeight: '300px' }}>
             {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             < MapStyleSwitcher currentStyle={mapStyle as any} onStyleChange={handleStyleChange as any} />
 
@@ -733,13 +761,13 @@ export function CourseMap({
             <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-black/70 backdrop-blur-sm px-4 py-1.5 rounded-full shadow-sm border border-neutral-700 text-xs font-mono text-neutral-300 z-10 pointer-events-none tabular-nums">
                 {highlightMile !== undefined && highlightMile !== null ? (
                     <>
-                        Mile {highlightMile.toFixed(1)}
+                        Mile {highlightMile.toFixed(2)}
                         {highlightElevation !== undefined && highlightElevation !== null && (
                             <> | {Math.round(highlightElevation).toLocaleString()} ft</>
                         )}
                     </>
                 ) : (
-                    <>{totalDistance ? `${totalDistance.toFixed(1)} miles` : `${viewState.lat.toFixed(4)}, ${viewState.lng.toFixed(4)}`}</>
+                    <>{totalDistance ? `${totalDistance.toFixed(2)} miles` : `${viewState.lat.toFixed(4)}, ${viewState.lng.toFixed(4)}`}</>
                 )}
             </div>
         </div >

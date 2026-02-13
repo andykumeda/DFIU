@@ -67,6 +67,7 @@ export interface Database {
                     lodging_info: string | null
                     packet_pickup_datetime: string | null
                     briefing_datetime: string | null
+                    terrain_type: string | null
                 }
                 Insert: {
                     id?: string
@@ -103,6 +104,9 @@ export interface Database {
                     entrants_url?: string | null
                     tracking_url?: string | null
                     lodging_info?: string | null
+                    packet_pickup_datetime?: string | null
+                    briefing_datetime?: string | null
+                    terrain_type?: string | null
                 }
                 Update: {
                     id?: string
@@ -139,6 +143,9 @@ export interface Database {
                     entrants_url?: string | null
                     tracking_url?: string | null
                     lodging_info?: string | null
+                    packet_pickup_datetime?: string | null
+                    briefing_datetime?: string | null
+                    terrain_type?: string | null
                 }
             }
             courses: {

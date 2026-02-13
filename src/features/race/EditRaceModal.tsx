@@ -32,7 +32,8 @@ export function EditRaceModal({ race, onClose, onUpdate, onDelete }: EditRaceMod
         course_record_male: race.course_record_male || '',
         course_record_female: race.course_record_female || '',
         qualifies_for: race.qualifies_for || '',
-        course_type: race.course_type || ''
+        course_type: race.course_type || '',
+        terrain_type: race.terrain_type || 'trail'
     })
 
 
@@ -63,7 +64,8 @@ export function EditRaceModal({ race, onClose, onUpdate, onDelete }: EditRaceMod
                     course_record_male: formData.course_record_male || null,
                     course_record_female: formData.course_record_female || null,
                     qualifies_for: formData.qualifies_for || null,
-                    course_type: formData.course_type || null
+                    course_type: formData.course_type || null,
+                    terrain_type: formData.terrain_type || 'trail'
                 })
                 .eq('id', race.id)
                 .select()
@@ -143,6 +145,20 @@ export function EditRaceModal({ race, onClose, onUpdate, onDelete }: EditRaceMod
 
                     <div className={styles.sectionHeader}>Race Stats</div>
                     <div className={styles.row}>
+                        <div className={styles.field}>
+                            <label>Terrain Type</label>
+                            <select
+                                value={formData.terrain_type}
+                                onChange={e => setFormData({ ...formData, terrain_type: e.target.value })}
+                                style={{ padding: '0.5rem', borderRadius: '4px', background: '#333', color: 'white', border: '1px solid #444' }}
+                            >
+                                <option value="trail">Trail</option>
+                                <option value="road">Road</option>
+                                <option value="mixed">Mixed</option>
+                                <option value="track">Track</option>
+                                <option value="gravel">Gravel</option>
+                            </select>
+                        </div>
                         <div className={styles.field}>
                             <label>Course Type</label>
                             <input

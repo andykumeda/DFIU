@@ -252,7 +252,7 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes }: PaceCa
                                             return (
                                                 <tr key={arrival.waypointId} className="hover:bg-neutral-800/50 transition-colors">
                                                     <td className="px-6 py-4 font-mono text-neutral-300">
-                                                        {wp.mile.toFixed(1)}
+                                                        {wp.mile.toFixed(2)}
                                                     </td>
                                                     <td className="px-6 py-4">
                                                         <div className="font-medium text-white">{wp.name}</div>

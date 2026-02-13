@@ -1,6 +1,6 @@
 # Handoff Document
 
-**Date:** 2026-02-11
+**Date:** 2026-02-12
 **Status:** Stable / Production Deployed
 **Last Deployed Commit:** (Check `git log`)
 
@@ -42,6 +42,12 @@
     *   **Waypoint Save Fix**: Fixed `cutoff_time` empty string issue causing database errors (coerced to `null`). Added `NaN` guard on `mile` field.
     *   **Race Resources Update**: Added `packet_pickup_datetime` and `briefing_datetime` fields. Updated `RaceResources` component to support date/time selection for these items.
     *   **Cleanup**: Removed unused dev dependencies (`autoprefixer`, `postcss`). Fixed lint errors/type safety issues in `geo-utils.ts` and `RaceResources.tsx`.
+
+6.  **Mileage, Mobile Map & Terrain (2026-02-12):**
+    *   **Mileage Precision**: Updated all mileage displays (Map, Detail, Pace Calculator) to use exactly **2 decimal places** (e.g., `12.50`).
+    *   **Mobile Map Layout**: Fixed the full-screen map issue on mobile. The map now takes up 60% of the viewport height on mobile, allowing scrolling to see content below. FOLLOW-UP: Increased mobile map height to 50vh for better visibility.
+    *   **Terrain Type**: Added `terrain_type` field to races (Default: Trail). Added input in Edit Modal and display in Race Overview.
+    *   **Fixes**: Resolved issue where Edit Waypoint modal showed unformatted mileage. Mileage now defaults to 2 decimal places.
 
 5.  **Code Cleanup:**
     *   Removed unused variables in `utils.ts` and `CourseMap.tsx`.
