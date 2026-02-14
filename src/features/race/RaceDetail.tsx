@@ -427,13 +427,35 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       <header className='border-b border-neutral-800 bg-neutral-950/50 backdrop-blur-sm sticky top-0 z-[100]'>
         <div className='max-w-7xl mx-auto px-4 py-4 flex justify-between items-center'>
           <div className='flex items-center gap-2 sm:gap-4'>
-            <Link to='/dashboard' className='flex items-center hover:opacity-80 transition-opacity cursor-pointer pointer-events-auto relative z-[999] gap-0'>
-              <img src="/logo.png" alt="DFIU Logo" className="h-20 w-auto object-contain drop-shadow-md relative z-10" />
-              <div className="flex flex-col justify-center items-start">
+            <Link to='/dashboard' className='flex items-center hover:opacity-80 transition-opacity cursor-pointer pointer-events-auto relative z-[999] -space-x-2'>
+              <img src="/logo.png" alt="DFIU Logo" className="h-16 sm:h-[4.5rem] w-auto object-contain drop-shadow-md relative z-10" />
+              <div className="hidden sm:flex flex-col justify-center items-start">
                 <span className="font-black italic tracking-tighter text-6xl uppercase bg-gradient-to-br from-orange-400 to-orange-600 bg-clip-text text-transparent pr-1 relative z-0 leading-[0.8]">DFIU</span>
                 <span className="text-neutral-400 text-[10px] font-bold tracking-[0.15em] uppercase opacity-70 -ml-0.5">Don't F* It Up!</span>
               </div>
             </Link>
+
+            <div className="flex sm:hidden flex-col gap-1">
+              <div className='flex items-center gap-2'>
+                <h1 className='text-lg font-bold text-white'>{race.name}</h1>
+                <button onClick={() => setShowEditModal(true)} className='text-neutral-400 hover:text-white text-sm'>
+                  ✎
+                </button>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                {race.start_datetime && (
+                  <div className='text-neutral-400 font-medium flex items-center gap-1'>
+                    <Calendar className="w-3 h-3" />
+                    {formatDate(race.start_datetime, 'MMM d, yyyy')}
+                  </div>
+                )}
+                {race.distance_miles && (
+                  <div className='text-blue-500 font-medium'>
+                    {race.distance_miles.toFixed(1)} mi
+                  </div>
+                )}
+              </div>
+            </div>
 
             <div className="hidden sm:flex flex-col gap-1">
               <div className='flex items-center gap-2'>
