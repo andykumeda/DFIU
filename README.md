@@ -11,17 +11,22 @@ DFIU helps you centralize your course, pace plan, logistics, and crew info in on
 -   **State Management:** TanStack Query v5
 -   **Styling:** Tailwind CSS v4
 -   **Backend / Auth:** Supabase
--   **Maps:** Mapbox GL JS (with Terrain, Satellite, and 3D support)
--   **Data Visualization:** Interactive Elevation Profiles
--   **Analysis:** Route stats (Gain, Lowest Point, Max Elev) automatically calculated from GPX.
+-   **Maps:** Mapbox GL JS v3
+-   **Geo Analysis:** Turf.js for route snapping, distance calculations, and nearest-point resolution
+-   **Data Visualization:** Interactive Elevation Profiles (SVG-based)
 
 ## Features
 
--   **Course Mapping:** Upload GPX files to visualize routes.
--   **Elevation Profile:** Interactive profile synchronized with the map.
--   **Waypoints:** Add aid stations, water sources, and crew points.
--   **Live Stats:** View total distance, gain, loss, and max/min elevation.
--   **Map Controls:** 3D terrain, satellite view, zoom/bearing controls, and location tracking.
+-   **Course Mapping:** Upload GPX files to visualize routes on an interactive Mapbox map with outdoors, streets, and satellite views.
+-   **Elevation Profile:** Interactive SVG elevation chart synchronized with the map (hover on one highlights the other).
+-   **Waypoints / Aid Stations:** Add, edit, and drag-drop aid stations, water sources, crew points, pacer points, drop bag locations, and medical stations. Supports co-located waypoints at different miles for out-and-back courses (each visit retains its own attributes).
+-   **Draggable Markers:** Drag waypoints on the map to reposition them. Markers snap to the route and compute the correct mileage, including for stacked waypoints on out-and-back courses using mile-hint segment resolution.
+-   **Route Stats:** Total distance, elevation gain, lowest point, and max elevation — automatically calculated from GPX data with fallback computation.
+-   **Race Overview:** Event details, weather forecasts, course records, cutoffs, qualifiers, and direct links to registration.
+-   **Mile Markers:** Toggle mile markers along the route (auto-scaled by distance).
+-   **Terrain Segments:** Visualize terrain types (paved, dirt, single track, technical) as colored overlays on the route.
+-   **Weather Integration:** Fetch weather data for race locations.
+-   **Settings:** User preferences and Strava integration.
 
 ## Getting Started
 
@@ -59,9 +64,10 @@ DFIU helps you centralize your course, pace plan, logistics, and crew info in on
 ## Scripts
 
 -   `npm run dev`: Start the development server.
--   `npm run build`: Build the application for production.
--   `npm run deploy`: Build and deploy the application to `/var/www/dfiu` (requires sudo permissions).
+-   `npm run build`: TypeScript check + Vite production build.
+-   `npm run deploy`: Build and deploy to `/var/www/dfiu`.
 -   `npm run lint`: Run ESLint.
+-   `npm run preview`: Preview the production build locally.
 
 ## Deployment
 
@@ -71,11 +77,14 @@ To deploy:
 ```bash
 npm run deploy
 ```
-This script builds the app and copies the `dist/` folder to `/var/www/dfiu`.
+This script builds the app and copies the `dist/` folder to `/var/www/dfiu`. No restart needed — Nginx picks up changes immediately.
 
 ## Directory Structure
 
--   `src/features/` - Domain logic (Auth, Race, Course).
--   `src/pages/` - Application routes/pages.
--   `src/lib/` - Shared utilities (Supabase, Geo utils).
--   `src/components/` - Shared UI components.
+-   `src/features/auth/` - Authentication (login, signup).
+-   `src/features/course/` - Course map, elevation profile, map style switcher.
+-   `src/features/race/` - Race detail, overview, resources, waypoint editing.
+-   `src/features/settings/` - User settings and integrations.
+-   `src/pages/` - Application route pages (Dashboard, Login, Race Detail, etc.).
+-   `src/lib/` - Shared utilities (Supabase client, geo-utils, GPX parser, weather service).
+-   `src/components/ui/` - Shared UI components.
