@@ -8,6 +8,7 @@ import length from '@turf/length'
 import { lineString } from '@turf/helpers'
 import MapStyleSwitcher from './MapStyleSwitcher'
 import { X, Trash2, MapPin, Milestone } from 'lucide-react'
+import { getNearestPointOnLine, getDistanceFromStart } from '@/lib/geo-utils'
 import styles from './CourseMap.module.css'
 
 interface CourseMapProps {
@@ -338,23 +339,13 @@ export function CourseMap({
 
             const primaryWp = group[0]
             const isStack = group.length > 1
+            let wasDragged = false
 
             // Container for marker + badges
             const container = document.createElement('div')
             container.className = styles.markerContainer
 
-            const isHighlighted = group.some(wp => wp.id === highlightedWaypointId)
-            if (isHighlighted) container.classList.add(styles.highlighted)
-
-            // Fix: markers stay behind modal by disabling pointer events when editing
-            // Only the highlighted marker (or its group) stays interactive
-            if (highlightedWaypointId && !isHighlighted) {
-                container.style.pointerEvents = 'none'
-            } else {
-                container.style.pointerEvents = 'auto'
-            }
-
-            // Store ID for highlighting logic
+            // Store ID for highlighting logic (applied by separate useEffect)
             container.dataset.id = primaryWp.id
 
             container.style.width = '24px'
@@ -366,7 +357,6 @@ export function CourseMap({
 
             const el = document.createElement('div')
             el.className = styles.marker
-            el.style.pointerEvents = 'none' // Let events pass to container
 
             // Icon Logic
             const iconMarkup = getWaypointIcon(primaryWp.type)
@@ -433,26 +423,26 @@ export function CourseMap({
                 .addTo(map.current!)
 
             marker.on('dragstart', () => {
+                wasDragged = true
                 el.classList.add(styles.dragging)
             })
 
-            marker.on('dragend', async () => {
+            marker.on('dragend', () => {
                 el.classList.remove(styles.dragging)
                 const newLngLat = marker.getLngLat()
 
                 if (coordinates.length > 0) {
-                    const { getNearestPointOnLine, getDistanceFromStart } = await import('@/lib/geo-utils')
+                    const nearest = getNearestPointOnLine(
+                        { lat: newLngLat.lat, lon: newLngLat.lng },
+                        coordinates
+                    )
 
-                    // Update ALL waypoints in the stack using the mileHint to preserve visits
-                    for (const wp of group) {
-                        const nearest = getNearestPointOnLine(
-                            { lat: newLngLat.lat, lon: newLngLat.lng },
-                            coordinates
-                        )
+                    if (nearest) {
+                        marker.setLngLat([nearest.lon, nearest.lat])
+                        const newMile = getDistanceFromStart(coordinates, nearest.index, { lat: nearest.lat, lon: nearest.lon })
 
-                        if (nearest) {
-                            marker.setLngLat([nearest.lon, nearest.lat])
-                            const newMile = getDistanceFromStart(coordinates, nearest.index, { lat: nearest.lat, lon: nearest.lon })
+                        // Update all waypoints in the stack
+                        for (const wp of group) {
                             if (onWaypointMoveRef.current) {
                                 onWaypointMoveRef.current(wp.id, nearest.lat, nearest.lon, newMile)
                             }
@@ -464,6 +454,12 @@ export function CourseMap({
             // Click selection popup
             container.addEventListener('click', (e) => {
                 e.stopPropagation()
+
+                // Ignore click events that fire after a drag-end
+                if (wasDragged) {
+                    wasDragged = false
+                    return
+                }
 
                 if (isStack) {
                     const popupDiv = document.createElement('div')
@@ -602,7 +598,7 @@ export function CourseMap({
             markersRef.current.forEach(m => m.remove())
             markersRef.current = []
         }
-    }, [waypoints, mapLoaded, coordinates, terrainNodes, highlightedWaypointId]) // Re-run if data or highlight changes
+    }, [waypoints, mapLoaded, coordinates, terrainNodes]) // Re-run only when data changes, NOT on highlight
 
     // Handle Waypoint Highlighting independent of marker recreation
     useEffect(() => {
@@ -613,8 +609,11 @@ export function CourseMap({
             const id = el.dataset.id
             if (id === highlightedWaypointId) {
                 el.classList.add(styles.highlighted)
+                el.style.pointerEvents = 'auto'
             } else {
                 el.classList.remove(styles.highlighted)
+                // Only disable pointer events on non-highlighted markers when a waypoint IS highlighted
+                el.style.pointerEvents = highlightedWaypointId ? 'none' : 'auto'
             }
         })
     }, [highlightedWaypointId, mapLoaded])

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { fetchWeatherForRace } from '@/lib/weather-service'
 import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -286,8 +286,12 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
   // Handle Drag & Drop of Waypoints
   const handleWaypointMove = async (id: string, lat: number, lon: number, mile: number) => {
-    // Optimistic update? Or just wait for DB? 
-    // For drag, optimistic is better but let's stick to simple first.
+    // Optimistic update: update cache immediately so marker recreation uses new position
+    queryClient.setQueryData(['waypoints', course?.id], (old: Waypoint[] | undefined) => {
+      if (!old) return old
+      return old.map(wp => wp.id === id ? { ...wp, lat, lon, mile } : wp)
+    })
+
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase.from('waypoints') as any).update({
@@ -298,13 +302,14 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
       if (error) throw error
 
+      // Revalidate to ensure server state matches
       queryClient.invalidateQueries({ queryKey: ['waypoints', course?.id] })
     } catch (err) {
+      // Rollback on error
+      queryClient.invalidateQueries({ queryKey: ['waypoints', course?.id] })
       alert('Failed to move waypoint')
     }
   }
-
-
 
   // Terrain Handlers
   const handleSaveTerrainNode = async (data: Partial<TerrainNode>) => {
@@ -390,6 +395,22 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   const coordinates = (course?.geometry as { coordinates?: [number, number][] })?.coordinates || []
   const elevationProfile = (course?.elevation_samples as { distance: number; elevation: number }[]) || []
   const sampledProfile = sampleElevationProfile(elevationProfile, 200)
+
+  // Memoize waypoints for CourseMap to prevent marker teardown/rebuild on every render
+  const courseMapWaypoints = useMemo(() =>
+    waypoints.map(wp => ({
+      id: wp.id,
+      name: wp.name,
+      lat: wp.lat,
+      lon: wp.lon,
+      mile: wp.mile,
+      type: wp.type,
+      has_drop_bag: wp.has_drop_bag,
+      crew_allowed: wp.crew_allowed,
+      pacer_allowed: wp.pacer_allowed
+    })),
+    [waypoints]
+  )
   const tabs: { id: Tab; label: string }[] = [
     { id: 'overview', label: 'Overview' },
     { id: 'map', label: 'Course Map' },
@@ -525,17 +546,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                   <div className='relative overflow-hidden h-[50vh] md:h-auto md:flex-1'>
                     <CourseMap
                       coordinates={coordinates}
-                      waypoints={waypoints.map(wp => ({
-                        id: wp.id,
-                        name: wp.name,
-                        lat: wp.lat,
-                        lon: wp.lon,
-                        mile: wp.mile,
-                        type: wp.type,
-                        has_drop_bag: wp.has_drop_bag,
-                        crew_allowed: wp.crew_allowed,
-                        pacer_allowed: wp.pacer_allowed
-                      }))}
+                      waypoints={courseMapWaypoints}
                       onMapClick={handleMapClick}
                       onWaypointClick={(id) => {
                         const wp = waypoints.find(w => w.id === id)
