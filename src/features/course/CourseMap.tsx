@@ -432,20 +432,32 @@ export function CourseMap({
                 const newLngLat = marker.getLngLat()
 
                 if (coordinates.length > 0) {
-                    const nearest = getNearestPointOnLine(
+                    // Snap the marker to the route for visual positioning
+                    const snapNearest = getNearestPointOnLine(
                         { lat: newLngLat.lat, lon: newLngLat.lng },
                         coordinates
                     )
+                    if (snapNearest) {
+                        marker.setLngLat([snapNearest.lon, snapNearest.lat])
+                    }
 
-                    if (nearest) {
-                        marker.setLngLat([nearest.lon, nearest.lat])
-                        const newMile = getDistanceFromStart(coordinates, nearest.index, { lat: nearest.lat, lon: nearest.lon })
+                    // Use the snapped position as the shared lat/lon for all waypoints
+                    // in the stack so they remain co-located and continue to group together.
+                    // Compute each waypoint's mile individually using mileHint to resolve
+                    // the correct route segment (e.g. outbound vs inbound on an out-and-back).
+                    const sharedLat = snapNearest?.lat ?? newLngLat.lat
+                    const sharedLon = snapNearest?.lon ?? newLngLat.lng
 
-                        // Update all waypoints in the stack
-                        for (const wp of group) {
-                            if (onWaypointMoveRef.current) {
-                                onWaypointMoveRef.current(wp.id, nearest.lat, nearest.lon, newMile)
-                            }
+                    for (const wp of group) {
+                        const nearest = getNearestPointOnLine(
+                            { lat: newLngLat.lat, lon: newLngLat.lng },
+                            coordinates,
+                            wp.mile
+                        )
+
+                        if (nearest && onWaypointMoveRef.current) {
+                            const newMile = getDistanceFromStart(coordinates, nearest.index, { lat: nearest.lat, lon: nearest.lon })
+                            onWaypointMoveRef.current(wp.id, sharedLat, sharedLon, newMile)
                         }
                     }
                 }
