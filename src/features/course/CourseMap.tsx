@@ -83,10 +83,18 @@ export function CourseMap({
 
     const selectedPOITypeRef = useRef(selectedPOIType)
     const isDeleteModeRef = useRef(isDeleteMode)
+    const onWaypointClickRef = useRef(onWaypointClick)
+    const onWaypointMoveRef = useRef(onWaypointMove)
+    const onTerrainNodeClickRef = useRef(onTerrainNodeClick)
+    const onMapClickRef = useRef(onMapClick)
 
     // Sync refs for event listeners
     useEffect(() => { selectedPOITypeRef.current = selectedPOIType }, [selectedPOIType])
     useEffect(() => { isDeleteModeRef.current = isDeleteMode }, [isDeleteMode])
+    useEffect(() => { onWaypointClickRef.current = onWaypointClick }, [onWaypointClick])
+    useEffect(() => { onWaypointMoveRef.current = onWaypointMove }, [onWaypointMove])
+    useEffect(() => { onTerrainNodeClickRef.current = onTerrainNodeClick }, [onTerrainNodeClick])
+    useEffect(() => { onMapClickRef.current = onMapClick }, [onMapClick])
 
     const handleStyleChange = (style: 'outdoors' | 'streets' | 'satellite') => {
         setMapStyle(style)
@@ -310,62 +318,109 @@ export function CourseMap({
         markersRef.current.forEach(marker => marker.remove())
         markersRef.current = []
 
+        // Group waypoints by location (approx 10m tolerance)
+        const groups: typeof waypoints[] = []
         waypoints.forEach(wp => {
+            const existingGroup = groups.find(g =>
+                Math.abs(g[0].lat - wp.lat) < 0.0001 &&
+                Math.abs(g[0].lon - wp.lon) < 0.0001
+            )
+            if (existingGroup) {
+                existingGroup.push(wp)
+            } else {
+                groups.push([wp])
+            }
+        })
+
+        groups.forEach(group => {
+            // Sort group by mile for consistent ordering
+            group.sort((a, b) => a.mile - b.mile)
+
+            const primaryWp = group[0]
+            const isStack = group.length > 1
+
             // Container for marker + badges
             const container = document.createElement('div')
             container.className = styles.markerContainer
-            container.dataset.id = wp.id // Store ID for highlighting logic
-            // Force absolute position and explicit dimensions
-            container.style.position = 'absolute'
-            container.style.top = '0'
-            container.style.left = '0'
+
+            const isHighlighted = group.some(wp => wp.id === highlightedWaypointId)
+            if (isHighlighted) container.classList.add(styles.highlighted)
+
+            // Fix: markers stay behind modal by disabling pointer events when editing
+            // Only the highlighted marker (or its group) stays interactive
+            if (highlightedWaypointId && !isHighlighted) {
+                container.style.pointerEvents = 'none'
+            } else {
+                container.style.pointerEvents = 'auto'
+            }
+
+            // Store ID for highlighting logic
+            container.dataset.id = primaryWp.id
+
             container.style.width = '24px'
             container.style.height = '24px'
             container.style.display = 'flex'
             container.style.justifyContent = 'center'
             container.style.alignItems = 'center'
+            container.style.cursor = 'grab'
 
             const el = document.createElement('div')
             el.className = styles.marker
+            el.style.pointerEvents = 'none' // Let events pass to container
 
             // Icon Logic
-            const iconMarkup = getWaypointIcon(wp.type)
+            const iconMarkup = getWaypointIcon(primaryWp.type)
             el.innerHTML = iconMarkup
-            el.title = wp.name
+            el.title = isStack ? `${group.length} Waypoints here` : primaryWp.name
 
             // Apply type-specific styles
-            if (wp.type === 'start') el.style.backgroundColor = '#16a34a'
-            else if (wp.type === 'finish') el.style.backgroundColor = '#dc2626'
-            else if (wp.type === 'aid_station') el.style.backgroundColor = '#2563eb'
-            else if (wp.type === 'water_only') el.style.backgroundColor = '#3b82f6'
-            else if (wp.type === 'crew') el.style.backgroundColor = '#a855f7'
-            else if (wp.type === 'pacer') el.style.backgroundColor = '#f59e0b'
-            else if (wp.type === 'drop_bag') el.style.backgroundColor = '#10b981'
-            else if (wp.type === 'medical') el.style.backgroundColor = '#ef4444'
+            if (primaryWp.type === 'start') el.style.backgroundColor = '#16a34a'
+            else if (primaryWp.type === 'finish') el.style.backgroundColor = '#dc2626'
+            else if (primaryWp.type === 'aid_station') el.style.backgroundColor = '#2563eb'
+            else if (primaryWp.type === 'water_only') el.style.backgroundColor = '#3b82f6'
+            else if (primaryWp.type === 'crew') el.style.backgroundColor = '#a855f7'
+            else if (primaryWp.type === 'pacer') el.style.backgroundColor = '#f59e0b'
+            else if (primaryWp.type === 'drop_bag') el.style.backgroundColor = '#10b981'
+            else if (primaryWp.type === 'medical') el.style.backgroundColor = '#ef4444'
 
             container.appendChild(el)
 
-            // Badges
-            if (wp.crew_allowed) {
-                const badge = document.createElement('div')
-                badge.className = `${styles.badge} ${styles.badgeCrew}`
-                badge.innerHTML = '👥'
-                badge.title = 'Crew Access'
-                container.appendChild(badge)
-            }
-            if (wp.pacer_allowed) {
-                const badge = document.createElement('div')
-                badge.className = `${styles.badge} ${styles.badgePacer}`
-                badge.innerHTML = '🏃'
-                badge.title = 'Pacer Pickup'
-                container.appendChild(badge)
-            }
-            if (wp.has_drop_bag) {
-                const badge = document.createElement('div')
-                badge.className = `${styles.badge} ${styles.badgeBag}`
-                badge.innerHTML = '🎒'
-                badge.title = 'Drop Bag'
-                container.appendChild(badge)
+            // Overlap Badge for Stacks
+            if (isStack) {
+                const stackBadge = document.createElement('div')
+                stackBadge.style.cssText = `
+                    position: absolute; top: -6px; right: -6px;
+                    width: 14px; height: 14px; border-radius: 50%;
+                    background: #ef4444; color: white;
+                    font-size: 8px; font-weight: 700;
+                    display: flex; align-items: center; justify-content: center;
+                    border: 1px solid white; box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+                    pointer-events: none;
+                `
+                stackBadge.textContent = String(group.length)
+                container.appendChild(stackBadge)
+            } else {
+                if (primaryWp.crew_allowed) {
+                    const badge = document.createElement('div')
+                    badge.className = `${styles.badge} ${styles.badgeCrew}`
+                    badge.innerHTML = '👥'
+                    badge.style.pointerEvents = 'none'
+                    container.appendChild(badge)
+                }
+                if (primaryWp.pacer_allowed) {
+                    const badge = document.createElement('div')
+                    badge.className = `${styles.badge} ${styles.badgePacer}`
+                    badge.innerHTML = '🏃'
+                    badge.style.pointerEvents = 'none'
+                    container.appendChild(badge)
+                }
+                if (primaryWp.has_drop_bag) {
+                    const badge = document.createElement('div')
+                    badge.className = `${styles.badge} ${styles.badgeBag}`
+                    badge.innerHTML = '🎒'
+                    badge.style.pointerEvents = 'none'
+                    container.appendChild(badge)
+                }
             }
 
             const marker = new mapboxgl.Marker({
@@ -374,40 +429,71 @@ export function CourseMap({
                 anchor: 'center',
                 offset: [0, 0]
             })
-                .setLngLat([wp.lon, wp.lat]) // Fixed: used container instead of el
+                .setLngLat([primaryWp.lon, primaryWp.lat])
                 .addTo(map.current!)
 
-            // Drag End Listener
+            marker.on('dragstart', () => {
+                el.classList.add(styles.dragging)
+            })
+
             marker.on('dragend', async () => {
+                el.classList.remove(styles.dragging)
                 const newLngLat = marker.getLngLat()
 
-                // Snap to route
                 if (coordinates.length > 0) {
                     const { getNearestPointOnLine, getDistanceFromStart } = await import('@/lib/geo-utils')
-                    const nearest = getNearestPointOnLine({ lat: newLngLat.lat, lon: newLngLat.lng }, coordinates)
 
-                    if (nearest) {
-                        // Update marker position visually to snapped point (optional, but good UX)
-                        marker.setLngLat([nearest.lon, nearest.lat])
+                    // Update ALL waypoints in the stack using the mileHint to preserve visits
+                    for (const wp of group) {
+                        const nearest = getNearestPointOnLine(
+                            { lat: newLngLat.lat, lon: newLngLat.lng },
+                            coordinates
+                        )
 
-                        const newMile = getDistanceFromStart(coordinates, nearest.index, { lat: nearest.lat, lon: nearest.lon })
-
-                        if (onWaypointMove) {
-                            onWaypointMove(wp.id, nearest.lat, nearest.lon, newMile)
+                        if (nearest) {
+                            marker.setLngLat([nearest.lon, nearest.lat])
+                            const newMile = getDistanceFromStart(coordinates, nearest.index, { lat: nearest.lat, lon: nearest.lon })
+                            if (onWaypointMoveRef.current) {
+                                onWaypointMoveRef.current(wp.id, nearest.lat, nearest.lon, newMile)
+                            }
                         }
                     }
                 }
             })
 
-            // Add click listener to the marker element
-            el.addEventListener('click', (e) => {
+            // Click selection popup
+            container.addEventListener('click', (e) => {
                 e.stopPropagation()
-                // If we just finished dragging, we might trigger click? 
-                // Mapbox usually suppresses click on dragend, but let's be safe later if needed.
-                if (isDeleteModeRef.current) {
-                    if (onWaypointClick) onWaypointClick(wp.id)
+
+                if (isStack) {
+                    const popupDiv = document.createElement('div')
+                    popupDiv.className = 'p-2 min-w-[160px]'
+                    popupDiv.innerHTML = `<div class="text-[10px] font-bold text-neutral-400 uppercase mb-2 tracking-wider">Select Visit</div>`
+
+                    const list = document.createElement('div')
+                    list.className = 'flex flex-col gap-1'
+
+                    group.forEach(wp => {
+                        const btn = document.createElement('button')
+                        btn.className = 'text-left text-sm py-2 px-2 hover:bg-blue-50 rounded flex justify-between items-center transition-colors w-full group'
+                        btn.innerHTML = `
+                            <span class="font-medium text-neutral-700">${wp.name}</span>
+                            <span class="text-[10px] font-mono text-neutral-400 bg-neutral-100 px-1.5 py-0.5 rounded group-hover:bg-white transition-colors">Mi ${wp.mile.toFixed(1)}</span>
+                        `
+                        btn.onclick = () => {
+                            if (onWaypointClickRef.current) onWaypointClickRef.current(wp.id)
+                            marker.getPopup()?.remove()
+                        }
+                        list.appendChild(btn)
+                    })
+                    popupDiv.appendChild(list)
+
+                    new mapboxgl.Popup({ closeButton: false, offset: 15 })
+                        .setLngLat([primaryWp.lon, primaryWp.lat])
+                        .setDOMContent(popupDiv)
+                        .addTo(map.current!)
                 } else {
-                    if (onWaypointClick) onWaypointClick(wp.id)
+                    if (onWaypointClickRef.current) onWaypointClickRef.current(primaryWp.id)
                 }
             })
 
@@ -421,14 +507,11 @@ export function CourseMap({
 
             // Check if we already have start/finish waypoints
             const hasStart = waypoints.some(wp => wp.type === 'start')
-            const hasFinish = waypoints.some(wp => wp.type === 'finish')
+            const hasFinish = hasStart && waypoints.some(wp => wp.type === 'finish')
 
             if (!hasStart) {
                 const container = document.createElement('div')
                 container.className = styles.markerContainer
-                container.style.position = 'absolute'
-                container.style.top = '0'
-                container.style.left = '0'
                 container.style.width = '24px'
                 container.style.height = '24px'
                 container.style.display = 'flex'
@@ -448,9 +531,9 @@ export function CourseMap({
                     .addTo(map.current!)
 
                 // Add click listener
-                el.addEventListener('click', (e) => {
+                container.addEventListener('click', (e) => {
                     e.stopPropagation()
-                    if (onMapClick) onMapClick(startCoord[1], startCoord[0], 'start')
+                    if (onMapClickRef.current) onMapClickRef.current(startCoord[1], startCoord[0], 'start')
                 })
 
                 markersRef.current.push(marker)
@@ -459,9 +542,6 @@ export function CourseMap({
             if (!hasFinish) {
                 const container = document.createElement('div')
                 container.className = styles.markerContainer
-                container.style.position = 'absolute'
-                container.style.top = '0'
-                container.style.left = '0'
                 container.style.width = '24px'
                 container.style.height = '24px'
                 container.style.display = 'flex'
@@ -481,9 +561,9 @@ export function CourseMap({
                     .addTo(map.current!)
 
                 // Add click listener
-                el.addEventListener('click', (e) => {
+                container.addEventListener('click', (e) => {
                     e.stopPropagation()
-                    if (onMapClick) onMapClick(endCoord[1], endCoord[0], 'finish')
+                    if (onMapClickRef.current) onMapClickRef.current(endCoord[1], endCoord[0], 'finish')
                 })
 
                 markersRef.current.push(marker)
@@ -509,7 +589,7 @@ export function CourseMap({
 
             el.addEventListener('click', (e) => {
                 e.stopPropagation()
-                if (onTerrainNodeClick) onTerrainNodeClick(node.id)
+                if (onTerrainNodeClickRef.current) onTerrainNodeClickRef.current(node.id)
             })
 
             terrainMarkers.push(marker)
@@ -518,8 +598,11 @@ export function CourseMap({
         return () => {
             // Cleanup terrain markers
             terrainMarkers.forEach(m => m.remove())
+            // Cleanup waypoint markers
+            markersRef.current.forEach(m => m.remove())
+            markersRef.current = []
         }
-    }, [waypoints, mapLoaded, onWaypointClick, coordinates, terrainNodes, onTerrainNodeClick]) // Re-run if waypoints/terrain change
+    }, [waypoints, mapLoaded, coordinates, terrainNodes, highlightedWaypointId]) // Re-run if data or highlight changes
 
     // Handle Waypoint Highlighting independent of marker recreation
     useEffect(() => {

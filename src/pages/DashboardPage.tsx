@@ -19,12 +19,15 @@ export default function DashboardPage() {
         <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center'>
           <Link
             to="/dashboard"
-            className="flex items-center -gap-2 hover:opacity-80 transition-opacity cursor-pointer relative z-[999] group"
+            className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer relative z-[999] group"
           >
-            <img src="/logo.png" alt="DFIU Logo" className="h-32 w-32 object-contain drop-shadow-lg relative z-10" />
-            <span className='text-6xl font-black italic tracking-tighter uppercase bg-gradient-to-br from-orange-400 to-orange-600 bg-clip-text text-transparent drop-shadow-sm pr-2 -ml-6 relative z-0'>
-              DFIU
-            </span>
+            <img src="/logo.png" alt="DFIU Logo" className="h-24 w-auto object-contain drop-shadow-lg relative z-10" />
+            <div className="flex flex-col justify-center items-start relative z-0">
+              <span className='text-7xl font-black italic tracking-tighter uppercase bg-gradient-to-br from-orange-400 to-orange-600 bg-clip-text text-transparent drop-shadow-sm pr-2 leading-[0.8]'>
+                DFIU
+              </span>
+              <span className="text-neutral-500 text-xs font-bold tracking-[0.2em] uppercase opacity-60 -ml-1">Don't F* It Up!</span>
+            </div>
           </Link>
           <div className='flex items-center gap-4'>
             <div className="flex items-center gap-3">

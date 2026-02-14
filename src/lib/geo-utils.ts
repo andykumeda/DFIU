@@ -112,10 +112,12 @@ export const getDistanceAtCoordinate = (
  * Find the nearest point on a polyline to a given point
  * Uses turf's nearestPointOnLine for accurate geodesic projection
  * Returns the nearest point coordinates, the index of the segment start, and the distance to the point
+ * Optional mileHint helps choose the right visit in out-and-back or looping courses
  */
 export function getNearestPointOnLine(
     pt: { lat: number; lon: number },
-    line: [number, number][] // [lon, lat] pairs
+    line: [number, number][], // [lon, lat] pairs
+    mileHint?: number
 ): { lat: number; lon: number, distance: number, index: number } | null {
     if (!line || line.length < 2) return null;
 
@@ -130,13 +132,56 @@ export function getNearestPointOnLine(
         };
 
         const p = point([pt.lon, pt.lat]);
-        const snapped = nearestPointOnLine(lineFeature, p, { units: 'miles' });
 
-        const [lon, lat] = snapped.geometry.coordinates;
-        const dist = snapped.properties?.dist ?? Infinity;
-        const index = snapped.properties?.index ?? 0;
+        // If no hint, use standard nearest point
+        if (mileHint === undefined) {
+            const snapped = nearestPointOnLine(lineFeature, p, { units: 'miles' });
+            const [lon, lat] = snapped.geometry.coordinates;
+            const dist = snapped.properties?.dist ?? Infinity;
+            const index = snapped.properties?.index ?? 0;
+            return { lat, lon, distance: dist, index };
+        }
 
-        return { lat, lon, distance: dist, index };
+        // With hint: We want the point on the line that is close to the mouse AND close to the target mileage
+        // Strategy: find segments where a point is geographically near the point,
+        // then pick the one where cumulative distance is closest to mileHint.
+        
+        let bestCandidate: { lat: number; lon: number, distance: number, index: number } | null = null;
+        let minMileDiff = Infinity;
+
+        // Cumulative distances cache
+        const cumDist: number[] = [0];
+        for (let i = 0; i < line.length - 1; i++) {
+            cumDist.push(cumDist[i] + getDistance(line[i][1], line[i][0], line[i+1][1], line[i+1][0]));
+        }
+
+        // Check every segment (simple and reliable for course lengths)
+        for (let i = 0; i < line.length - 1; i++) {
+            const segment = {
+                type: 'Feature' as const,
+                geometry: {
+                    type: 'LineString' as const,
+                    coordinates: [line[i], line[i + 1]]
+                },
+                properties: {}
+            };
+            const snapped = nearestPointOnLine(segment, p, { units: 'miles' });
+            const dist = snapped.properties?.dist ?? Infinity;
+
+            if (dist < 0.5) { // Threshold: 0.5 miles from route
+                const [lon, lat] = snapped.geometry.coordinates;
+                const distOnSegment = getDistance(line[i][1], line[i][0], lat, lon);
+                const totalMile = cumDist[i] + distOnSegment;
+                const mileDiff = Math.abs(totalMile - mileHint);
+
+                if (mileDiff < minMileDiff) {
+                    minMileDiff = mileDiff;
+                    bestCandidate = { lat, lon, distance: dist, index: i };
+                }
+            }
+        }
+
+        return bestCandidate || getNearestPointOnLine(pt, line); // Fallback to standard
     } catch (e) {
         console.error('getNearestPointOnLine error:', e);
         return null;

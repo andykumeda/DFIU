@@ -60,7 +60,14 @@
     *   **Terrain Type**: Added `terrain_type` field to races (Default: Trail). Added input in Edit Modal and display in Race Overview.
     *   **Fixes**: Resolved issue where Edit Waypoint modal showed unformatted mileage. Mileage now defaults to 2 decimal places.
 
-7.  **Code Cleanup:**
+7.  **Header UI Refinements (2026-02-13):**
+    *   **Spacing**: Decreased space between logo and title (`gap-2` -> `gap-0`).
+    *   **Tagline**: Moved tagline slightly to the right (`-ml-1` -> `ml-0.5`).
+    *   **NOTE**: Future refinement needed:
+        *   Space between logo and title still needs to be decreased further.
+        *   Tagline needs to move slightly more to the left to align exactly with the "D" in "DFIU".
+
+8.  **Code Cleanup:**
     *   Removed unused variables in `utils.ts` and `CourseMap.tsx`.
     *   Fixed lint errors and type assertions in `CourseMap.tsx`.
     *   Removed debug console.log statements from `RaceDetail.tsx` and `geo-utils.ts`.

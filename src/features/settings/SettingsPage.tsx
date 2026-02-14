@@ -117,7 +117,7 @@ export default function SettingsPage() {
             }
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const { data, error } = await (supabase.from('profiles') as any)
+            const { error } = await (supabase.from('profiles') as any)
                 .update({
                     name: formData.display_name,
                     email: formData.email, // Save email to profile for everyone
