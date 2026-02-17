@@ -44,7 +44,8 @@ export function LoginForm() {
               if (data?.url) window.location.href = data.url
             } catch (e) {
               console.error('Strava auth error:', e)
-              setError('Failed to start Strava login')
+              const message = e instanceof Error ? e.message : 'Failed to start Strava login'
+              setError(message)
               setLoading(false)
             }
           }}

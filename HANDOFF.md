@@ -63,6 +63,14 @@
     *   **Mileage Precision**: All mileage displays use exactly **2 decimal places**.
     *   **Mobile Map Layout**: Map takes 50vh on mobile with scroll for content below.
     *   **Terrain Type**: Added `terrain_type` field to races.
+6.  **Terrain Canvas Model (2026-02-16):**
+    *   **Paint Mode**: Added "Paint" toggle. Clicking the map adds a terrain segment (default 0.5mi) at that location.
+    *   **Undefined vs Paved**:
+        *   **Undefined (Gray)**: Base layer (using `other` type internally).
+        *   **Paved (Blue)**: Explicit road segments.
+    *   **Smart Gaps**: Editing the "0 - Start" gap in the sidebar is now possible and auto-fills the range. New segments "restore" to Undefined.
+    *   **Sidebar Logic**: Fixed to show `Start -> End` ranges correctly.
+    *   **TODO**: Further refinements to the terrain editing workflow are expected (per user: "changes need to be made tomorrow").
 
 ## Architecture Notes
 

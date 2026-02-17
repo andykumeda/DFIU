@@ -24,7 +24,7 @@ DFIU helps you centralize your course, pace plan, logistics, and crew info in on
 -   **Route Stats:** Total distance, elevation gain, lowest point, and max elevation — automatically calculated from GPX data with fallback computation.
 -   **Race Overview:** Event details, weather forecasts, course records, cutoffs, qualifiers, and direct links to registration.
 -   **Mile Markers:** Toggle mile markers along the route (auto-scaled by distance).
--   **Terrain Segments:** Visualize terrain types (paved, dirt, single track, technical) as colored overlays on the route.
+-   **Terrain Segments:** Visualize terrain types (paved, dirt, single track, technical) as colored overlays on the route. Includes "Paint Mode" for easy segment creation and distinct "Undefined" (Gray) vs "Paved" (Blue) visualization.
 -   **Weather Integration:** Fetch weather data for race locations.
 -   **Settings:** User preferences and Strava integration.
 

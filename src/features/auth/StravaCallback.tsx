@@ -44,8 +44,8 @@ export default function StravaCallback() {
             }
         } catch (e) {
             console.error('Callback error:', e)
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            setError((e as any).message || 'Failed to complete authentication')
+            const message = e instanceof Error ? e.message : 'Failed to complete authentication'
+            setError(message)
         }
     }
 

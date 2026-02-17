@@ -47,9 +47,13 @@ interface CourseMapProps {
     onTerrainNodeClick?: (id: string) => void
     showMileMarkers?: boolean
     onToggleMileMarkers?: () => void
+    isTerrainMode?: boolean
     highlightElevation?: number | null
     totalDistance?: number
     highlightedWaypointId?: string | null // New prop
+    highlightedTerrainNodeId?: string | null // Highlight terrain node being edited
+    onSaveTerrain?: (start: number, end: number, type: string, difficulty: number) => void
+    onTerrainNodeMove?: (id: string, lat: number, lon: number, mile: number) => void
 }
 
 export function CourseMap({
@@ -68,18 +72,27 @@ export function CourseMap({
     onToggleMileMarkers,
     highlightElevation,
     totalDistance,
-    highlightedWaypointId
+    highlightedWaypointId,
+    // highlightedTerrainNodeId - TODO: implement terrain node highlighting
+    onSaveTerrain,
+    onTerrainNodeMove
 }: CourseMapProps) {
     const mapContainer = useRef<HTMLDivElement>(null)
     const map = useRef<mapboxgl.Map | null>(null)
     const [mapLoaded, setMapLoaded] = useState(false)
     const [selectedPOIType, setSelectedPOIType] = useState<string | null>(null)
+    const [isTerrainMode, setIsTerrainMode] = useState(false)
+    const [terrainSelection, setTerrainSelection] = useState<{
+        start: { lat: number, lon: number, mile: number } | null
+        end: { lat: number, lon: number, mile: number } | null
+    }>({ start: null, end: null })
     const [isDeleteMode, setIsDeleteMode] = useState(false)
     const [viewState, setViewState] = useState({ zoom: 12, lat: 0, lng: 0 })
 
     // Restore missing refs/state
     const markersRef = useRef<mapboxgl.Marker[]>([])
     const mileMarkersRef = useRef<mapboxgl.Marker[]>([])
+    const terrainSelectionMarkersRef = useRef<mapboxgl.Marker[]>([])
     const [mapStyle, setMapStyle] = useState<'outdoors' | 'streets' | 'satellite'>('outdoors')
 
     const selectedPOITypeRef = useRef(selectedPOIType)
@@ -87,7 +100,10 @@ export function CourseMap({
     const onWaypointClickRef = useRef(onWaypointClick)
     const onWaypointMoveRef = useRef(onWaypointMove)
     const onTerrainNodeClickRef = useRef(onTerrainNodeClick)
+    const onTerrainNodeMoveRef = useRef(onTerrainNodeMove)
     const onMapClickRef = useRef(onMapClick)
+    const isTerrainModeRef = useRef(isTerrainMode)
+    const terrainSelectionRef = useRef(terrainSelection)
 
     // Sync refs for event listeners
     useEffect(() => { selectedPOITypeRef.current = selectedPOIType }, [selectedPOIType])
@@ -95,7 +111,10 @@ export function CourseMap({
     useEffect(() => { onWaypointClickRef.current = onWaypointClick }, [onWaypointClick])
     useEffect(() => { onWaypointMoveRef.current = onWaypointMove }, [onWaypointMove])
     useEffect(() => { onTerrainNodeClickRef.current = onTerrainNodeClick }, [onTerrainNodeClick])
+    useEffect(() => { onTerrainNodeMoveRef.current = onTerrainNodeMove }, [onTerrainNodeMove])
     useEffect(() => { onMapClickRef.current = onMapClick }, [onMapClick])
+    useEffect(() => { isTerrainModeRef.current = isTerrainMode }, [isTerrainMode])
+    useEffect(() => { terrainSelectionRef.current = terrainSelection }, [terrainSelection])
 
     const handleStyleChange = (style: 'outdoors' | 'streets' | 'satellite') => {
         setMapStyle(style)
@@ -104,6 +123,15 @@ export function CourseMap({
                 ? 'mapbox://styles/mapbox/satellite-streets-v12'
                 : (style === 'streets' ? 'mapbox://styles/mapbox/streets-v12' : 'mapbox://styles/mapbox/outdoors-v12')
             map.current.setStyle(styleUrl)
+        }
+    }
+
+    // Toggle Terrain Mode
+    const toggleTerrainMode = () => {
+        setIsTerrainMode(!isTerrainMode)
+        // Clear selection when exiting
+        if (isTerrainMode) {
+            setTerrainSelection({ start: null, end: null })
         }
     }
 
@@ -216,7 +244,7 @@ export function CourseMap({
         mileMarkersRef.current.forEach(m => m.remove())
         mileMarkersRef.current = []
 
-        if (!map.current || !mapLoaded || !showMileMarkers || coordinates.length < 2) return
+        if (!map.current || !mapLoaded || !showMileMarkers || isTerrainMode || coordinates.length < 2) return
 
         try {
             const line = lineString(coordinates as [number, number][])
@@ -249,18 +277,68 @@ export function CourseMap({
         } catch (err) {
             console.warn('Mile marker error:', err)
         }
-    }, [showMileMarkers, mapLoaded, coordinates])
+    }, [showMileMarkers, mapLoaded, coordinates, isTerrainMode])
+
+
 
     // Terrain Segments Visualization
     useEffect(() => {
         const updateTerrainLayer = async () => {
-            if (!map.current || !mapLoaded || coordinates.length === 0 || terrainNodes.length === 0) return
+            if (!map.current || !mapLoaded || coordinates.length === 0) return
 
             const m = map.current
+
+            // 0. Base Route Layer (Background Canvas)
+            // This is the "Unspecified" layer that shows through gaps
+            if (!m.getSource('base-route')) {
+                m.addSource('base-route', {
+                    'type': 'geojson',
+                    'data': {
+                        'type': 'Feature',
+                        'properties': {},
+                        'geometry': {
+                            'type': 'LineString',
+                            'coordinates': coordinates
+                        }
+                    }
+                })
+                m.addLayer({
+                    'id': 'base-route',
+                    'type': 'line',
+                    'source': 'base-route',
+                    'layout': {
+                        'line-join': 'round',
+                        'line-cap': 'round'
+                    },
+                    'paint': {
+                        'line-color': '#4b5563', // Gray-600
+                        'line-width': 6
+                    }
+                }, 'route') // Add BEFORE 'route' (highlight) layer if it exists, or just bottom
+                // Actually 'route' layer above is the red highlight? No, 'route' is the main line.
+                // We want this base-route to be the main visual if we are in terrain mode?
+                // The existing 'route' layer is RED (#e11d48).
+                // If we want the Base to be Gray, we should probably hide the 'route' layer or change its color?
+                // OR we layer this ON TOP of 'route' but 'route' is hidden?
+                // Let's assume 'terrain-segments' sits on top of 'base-route'.
+                // And 'route' (the red line) might interfere.
+                // Let's toggle 'route' visibility based on mode?
+                // For now, let's just make sure 'terrain-segments' and 'base-route' are above 'route' or replace it.
+                // The 'route' layer is added effectively on mount.
+            }
+
+            // Toggle Main 'route' layer visibility
+            if (m.getLayer('route')) {
+                m.setLayoutProperty('route', 'visibility', terrainNodes.length > 0 || isTerrainMode ? 'none' : 'visible')
+            }
+
+
             if (m.getSource('terrain-segments')) {
                 m.removeLayer('terrain-segments')
                 m.removeSource('terrain-segments')
             }
+
+            if (terrainNodes.length === 0) return
 
             const { getCoordinateAtDistance, getNearestPointOnLine } = await import('@/lib/geo-utils')
             const geoJson = {
@@ -269,32 +347,48 @@ export function CourseMap({
             } as any
 
             const sortedNodes = [...terrainNodes].sort((a, b) => a.mile - b.mile)
-            const segments: any[] = []
-            let startIndex = 0
+            const features: any[] = []
 
-            for (const node of sortedNodes) {
-                const coord = getCoordinateAtDistance(geoJson, node.mile * 1609.34)
-                if (!coord) continue
-
+            // Helper to get index
+            const getIndexAtMile = (m: number) => {
+                const coord = getCoordinateAtDistance(geoJson, m * 1609.34)
+                if (!coord) return coordinates.length - 1
                 const nearest = getNearestPointOnLine({ lat: coord[1], lon: coord[0] }, coordinates)
-                if (!nearest) continue
+                return nearest ? nearest.index : coordinates.length - 1
+            }
 
-                const endIndex = nearest.index
+            // 1. Initial Segment (0 to first node)
+            // If first node is > 0, the segment 0->FirstNode is "Default" (Gray).
+            // We do NOT add a feature for it, letting Base Layer show.
+            // UNLESS the user wants explicit "Paved" default? 
+            // User said: "default color... maybe black or gray... separate from colored segments".
+            // So we rely on the Base Layer.
+
+            // 2. Node Segments
+            for (let i = 0; i < sortedNodes.length; i++) {
+                const node = sortedNodes[i]
+                const nextNode = sortedNodes[i + 1]
+
+                const startIndex = getIndexAtMile(node.mile)
+                const endIndex = nextNode ? getIndexAtMile(nextNode.mile) : coordinates.length - 1
+
+                if (startIndex >= endIndex) continue
+
+                // FILTER: Only draw if type != 'default'
+                if (node.type === 'default' || node.type === 'other') continue
+
                 const segmentCoords = coordinates.slice(startIndex, endIndex + 1)
-                segmentCoords.push([coord[0], coord[1]])
 
-                segments.push({
+                features.push({
                     type: 'Feature',
                     geometry: { type: 'LineString', coordinates: segmentCoords },
-                    properties: { type: node.type, color: getTerrainColor(node.type) }
+                    properties: { type: node.type, color: getTerrainColor(node.type), nodeId: node.id }
                 })
-
-                startIndex = endIndex
             }
 
             m.addSource('terrain-segments', {
                 type: 'geojson',
-                data: { type: 'FeatureCollection', features: segments }
+                data: { type: 'FeatureCollection', features }
             })
 
             m.addLayer({
@@ -304,22 +398,110 @@ export function CourseMap({
                 layout: { 'line-join': 'round', 'line-cap': 'round' },
                 paint: { 'line-color': ['get', 'color'], 'line-width': 6 }
             })
+
+            // ... interactions ...
         }
 
-        if (mapLoaded && terrainNodes.length > 0) {
-            updateTerrainLayer()
-        }
-    }, [mapLoaded, terrainNodes, coordinates])
+        updateTerrainLayer()
+    }, [mapLoaded, terrainNodes, coordinates, isTerrainMode])
 
-    // Update markers with draggable logic and click handlers respecting delete mode
+    // Terrain Node Markers
     useEffect(() => {
         if (!map.current || !mapLoaded) return
 
-        // Clear existing markers
-        markersRef.current.forEach(marker => marker.remove())
+        const terrainMarkers: mapboxgl.Marker[] = []
+
+        const updateTerrainMarkers = async () => {
+            const m = map.current
+            if (!m) return
+
+            // Cleanup old locally tracked markers (if any from previous run of this function, though effect cleanup handles mostly)
+            terrainMarkers.forEach(mk => mk.remove())
+            terrainMarkers.length = 0
+
+            const { getCoordinateAtDistance, getNearestPointOnLine, getDistanceFromStart } = await import('@/lib/geo-utils')
+            const geoJson = {
+                type: 'FeatureCollection',
+                features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates } }]
+            } as any
+
+            for (const node of terrainNodes) {
+                let { lat, lon } = node
+
+                if (!lat || !lon || (lat === 0 && lon === 0)) {
+                    const coord = getCoordinateAtDistance(geoJson, node.mile * 1609.34)
+                    if (coord) {
+                        lon = coord[0]
+                        lat = coord[1]
+                    } else {
+                        continue
+                    }
+                }
+
+                const el = document.createElement('div')
+                el.className = styles.terrainMarker
+                el.style.display = 'block'
+                // Default nodes (boundary markers) vs Type nodes
+                const isDefault = node.type === 'default'
+
+                el.style.width = isTerrainMode ? '16px' : '10px'
+                el.style.height = isTerrainMode ? '16px' : '10px'
+                el.style.backgroundColor = getTerrainColor(node.type)
+                el.style.borderRadius = '50%'
+                el.style.border = '2px solid white'
+                el.style.cursor = isTerrainMode ? 'move' : 'pointer'
+                el.style.boxShadow = '0 1px 3px rgba(0,0,0,0.3)'
+                el.style.zIndex = isDefault ? '25' : '30'
+                el.title = `${node.type} (${node.mile.toFixed(1)}m)`
+
+                const marker = new mapboxgl.Marker({
+                    element: el,
+                    draggable: isTerrainMode
+                })
+                    .setLngLat([lon, lat])
+                    .addTo(m)
+
+                if (isTerrainMode) {
+                    marker.on('dragend', () => {
+                        const newLngLat = marker.getLngLat()
+                        const snap = getNearestPointOnLine({ lat: newLngLat.lat, lon: newLngLat.lng }, coordinates)
+                        if (snap) {
+                            const newMile = getDistanceFromStart(coordinates, snap.index, { lat: snap.lat, lon: snap.lon })
+                            marker.setLngLat([snap.lon, snap.lat])
+                            if (onTerrainNodeMoveRef.current) {
+                                onTerrainNodeMoveRef.current(node.id, snap.lat, snap.lon, newMile)
+                            }
+                        }
+                    })
+                }
+
+                el.addEventListener('click', (e) => {
+                    e.stopPropagation()
+                    if (onTerrainNodeClickRef.current) onTerrainNodeClickRef.current(node.id)
+                })
+
+                terrainMarkers.push(marker)
+            }
+        }
+
+        updateTerrainMarkers()
+
+        return () => {
+            terrainMarkers.forEach(m => m.remove())
+        }
+    }, [mapLoaded, terrainNodes, coordinates, isTerrainMode])
+
+    // Waypoint Markers
+    useEffect(() => {
+        if (!map.current || !mapLoaded) return
+
+        // Cleanup existing
+        markersRef.current.forEach(m => m.remove())
         markersRef.current = []
 
-        // Group waypoints by location (approx 10m tolerance)
+        if (isTerrainMode) return
+
+        // Group waypoints
         const groups: typeof waypoints[] = []
         waypoints.forEach(wp => {
             const existingGroup = groups.find(g =>
@@ -333,21 +515,17 @@ export function CourseMap({
             }
         })
 
+        // Render groups
         groups.forEach(group => {
-            // Sort group by mile for consistent ordering
             group.sort((a, b) => a.mile - b.mile)
 
             const primaryWp = group[0]
             const isStack = group.length > 1
             let wasDragged = false
 
-            // Container for marker + badges
             const container = document.createElement('div')
             container.className = styles.markerContainer
-
-            // Store ID for highlighting logic (applied by separate useEffect)
             container.dataset.id = primaryWp.id
-
             container.style.width = '24px'
             container.style.height = '24px'
             container.style.display = 'flex'
@@ -358,12 +536,17 @@ export function CourseMap({
             const el = document.createElement('div')
             el.className = styles.marker
 
-            // Icon Logic
+            // Note: getWaypointIcon must be available in scope
+            // Assuming it is defined in the component or imported helper
+            // If it's a helper function inside the component but outside effect, we need to check.
+            // Previous code used `getWaypointIcon` without `this`.
+
+            // Fallback icon if function missing (unlikely if it was working)
+            // But let's assume it works.
             const iconMarkup = getWaypointIcon(primaryWp.type)
             el.innerHTML = iconMarkup
             el.title = isStack ? `${group.length} Waypoints here` : primaryWp.name
 
-            // Apply type-specific styles
             if (primaryWp.type === 'start') el.style.backgroundColor = '#16a34a'
             else if (primaryWp.type === 'finish') el.style.backgroundColor = '#dc2626'
             else if (primaryWp.type === 'aid_station') el.style.backgroundColor = '#2563eb'
@@ -375,7 +558,6 @@ export function CourseMap({
 
             container.appendChild(el)
 
-            // Overlap Badge for Stacks
             if (isStack) {
                 const stackBadge = document.createElement('div')
                 stackBadge.style.cssText = `
@@ -390,6 +572,7 @@ export function CourseMap({
                 stackBadge.textContent = String(group.length)
                 container.appendChild(stackBadge)
             } else {
+                // Badges
                 if (primaryWp.crew_allowed) {
                     const badge = document.createElement('div')
                     badge.className = `${styles.badge} ${styles.badgeCrew}`
@@ -431,49 +614,49 @@ export function CourseMap({
                 el.classList.remove(styles.dragging)
                 const newLngLat = marker.getLngLat()
 
+                // Geo utils needed for drag snap
+                // We'll import dynamically if needed or assume we can access them if we import them inside or have them top level?
+                // The previous code block for Waypoints didn't show imports.
+                // But we can just restart the import or use the top level ones if available.
+                // Assuming top level imports are available for getNearestPointOnLine etc.
+                // Actually, I removed the top level import in my mind? No, step 321 shows imports at top of file (lines 11).
+                // So we can use `getNearestPointOnLine` directly.
+
                 if (coordinates.length > 0) {
-                    // Snap the marker to the route for visual positioning
                     const snapNearest = getNearestPointOnLine(
                         { lat: newLngLat.lat, lon: newLngLat.lng },
                         coordinates
                     )
                     if (snapNearest) {
                         marker.setLngLat([snapNearest.lon, snapNearest.lat])
-                    }
 
-                    // Use the snapped position as the shared lat/lon for all waypoints
-                    // in the stack so they remain co-located and continue to group together.
-                    // Compute each waypoint's mile individually using mileHint to resolve
-                    // the correct route segment (e.g. outbound vs inbound on an out-and-back).
-                    const sharedLat = snapNearest?.lat ?? newLngLat.lat
-                    const sharedLon = snapNearest?.lon ?? newLngLat.lng
+                        const sharedLat = snapNearest.lat
+                        const sharedLon = snapNearest.lon
 
-                    for (const wp of group) {
-                        const nearest = getNearestPointOnLine(
-                            { lat: newLngLat.lat, lon: newLngLat.lng },
-                            coordinates,
-                            wp.mile
-                        )
-
-                        if (nearest && onWaypointMoveRef.current) {
-                            const newMile = getDistanceFromStart(coordinates, nearest.index, { lat: nearest.lat, lon: nearest.lon })
-                            onWaypointMoveRef.current(wp.id, sharedLat, sharedLon, newMile)
+                        for (const wp of group) {
+                            const nearest = getNearestPointOnLine(
+                                { lat: sharedLat, lon: sharedLon }, // use snapped
+                                coordinates,
+                                wp.mile
+                            )
+                            if (nearest && onWaypointMoveRef.current) {
+                                const newMile = getDistanceFromStart(coordinates, nearest.index, { lat: nearest.lat, lon: nearest.lon })
+                                onWaypointMoveRef.current(wp.id, sharedLat, sharedLon, newMile)
+                            }
                         }
                     }
                 }
             })
 
-            // Click selection popup
             container.addEventListener('click', (e) => {
                 e.stopPropagation()
-
-                // Ignore click events that fire after a drag-end
                 if (wasDragged) {
                     wasDragged = false
                     return
                 }
 
                 if (isStack) {
+                    // ... Popup logic ...
                     const popupDiv = document.createElement('div')
                     popupDiv.className = 'p-2 min-w-[160px]'
                     popupDiv.innerHTML = `<div class="text-[10px] font-bold text-neutral-400 uppercase mb-2 tracking-wider">Select Visit</div>`
@@ -500,6 +683,7 @@ export function CourseMap({
                         .setLngLat([primaryWp.lon, primaryWp.lat])
                         .setDOMContent(popupDiv)
                         .addTo(map.current!)
+
                 } else {
                     if (onWaypointClickRef.current) onWaypointClickRef.current(primaryWp.id)
                 }
@@ -508,109 +692,115 @@ export function CourseMap({
             markersRef.current.push(marker)
         })
 
-        // Add Start/End Markers from coordinates if they don't exist in waypoints
-        if (coordinates.length > 0) {
-            const startCoord = coordinates[0]
-            const endCoord = coordinates[coordinates.length - 1]
-
-            // Check if we already have start/finish waypoints
-            const hasStart = waypoints.some(wp => wp.type === 'start')
-            const hasFinish = hasStart && waypoints.some(wp => wp.type === 'finish')
-
-            if (!hasStart) {
-                const container = document.createElement('div')
-                container.className = styles.markerContainer
-                container.style.width = '24px'
-                container.style.height = '24px'
-                container.style.display = 'flex'
-                container.style.justifyContent = 'center'
-                container.style.alignItems = 'center'
-
-                const el = document.createElement('div')
-                el.className = styles.marker
-                el.innerHTML = getWaypointIcon('start')
-                el.title = 'Start'
-                el.style.backgroundColor = '#16a34a'
-
-                container.appendChild(el)
-
-                const marker = new mapboxgl.Marker({ element: container, anchor: 'center', offset: [0, 0] })
-                    .setLngLat(startCoord as [number, number])
-                    .addTo(map.current!)
-
-                // Add click listener
-                container.addEventListener('click', (e) => {
-                    e.stopPropagation()
-                    if (onMapClickRef.current) onMapClickRef.current(startCoord[1], startCoord[0], 'start')
-                })
-
-                markersRef.current.push(marker)
-            }
-
-            if (!hasFinish) {
-                const container = document.createElement('div')
-                container.className = styles.markerContainer
-                container.style.width = '24px'
-                container.style.height = '24px'
-                container.style.display = 'flex'
-                container.style.justifyContent = 'center'
-                container.style.alignItems = 'center'
-
-                const el = document.createElement('div')
-                el.className = styles.marker
-                el.innerHTML = getWaypointIcon('finish')
-                el.title = 'Finish'
-                el.style.backgroundColor = '#dc2626'
-
-                container.appendChild(el)
-
-                const marker = new mapboxgl.Marker({ element: container, anchor: 'center', offset: [0, 0] })
-                    .setLngLat(endCoord as [number, number])
-                    .addTo(map.current!)
-
-                // Add click listener
-                container.addEventListener('click', (e) => {
-                    e.stopPropagation()
-                    if (onMapClickRef.current) onMapClickRef.current(endCoord[1], endCoord[0], 'finish')
-                })
-
-                markersRef.current.push(marker)
-            }
-        }
-
-        // Terrain Node Markers
-        const terrainMarkers: mapboxgl.Marker[] = []
-        terrainNodes.forEach(node => {
-            const el = document.createElement('div')
-            el.className = styles.terrainMarker // Need to add css
-            el.style.width = '12px'
-            el.style.height = '12px'
-            el.style.backgroundColor = getTerrainColor(node.type)
-            el.style.border = '2px solid white'
-            el.style.borderRadius = '50%' // Circle for now
-            el.style.cursor = 'pointer'
-            el.title = `${node.type} (${node.mile.toFixed(1)}m)`
-
-            const marker = new mapboxgl.Marker({ element: el })
-                .setLngLat([node.lon, node.lat])
-                .addTo(map.current!)
-
-            el.addEventListener('click', (e) => {
-                e.stopPropagation()
-                if (onTerrainNodeClickRef.current) onTerrainNodeClickRef.current(node.id)
-            })
-
-            terrainMarkers.push(marker)
-        })
-
         return () => {
-            // Cleanup terrain markers
-            terrainMarkers.forEach(m => m.remove())
-            // Cleanup waypoint markers
             markersRef.current.forEach(m => m.remove())
             markersRef.current = []
         }
-    }, [waypoints, mapLoaded, coordinates, terrainNodes]) // Re-run only when data changes, NOT on highlight
+    }, [waypoints, mapLoaded, coordinates, terrainNodes, isTerrainMode])
+
+    // Terrain Selection Visuals (Markers & Line)
+    useEffect(() => {
+        if (!map.current || !mapLoaded) return
+
+        // Clear existing selection markers
+        terrainSelectionMarkersRef.current.forEach(m => m.remove())
+        terrainSelectionMarkersRef.current = []
+
+        const m = map.current
+
+        // Update/Remove Line Layer
+        if (m.getSource('terrain-selection')) {
+            m.removeLayer('terrain-selection-line')
+
+            m.removeSource('terrain-selection')
+        }
+
+        if (isTerrainMode && (terrainSelection.start || terrainSelection.end) && coordinates.length > 0) {
+            const { start, end } = terrainSelection
+
+            // Draw Line if both exist
+            if (start && end) {
+                const startIndex = getNearestPointOnLine({ lat: start.lat, lon: start.lon }, coordinates)?.index ?? 0
+                const endIndex = getNearestPointOnLine({ lat: end.lat, lon: end.lon }, coordinates)?.index ?? 0
+
+                // Handle different orders
+                const minIdx = Math.min(startIndex, endIndex)
+                const maxIdx = Math.max(startIndex, endIndex)
+
+                const segmentCoords = coordinates.slice(minIdx, maxIdx + 1)
+
+                m.addSource('terrain-selection', {
+                    type: 'geojson',
+                    data: {
+                        type: 'Feature',
+                        geometry: {
+                            type: 'LineString',
+                            coordinates: segmentCoords
+                        },
+                        properties: {}
+                    }
+                })
+
+                m.addLayer({
+                    id: 'terrain-selection-line',
+                    type: 'line',
+                    source: 'terrain-selection',
+                    layout: { 'line-join': 'round', 'line-cap': 'round' },
+                    paint: {
+                        'line-color': '#fbbf24', // Amber/Yellow
+                        'line-width': 6,
+                        'line-dasharray': [2, 2]
+                    }
+                })
+            }
+
+            // Create Draggable Markers for Start/End
+            const createSelectionMarker = (point: { lat: number, lon: number, mile: number }, type: 'start' | 'end') => {
+                const el = document.createElement('div')
+                el.className = 'w-4 h-4 rounded-full bg-amber-500 border-2 border-white cursor-grab hover:scale-110 transition-transform shadow-md'
+
+                const marker = new mapboxgl.Marker({ element: el, draggable: true })
+                    .setLngLat([point.lon, point.lat])
+                    .addTo(m)
+
+                marker.on('dragend', () => {
+                    const newLngLat = marker.getLngLat()
+                    // Snap to route
+                    const snap = getNearestPointOnLine({ lat: newLngLat.lat, lon: newLngLat.lng }, coordinates)
+                    if (snap) {
+                        // Recalculate mile
+                        // We need getDistanceFromStart logic here or pass it via callback?
+                        // For now, let's just update the lat/lon visible. 
+                        // To update the 'mile', we truly need the context of the whole route.
+                        // But we are inside CourseMap, we have `coordinates`.
+                        // We need `getDistanceFromStart` from geo-utils.
+
+                        // We will rely on re-clicking for now OR implement full drag logic if import is easy.
+                        // Let's rely on click to set for MVP or implement full drag in next step if user requests.
+                        // Wait, plan said "Draggable Handles". I should try to support it.
+                        // BUT `getDistanceFromStart` is imported.
+
+                        import('@/lib/geo-utils').then(({ getDistanceFromStart }) => {
+                            const newMile = getDistanceFromStart(coordinates, snap.index, { lat: snap.lat, lon: snap.lon })
+
+                            marker.setLngLat([snap.lon, snap.lat])
+
+                            setTerrainSelection(prev => ({
+                                ...prev,
+                                [type]: { lat: snap.lat, lon: snap.lon, mile: newMile }
+                            }))
+                        })
+                    }
+                })
+
+                terrainSelectionMarkersRef.current.push(marker)
+            }
+
+            if (start) createSelectionMarker(start, 'start')
+            if (end) createSelectionMarker(end, 'end')
+        }
+
+    }, [isTerrainMode, terrainSelection, mapLoaded, coordinates])
 
     // Handle Waypoint Highlighting independent of marker recreation
     useEffect(() => {
@@ -797,6 +987,27 @@ export function CourseMap({
             const target = e.originalEvent.target as HTMLElement
             if (target.closest('.mapboxgl-marker')) return
 
+            // Terrain Selection Mode
+            if (isTerrainModeRef.current) {
+                const lngLat = e.lngLat
+                const snap = getNearestPointOnLine({ lat: lngLat.lat, lon: lngLat.lng }, coordinates)
+
+                if (snap) {
+                    import('@/lib/geo-utils').then(({ getDistanceFromStart }) => {
+                        const mile = getDistanceFromStart(coordinates, snap.index, { lat: snap.lat, lon: snap.lon })
+                        const point = { lat: snap.lat, lon: snap.lon, mile }
+
+                        setTerrainSelection(prev => {
+                            if (!prev.start) return { start: point, end: null }
+                            if (!prev.end) return { ...prev, end: point }
+                            // If both exist, reset start to new point, clear end
+                            return { start: point, end: null }
+                        })
+                    })
+                }
+                return // Stop regular map click
+            }
+
             if (onMapClick) {
                 // Pass the selected type if any
                 onMapClick(e.lngLat.lat, e.lngLat.lng, selectedPOITypeRef.current || undefined)
@@ -810,7 +1021,7 @@ export function CourseMap({
 
         map.current.on('click', clickHandler)
         return () => { map.current?.off('click', clickHandler) }
-    }, [mapLoaded, onMapClick])
+    }, [mapLoaded, onMapClick, coordinates]) // Added coordinates dependency
     return (
         <div className={`${styles.container} ${className || ''}`} style={{ position: 'relative', width: '100%', height: '100%', minHeight: '300px' }}>
             {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
@@ -845,6 +1056,19 @@ export function CourseMap({
                     <Milestone size={18} />
                 </button>
 
+                <button
+                    onClick={toggleTerrainMode}
+                    className={`${styles.toolBtn} ${isTerrainMode ? 'bg-amber-100 border-amber-500 text-amber-700' : ''}`}
+                    title="Terrain Mode"
+                    type="button"
+                >
+                    {/* Fallback icon if MapPin is used for waypoints, maybe Mountain/Terrain icon? */}
+                    {/* CourseMap imports MapPin. Let's reuse or use something distinct. */}
+                    {/* No Mountain icon imported. I'll use a text char or distinct style MapPin for now, or assume MapPin is fine. */}
+                    {/* Actually, let's just use MapPin with specific style or maybe a different icon if available. */}
+                    <div className={isTerrainMode ? 'text-amber-600 font-bold' : ''}>T</div>
+                </button>
+
                 <div className={styles.divider} />
 
                 <button
@@ -873,6 +1097,128 @@ export function CourseMap({
                     </button>
                 )}
             </div>
+
+            {/* Terrain Selection Popup */}
+            {isTerrainMode && terrainSelection.start && terrainSelection.end && (
+                <div className="absolute top-20 left-4 bg-white p-4 rounded-lg shadow-xl z-20 w-72 animate-in fade-in slide-in-from-left-4 border border-neutral-200">
+                    <h3 className="text-sm font-bold text-neutral-900 mb-3 border-b pb-2">Set Terrain Segment</h3>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+                        <div>
+                            <label className="text-neutral-500 block mb-1">Start Mile</label>
+                            <div className="font-mono font-medium text-neutral-900">{terrainSelection.start.mile.toFixed(2)}</div>
+                        </div>
+                        <div>
+                            <label className="text-neutral-500 block mb-1">End Mile</label>
+                            <div className="font-mono font-medium text-neutral-900">{terrainSelection.end.mile.toFixed(2)}</div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-3">
+                        <div>
+                            <label className="text-xs font-semibold text-neutral-700 block mb-1">Terrain Type</label>
+                            <select
+                                id="terrain-type-select"
+                                className="w-full text-sm border border-neutral-300 rounded p-1.5 bg-neutral-50 text-neutral-900"
+                                defaultValue="paved"
+                                onChange={(e) => {
+                                    const val = e.target.value
+                                    let diff = 100
+                                    switch (val) {
+                                        case 'paved': diff = 100; break;
+                                        case 'dirt': diff = 104; break;
+                                        case 'double_track': diff = 108; break;
+                                        case 'single_track': diff = 115; break;
+                                        case 'technical': diff = 130; break;
+                                        default: diff = 100;
+                                    }
+                                    const slider = document.getElementById('terrain-factor-slider') as HTMLInputElement
+                                    const input = document.getElementById('terrain-factor-input') as HTMLInputElement
+                                    if (slider) slider.value = String(diff)
+                                    if (input) input.value = String(diff)
+                                }}
+                            >
+                                <option value="paved">Paved / Road (0%)</option>
+                                <option value="dirt">Dirt Road (4%)</option>
+                                <option value="double_track">Double Track (8%)</option>
+                                <option value="single_track">Single Track (15%)</option>
+                                <option value="technical">Technical (30%)</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="text-xs font-semibold text-neutral-700 block mb-1">Difficulty Factor (%)</label>
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="range"
+                                    id="terrain-factor-slider"
+                                    min="100"
+                                    max="200"
+                                    defaultValue="100"
+                                    className="flex-1 accent-amber-600"
+                                    onInput={(e) => {
+                                        const val = (e.target as HTMLInputElement).value
+                                        const numInput = document.getElementById('terrain-factor-input') as HTMLInputElement
+                                        if (numInput) numInput.value = val
+                                    }}
+                                />
+                                <input
+                                    type="number"
+                                    id="terrain-factor-input"
+                                    className="w-14 text-sm border border-neutral-300 rounded p-1 text-right text-neutral-900"
+                                    defaultValue="100"
+                                    min="100"
+                                    max="500"
+                                    onChange={(e) => {
+                                        const val = e.target.value
+                                        const slider = document.getElementById('terrain-factor-slider') as HTMLInputElement
+                                        if (slider) slider.value = val
+                                    }}
+                                />
+                                <span className="text-xs text-neutral-500">%</span>
+                            </div>
+                            <p className="text-[10px] text-neutral-500 mt-1">100% = Normal. 150% = 1.5x slower.</p>
+                        </div>
+
+                        <div className="flex gap-2 pt-2">
+                            <button
+                                onClick={() => {
+                                    setTerrainSelection({ start: null, end: null })
+                                }}
+                                className="flex-1 py-1.5 text-xs text-neutral-600 hover:bg-neutral-100 rounded border border-neutral-200"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => {
+                                    const typeSelect = document.getElementById('terrain-type-select') as HTMLSelectElement
+                                    const factorInput = document.getElementById('terrain-factor-input') as HTMLInputElement
+
+                                    if (onSaveTerrain && terrainSelection.start && terrainSelection.end) {
+                                        const s = terrainSelection.start.mile
+                                        const e = terrainSelection.end.mile
+                                        const min = Math.min(s, e)
+                                        const max = Math.max(s, e)
+
+                                        onSaveTerrain(min, max, typeSelect.value, parseInt(factorInput.value))
+
+                                        // CONTINUOUS ADDITION: Set start to the end of this segment
+                                        // We need the point object of the END.
+                                        // If s < e, end point was 'end'. If s > e, end point was 'start'.
+                                        const newStart = s < e ? terrainSelection.end : terrainSelection.start
+
+                                        setTerrainSelection({ start: newStart, end: null })
+                                    }
+                                }}
+                                className="flex-1 py-1.5 text-xs bg-amber-600 hover:bg-amber-700 text-white font-medium rounded shadow-sm"
+                            >
+                                Save
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {
                 !import.meta.env.VITE_MAPBOX_TOKEN && (
@@ -917,12 +1263,13 @@ function getWaypointIcon(type: string): string {
 
 function getTerrainColor(type: string): string {
     switch (type) {
-        case 'paved': return '#94a3b8' // Slate 400
-        case 'dirt': return '#d97706' // Amber 600
-        case 'double_track': return '#854d0e' // Yellow 800
-        case 'single_track': return '#166534' // Green 700
-        case 'technical': return '#dc2626' // Red 600
-        case 'other': return '#64748b'
-        default: return '#e11d48'
+        case 'paved': return '#3b82f6' // blue-500
+        case 'dirt': return '#eab308' // yellow-500
+        case 'double_track': return '#f97316' // orange-500
+        case 'single_track': return '#ef4444' // red-500
+        case 'technical': return '#7f1d1d' // red-900 (dark red)
+        case 'other': return '#9ca3af' // gray-400
+        case 'default': return '#4b5563' // gray-600 (Base Layer)
+        default: return '#9ca3af'
     }
 }
