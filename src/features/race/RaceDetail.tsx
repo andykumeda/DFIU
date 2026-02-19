@@ -1159,6 +1159,9 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                 </div>
               </div>
             )}
+            <div className="p-2 text-center text-[10px] text-neutral-600 border-t border-neutral-800">
+              v.{__COMMIT_HASH__}
+            </div>
           </div>
         )
         }
