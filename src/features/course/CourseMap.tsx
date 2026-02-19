@@ -1,14 +1,13 @@
-'use client'
-
 import { useEffect, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import along from '@turf/along'
 import length from '@turf/length'
 import { lineString } from '@turf/helpers'
-import MapStyleSwitcher from './MapStyleSwitcher'
 import { X, Trash2, MapPin, Milestone } from 'lucide-react'
-import { getNearestPointOnLine, getDistanceFromStart } from '@/lib/geo-utils'
+
+import MapStyleSwitcher from './MapStyleSwitcher'
+import { getNearestPointOnLine, getDistanceFromStart, getCoordinateAtDistance, getDistanceAtCoordinate } from '@/lib/geo-utils'
 import styles from './CourseMap.module.css'
 
 interface CourseMapProps {
@@ -51,7 +50,7 @@ interface CourseMapProps {
     highlightElevation?: number | null
     totalDistance?: number
     highlightedWaypointId?: string | null // New prop
-    highlightedTerrainNodeId?: string | null // Highlight terrain node being edited
+    highlightedTerrainId?: string | null // Highlight terrain node being edited
     onSaveTerrain?: (start: number, end: number, type: string, difficulty: number) => void
     onTerrainNodeMove?: (id: string, lat: number, lon: number, mile: number) => void
 }
@@ -73,13 +72,14 @@ export function CourseMap({
     highlightElevation,
     totalDistance,
     highlightedWaypointId,
-    // highlightedTerrainNodeId - TODO: implement terrain node highlighting
+    highlightedTerrainId,
     onSaveTerrain,
     onTerrainNodeMove
 }: CourseMapProps) {
     const mapContainer = useRef<HTMLDivElement>(null)
     const map = useRef<mapboxgl.Map | null>(null)
     const [mapLoaded, setMapLoaded] = useState(false)
+    const [styleLoaded, setStyleLoaded] = useState(false) // Track style loading
     const [selectedPOIType, setSelectedPOIType] = useState<string | null>(null)
     const [isTerrainMode, setIsTerrainMode] = useState(false)
     const [terrainSelection, setTerrainSelection] = useState<{
@@ -117,7 +117,9 @@ export function CourseMap({
     useEffect(() => { terrainSelectionRef.current = terrainSelection }, [terrainSelection])
 
     const handleStyleChange = (style: 'outdoors' | 'streets' | 'satellite') => {
+        if (style === mapStyle) return
         setMapStyle(style)
+        setStyleLoaded(false) // Reset style loaded
         if (map.current) {
             const styleUrl = style === 'satellite'
                 ? 'mapbox://styles/mapbox/satellite-streets-v12'
@@ -157,6 +159,7 @@ export function CourseMap({
 
         map.current.on('load', () => {
             setMapLoaded(true)
+            setStyleLoaded(true) // Initial style loaded
 
             // Controls
             map.current!.addControl(new mapboxgl.NavigationControl(), 'top-right')
@@ -169,6 +172,11 @@ export function CourseMap({
             map.current!.addControl(geolocate, 'top-right')
         })
 
+        // Listen for style load events (triggered after setStyle)
+        map.current.on('style.load', () => {
+            setStyleLoaded(true)
+        })
+
         return () => {
             map.current?.remove()
             map.current = null
@@ -178,7 +186,7 @@ export function CourseMap({
 
     // Reactive Route Update & Fit Bounds
     useEffect(() => {
-        if (!map.current || !mapLoaded || coordinates.length === 0) return
+        if (!map.current || !styleLoaded || coordinates.length === 0) return
 
         const m = map.current
 
@@ -236,7 +244,7 @@ export function CourseMap({
         } catch (e) {
             console.warn('Error fitting bounds:', e)
         }
-    }, [mapLoaded, coordinates])
+    }, [styleLoaded, coordinates])
 
     // Mile Markers
     useEffect(() => {
@@ -244,7 +252,7 @@ export function CourseMap({
         mileMarkersRef.current.forEach(m => m.remove())
         mileMarkersRef.current = []
 
-        if (!map.current || !mapLoaded || !showMileMarkers || isTerrainMode || coordinates.length < 2) return
+        if (!map.current || !styleLoaded || !showMileMarkers || isTerrainMode || coordinates.length < 2) return
 
         try {
             const line = lineString(coordinates as [number, number][])
@@ -277,14 +285,15 @@ export function CourseMap({
         } catch (err) {
             console.warn('Mile marker error:', err)
         }
-    }, [showMileMarkers, mapLoaded, coordinates, isTerrainMode])
+    }, [showMileMarkers, styleLoaded, coordinates, isTerrainMode, highlightedWaypointId])
+
 
 
 
     // Terrain Segments Visualization
     useEffect(() => {
         const updateTerrainLayer = async () => {
-            if (!map.current || !mapLoaded || coordinates.length === 0) return
+            if (!map.current || !styleLoaded || coordinates.length === 0) return
 
             const m = map.current
 
@@ -340,7 +349,7 @@ export function CourseMap({
 
             if (terrainNodes.length === 0) return
 
-            const { getCoordinateAtDistance, getNearestPointOnLine } = await import('@/lib/geo-utils')
+
             const geoJson = {
                 type: 'FeatureCollection',
                 features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates } }]
@@ -381,6 +390,7 @@ export function CourseMap({
 
                 features.push({
                     type: 'Feature',
+                    id: node.id, // ID at top level for feature-state
                     geometry: { type: 'LineString', coordinates: segmentCoords },
                     properties: { type: node.type, color: getTerrainColor(node.type), nodeId: node.id }
                 })
@@ -396,15 +406,51 @@ export function CourseMap({
                 type: 'line',
                 source: 'terrain-segments',
                 layout: { 'line-join': 'round', 'line-cap': 'round' },
-                paint: { 'line-color': ['get', 'color'], 'line-width': 6 }
+                paint: {
+                    'line-color': ['get', 'color'],
+                    'line-width': ['case', ['boolean', ['feature-state', 'hover'], false], 10, 6]
+                }
             })
 
             // ... interactions ...
         }
 
         updateTerrainLayer()
-    }, [mapLoaded, terrainNodes, coordinates, isTerrainMode])
+    }, [mapLoaded, terrainNodes, coordinates, isTerrainMode, styleLoaded])
 
+    // Terrain Highlighting Effect
+    const lastHighlightedTerrainRef = useRef<string | null>(null)
+    useEffect(() => {
+        if (!map.current || !mapLoaded) return
+        const m = map.current
+
+        // Remove previous highlight
+        if (lastHighlightedTerrainRef.current) {
+            if (m.getSource('terrain-segments')) {
+                m.setFeatureState(
+                    { source: 'terrain-segments', id: lastHighlightedTerrainRef.current },
+                    { hover: false }
+                )
+            }
+        }
+
+        // Add new highlight
+        if (highlightedTerrainId) {
+            if (m.getSource('terrain-segments')) {
+                m.setFeatureState(
+                    { source: 'terrain-segments', id: highlightedTerrainId },
+                    { hover: true }
+                )
+            }
+        }
+
+        lastHighlightedTerrainRef.current = highlightedTerrainId || null
+    }, [highlightedTerrainId, mapLoaded, terrainNodes]) // terrainNodes dep ensures we re-apply if layer rebuilds
+
+
+    // ... (rest of file)
+
+    // ... (inside getWaypointIcon)
     // Terrain Node Markers
     useEffect(() => {
         if (!map.current || !mapLoaded) return
@@ -419,7 +465,7 @@ export function CourseMap({
             terrainMarkers.forEach(mk => mk.remove())
             terrainMarkers.length = 0
 
-            const { getCoordinateAtDistance, getNearestPointOnLine, getDistanceFromStart } = await import('@/lib/geo-utils')
+
             const geoJson = {
                 type: 'FeatureCollection',
                 features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates } }]
@@ -533,28 +579,41 @@ export function CourseMap({
             container.style.alignItems = 'center'
             container.style.cursor = 'grab'
 
+            // Highlight Logic
+            const isHighlighted = highlightedWaypointId && group.some(w => w.id === highlightedWaypointId)
+            if (isHighlighted) {
+                container.style.transform = 'scale(1.5)'
+                container.style.zIndex = '100'
+                // container.style.boxShadow = '0 0 10px rgba(255,255,255,0.8)' // Optional glow
+            }
+
             const el = document.createElement('div')
             el.className = styles.marker
 
-            // Note: getWaypointIcon must be available in scope
-            // Assuming it is defined in the component or imported helper
-            // If it's a helper function inside the component but outside effect, we need to check.
-            // Previous code used `getWaypointIcon` without `this`.
+            if (primaryWp.type === 'aid_station') {
+                // Custom Style for Aid Station: Red bg, White Bold +
+                el.innerHTML = '+'
+                el.style.backgroundColor = '#ef4444' // red-500
+                el.style.color = 'white'
+                el.style.fontWeight = '800' // Extra Bold
+                el.style.fontSize = '18px'
+                el.style.lineHeight = '1' // Center vertically
+                el.style.fontFamily = 'sans-serif'
+            } else {
+                const iconMarkup = getWaypointIcon(primaryWp.type)
+                el.innerHTML = iconMarkup
 
-            // Fallback icon if function missing (unlikely if it was working)
-            // But let's assume it works.
-            const iconMarkup = getWaypointIcon(primaryWp.type)
-            el.innerHTML = iconMarkup
+                if (primaryWp.type === 'start') el.style.backgroundColor = '#16a34a'
+                else if (primaryWp.type === 'finish') el.style.backgroundColor = '#dc2626'
+                // else if (primaryWp.type === 'aid_station') el.style.backgroundColor = '#2563eb' // Overridden above
+                else if (primaryWp.type === 'water_only') el.style.backgroundColor = '#3b82f6'
+                else if (primaryWp.type === 'crew') el.style.backgroundColor = '#a855f7'
+                else if (primaryWp.type === 'pacer') el.style.backgroundColor = '#f59e0b'
+                else if (primaryWp.type === 'drop_bag') el.style.backgroundColor = '#10b981'
+                else if (primaryWp.type === 'medical') el.style.backgroundColor = '#ef4444'
+            }
+
             el.title = isStack ? `${group.length} Waypoints here` : primaryWp.name
-
-            if (primaryWp.type === 'start') el.style.backgroundColor = '#16a34a'
-            else if (primaryWp.type === 'finish') el.style.backgroundColor = '#dc2626'
-            else if (primaryWp.type === 'aid_station') el.style.backgroundColor = '#2563eb'
-            else if (primaryWp.type === 'water_only') el.style.backgroundColor = '#3b82f6'
-            else if (primaryWp.type === 'crew') el.style.backgroundColor = '#a855f7'
-            else if (primaryWp.type === 'pacer') el.style.backgroundColor = '#f59e0b'
-            else if (primaryWp.type === 'drop_bag') el.style.backgroundColor = '#10b981'
-            else if (primaryWp.type === 'medical') el.style.backgroundColor = '#ef4444'
 
             container.appendChild(el)
 
@@ -696,7 +755,7 @@ export function CourseMap({
             markersRef.current.forEach(m => m.remove())
             markersRef.current = []
         }
-    }, [waypoints, mapLoaded, coordinates, terrainNodes, isTerrainMode])
+    }, [waypoints, mapLoaded, coordinates, terrainNodes, isTerrainMode, highlightedWaypointId])
 
     // Terrain Selection Visuals (Markers & Line)
     useEffect(() => {
@@ -780,16 +839,14 @@ export function CourseMap({
                         // Wait, plan said "Draggable Handles". I should try to support it.
                         // BUT `getDistanceFromStart` is imported.
 
-                        import('@/lib/geo-utils').then(({ getDistanceFromStart }) => {
-                            const newMile = getDistanceFromStart(coordinates, snap.index, { lat: snap.lat, lon: snap.lon })
+                        const newMile = getDistanceFromStart(coordinates, snap.index, { lat: snap.lat, lon: snap.lon })
 
-                            marker.setLngLat([snap.lon, snap.lat])
+                        marker.setLngLat([snap.lon, snap.lat])
 
-                            setTerrainSelection(prev => ({
-                                ...prev,
-                                [type]: { lat: snap.lat, lon: snap.lon, mile: newMile }
-                            }))
-                        })
+                        setTerrainSelection(prev => ({
+                            ...prev,
+                            [type]: { lat: snap.lat, lon: snap.lon, mile: newMile }
+                        }))
                     }
                 })
 
@@ -882,7 +939,6 @@ export function CourseMap({
 
             // For efficiency, let's assume we can use the helper with a constructed GeoJSON
             // or pass the GeoJSON source data.
-            // @ts-ignore - _data is internal, but we can assume we know what we passed
             const geoJson = {
                 type: 'FeatureCollection',
                 features: [{
@@ -892,12 +948,10 @@ export function CourseMap({
             } as any
 
             // Dynamic import to avoid SSR issues if any (but we are client-side)
-            import('@/lib/geo-utils').then(({ getDistanceAtCoordinate }) => {
-                const distMeters = getDistanceAtCoordinate(geoJson, e.lngLat.lng, e.lngLat.lat)
-                if (distMeters !== null) {
-                    onHover(distMeters / 1609.34) // Convert to miles
-                }
-            })
+            const distMeters = getDistanceAtCoordinate(geoJson, e.lngLat.lng, e.lngLat.lat)
+            if (distMeters !== null) {
+                onHover(distMeters / 1609.34) // Convert to miles
+            }
         }
 
         const onMouseLeave = () => {
@@ -947,7 +1001,7 @@ export function CourseMap({
             if (!source) return
 
             if (highlightMile !== undefined && highlightMile !== null && coordinates.length > 0) {
-                const { getCoordinateAtDistance } = await import('@/lib/geo-utils')
+
 
                 const geoJson = {
                     type: 'FeatureCollection',
@@ -993,16 +1047,14 @@ export function CourseMap({
                 const snap = getNearestPointOnLine({ lat: lngLat.lat, lon: lngLat.lng }, coordinates)
 
                 if (snap) {
-                    import('@/lib/geo-utils').then(({ getDistanceFromStart }) => {
-                        const mile = getDistanceFromStart(coordinates, snap.index, { lat: snap.lat, lon: snap.lon })
-                        const point = { lat: snap.lat, lon: snap.lon, mile }
+                    const mile = getDistanceFromStart(coordinates, snap.index, { lat: snap.lat, lon: snap.lon })
+                    const point = { lat: snap.lat, lon: snap.lon, mile }
 
-                        setTerrainSelection(prev => {
-                            if (!prev.start) return { start: point, end: null }
-                            if (!prev.end) return { ...prev, end: point }
-                            // If both exist, reset start to new point, clear end
-                            return { start: point, end: null }
-                        })
+                    setTerrainSelection(prev => {
+                        if (!prev.start) return { start: point, end: null }
+                        if (!prev.end) return { ...prev, end: point }
+                        // If both exist, reset start to new point, clear end
+                        return { start: point, end: null }
                     })
                 }
                 return // Stop regular map click
@@ -1250,7 +1302,7 @@ function getWaypointIcon(type: string): string {
     switch (type) {
         case 'start': return '🏁'
         case 'finish': return '🏁'
-        case 'aid_station': return '⛺' // Tent
+        case 'aid_station': return '➕' // Medical Cross
         case 'water_only': return '💧'
         case 'crew': return '👥'
         case 'pacer': return '🏃'

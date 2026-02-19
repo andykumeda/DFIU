@@ -9,6 +9,14 @@ interface WaypointMarker {
     type: string
 }
 
+// ... imports
+
+interface TerrainNode {
+    id: string
+    mile: number
+    type: string
+}
+
 interface ElevationProfileProps {
     data: { distance: number; elevation: number }[]
     totalDistance: number
@@ -17,19 +25,23 @@ interface ElevationProfileProps {
     className?: string
     showMileMarkers?: boolean
     waypoints?: WaypointMarker[]
+    terrainNodes?: TerrainNode[]
 }
 
-function getWaypointColor(type: string): string {
+function getTerrainColor(type: string): string {
     switch (type) {
-        case 'start': return '#22c55e'
-        case 'finish': return '#ef4444'
-        case 'aid_station': return '#3b82f6'
-        case 'water_source': return '#06b6d4'
-        case 'crew_access': return '#a855f7'
-        case 'drop_bag': return '#f97316'
-        default: return '#eab308'
+        case 'paved': return '#3b82f6' // blue-500
+        case 'dirt': return '#eab308' // yellow-500
+        case 'double_track': return '#f97316' // orange-500
+        case 'single_track': return '#ef4444' // red-500
+        case 'technical': return '#7f1d1d' // red-900 (dark red)
+        case 'other': return '#9ca3af' // gray-400
+        case 'default': return '#4b5563' // gray-600 (Base Layer)
+        default: return '#9ca3af'
     }
 }
+
+// ... ElevationProfile component ...
 
 export function ElevationProfile({
     data,
@@ -38,16 +50,17 @@ export function ElevationProfile({
     highlightDistance,
     className,
     showMileMarkers = false,
-    waypoints = []
+    waypoints = [],
+    terrainNodes = []
 }: ElevationProfileProps) {
-    const { path, minEle, maxEle, areaPath } = useMemo(() => {
-        if (!data || data.length === 0) return { path: '', minEle: 0, maxEle: 0, areaPath: '' }
+    const { segments, minEle, maxEle, areaPath } = useMemo(() => {
+        if (!data || data.length === 0) return { segments: [], minEle: 0, maxEle: 0, areaPath: '' }
 
         const elevations = data
             .map(d => d.elevation)
             .filter(e => Number.isFinite(e))
 
-        if (elevations.length === 0) return { path: '', minEle: 0, maxEle: 0, areaPath: '' }
+        if (elevations.length === 0) return { segments: [], minEle: 0, maxEle: 0, areaPath: '' }
 
         const minEle = Math.min(...elevations)
         const maxEle = Math.max(...elevations)
@@ -61,25 +74,77 @@ export function ElevationProfile({
         const verticalRange = height - paddingTop - paddingBottom
 
         const points = data.map(d => {
-            // Default to minEle if elevation is invalid
             const ele = Number.isFinite(d.elevation) ? d.elevation : minEle
             const x = (d.distance / totalDistance) * (width - paddingX * 2) + paddingX
             const y = Math.max(paddingTop, height - paddingBottom - ((ele - minEle) / eleRange) * verticalRange)
-            return { x, y }
+            return { x, y, distance: d.distance }
         })
 
-        // Create SVG path
-        const path = points.map((p, i) =>
-            i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`
-        ).join(' ')
+        // Sort Terrain Nodes for efficient lookup
+        const sortedTerrain = [...(terrainNodes || [])].sort((a, b) => a.mile - b.mile)
 
-        // Create filled area path
+        const getTerrainAtMile = (m: number) => {
+            if (sortedTerrain.length === 0) return 'default'
+            // Find last node <= m
+            let active = sortedTerrain[0]
+            if (active.mile > m) return 'default' // Before first node
+
+            for (let i = 0; i < sortedTerrain.length; i++) {
+                if (sortedTerrain[i].mile <= m) active = sortedTerrain[i]
+                else break
+            }
+            return active.type === 'other' ? 'default' : active.type // Treat 'other' as default/gray in profile?
+        }
+
+        const segments: { path: string, color: string }[] = []
+        let currentPath = ''
+        let currentColor = ''
+
+        // Build segments
+        for (let i = 0; i < points.length - 1; i++) {
+            const p1 = points[i]
+            const p2 = points[i + 1]
+            const midDist = (p1.distance + p2.distance) / 2
+
+            // Determine type at midpoint of segment
+            let type = getTerrainAtMile(midDist / (totalDistance > 0 ? 1 : 1609.34)) // Data distance is usually miles?
+            // Wait, data.distance units? 
+            // In RaceDetail/GPX parsing, data is usually miles if totalDistance is passed in miles.
+            // Let's assume data.distance is SAME UNIT as totalDistance (miles).
+
+            type = getTerrainAtMile(midDist)
+
+            const color = getTerrainColor(type)
+
+            if (color !== currentColor) {
+                // Flash current path
+                if (currentPath) {
+                    segments.push({ path: currentPath, color: currentColor })
+                }
+                currentPath = `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y}`
+                currentColor = color
+            } else {
+                if (currentPath === '') {
+                    currentPath = `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y}`
+                } else {
+                    currentPath += ` L ${p2.x} ${p2.y}`
+                }
+            }
+        }
+
+        if (currentPath) {
+            segments.push({ path: currentPath, color: currentColor })
+        }
+
+        // Create filled area path (Background)
+        // Use full path for area
+        const fullPath = points.map((p, i) => i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`).join(' ')
         const firstX = points[0]?.x || paddingX
         const lastX = points[points.length - 1]?.x || width - paddingX
-        const areaPath = `${path} L ${lastX} ${height - paddingBottom} L ${firstX} ${height - paddingBottom} Z`
+        const areaPath = `${fullPath} L ${lastX} ${height - paddingBottom} L ${firstX} ${height - paddingBottom} Z`
 
-        return { path, minEle, maxEle, areaPath }
-    }, [data, totalDistance])
+        return { segments, minEle, maxEle, areaPath }
+    }, [data, totalDistance, terrainNodes])
 
     // Compute mile marker positions on the elevation profile
     const mileMarkerPositions = useMemo(() => {
@@ -113,7 +178,7 @@ export function ElevationProfile({
 
     // Compute waypoint positions on the elevation profile
     const waypointPositions = useMemo(() => {
-        if (waypoints.length === 0 && data.length === 0) return []
+        if (!waypoints || waypoints.length === 0 || data.length === 0) return []
         if (totalDistance <= 0) return []
 
         const width = 100
@@ -123,30 +188,8 @@ export function ElevationProfile({
         const verticalRange = 100 - paddingTop - paddingBottom
         const eleRange = (maxEle - minEle) || 1
 
-        // Create a list of points to render, promoting any waypoint at mile 0 / totalDistance to start/finish
-        const pointsToRender = waypoints.map(wp => {
-            // If a waypoint sits at mile 0 and isn't already typed as start, treat it as start
-            if (wp.mile !== undefined && Math.abs(wp.mile) < 0.1 && wp.type !== 'start' && wp.type !== 'finish') {
-                return { ...wp, type: 'start' as const }
-            }
-            // If a waypoint sits at the final mile and isn't already typed as finish, treat it as finish
-            if (wp.mile !== undefined && Math.abs(wp.mile - totalDistance) < 0.1 && wp.type !== 'start' && wp.type !== 'finish') {
-                return { ...wp, type: 'finish' as const }
-            }
-            return wp
-        })
-
-        // Add implicit Start if no start-type waypoint exists
-        if (!pointsToRender.some(wp => wp.type === 'start')) {
-            pointsToRender.push({ mile: 0, name: 'Start', type: 'start' })
-        }
-
-        // Add implicit Finish if no finish-type waypoint exists
-        if (!pointsToRender.some(wp => wp.type === 'finish')) {
-            pointsToRender.push({ mile: totalDistance, name: 'Finish', type: 'finish' })
-        }
-
-        return pointsToRender
+        // Create a list of points to render
+        return waypoints
             .filter(wp => Number.isFinite(wp.mile) && wp.mile >= 0 && wp.mile <= totalDistance)
             .map(wp => {
                 const x = (wp.mile / totalDistance) * (width - paddingX * 2) + paddingX
@@ -211,7 +254,6 @@ export function ElevationProfile({
         )
     }
 
-
     return (
         <div className={`${styles.container} ${className || ''}`}>
             <div className={styles.labels}>
@@ -239,19 +281,25 @@ export function ElevationProfile({
                     <path
                         d={areaPath}
                         fill="url(#colorElevation)"
+                        opacity={0.3}
                     />
 
-                    {/* Line */}
-                    <path
-                        d={path}
-                        fill="none"
-                        stroke="#f59e0b" // amber-500
-                        strokeWidth="0.5"
-                        vectorEffect="non-scaling-stroke"
-                    />
+                    {/* Colored Line Segments */}
+                    {segments.map((seg, i) => (
+                        <path
+                            key={i}
+                            d={seg.path}
+                            fill="none"
+                            stroke={seg.color}
+                            strokeWidth="1.5"
+                            vectorEffect="non-scaling-stroke"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        />
+                    ))}
                 </svg>
 
-                {/* Marker Overlay - Using HTML for non-stretching symbols */}
+                {/* Marker Overlay */}
                 <div className={styles.markerOverlay}>
                     {/* Mile markers */}
                     {mileMarkerPositions.map(m => (
@@ -266,59 +314,65 @@ export function ElevationProfile({
 
                     {/* Waypoint markers */}
                     {waypointPositions.map((wp, i) => {
-                        // Render specific icons for start/finish or default dot for others
-                        if (wp.type === 'start') {
-                            return (
-                                <div
-                                    key={`wp-${i}`}
-                                    className={styles.waypointMarker}
-                                    style={{
-                                        left: `${wp.x}%`,
-                                        top: `${wp.y}%`,
-                                        backgroundColor: '#16a34a', // Green
-                                        zIndex: 30,
-                                        width: '24px',
-                                        height: '24px',
-                                        fontSize: '12px'
-                                    }}
-                                    title="Start"
-                                >
-                                    🏁
-                                </div>
-                            )
-                        } else if (wp.type === 'finish') {
-                            return (
-                                <div
-                                    key={`wp-${i}`}
-                                    className={styles.waypointMarker}
-                                    style={{
-                                        left: `${wp.x}%`,
-                                        top: `${wp.y}%`,
-                                        backgroundColor: '#dc2626', // Red
-                                        zIndex: 30,
-                                        width: '24px',
-                                        height: '24px',
-                                        fontSize: '12px'
-                                    }}
-                                    title="Finish"
-                                >
-                                    🏁
-                                </div>
-                            )
+                        let content = '📍'
+                        let bg = 'transparent'
+                        let color = 'inherit'
+                        let fontWeight = 'normal'
+                        let fontSize = '10px'
+                        let borderRadius = '50%' // Default round
+
+                        // Match CourseMap styling
+                        if (wp.type === 'aid_station') {
+                            content = '+'
+                            bg = '#ef4444' // red-500
+                            color = 'white'
+                            fontWeight = '800'
+                            fontSize = '12px' // Slightly larger for the plus
+                            borderRadius = '4px' // Square-ish for aid station? Or keep round? Map uses standard marker shape which is square-ish in CSS maybe?
+                            // CourseMap uses styles.marker which is usually a circle or pin. 
+                            // Editor's note: Map markers usually circle. Let's stick to circle for consistency unless CourseMap does otherwise.
+                            // CourseMap: el.className = styles.marker. 
                         } else {
-                            return (
-                                <div
-                                    key={`wp-${i}`}
-                                    className={styles.waypointMarker}
-                                    style={{
-                                        left: `${wp.x}%`,
-                                        top: `${wp.y}%`,
-                                        backgroundColor: getWaypointColor(wp.type)
-                                    }}
-                                    title={wp.name}
-                                />
-                            )
+                            switch (wp.type) {
+                                case 'start': content = '🏁'; bg = '#16a34a'; break;
+                                case 'finish': content = '🏁'; bg = '#dc2626'; break;
+                                case 'water_only': content = '💧'; bg = '#3b82f6'; break;
+                                case 'crew': content = '👥'; bg = '#a855f7'; break;
+                                case 'pacer': content = '🏃'; bg = '#f59e0b'; break;
+                                case 'drop_bag': content = '🎒'; bg = '#10b981'; break;
+                                case 'medical': content = '🏥'; bg = '#ef4444'; break;
+                                case 'landmark': content = '📸'; break;
+                                default: content = '📍'; break;
+                            }
                         }
+
+                        return (
+                            <div
+                                key={`wp-${i}`}
+                                className={styles.waypointMarker}
+                                style={{
+                                    left: `${wp.x}%`,
+                                    top: `${wp.y}%`,
+                                    backgroundColor: bg,
+                                    color: color,
+                                    fontWeight: fontWeight,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    zIndex: 30,
+                                    width: '16px', // Slightly larger to contain background
+                                    height: '16px',
+                                    fontSize: fontSize,
+                                    transform: 'translate(-50%, -50%)',
+                                    cursor: 'help',
+                                    borderRadius: borderRadius, // Use the variable
+                                    boxShadow: '0 1px 2px rgba(0,0,0,0.3)' // Add pop
+                                }}
+                                title={`${wp.name} (${wp.type.replace('_', ' ')})`}
+                            >
+                                {content}
+                            </div>
+                        )
                     })}
 
                     {/* Highlight Dot */}

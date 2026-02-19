@@ -15,7 +15,7 @@ fi
 
 # Default Configuration
 USER=${DEPLOY_USER:-"root"}
-HOST=${DEPLOY_HOST:-"66.94.118.173"}
+HOST=${DEPLOY_HOST:-"web"}
 DIR=${DEPLOY_DIR:-"/var/www/dfiu"}
 
 # Check required variables

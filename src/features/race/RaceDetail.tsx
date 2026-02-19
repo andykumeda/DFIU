@@ -1,23 +1,41 @@
 import { useState, useEffect, useMemo } from 'react'
-import { fetchWeatherForRace } from '@/lib/weather-service'
 import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Calendar, MapPin, Globe, ArrowUpRight, CloudSun, Trophy, RefreshCw, Settings } from 'lucide-react'
+
 import { supabase } from '@/lib/supabase'
 import { Race, Course, Waypoint, TerrainNode } from '@/types/database'
-import { Calendar, MapPin, Globe, ArrowUpRight, CloudSun, Trophy, RefreshCw, Settings } from 'lucide-react'
+import { fetchWeatherForRace } from '@/lib/weather-service'
+import { sampleElevationProfile, type GpxParseResult } from '@/lib/gpx-parser'
+import { getNearestPointOnLine, getDistanceFromStart } from '@/lib/geo-utils'
+import { formatDate } from '@/lib/utils'
+
 import { CourseMap } from '@/features/course/CourseMap'
 import { ElevationProfile } from '@/features/course/ElevationProfile'
 import { GpxUploader } from '@/features/course/GpxUploader'
 import { EditRaceModal } from '@/features/race/EditRaceModal'
 import { EditWaypointModal } from '@/features/course/EditWaypointModal'
 import { EditTerrainModal } from '@/features/course/EditTerrainModal'
-import { sampleElevationProfile, type GpxParseResult } from '@/lib/gpx-parser'
-import { getNearestPointOnLine, getDistanceFromStart } from '@/lib/geo-utils'
-import { formatDate } from '@/lib/utils'
 import { PaceCalculator } from '@/features/race/PaceCalculator'
 import { RaceResources } from '@/features/race/RaceResources'
 
 type Tab = 'overview' | 'map' | 'plan' | 'resources'
+
+// Helper to get icon
+function getWaypointIcon(type: string): string {
+  switch (type) {
+    case 'start': return '🏁'
+    case 'finish': return '🏁'
+    case 'aid_station': return '➕' // Medical Cross
+    case 'water_only': return '💧'
+    case 'crew': return '👥'
+    case 'pacer': return '🏃'
+    case 'drop_bag': return '🎒'
+    case 'medical': return '🏥'
+    case 'landmark': return '📸'
+    default: return '📍'
+  }
+}
 
 export function RaceDetail({ raceId }: { raceId: string }) {
   const queryClient = useQueryClient()
@@ -30,9 +48,13 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   const [editingTerrainNode, setEditingTerrainNode] = useState<Partial<TerrainNode> | null>(null)
 
   const [hoveredMile, setHoveredMile] = useState<number | null>(null)
-  const [hoveredWaypointId, setHoveredWaypointId] = useState<string | null>(null) // New state for hover highlight
+  const [hoveredWaypointId, setHoveredWaypointId] = useState<string | null>(null)
+  const [hoveredTerrainId, setHoveredTerrainId] = useState<string | null>(null)
+
   const [showMileMarkers, setShowMileMarkers] = useState(true)
   const [fetchingWeather, setFetchingWeather] = useState(false)
+  const [isAidListOpen, setIsAidListOpen] = useState(true)
+  const [isTerrainListOpen, setIsTerrainListOpen] = useState(true)
   const [isReimporting, setIsReimporting] = useState(false)
 
   // Data Fetching
@@ -328,7 +350,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
       // Revalidate to ensure server state matches
       queryClient.invalidateQueries({ queryKey: ['waypoints', course?.id] })
-    } catch (err) {
+    } catch {
       // Rollback on error
       queryClient.invalidateQueries({ queryKey: ['waypoints', course?.id] })
       alert('Failed to move waypoint')
@@ -667,11 +689,12 @@ export function RaceDetail({ raceId }: { raceId: string }) {
         {activeTab === 'map' && (
           <div className='flex flex-col md:flex-row relative md:absolute md:inset-0 md:h-[calc(100vh-130px)]'>
             {coordinates.length > 0 ? (
-              <>
+              <div className="contents">
                 {/* Left Column: Map + Elevation */}
                 <div className='flex-1 flex flex-col min-w-0 relative'>
                   <div className='relative overflow-hidden h-[50vh] md:h-auto md:flex-1'>
                     <CourseMap
+                      highlightedWaypointId={hoveredWaypointId}
                       coordinates={coordinates}
                       waypoints={courseMapWaypoints}
                       isTerrainMode={isTerrainMode}
@@ -696,7 +719,8 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                         return null
                       })() : null}
 
-                      highlightedWaypointId={hoveredWaypointId} // Pass prop
+
+                      highlightedTerrainId={hoveredTerrainId} // New Prop
                       terrainNodes={terrainNodes}
                       onTerrainNodeClick={(id) => {
                         const node = terrainNodes.find(n => n.id === id)
@@ -714,6 +738,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                       highlightDistance={hoveredMile ?? undefined}
                       showMileMarkers={showMileMarkers}
                       waypoints={waypoints.map(wp => ({ mile: wp.mile, name: wp.name, type: wp.type }))}
+                      terrainNodes={terrainNodes}
                     />
                   </div>
                 </div>
@@ -770,75 +795,77 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                     </div>
                   </div>
 
-                  <div className='p-4'>
+
+                  <div className='p-4 border-t border-neutral-800'>
+                    <div className='flex items-center justify-between mb-4 cursor-pointer' onClick={() => setIsAidListOpen(!isAidListOpen)}>
+                      <h3 className='text-sm font-semibold text-neutral-400 uppercase tracking-wider flex items-center gap-2'>
+                        {isAidListOpen ? '▼' : '▶'} Aid Stations
+                      </h3>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setEditingWaypoint({ mile: 0 }) }}
+                        className="text-xs bg-neutral-800 hover:bg-neutral-700 text-white px-2 py-1 rounded border border-neutral-700 transition-colors"
+                      >
+                        + Add
+                      </button>
+                    </div>
+
+                    {isAidListOpen && (
+                      <div className="space-y-1">
+                        {waypoints.length === 0 ? (
+                          <p className="text-xs text-neutral-600 italic">No aid stations added.</p>
+                        ) : (
+                          waypoints.map(wp => (
+                            <div
+                              key={wp.id}
+                              className="p-2 hover:bg-neutral-800 rounded cursor-pointer transition-colors text-xs text-neutral-400 flex justify-between items-center group"
+                              onClick={() => setEditingWaypoint(wp)}
+                              onMouseEnter={() => { setHoveredMile(wp.mile); setHoveredWaypointId(wp.id) }}
+                              onMouseLeave={() => { setHoveredMile(null); setHoveredWaypointId(null) }}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="text-white font-medium">{wp.name}</span>
+                                {wp.type === 'aid_station' ? (
+                                  <span className="flex items-center justify-center w-4 h-4 rounded bg-red-500 text-white font-bold text-xs leading-none select-none" title="Aid Station">+</span>
+                                ) : (
+                                  <span title={wp.type.replace('_', ' ')}>{getWaypointIcon(wp.type)}</span>
+                                )}
+                              </div>
+                              <div className="text-neutral-500 text-xs text-right min-w-[3rem]">
+                                {wp.mile.toFixed(1)}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className='p-4 border-t border-neutral-800'>
                     <div className='flex items-center justify-between mb-4'>
-                      <h3 className='text-sm font-semibold text-neutral-400 uppercase tracking-wider'>Aid Stations</h3>
-                      <div className="flex items-center gap-2">
-                        <span className='text-xs bg-neutral-800 text-neutral-400 px-2 py-1 rounded-full'>{waypoints.length}</span>
+                      <div className='flex items-center gap-2 cursor-pointer' onClick={() => setIsTerrainListOpen(!isTerrainListOpen)}>
+                        <h3 className='text-sm font-semibold text-neutral-400 uppercase tracking-wider'>
+                          {isTerrainListOpen ? '▼' : '▶'} Terrain
+                        </h3>
+                      </div>
+                      <div className="flex gap-2">
                         <button
-                          onClick={() => setEditingWaypoint({})}
+                          onClick={() => setIsTerrainMode(!isTerrainMode)}
+                          className={`text-xs px-2 py-1 rounded border transition-colors flex items-center gap-1 ${isTerrainMode ? 'bg-blue-600 text-white border-blue-500' : 'bg-neutral-800 text-neutral-400 border-neutral-700 hover:bg-neutral-700'}`}
+                          title="Click map to add segments"
+                        >
+                          {isTerrainMode ? '✏️ Drawing' : '✏️ Draw'}
+                        </button>
+                        {/* Manual Add Button fallback */}
+                        <button
+                          onClick={() => setEditingTerrainNode({})}
                           className="text-xs bg-neutral-800 hover:bg-neutral-700 text-white px-2 py-1 rounded border border-neutral-700 transition-colors"
                         >
-                          + Add
+                          + Manual
                         </button>
                       </div>
                     </div>
 
-                    <div className='space-y-2'>
-                      {waypoints.map((wp) => (
-                        <div
-                          key={wp.id}
-                          className={`p-3 bg-neutral-800/50 hover:bg-neutral-800 rounded-lg cursor-pointer transition-colors group ${hoveredWaypointId === wp.id ? 'ring-1 ring-blue-500 bg-neutral-800' : ''}`}
-                          onClick={() => setEditingWaypoint(wp)}
-                          onMouseEnter={() => setHoveredWaypointId(wp.id)}
-                          onMouseLeave={() => setHoveredWaypointId(null)}
-                        >
-                          <div className='flex items-start justify-between'>
-                            <div className='flex items-center gap-2'>
-                              <span className='text-blue-500 font-mono text-sm w-10 text-right'>{wp.mile.toFixed(1)}</span>
-                              <span className='font-medium text-white'>{wp.name}</span>
-                            </div>
-                            {/* Icons for associated items */}
-                            <div className="flex gap-1">
-                              {wp.crew_allowed && <span title="Crew Allowed">👥</span>}
-                              {wp.pacer_allowed && <span title="Pacer Allowed">🏃</span>}
-                              {wp.has_drop_bag && <span title="Drop Bag">🎒</span>}
-                            </div>
-                          </div>
-                          {/* Cutoff removed */}
-                          <div className='flex justify-between items-center mt-1 ml-12 text-xs text-neutral-500'>
-                            <span className='capitalize'>{wp.type.replace('_', ' ')}</span>
-
-                          </div>
-                        </div>
-                      ))}
-                      {waypoints.length === 0 && (
-                        <div className='text-center py-8 text-neutral-600 text-sm'>
-                          Tap anywhere on the route line to add a waypoint.
-                        </div>
-                      )}
-                    </div>
-
-                    <div className='p-4 border-t border-neutral-800'>
-                      <div className='flex items-center justify-between mb-4'>
-                        <h3 className='text-sm font-semibold text-neutral-400 uppercase tracking-wider'>Terrain</h3>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => setIsTerrainMode(!isTerrainMode)}
-                            className={`text-xs px-2 py-1 rounded border transition-colors flex items-center gap-1 ${isTerrainMode ? 'bg-blue-600 text-white border-blue-500' : 'bg-neutral-800 text-neutral-400 border-neutral-700 hover:bg-neutral-700'}`}
-                            title="Click map to add segments"
-                          >
-                            {isTerrainMode ? '🎨 Painting' : '🖌️ Paint'}
-                          </button>
-                          {/* Manual Add Button fallback */}
-                          <button
-                            onClick={() => setEditingTerrainNode({})}
-                            className="text-xs bg-neutral-800 hover:bg-neutral-700 text-white px-2 py-1 rounded border border-neutral-700 transition-colors"
-                          >
-                            + Manual
-                          </button>
-                        </div>
-                      </div>
+                    {isTerrainListOpen && (
                       <div className="space-y-1">
                         {terrainNodes.length === 0 ? (
                           <p className="text-xs text-neutral-600 italic">No terrain segments defined. Entire course defaults to 'Undefined' (Gray).</p>
@@ -872,6 +899,8 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                                   key={node.id}
                                   className="p-2 hover:bg-neutral-800 rounded cursor-pointer transition-colors text-xs text-neutral-400 flex justify-between items-center group"
                                   onClick={() => setEditingTerrainNode(node)}
+                                  onMouseEnter={() => setHoveredTerrainId(node.id)}
+                                  onMouseLeave={() => setHoveredTerrainId(null)}
                                 >
                                   <div>
                                     <span className="text-neutral-500">{startMile.toFixed(2)} - {endMile.toFixed(2)}: </span>
@@ -888,10 +917,10 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                           </>
                         )}
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
-              </>
+              </div>
             ) : (
               <div className='flex-1 flex flex-col items-center justify-center bg-neutral-950 text-white'>
                 <div className='text-4xl mb-4'>🗺️</div>
