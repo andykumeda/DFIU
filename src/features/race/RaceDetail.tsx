@@ -149,6 +149,8 @@ export function RaceDetail({ raceId }: { raceId: string }) {
         alert('Warning: The uploaded GPX file does not contain elevation data. The elevation profile will be empty.')
       }
 
+      let courseId: string | null = null
+
       if (course) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { error } = await (supabase.from('courses') as any).update({
@@ -162,9 +164,10 @@ export function RaceDetail({ raceId }: { raceId: string }) {
           max_elevation_ft: result.stats.maxElevationFt,
         }).eq('id', course.id)
         if (error) throw error
+        courseId = course.id
       } else {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error } = await (supabase.from('courses') as any).insert({
+        const { data: newCourse, error } = await (supabase.from('courses') as any).insert({
           race_id: raceId,
           raw_gpx: rawGpx,
           geometry: { type: 'LineString', coordinates: result.coordinates },
@@ -174,15 +177,54 @@ export function RaceDetail({ raceId }: { raceId: string }) {
           total_elevation_loss_ft: result.stats.totalElevationLossFt,
           min_elevation_ft: result.stats.minElevationFt,
           max_elevation_ft: result.stats.maxElevationFt,
-        })
+        }).select('id').single()
         if (error) throw error
+        courseId = newCourse?.id || null
       }
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (supabase.from('races') as any).update({ distance_miles: result.stats.totalDistanceMiles }).eq('id', raceId)
 
+      // Import GPX waypoints as aid stations if present
+      if (result.waypoints.length > 0 && courseId && result.coordinates.length > 0) {
+        try {
+          const maxOrder = Math.max(...waypoints.map(w => w.order_index), 0)
+          const waypointsToInsert = result.waypoints.map((wpt, i) => {
+            // Snap waypoint to the route and compute mile
+            const nearest = getNearestPointOnLine({ lat: wpt.lat, lon: wpt.lon }, result.coordinates)
+            let mile = 0
+            let lat = wpt.lat
+            let lon = wpt.lon
+            if (nearest && nearest.distance < 2) { // within 2 miles of route
+              mile = getDistanceFromStart(result.coordinates, nearest.index, { lat: nearest.lat, lon: nearest.lon })
+              lat = nearest.lat
+              lon = nearest.lon
+            }
+            return {
+              course_id: courseId,
+              name: wpt.name,
+              type: 'aid_station',
+              lat,
+              lon,
+              mile: Math.round(mile * 100) / 100,
+              order_index: maxOrder + i + 1,
+              has_drop_bag: false,
+              crew_allowed: false,
+              pacer_allowed: false,
+            }
+          })
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { error: wpError } = await (supabase.from('waypoints') as any).insert(waypointsToInsert)
+          if (wpError) console.error('Failed to import GPX waypoints:', wpError)
+        } catch (wpErr) {
+          console.error('Error importing GPX waypoints:', wpErr)
+        }
+      }
+
       queryClient.invalidateQueries({ queryKey: ['course', raceId] })
       queryClient.invalidateQueries({ queryKey: ['race', raceId] })
+      queryClient.invalidateQueries({ queryKey: ['waypoints', courseId] })
       setIsReimporting(false)
     } catch (err) {
       console.error('Failed to save course:', err)

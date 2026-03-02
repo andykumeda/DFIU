@@ -15,6 +15,12 @@ export interface GpxTrack {
     points: GpxPoint[]
 }
 
+export interface GpxWaypoint {
+    name: string
+    lat: number
+    lon: number
+}
+
 export interface GpxParseResult {
     name: string | null
     tracks: GpxTrack[]
@@ -34,6 +40,7 @@ export interface GpxParseResult {
     // Flattened points for easy mapping
     coordinates: [number, number][] // [lon, lat] for GeoJSON/Mapbox
     elevationProfile: { distance: number; elevation: number }[] // distance in miles, elevation in ft
+    waypoints: GpxWaypoint[] // parsed <wpt> elements
 }
 
 /**
@@ -229,6 +236,19 @@ export function parseGpx(gpxString: string): GpxParseResult {
         ? sampleElevationProfile(elevationProfile, 5000)
         : elevationProfile
 
+    // Parse top-level <wpt> elements
+    const gpxWaypoints: GpxWaypoint[] = []
+    const wptElements = doc.querySelectorAll('gpx > wpt')
+    let wptIndex = 1
+    wptElements.forEach(wpt => {
+        const lat = parseFloat(wpt.getAttribute('lat') || '0')
+        const lon = parseFloat(wpt.getAttribute('lon') || '0')
+        const nameEl = wpt.querySelector('name')
+        const name = nameEl?.textContent?.trim() || `Aid Station ${wptIndex}`
+        gpxWaypoints.push({ name, lat, lon })
+        wptIndex++
+    })
+
     return {
         name: gpxName,
         tracks,
@@ -241,7 +261,8 @@ export function parseGpx(gpxString: string): GpxParseResult {
             maxElevationFt: Math.round(safeMaxEle)
         },
         coordinates,
-        elevationProfile: optimizedProfile
+        elevationProfile: optimizedProfile,
+        waypoints: gpxWaypoints
     }
 }
 
