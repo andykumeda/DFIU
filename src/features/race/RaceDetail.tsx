@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '@/features/auth/AuthContext'
 import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Calendar, MapPin, Globe, ArrowUpRight, CloudSun, Trophy, RefreshCw, Settings } from 'lucide-react'
+import { Calendar, MapPin, Globe, ArrowUpRight, CloudSun, Trophy, RefreshCw, Settings, Download } from 'lucide-react'
 
 import { supabase } from '@/lib/supabase'
 import { Race, Course, Waypoint, TerrainNode } from '@/types/database'
@@ -564,6 +564,66 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     }
   }
 
+  const handleExportGpx = () => {
+    if (!course?.raw_gpx || !race) {
+      alert('No GPX data available to export.')
+      return
+    }
+
+    try {
+      const parser = new DOMParser()
+      const doc = parser.parseFromString(course.raw_gpx, 'application/xml')
+
+      const wpts = doc.querySelectorAll('wpt')
+      wpts.forEach(wpt => wpt.parentNode?.removeChild(wpt))
+
+      const root = doc.documentElement
+      waypoints.forEach(wp => {
+        const wptEl = doc.createElement('wpt')
+        wptEl.setAttribute('lat', wp.lat.toString())
+        wptEl.setAttribute('lon', wp.lon.toString())
+
+        const nameEl = doc.createElement('name')
+        nameEl.textContent = wp.name
+        wptEl.appendChild(nameEl)
+
+        const descEl = doc.createElement('desc')
+        descEl.textContent = `Mile ${wp.mile.toFixed(2)} - ${wp.type.replace('_', ' ')}`
+        if (wp.notes) {
+          descEl.textContent += `\n${wp.notes}`
+        }
+        wptEl.appendChild(descEl)
+
+        const typeEl = doc.createElement('type')
+        typeEl.textContent = wp.type
+        wptEl.appendChild(typeEl)
+
+        const firstTrk = doc.querySelector('trk, rte')
+        if (firstTrk) {
+          root.insertBefore(wptEl, firstTrk)
+        } else {
+          root.appendChild(wptEl)
+        }
+      })
+
+      const serializer = new XMLSerializer()
+      const newGpxString = serializer.serializeToString(doc)
+
+      const blob = new Blob([newGpxString], { type: 'application/gpx+xml' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${race.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_export.gpx`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('Error generating GPX:', err)
+      alert('Failed to generate GPX file.')
+    }
+  }
+
   // Derived State
   const coordinates = (course?.geometry as { coordinates?: [number, number][] })?.coordinates || []
   const elevationProfile = (course?.elevation_samples as { distance: number; elevation: number }[]) || []
@@ -586,7 +646,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   )
   const tabs: { id: Tab; label: string }[] = [
     { id: 'overview', label: 'Overview' },
-    { id: 'map', label: 'Course Map' },
+    { id: 'map', label: 'Map & Aid Stations' },
     { id: 'plan', label: 'Pace Plan' },
     { id: 'resources', label: 'Resources' },
   ]
@@ -763,7 +823,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
               <div className="contents">
                 {/* Left Column: Map + Elevation */}
                 <div className='flex-1 flex flex-col min-w-0 relative'>
-                  <div className='relative overflow-hidden h-[50vh] md:h-auto md:flex-1'>
+                  <div className='relative overflow-hidden h-[40vh] md:h-auto md:flex-1'>
                     <CourseMap
                       highlightedWaypointId={hoveredWaypointId}
                       coordinates={coordinates}
@@ -801,7 +861,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                       onTerrainNodeMove={isOwner ? handleTerrainNodeMove : undefined}
                     />
                   </div>
-                  <div className='h-40 flex-shrink-0 border-t border-neutral-800 bg-neutral-900 z-10 relative'>
+                  <div className='h-32 md:h-40 flex-shrink-0 border-t border-neutral-800 bg-neutral-900 z-10 relative'>
                     <ElevationProfile
                       data={sampledProfile}
                       totalDistance={course?.total_distance_miles || 0}
@@ -848,15 +908,24 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                       </div>
                     )}
 
-                    {isOwner && (
+                    {isOwner ? (
                       <div className='mt-4 pt-4 border-t border-neutral-800'>
-                        <button
-                          onClick={() => setIsReimporting(!isReimporting)}
-                          className='w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-medium transition-colors'
-                        >
-                          <RefreshCw className={`w-3.5 h-3.5 ${isReimporting ? 'animate-spin' : ''}`} />
-                          {isReimporting ? 'Cancel Update' : 'Update GPX Route'}
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setIsReimporting(!isReimporting)}
+                            className='flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-medium transition-colors'
+                          >
+                            <RefreshCw className={`w-3.5 h-3.5 ${isReimporting ? 'animate-spin' : ''}`} />
+                            {isReimporting ? 'Cancel' : 'Update GPX'}
+                          </button>
+                          <button
+                            onClick={handleExportGpx}
+                            className='flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-medium transition-colors'
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            Export
+                          </button>
+                        </div>
                         {isReimporting && (
                           <div className='mt-4'>
                             <GpxUploader
@@ -865,6 +934,16 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                             />
                           </div>
                         )}
+                      </div>
+                    ) : (
+                      <div className='mt-4 pt-4 border-t border-neutral-800'>
+                        <button
+                          onClick={handleExportGpx}
+                          className='w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-medium transition-colors'
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          Export GPX Route
+                        </button>
                       </div>
                     )}
                   </div>
