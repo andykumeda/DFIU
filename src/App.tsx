@@ -62,7 +62,7 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
-            <Route path='/race/:id' element={<ProtectedRoute><RaceDetailPage /></ProtectedRoute>} />
+            <Route path='/race/:id' element={<RaceDetailPage />} />
             <Route path='/auth/strava/callback' element={<StravaCallback />} />
             <Route path='/' element={<SplashPage />} />
           </Routes>

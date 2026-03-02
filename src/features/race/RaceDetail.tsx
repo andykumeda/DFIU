@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useAuth } from '@/features/auth/AuthContext'
 import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Calendar, MapPin, Globe, ArrowUpRight, CloudSun, Trophy, RefreshCw, Settings } from 'lucide-react'
@@ -38,6 +39,7 @@ function getWaypointIcon(type: string): string {
 }
 
 export function RaceDetail({ raceId }: { raceId: string }) {
+  const { user } = useAuth()
   const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState<Tab>('overview')
   const [showEditModal, setShowEditModal] = useState(false)
@@ -587,6 +589,8 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     { id: 'resources', label: 'Resources' },
   ]
 
+  const isOwner = !!user && race?.user_id === user.id
+
   if (raceLoading) return <div className='p-8 text-white'>Loading race...</div>
   if (!race) return <div className='p-8 text-white'>Race not found</div>
 
@@ -607,9 +611,11 @@ export function RaceDetail({ raceId }: { raceId: string }) {
             <div className="flex sm:hidden flex-col gap-1">
               <div className='flex items-center gap-2'>
                 <h1 className='text-lg font-bold text-white'>{race.name}</h1>
-                <button onClick={() => setShowEditModal(true)} className='text-neutral-400 hover:text-white text-sm'>
-                  ✎
-                </button>
+                {isOwner && (
+                  <button onClick={() => setShowEditModal(true)} className='text-neutral-400 hover:text-white text-sm'>
+                    ✎
+                  </button>
+                )}
               </div>
               <div className="flex items-center gap-2 text-xs">
                 {race.start_datetime && (
@@ -629,9 +635,11 @@ export function RaceDetail({ raceId }: { raceId: string }) {
             <div className="hidden sm:flex flex-col gap-1">
               <div className='flex items-center gap-2'>
                 <h1 className='text-xl font-bold text-white'>{race.name}</h1>
-                <button onClick={() => setShowEditModal(true)} className='text-neutral-400 hover:text-white'>
-                  ✎
-                </button>
+                {isOwner && (
+                  <button onClick={() => setShowEditModal(true)} className='text-neutral-400 hover:text-white'>
+                    ✎
+                  </button>
+                )}
               </div>
               <div className="flex items-center gap-3 text-sm">
                 {race.start_datetime && (
@@ -650,21 +658,27 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
           </div>
           <div className='flex items-center gap-4'>
-            <Link to="/settings" className="flex items-center gap-3 hover:bg-neutral-900 rounded-lg p-2 transition-colors group">
-              <div className="text-right hidden sm:block">
-                <div className="text-sm font-medium text-white group-hover:text-orange-500 transition-colors">
-                  {profile?.name || 'User'}
+            {user ? (
+              <Link to="/settings" className="flex items-center gap-3 hover:bg-neutral-900 rounded-lg p-2 transition-colors group">
+                <div className="text-right hidden sm:block">
+                  <div className="text-sm font-medium text-white group-hover:text-orange-500 transition-colors">
+                    {profile?.name || 'User'}
+                  </div>
                 </div>
-              </div>
-              {profile?.avatar_url ? (
-                <img src={profile.avatar_url} alt="Profile" className="w-9 h-9 rounded-full border border-neutral-700 object-cover" />
-              ) : (
-                <div className="w-9 h-9 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center text-xs font-bold text-neutral-400 group-hover:border-orange-500/50 transition-colors">
-                  {(profile?.name?.[0] || '?').toUpperCase()}
-                </div>
-              )}
-              <Settings className="w-5 h-5 text-neutral-500 group-hover:text-white transition-colors" />
-            </Link>
+                {profile?.avatar_url ? (
+                  <img src={profile.avatar_url} alt="Profile" className="w-9 h-9 rounded-full border border-neutral-700 object-cover" />
+                ) : (
+                  <div className="w-9 h-9 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center text-xs font-bold text-neutral-400 group-hover:border-orange-500/50 transition-colors">
+                    {(profile?.name?.[0] || '?').toUpperCase()}
+                  </div>
+                )}
+                <Settings className="w-5 h-5 text-neutral-500 group-hover:text-white transition-colors" />
+              </Link>
+            ) : (
+              <Link to="/login" className="text-sm font-medium text-neutral-400 hover:text-white px-3 py-1.5 rounded-lg border border-neutral-700 hover:border-neutral-500 transition-colors">
+                Sign In
+              </Link>
+            )}
           </div>
         </div>
       </header>
@@ -739,13 +753,13 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                       highlightedWaypointId={hoveredWaypointId}
                       coordinates={coordinates}
                       waypoints={courseMapWaypoints}
-                      isTerrainMode={isTerrainMode}
-                      onMapClick={handleMapClick}
-                      onWaypointClick={(id) => {
+                      isTerrainMode={isOwner && isTerrainMode}
+                      onMapClick={isOwner ? handleMapClick : undefined}
+                      onWaypointClick={isOwner ? (id: string) => {
                         const wp = waypoints.find(w => w.id === id)
                         if (wp) setEditingWaypoint(wp)
-                      }}
-                      onWaypointMove={handleWaypointMove}
+                      } : undefined}
+                      onWaypointMove={isOwner ? handleWaypointMove : undefined}
                       onHover={setHoveredMile}
                       highlightMile={hoveredMile ?? undefined}
                       showMileMarkers={showMileMarkers}
@@ -764,12 +778,12 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
                       highlightedTerrainId={hoveredTerrainId} // New Prop
                       terrainNodes={terrainNodes}
-                      onTerrainNodeClick={(id) => {
+                      onTerrainNodeClick={isOwner ? (id: string) => {
                         const node = terrainNodes.find(n => n.id === id)
                         if (node) setEditingTerrainNode(node)
-                      }}
-                      onSaveTerrain={handleSaveTerrainSegment}
-                      onTerrainNodeMove={handleTerrainNodeMove}
+                      } : undefined}
+                      onSaveTerrain={isOwner ? handleSaveTerrainSegment : undefined}
+                      onTerrainNodeMove={isOwner ? handleTerrainNodeMove : undefined}
                     />
                   </div>
                   <div className='h-40 flex-shrink-0 border-t border-neutral-800 bg-neutral-900 z-10 relative'>
@@ -818,23 +832,25 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                       </div>
                     )}
 
-                    <div className='mt-4 pt-4 border-t border-neutral-800'>
-                      <button
-                        onClick={() => setIsReimporting(!isReimporting)}
-                        className='w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-medium transition-colors'
-                      >
-                        <RefreshCw className={`w-3.5 h-3.5 ${isReimporting ? 'animate-spin' : ''}`} />
-                        {isReimporting ? 'Cancel Update' : 'Update GPX Route'}
-                      </button>
-                      {isReimporting && (
-                        <div className='mt-4'>
-                          <GpxUploader
-                            onUpload={handleGpxUpload}
-                            className="bg-neutral-950/50 border-neutral-800 min-h-[120px]"
-                          />
-                        </div>
-                      )}
-                    </div>
+                    {isOwner && (
+                      <div className='mt-4 pt-4 border-t border-neutral-800'>
+                        <button
+                          onClick={() => setIsReimporting(!isReimporting)}
+                          className='w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-medium transition-colors'
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 ${isReimporting ? 'animate-spin' : ''}`} />
+                          {isReimporting ? 'Cancel Update' : 'Update GPX Route'}
+                        </button>
+                        {isReimporting && (
+                          <div className='mt-4'>
+                            <GpxUploader
+                              onUpload={handleGpxUpload}
+                              className="bg-neutral-950/50 border-neutral-800 min-h-[120px]"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
 
@@ -843,12 +859,14 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                       <h3 className='text-sm font-semibold text-neutral-400 uppercase tracking-wider flex items-center gap-2'>
                         {isAidListOpen ? '▼' : '▶'} Aid Stations
                       </h3>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setEditingWaypoint({ mile: 0 }) }}
-                        className="text-xs bg-neutral-800 hover:bg-neutral-700 text-white px-2 py-1 rounded border border-neutral-700 transition-colors"
-                      >
-                        + Add
-                      </button>
+                      {isOwner && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setEditingWaypoint({ mile: 0 }) }}
+                          className="text-xs bg-neutral-800 hover:bg-neutral-700 text-white px-2 py-1 rounded border border-neutral-700 transition-colors"
+                        >
+                          + Add
+                        </button>
+                      )}
                     </div>
 
                     {isAidListOpen && (
@@ -860,7 +878,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                             <div
                               key={wp.id}
                               className="p-2 hover:bg-neutral-800 rounded cursor-pointer transition-colors text-xs text-neutral-400 flex justify-between items-center group"
-                              onClick={() => setEditingWaypoint(wp)}
+                              onClick={() => { if (isOwner) setEditingWaypoint(wp) }}
                               onMouseEnter={() => { setHoveredMile(wp.mile); setHoveredWaypointId(wp.id) }}
                               onMouseLeave={() => { setHoveredMile(null); setHoveredWaypointId(null) }}
                             >
@@ -889,22 +907,23 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                           {isTerrainListOpen ? '▼' : '▶'} Terrain
                         </h3>
                       </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setIsTerrainMode(!isTerrainMode)}
-                          className={`text-xs px-2 py-1 rounded border transition-colors flex items-center gap-1 ${isTerrainMode ? 'bg-blue-600 text-white border-blue-500' : 'bg-neutral-800 text-neutral-400 border-neutral-700 hover:bg-neutral-700'}`}
-                          title="Click map to add segments"
-                        >
-                          {isTerrainMode ? '✏️ Drawing' : '✏️ Draw'}
-                        </button>
-                        {/* Manual Add Button fallback */}
-                        <button
-                          onClick={() => setEditingTerrainNode({})}
-                          className="text-xs bg-neutral-800 hover:bg-neutral-700 text-white px-2 py-1 rounded border border-neutral-700 transition-colors"
-                        >
-                          + Manual
-                        </button>
-                      </div>
+                      {isOwner && (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setIsTerrainMode(!isTerrainMode)}
+                            className={`text-xs px-2 py-1 rounded border transition-colors flex items-center gap-1 ${isTerrainMode ? 'bg-blue-600 text-white border-blue-500' : 'bg-neutral-800 text-neutral-400 border-neutral-700 hover:bg-neutral-700'}`}
+                            title="Click map to add segments"
+                          >
+                            {isTerrainMode ? '✏️ Drawing' : '✏️ Draw'}
+                          </button>
+                          <button
+                            onClick={() => setEditingTerrainNode({})}
+                            className="text-xs bg-neutral-800 hover:bg-neutral-700 text-white px-2 py-1 rounded border border-neutral-700 transition-colors"
+                          >
+                            + Manual
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     {isTerrainListOpen && (
