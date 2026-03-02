@@ -60,6 +60,28 @@ function metersToFeet(meters: number): number {
 }
 
 /**
+ * Smooth an array of elevation values (in meters) using a centered moving average.
+ * This reduces GPS noise before computing gain/loss statistics.
+ * Points with null elevation are skipped (their indices are preserved as null).
+ */
+function smoothElevations(elevations: (number | null)[], windowSize: number = 10): (number | null)[] {
+    const half = Math.floor(windowSize / 2)
+    return elevations.map((ele, i) => {
+        if (ele === null) return null
+        let sum = 0
+        let count = 0
+        for (let j = Math.max(0, i - half); j <= Math.min(elevations.length - 1, i + half); j++) {
+            const v = elevations[j]
+            if (v !== null && Number.isFinite(v)) {
+                sum += v
+                count++
+            }
+        }
+        return count > 0 ? sum / count : ele
+    })
+}
+
+/**
  * Parse GPX XML string into structured data
  */
 export function parseGpx(gpxString: string): GpxParseResult {
@@ -136,6 +158,7 @@ export function parseGpx(gpxString: string): GpxParseResult {
     const coordinates: [number, number][] = []
     const elevationProfile: { distance: number; elevation: number }[] = []
 
+    // First pass: collect coordinates, distances, elevation profile, and raw elevations
     for (let i = 0; i < allPoints.length; i++) {
         const point = allPoints[i]
 
@@ -152,33 +175,37 @@ export function parseGpx(gpxString: string): GpxParseResult {
                 maxEle = Math.max(maxEle, eleFt)
             }
 
-            // Add to elevation profile
+            // Add to elevation profile (raw values for chart fidelity)
             elevationProfile.push({
                 distance: totalDistance,
                 elevation: eleFt
             })
         }
 
-        // Calculate distance and elevation change from previous point
+        // Accumulate distance
         if (i > 0) {
             const prev = allPoints[i - 1]
             const dist = haversineDistance(prev.lat, prev.lon, point.lat, point.lon)
             totalDistance += dist
+        }
+    }
 
-            if (point.ele !== null && prev.ele !== null) {
-                const eleChangeMeters = point.ele - prev.ele
+    // Second pass: smooth elevations, then compute gain/loss from smoothed data
+    const rawElevations = allPoints.map(p => p.ele)
+    const smoothed = smoothElevations(rawElevations, 7)
+    const GAIN_LOSS_THRESHOLD = 0.8 // meters – applied to smoothed data to catch residual noise
 
-                // Only count change if it exceeds a noise threshold (e.g., 0.5 meters)
-                // This prevents GPS jitter from inflating gain/loss, especially loss
-                const THRESHOLD = 0.3
-
-                if (Math.abs(eleChangeMeters) > THRESHOLD) {
-                    const eleChangeFt = metersToFeet(eleChangeMeters)
-                    if (eleChangeMeters > 0) {
-                        totalGain += eleChangeFt
-                    } else {
-                        totalLoss += Math.abs(eleChangeFt)
-                    }
+    for (let i = 1; i < smoothed.length; i++) {
+        const prev = smoothed[i - 1]
+        const curr = smoothed[i]
+        if (prev !== null && curr !== null) {
+            const delta = curr - prev
+            if (Math.abs(delta) > GAIN_LOSS_THRESHOLD) {
+                const deltaFt = metersToFeet(delta)
+                if (delta > 0) {
+                    totalGain += deltaFt
+                } else {
+                    totalLoss += Math.abs(deltaFt)
                 }
             }
         }
