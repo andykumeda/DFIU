@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import styles from './ElevationProfile.module.css'
 
 interface WaypointMarker {
+    id: string
     mile: number
     name: string
     type: string
@@ -22,6 +23,7 @@ interface ElevationProfileProps {
     totalDistance: number
     onHover?: (distance: number | null) => void
     highlightDistance?: number
+    highlightedWaypointId?: string | null
     className?: string
     showMileMarkers?: boolean
     waypoints?: WaypointMarker[]
@@ -48,6 +50,7 @@ export function ElevationProfile({
     totalDistance,
     onHover,
     highlightDistance,
+    highlightedWaypointId,
     className,
     showMileMarkers = false,
     waypoints = [],
@@ -346,6 +349,14 @@ export function ElevationProfile({
                             }
                         }
 
+                        let zIndex = 30
+                        let transformScale = ''
+
+                        if (highlightedWaypointId && wp.id === highlightedWaypointId) {
+                            transformScale = 'scale(1.5)'
+                            zIndex = 100
+                        }
+
                         return (
                             <div
                                 key={`wp-${i}`}
@@ -359,14 +370,15 @@ export function ElevationProfile({
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    zIndex: 30,
+                                    zIndex: zIndex,
                                     width: '16px', // Slightly larger to contain background
                                     height: '16px',
                                     fontSize: fontSize,
-                                    transform: 'translate(-50%, -50%)',
+                                    transform: `translate(-50%, -50%) ${transformScale}`,
                                     cursor: 'help',
                                     borderRadius: borderRadius, // Use the variable
-                                    boxShadow: '0 1px 2px rgba(0,0,0,0.3)' // Add pop
+                                    boxShadow: highlightedWaypointId === wp.id ? '0 0 10px rgba(255,255,255,0.8)' : '0 1px 2px rgba(0,0,0,0.3)',
+                                    transition: 'all 0.2s ease-in-out'
                                 }}
                                 title={`${wp.name} (${wp.type.replace('_', ' ')})`}
                             >

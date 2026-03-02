@@ -16,6 +16,7 @@ import { ElevationProfile } from '@/features/course/ElevationProfile'
 import { GpxUploader } from '@/features/course/GpxUploader'
 import { EditRaceModal } from '@/features/race/EditRaceModal'
 import { EditWaypointModal } from '@/features/course/EditWaypointModal'
+import { ViewWaypointModal } from '@/features/course/ViewWaypointModal'
 import { EditTerrainModal } from '@/features/course/EditTerrainModal'
 import { PaceCalculator } from '@/features/race/PaceCalculator'
 import { RaceResources } from '@/features/race/RaceResources'
@@ -44,6 +45,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   const [activeTab, setActiveTab] = useState<Tab>('overview')
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingWaypoint, setEditingWaypoint] = useState<Partial<Waypoint> | null>(null)
+  const [viewingWaypoint, setViewingWaypoint] = useState<Waypoint | null>(null)
 
   // Terrain State
   const [terrainNodes, setTerrainNodes] = useState<TerrainNode[]>([])
@@ -725,6 +727,19 @@ export function RaceDetail({ raceId }: { raceId: string }) {
         />
       )}
 
+      {viewingWaypoint && (
+        <ViewWaypointModal
+          waypoint={viewingWaypoint}
+          isOwner={isOwner}
+          timeZone={race.timezone || undefined}
+          onClose={() => setViewingWaypoint(null)}
+          onEdit={() => {
+            setViewingWaypoint(null)
+            setEditingWaypoint(viewingWaypoint)
+          }}
+        />
+      )}
+
       {/* Tabs */}
       <nav className='border-b border-neutral-800 bg-neutral-900'>
         <div className='max-w-7xl mx-auto px-4 flex gap-6'>
@@ -755,10 +770,10 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                       waypoints={courseMapWaypoints}
                       isTerrainMode={isOwner && isTerrainMode}
                       onMapClick={isOwner ? handleMapClick : undefined}
-                      onWaypointClick={isOwner ? (id: string) => {
+                      onWaypointClick={(id: string) => {
                         const wp = waypoints.find(w => w.id === id)
-                        if (wp) setEditingWaypoint(wp)
-                      } : undefined}
+                        if (wp) setViewingWaypoint(wp)
+                      }}
                       onWaypointMove={isOwner ? handleWaypointMove : undefined}
                       onHover={setHoveredMile}
                       highlightMile={hoveredMile ?? undefined}
@@ -792,8 +807,9 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                       totalDistance={course?.total_distance_miles || 0}
                       onHover={setHoveredMile}
                       highlightDistance={hoveredMile ?? undefined}
+                      highlightedWaypointId={hoveredWaypointId}
                       showMileMarkers={showMileMarkers}
-                      waypoints={waypoints.map(wp => ({ mile: wp.mile, name: wp.name, type: wp.type }))}
+                      waypoints={waypoints.map(wp => ({ id: wp.id, mile: wp.mile, name: wp.name, type: wp.type }))}
                       terrainNodes={terrainNodes}
                     />
                   </div>
@@ -856,13 +872,13 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
                   <div className='p-4 border-t border-neutral-800'>
                     <div className='flex items-center justify-between mb-4 cursor-pointer' onClick={() => setIsAidListOpen(!isAidListOpen)}>
-                      <h3 className='text-sm font-semibold text-neutral-400 uppercase tracking-wider flex items-center gap-2'>
+                      <h3 className='text-sm font-semibold text-neutral-400 flex-1 uppercase tracking-wider flex items-center gap-2'>
                         {isAidListOpen ? '▼' : '▶'} Aid Stations
                       </h3>
                       {isOwner && (
                         <button
                           onClick={(e) => { e.stopPropagation(); setEditingWaypoint({ mile: 0 }) }}
-                          className="text-xs bg-neutral-800 hover:bg-neutral-700 text-white px-2 py-1 rounded border border-neutral-700 transition-colors"
+                          className="text-xs bg-neutral-800 hover:bg-neutral-700 text-white px-2 py-1 rounded border border-neutral-700 transition-colors ml-2"
                         >
                           + Add
                         </button>
@@ -878,7 +894,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                             <div
                               key={wp.id}
                               className="p-2 hover:bg-neutral-800 rounded cursor-pointer transition-colors text-xs text-neutral-400 flex justify-between items-center group"
-                              onClick={() => { if (isOwner) setEditingWaypoint(wp) }}
+                              onClick={() => { setViewingWaypoint(wp) }}
                               onMouseEnter={() => { setHoveredMile(wp.mile); setHoveredWaypointId(wp.id) }}
                               onMouseLeave={() => { setHoveredMile(null); setHoveredWaypointId(null) }}
                             >
@@ -889,6 +905,11 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                                 ) : (
                                   <span title={wp.type.replace('_', ' ')}>{getWaypointIcon(wp.type)}</span>
                                 )}
+                                <div className="flex gap-1">
+                                  {wp.crew_allowed && <span title="Crew Access" className="text-[10px] grayscale opacity-80">👥</span>}
+                                  {wp.pacer_allowed && <span title="Pacer Pickup" className="text-[10px] grayscale opacity-80">🏃</span>}
+                                  {wp.has_drop_bag && <span title="Drop Bag" className="text-[10px] grayscale opacity-80">🎒</span>}
+                                </div>
                               </div>
                               <div className="text-neutral-500 text-xs text-right min-w-[3rem]">
                                 {wp.mile.toFixed(1)}
