@@ -26,7 +26,7 @@ type Tab = 'overview' | 'map' | 'plan' | 'resources'
 // Helper to get icon
 function getWaypointIcon(type: string): string {
   switch (type) {
-    case 'start': return '🏁'
+    case 'start': return '🟢'
     case 'finish': return '🏁'
     case 'aid_station': return '➕' // Medical Cross
     case 'water_only': return '💧'
@@ -193,7 +193,8 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       if (result.waypoints.length > 0 && courseId && result.coordinates.length > 0) {
         try {
           const maxOrder = Math.max(...waypoints.map(w => w.order_index), 0)
-          const waypointsToInsert = result.waypoints.map((wpt, i) => {
+          const totalDist = result.stats.totalDistanceMiles
+          const waypointsToInsert = result.waypoints.flatMap((wpt, i) => {
             // Snap waypoint to the route and compute mile
             const nearest = getNearestPointOnLine({ lat: wpt.lat, lon: wpt.lon }, result.coordinates)
             let mile = 0
@@ -204,10 +205,40 @@ export function RaceDetail({ raceId }: { raceId: string }) {
               lat = nearest.lat
               lon = nearest.lon
             }
-            return {
+
+            let name = wpt.name || `Aid Station ${i + 1}`
+            let type = 'aid_station'
+
+            if (name.toLowerCase().includes('start & finish') || name.toLowerCase().includes('start/finish')) {
+              return [
+                {
+                  course_id: courseId,
+                  name: 'Start',
+                  type: 'start',
+                  lat, lon,
+                  mile: 0,
+                  order_index: maxOrder + i * 2 + 1,
+                  has_drop_bag: false, crew_allowed: false, pacer_allowed: false,
+                },
+                {
+                  course_id: courseId,
+                  name: 'Finish',
+                  type: 'finish',
+                  lat, lon,
+                  mile: Math.round(totalDist * 100) / 100,
+                  order_index: maxOrder + i * 2 + 2,
+                  has_drop_bag: false, crew_allowed: false, pacer_allowed: false,
+                }
+              ]
+            }
+
+            if (name.toLowerCase() === 'start') type = 'start'
+            if (name.toLowerCase() === 'finish') type = 'finish'
+
+            return [{
               course_id: courseId,
-              name: wpt.name,
-              type: 'aid_station',
+              name,
+              type,
               lat,
               lon,
               mile: Math.round(mile * 100) / 100,
@@ -215,8 +246,37 @@ export function RaceDetail({ raceId }: { raceId: string }) {
               has_drop_bag: false,
               crew_allowed: false,
               pacer_allowed: false,
-            }
+            }]
           })
+
+          const hasStart = waypointsToInsert.some(w => w.type === 'start') || waypoints.some(w => w.type === 'start')
+          const hasFinish = waypointsToInsert.some(w => w.type === 'finish') || waypoints.some(w => w.type === 'finish')
+
+          if (!hasStart && result.coordinates.length > 0) {
+            waypointsToInsert.push({
+              course_id: courseId,
+              name: 'Start',
+              type: 'start',
+              lat: result.coordinates[0][1],
+              lon: result.coordinates[0][0],
+              mile: 0,
+              order_index: maxOrder + waypointsToInsert.length + 1,
+              has_drop_bag: false, crew_allowed: false, pacer_allowed: false,
+            })
+          }
+          if (!hasFinish && result.coordinates.length > 0) {
+            const last = result.coordinates[result.coordinates.length - 1]
+            waypointsToInsert.push({
+              course_id: courseId,
+              name: 'Finish',
+              type: 'finish',
+              lat: last[1],
+              lon: last[0],
+              mile: Math.round(totalDist * 100) / 100,
+              order_index: maxOrder + waypointsToInsert.length + 2,
+              has_drop_bag: false, crew_allowed: false, pacer_allowed: false,
+            })
+          }
 
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const { error: wpError } = await (supabase.from('waypoints') as any).insert(waypointsToInsert)
@@ -1137,7 +1197,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                     <span>
                       {race?.start_datetime ? formatDate(race.start_datetime, 'EEEE, MMMM do, yyyy') : 'Date TBD'}
                       {race?.start_datetime && ` at ${formatDate(race.start_datetime, 'h:mm a')}`}
-                      {race?.timezone && <span className="ml-2 text-neutral-500 font-normal">({race.timezone.replace('_', ' ')})</span>}
+                      {race?.timezone && <span className="ml-2 font-normal text-neutral-500">({new Date(race.start_datetime || Date.now()).toLocaleTimeString([], { timeZone: race.timezone || undefined, timeZoneName: 'short' }).split(' ')[2]})</span>}
                     </span>
                   </div>
                   {race?.location && (

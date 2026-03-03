@@ -164,7 +164,7 @@ export default function NewRacePage() {
                 />
               </div>
               <div>
-                <label htmlFor='startTime' className='block text-sm font-medium text-neutral-300 mb-1'>Start Time</label>
+                <label htmlFor='startTime' className='block text-sm font-medium text-neutral-300 mb-1'>Start</label>
                 <input
                   id='startTime'
                   type='time'

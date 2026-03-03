@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Course, Race, TerrainNode, Waypoint } from '@/types/database'
 import { calculatePacePlan, PacingStrategy } from './pace-utils'
-import { Calculator, Clock, TrendingUp, Activity, Users, Footprints, Package } from 'lucide-react'
+import { Calculator, Clock, TrendingUp, Activity, Users, Footprints } from 'lucide-react'
 
 interface PaceCalculatorProps {
     race: Race
@@ -230,7 +230,7 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                                                             <div className="flex gap-1">
                                                                 {wp.crew_allowed && <span title="Crew Allowed"><Users className="w-4 h-4 text-green-400" /></span>}
                                                                 {wp.pacer_allowed && <span title="Pacer Allowed"><Footprints className="w-4 h-4 text-blue-400" /></span>}
-                                                                {wp.has_drop_bag && <span title="Drop Bag"><Package className="w-4 h-4 text-orange-400" /></span>}
+                                                                {wp.has_drop_bag && <span title="Drop Bag" className="text-[12px] opacity-90 leading-none flex items-center justify-center pt-0.5">🎒</span>}
                                                             </div>
                                                         </div>
                                                     </td>
@@ -243,7 +243,7 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                                                     <td className="px-6 py-4 text-right font-mono text-neutral-400">
                                                         {arrival.segmentTime}
                                                     </td>
-                                                    <td className="px-6 py-4 text-right font-mono text-white font-bold">
+                                                    <td className="px-6 py-4 text-right font-mono text-white">
                                                         {arrival.timeOfDay}
                                                     </td>
                                                     <td className="px-6 py-4 text-right font-mono text-neutral-400">

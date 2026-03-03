@@ -337,7 +337,7 @@ export function ElevationProfile({
                             // CourseMap: el.className = styles.marker. 
                         } else {
                             switch (wp.type) {
-                                case 'start': content = '🏁'; bg = '#16a34a'; break;
+                                case 'start': content = '🟢'; bg = '#16a34a'; break;
                                 case 'finish': content = '🏁'; bg = '#dc2626'; break;
                                 case 'water_only': content = '💧'; bg = '#3b82f6'; break;
                                 case 'crew': content = '👥'; bg = '#a855f7'; break;

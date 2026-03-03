@@ -17,7 +17,12 @@ export function EditRaceModal({ race, onClose, onUpdate, onDelete }: EditRaceMod
     const [formData, setFormData] = useState({
         name: race.name,
         location: race.location || '',
-        start_datetime: race.start_datetime ? new Date(race.start_datetime).toISOString().slice(0, 16) : '', // yyyy-MM-ddThh:mm
+        start_datetime: race.start_datetime ? (() => {
+            const date = new Date(race.start_datetime)
+            const offset = date.getTimezoneOffset()
+            const localDate = new Date(date.getTime() - (offset * 60000))
+            return localDate.toISOString().slice(0, 16)
+        })() : '',
         website_url: race.website_url || '',
         is_public: race.is_public || false,
         registration_url: race.registration_url || '',
@@ -112,7 +117,7 @@ export function EditRaceModal({ race, onClose, onUpdate, onDelete }: EditRaceMod
                     </div>
 
                     <div className={styles.field}>
-                        <label>Date & Time</label>
+                        <label>Start</label>
                         <input
                             type="datetime-local"
                             value={formData.start_datetime}

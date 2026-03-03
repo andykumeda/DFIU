@@ -14,7 +14,7 @@ interface ViewWaypointModalProps {
 
 function getWaypointIcon(type: string): string {
     switch (type) {
-        case 'start': return '🏁'
+        case 'start': return '🟢'
         case 'finish': return '🏁'
         case 'aid_station': return '➕'
         case 'water_only': return '💧'

@@ -7,7 +7,8 @@
 > [!IMPORTANT]
 > **PROTOCOL INSTRUCTION:**
 > 1. Going forward, **IMMEDIATELY** update this `HANDOFF.md` with the current tasks and status in case the connection breaks. Do this **BEFORE** starting any work.
-> 2. **ALWAYS** deploy to production after **EACH** modification using `sudo ./scripts/deploy.sh`.
+> 2. **ALWAYS** deploy to production after **EACH** modification using `./scripts/deploy-remote.sh`.
+> 3. **NEVER** use GPG signing for git commits.
 
 
 ## Recent Changes
@@ -88,7 +89,7 @@ The drag/drop system for waypoints on the course map involves careful coordinati
 
 ## Current State
 
-*   **Production Deployment:** The app is deployed to `/var/www/dfiu` via `./scripts/deploy.sh`.
+*   **Production Deployment:** The app is deployed to `/var/www/dfiu` via `./scripts/deploy-remote.sh`.
 *   **Known Issues**:
     *   **Logo Navigation**: Clicking the logo/title may not reliably navigate to `/dashboard` despite `z-index` fixes.
 
