@@ -206,7 +206,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
               lon = nearest.lon
             }
 
-            let name = wpt.name || `Aid Station ${i + 1}`
+            const name = wpt.name || `Aid Station ${i + 1}`
             let type = 'aid_station'
 
             if (name.toLowerCase().includes('start & finish') || name.toLowerCase().includes('start/finish')) {
@@ -1162,6 +1162,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                 waypoints={waypoints}
                 terrainNodes={terrainNodes}
                 clock24h={clock24h}
+                unitsDistance={profile?.units_distance || 'miles'}
               />
             ) : (
               <div className="p-12 text-center text-neutral-500">

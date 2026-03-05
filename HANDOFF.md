@@ -1,6 +1,6 @@
 # Handoff Document
 
-**Date:** 2026-02-13
+**Date:** 2026-03-05
 **Status:** Stable / Production Deployed
 **Last Deployed Commit:** b7f9050
 
@@ -13,7 +13,13 @@
 
 ## Recent Changes
 
-1.  **Waypoint Drag/Drop Fix (2026-02-13):**
+1.  **Pace Plan Enhancements (2026-03-05):**
+    *   **Goal Modes:** Added Plan A (Goal), Plan B (Midpoint auto-calculated), and Plan C (Cutoff with safety buffer).
+    *   **Dynamic Pacing Matrix:** Pace calculations now utilize a bisection solver and factor in Course Terrain, Average Gradient, Time of Day (Nighttime penalty), and Temperature (Heat/Cold penalties).
+    *   **Metrics:** Real-time display of Required Pace/Speed, Segment Pace, and Overall Pace accurately formatted to user Profile distance units (miles/km).
+    *   **UI Polish:** Added mobile scroll indicators for the splits table and contextual Sun/Moon icons for daytime/nighttime arrival estimates.
+
+2.  **Waypoint Drag/Drop Fix (2026-02-13):**
     *   **Root Cause**: The `waypoints` prop passed to `CourseMap` was created inline with `.map()` every render, producing a new array reference. The marker-creation `useEffect` depended on this prop, so it tore down and rebuilt all Mapbox markers on every render — destroying Mapbox's internal drag state between `mousedown` and `mousemove`, preventing drags from ever initiating.
     *   **Fix**: Memoized the waypoints prop via `useMemo` in `RaceDetail.tsx` keyed on the React Query result, so markers only rebuild when data actually changes.
     *   **Additional fixes in the same changeset:**
@@ -95,9 +101,8 @@ The drag/drop system for waypoints on the course map involves careful coordinati
 
 ## Next Steps
 
-1.  **Pace Planning:** The "Pace Plan" tab is currently a placeholder. This is the next major feature to implement.
-2.  **Documents:** The "Documents" tab is also a placeholder.
-3.  **User Auth:** Authentication is basic; may need more robust role management if multiple users are added.
+1.  **Documents:** The "Documents" tab is also a placeholder.
+2.  **User Auth:** Authentication is basic; may need more robust role management if multiple users are added.
 
 ## Key Files
 

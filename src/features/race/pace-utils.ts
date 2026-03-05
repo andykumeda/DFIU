@@ -1,8 +1,8 @@
 
-import { TerrainNode, Waypoint } from '@/types/database'
+import { TerrainNode, Waypoint, Race } from '@/types/database'
 
 export interface PacingStrategy {
-    mode: 'time' | 'pace' | 'gap'
+    mode: 'time' | 'pace' | 'gap' | 'cutoff'
     value: number // time in minutes, or pace in minutes/mile
     cutoffBuffer?: number // minutes (only used if generating strategy from cutoff)
 }
@@ -32,6 +32,8 @@ export interface PacePlanResult {
         segmentMile: number // distance from prev waypoint
         segmentTime: string // formatted duration
         cutoffTime: string // numeric or formatted from WP
+        segmentPace: number // raw min/mile
+        overallPace: number // raw min/mile
     }[]
 }
 
@@ -64,14 +66,61 @@ function getTerrainFactor(mile: number, terrainNodes: TerrainNode[]): number {
     return (activeNode.difficulty || 100) / 100
 }
 
+function getDynamicFactors(
+    mile: number,
+    totalDistance: number,
+    elapsedMinutes: number,
+    race: Partial<Race>
+): number {
+    let factor = 1.0
+
+    // Fatigue: linearly add up to +15% by the end of the race
+    if (totalDistance > 0) {
+        const fatigue = (mile / totalDistance) * 0.15
+        factor += fatigue
+    }
+
+    if (race && race.start_datetime) {
+        const start = new Date(race.start_datetime)
+        const current = new Date(start.getTime() + elapsedMinutes * 60000)
+        const hour = current.getHours()
+
+        // Time of Day (Nighttime factor)
+        // Assume nighttime is between 20:00 (8 PM) and 6:00 (6 AM)
+        const isNight = hour >= 20 || hour < 6
+        if (isNight) {
+            factor += 0.10 // 10% slower at night
+        }
+
+        // Temperature Factor
+        // Hot hours: 12 PM (12:00) to 4 PM (16:00)
+        const isHotHours = hour >= 12 && hour <= 16
+        if (isHotHours && race.avg_temp_high) {
+            const highTemp = parseInt(race.avg_temp_high.toString())
+            if (!isNaN(highTemp) && highTemp >= 80) {
+                factor += 0.05 // 5% slower in peak heat if temp >= 80F
+            }
+        }
+
+        // Cold Night Factor
+        if (isNight && race.avg_temp_low) {
+            const lowTemp = parseInt(race.avg_temp_low.toString())
+            if (!isNaN(lowTemp) && lowTemp <= 35) {
+                factor += 0.05 // extra 5% slower if night is freezing/cold
+            }
+        }
+    }
+
+    return factor
+}
+
 export function calculatePacePlan(
     courseProfile: { distance: number; elevation: number }[], // distance in miles, elevation in ft
     totalDistance: number,
     waypoints: Waypoint[],
     terrainNodes: TerrainNode[],
     strategy: PacingStrategy,
-    startTime?: Date,
-    timeZone?: string,
+    race: Partial<Race>,
     clock24h: boolean = false
 ): PacePlanResult {
     // 1. Determine Target GAP (Moving Baseline)
@@ -133,149 +182,160 @@ export function calculatePacePlan(
         }
     })
 
-    // Solve for Base GAP
-    let baseGap = 0 // min/mile
+    const startTime = race.start_datetime ? new Date(race.start_datetime) : undefined
+    const timeZone = race.timezone || undefined
 
-    if (strategy.mode === 'gap') {
-        baseGap = strategy.value
-    } else if (strategy.mode === 'pace') {
-        const totalTime = strategy.value * totalDistance
-        const movingTime = Math.max(0, totalTime - totalDelaysMin)
-        baseGap = movingTime / totalEffortMiles
-    } else if (strategy.mode === 'time') {
-        const totalTime = strategy.value
-        const movingTime = Math.max(0, totalTime - totalDelaysMin)
-        baseGap = movingTime / totalEffortMiles
-    }
+    const simulateRun = (testBaseGap: number): PacePlanResult => {
+        let currentElapsedTime = 0 // minutes
+        let currentMovingTime = 0 // minutes
+        let currentDist = 0
+        let prevWaypointDist = 0
+        let waypointIdx = 0
+        const sortedWaypoints = [...waypoints].sort((a, b) => a.mile - b.mile)
 
-    // 2. Generate Trace and Waypoint Arrivals
-    let currentElapsedTime = 0 // minutes
-    let currentMovingTime = 0 // minutes
-    let currentDist = 0
-    let prevWaypointDist = 0
-    let waypointIdx = 0
-    const sortedWaypoints = [...waypoints].sort((a, b) => a.mile - b.mile)
+        const waypointArrivals: PacePlanResult['waypointArrivals'] = []
 
-    const waypointArrivals: PacePlanResult['waypointArrivals'] = []
+        // We iterate through profile segments
+        for (let i = 0; i < samples.length - 1; i++) {
+            const detail = segmentDetails[i]
 
-    // We iterate through profile segments
-    for (let i = 0; i < samples.length - 1; i++) {
-        const detail = segmentDetails[i]
+            const dynamicFactor = getDynamicFactors(samples[i].distance, totalDistance, currentElapsedTime, race)
+            const segmentGap = testBaseGap
+            const segmentPace = segmentGap * detail.gradeFactor * detail.terrainFactor * dynamicFactor
+            const segmentTime = segmentPace * detail.dist
+            const segmentStartDist = samples[i].distance
+            const segmentEndDist = samples[i + 1].distance
 
-        const segmentGap = baseGap
-        const segmentPace = segmentGap * detail.gradeFactor * detail.terrainFactor
-        const segmentTime = segmentPace * detail.dist
-        const segmentStartDist = samples[i].distance
-        const segmentEndDist = samples[i + 1].distance
+            // Check for waypoints in this segment
+            while (waypointIdx < sortedWaypoints.length) {
+                const wp = sortedWaypoints[waypointIdx]
 
-        // Check for waypoints in this segment
+                // If waypoint is essentially at start (mile 0), handle it
+                if (wp.mile <= 0.01 && currentDist === 0) {
+                    waypointArrivals.push({
+                        waypointId: wp.id,
+                        arrivalTime: 0,
+                        timeOfDay: startTime ? formatTimeOfDay(0, startTime, timeZone, clock24h) : '00:00',
+                        segmentMile: 0,
+                        segmentTime: '--',
+                        cutoffTime: wp.cutoff_time ? new Date(wp.cutoff_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZone, hour12: !clock24h }) : '--',
+                        segmentPace: 0,
+                        overallPace: 0
+                    })
+                    prevWaypointDist = wp.mile
+                    waypointIdx++
+                    continue
+                }
+
+                if (wp.mile > segmentStartDist && wp.mile <= segmentEndDist) {
+                    // Interpolate arrival time
+                    const distIntoSegment = wp.mile - segmentStartDist
+                    const timeIntoSegment = segmentTime * (distIntoSegment / detail.dist)
+                    const arrivalTime = currentElapsedTime + timeIntoSegment
+
+                    const prevArrival = waypointArrivals.length > 0 ? waypointArrivals[waypointArrivals.length - 1].arrivalTime : 0
+                    const segmentTimeMin = arrivalTime - prevArrival
+
+                    const segDist = wp.mile - prevWaypointDist
+                    const segPace = segDist > 0 ? segmentTimeMin / segDist : 0
+                    const ovPace = wp.mile > 0 ? arrivalTime / wp.mile : 0
+
+                    waypointArrivals.push({
+                        waypointId: wp.id,
+                        arrivalTime,
+                        timeOfDay: formatTimeOfDay(arrivalTime, startTime, timeZone, clock24h),
+                        segmentMile: segDist,
+                        segmentTime: formatDuration(segmentTimeMin),
+                        cutoffTime: wp.cutoff_time && wp.cutoff_time.length > 5 ? new Date(wp.cutoff_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZone, hour12: !clock24h }) : '--',
+                        segmentPace: segPace,
+                        overallPace: ovPace
+                    })
+
+                    prevWaypointDist = wp.mile
+
+                    // Add delay
+                    const delay = waypointDelays[wp.id] || 0
+                    currentElapsedTime += delay
+                    waypointIdx++
+                } else {
+                    break
+                }
+            }
+
+            currentElapsedTime += segmentTime
+            currentMovingTime += segmentTime
+            currentDist += detail.dist
+        }
+
+        // Handle Finish Waypoint if not caught
         while (waypointIdx < sortedWaypoints.length) {
             const wp = sortedWaypoints[waypointIdx]
 
-            // If waypoint is essentially at start (mile 0), handle it
-            if (wp.mile <= 0.01 && currentDist === 0) {
-                waypointArrivals.push({
-                    waypointId: wp.id,
-                    arrivalTime: 0,
-                    timeOfDay: startTime ? formatTimeOfDay(0, startTime, timeZone, clock24h) : '00:00',
-                    segmentMile: 0,
-                    segmentTime: '--',
-                    cutoffTime: wp.cutoff_time ? new Date(wp.cutoff_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZone, hour12: !clock24h }) : '--'
-                })
-                prevWaypointDist = wp.mile
-                waypointIdx++
-                continue
-            }
+            const prevArrival = waypointArrivals.length > 0 ? waypointArrivals[waypointArrivals.length - 1].arrivalTime : 0
+            const segmentTimeMin = currentElapsedTime - prevArrival
 
-            if (wp.mile > segmentStartDist && wp.mile <= segmentEndDist) {
-                // Interpolate arrival time
-                const distIntoSegment = wp.mile - segmentStartDist
-                const timeIntoSegment = segmentTime * (distIntoSegment / detail.dist)
-                const arrivalTime = currentElapsedTime + timeIntoSegment
+            const segDist = wp.mile - prevWaypointDist
+            const segPace = segDist > 0 ? segmentTimeMin / segDist : 0
+            const ovPace = wp.mile > 0 ? currentElapsedTime / wp.mile : 0
 
-                // Segment calculations
-                const segmentMile = wp.mile - prevWaypointDist
-                // Segment Time: difference between this arrival and previous arrival
-                // Note: previous arrival time includes cumulative delays up to that point.
-                // Current arrival time excludes the delay for THIS waypoint (added after).
-                // So (Current Arrival - Prev Arrival) = Travel Time + Prev Wp Delay?
-                // Wait. 
-                // arrivalTime is calculated from `currentElapsedTime` which includes ALL previous delays.
-                // It does NOT include current waypoint delay yet.
-                // The previous waypoint arrival time also included all delays prior to IT.
-                // But if the previous waypoint had a delay, that delay was added to `currentElapsedTime` AFTER the arrival was pushed.
-                // So `currentElapsedTime` entering this segment INCLUDES the delay from the previous waypoint.
-                // Therefore (arrivalTime - prevArrival) includes the previous waypoint's delay.
-                // This is correct for "Elapsed time between departures" approx?
-                // Actually usually "Segment Time" means "Time spent moving/traveling on this segment".
-                // If we want moving time:
-                // We'd need to subtract the previous delay?
-                // Let's stick to elapsed time diff for now, or just travel time.
-                // The prompt asked for "Segment Time". 
-                // Let's use (Arrival - Prev Arrival).
-
-                const prevArrival = waypointArrivals.length > 0 ? waypointArrivals[waypointArrivals.length - 1].arrivalTime : 0
-                // Note: If previous waypoint had a delay, it is INCLUDED in `currentElapsedTime` so `arrivalTime` reflects it.
-                // `prevArrival` was the time of arrival AT that waypoint (before delay).
-                // So (Arrival - Prev Arrival) = (Travel Time + Prev Delay).
-                // If we want pure travel time, we should track pure moving time?
-                // For simplicity let's use the difference in arrival times which represents the "wall clock" time passed.
-
-                const segmentTimeMin = arrivalTime - prevArrival
-
-                waypointArrivals.push({
-                    waypointId: wp.id,
-                    arrivalTime,
-                    timeOfDay: formatTimeOfDay(arrivalTime, startTime, timeZone, clock24h),
-                    segmentMile: segmentMile,
-                    segmentTime: formatDuration(segmentTimeMin),
-                    cutoffTime: wp.cutoff_time && wp.cutoff_time.length > 5 ? new Date(wp.cutoff_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZone, hour12: !clock24h }) : '--'
-                })
-
-                prevWaypointDist = wp.mile
-
-                // Add delay
-                const delay = waypointDelays[wp.id] || 0
-                currentElapsedTime += delay
-                waypointIdx++
-            } else {
-                break
-            }
+            waypointArrivals.push({
+                waypointId: wp.id,
+                arrivalTime: currentElapsedTime,
+                timeOfDay: formatTimeOfDay(currentElapsedTime, startTime, timeZone, clock24h),
+                segmentMile: segDist,
+                segmentTime: formatDuration(segmentTimeMin),
+                cutoffTime: wp.cutoff_time ? new Date(wp.cutoff_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZone, hour12: !clock24h }) : '--',
+                segmentPace: segPace,
+                overallPace: ovPace
+            })
+            prevWaypointDist = wp.mile
+            waypointIdx++
         }
 
-        currentElapsedTime += segmentTime
-        currentMovingTime += segmentTime
-        currentDist += detail.dist
+        return {
+            totalTime: currentElapsedTime,
+            movingTime: currentMovingTime,
+            avgPace: currentMovingTime / totalDistance,
+            avgGap: testBaseGap,
+            splits: [],
+            waypointArrivals
+        }
     }
 
-    // Handle Finish Waypoint if not caught
-    while (waypointIdx < sortedWaypoints.length) {
-        const wp = sortedWaypoints[waypointIdx]
+    // Solve for Base GAP using Bisection if target time is specified
+    let targetTotalMinutes = 0
 
-        const prevArrival = waypointArrivals.length > 0 ? waypointArrivals[waypointArrivals.length - 1].arrivalTime : 0
-        const segmentTimeMin = currentElapsedTime - prevArrival
-        // Note: currentElapsedTime here includes the travel time of the last segment (and all prev delays).
-
-        waypointArrivals.push({
-            waypointId: wp.id,
-            arrivalTime: currentElapsedTime,
-            timeOfDay: formatTimeOfDay(currentElapsedTime, startTime, timeZone, clock24h),
-            segmentMile: wp.mile - prevWaypointDist,
-            segmentTime: formatDuration(segmentTimeMin),
-            cutoffTime: wp.cutoff_time ? new Date(wp.cutoff_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZone, hour12: !clock24h }) : '--'
-        })
-        prevWaypointDist = wp.mile
-        waypointIdx++
+    if (strategy.mode === 'gap') {
+        return simulateRun(strategy.value)
+    } else if (strategy.mode === 'pace') {
+        targetTotalMinutes = strategy.value * totalDistance
+    } else {
+        // mode === 'time' or 'cutoff'
+        targetTotalMinutes = strategy.value
     }
 
-    return {
-        totalTime: currentElapsedTime,
-        movingTime: currentMovingTime,
-        avgPace: currentMovingTime / totalDistance,
-        avgGap: baseGap,
-        splits: [],
-        waypointArrivals
+    // Bisection search for the right GAP to match targetTotalMinutes
+    let lowGap = 3.0 // ridiculously fast
+    let highGap = 60.0 // ridiculously slow
+    let bestResult = simulateRun(15.0)
+
+    for (let attempts = 0; attempts < 15; attempts++) {
+        const midGap = (lowGap + highGap) / 2
+        bestResult = simulateRun(midGap)
+        const diff = bestResult.totalTime - targetTotalMinutes
+
+        if (Math.abs(diff) < 0.5) { // within 30 seconds is close enough
+            break
+        }
+
+        if (bestResult.totalTime > targetTotalMinutes) {
+            highGap = midGap
+        } else {
+            lowGap = midGap
+        }
     }
+
+    return bestResult
 }
 
 function formatDuration(minutes: number): string {

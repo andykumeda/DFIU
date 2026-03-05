@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Course, Race, TerrainNode, Waypoint } from '@/types/database'
 import { calculatePacePlan, PacingStrategy } from './pace-utils'
-import { Calculator, Clock, TrendingUp, Activity, Users, Footprints } from 'lucide-react'
+import { Calculator, Clock, TrendingUp, Activity, Users, Footprints, Moon, Sun, ArrowRight } from 'lucide-react'
 
 interface PaceCalculatorProps {
     race: Race
@@ -11,66 +11,63 @@ interface PaceCalculatorProps {
     waypoints: Waypoint[]
     terrainNodes: TerrainNode[]
     clock24h?: boolean
+    unitsDistance?: 'miles' | 'kilometers'
 }
 
-export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h = false }: PaceCalculatorProps) {
-    const [strategyMode, setStrategyMode] = useState<PacingStrategy['mode'] | 'cutoff'>('time')
-    // Inputs (stored as strings for easier editing)
-    const [targetTimeStr, setTargetTimeStr] = useState('24:00') // HH:MM
-    const [targetPaceStr, setTargetPaceStr] = useState('12:00') // MM:SS
-    const [targetGapStr, setTargetGapStr] = useState('11:00') // MM:SS
-    const [cutoffBufferStr, setCutoffBufferStr] = useState('00:30') // HH:MM
-
-    // Delays are now handled per-waypoint in properties
+export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h = false, unitsDistance = 'miles' }: PaceCalculatorProps) {
+    const [strategyMode, setStrategyMode] = useState<'planA' | 'planB' | 'planC'>('planA')
+    const [planATimeStr, setPlanATimeStr] = useState('24:00') // HH:MM
+    const [planBTimeStr, setPlanBTimeStr] = useState('') // empty means auto-calculate
+    const [planCBufferStr, setPlanCBufferStr] = useState('00:30') // HH:MM
 
     const [plan, setPlan] = useState<ReturnType<typeof calculatePacePlan> | null>(null)
 
-    // Helper to parse inputs
-    const getStrategyValue = (): number => {
-        if (strategyMode === 'time') {
-            const [h, m] = targetTimeStr.split(':').map(Number)
-            return (h || 0) * 60 + (m || 0)
-        } else if (strategyMode === 'cutoff') {
-            // Parse race cutoff
-            if (!race.overall_cutoff) return 0
-            // Assuming parsed "HH:MM" or "HHh" or similar. 
-            // Simple parser: currently assuming stored as HH:MM based on other fields? 
-            // If it's free text, this is risky. Let's try to parse "HH:MM".
-            let cutoffMin = 0
-            if (race.overall_cutoff.includes(':')) {
-                const [h, m] = race.overall_cutoff.split(':').map(Number)
-                cutoffMin = (h || 0) * 60 + (m || 0)
-            } else {
-                // Try numeric
-                const val = parseFloat(race.overall_cutoff)
-                if (!isNaN(val)) cutoffMin = val * 60 // Assume hours if number
-            }
+    const parseTimeStr = (str: string) => {
+        const [h, m] = str.split(':').map(Number)
+        return ((h || 0) * 60) + (m || 0)
+    }
 
-            const [bh, bm] = cutoffBufferStr.split(':').map(Number)
-            const bufferMin = (bh || 0) * 60 + (bm || 0)
-
-            return Math.max(0, cutoffMin - bufferMin)
+    const getPlanCMinutes = () => {
+        if (!race.overall_cutoff) return 0
+        let cutoffMin = 0
+        if (race.overall_cutoff.includes(':')) {
+            const [h, m] = race.overall_cutoff.split(':').map(Number)
+            cutoffMin = (h || 0) * 60 + (m || 0)
         } else {
-            const [m, s] = (strategyMode === 'pace' ? targetPaceStr : targetGapStr).split(':').map(Number)
-            return (m || 0) + (s || 0) / 60
+            const val = parseFloat(race.overall_cutoff)
+            if (!isNaN(val)) cutoffMin = val * 60
         }
+        return Math.max(0, cutoffMin - parseTimeStr(planCBufferStr))
+    }
+
+    const getPlanAMinutes = () => parseTimeStr(planATimeStr)
+
+    const getPlanBAutoMinutes = () => {
+        const a = getPlanAMinutes()
+        let c = getPlanCMinutes()
+        if (c === 0) c = a * 1.25 // Fallback if no cutoff definition exists
+        return (a + c) / 2
+    }
+
+    const getStrategyValue = (): number => {
+        if (strategyMode === 'planA') return getPlanAMinutes()
+        if (strategyMode === 'planC') return getPlanCMinutes()
+        if (strategyMode === 'planB') {
+            if (planBTimeStr) return parseTimeStr(planBTimeStr)
+            return getPlanBAutoMinutes()
+        }
+        return 0
     }
 
     const handleCalculate = () => {
         if (!course.elevation_samples) return
 
-        let mode: PacingStrategy['mode'] = 'time'
-        if (strategyMode === 'pace') mode = 'pace'
-        if (strategyMode === 'gap') mode = 'gap'
-        // If cutoff, we treat it as 'time' with calculated value
-
         const strategy: PacingStrategy = {
-            mode: mode,
+            mode: 'time',
             value: getStrategyValue()
         }
 
         const profile = course.elevation_samples as { distance: number; elevation: number }[]
-        const startTime = race.start_datetime ? new Date(race.start_datetime) : undefined
 
         const result = calculatePacePlan(
             profile,
@@ -78,12 +75,63 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
             waypoints,
             terrainNodes,
             strategy,
-            startTime,
-            race.timezone || undefined,
+            race,
             clock24h
         )
 
         setPlan(result)
+    }
+
+    const isKm = unitsDistance === 'kilometers'
+    const dist = course.total_distance_miles || 0
+    const displayDist = isKm ? dist * 1.60934 : dist
+    const targetMin = getStrategyValue()
+
+    let paceStr = ''
+    if (targetMin > 0 && displayDist > 0) {
+        const paceMin = targetMin / displayDist
+        const speed = displayDist / (targetMin / 60)
+        const paceH = Math.floor(paceMin / 60)
+        const paceM = Math.floor((paceMin % 60))
+        const paceS = Math.round((paceMin % 1) * 60)
+        // Handle 60 seconds rollover
+        let finalM = paceM;
+        let finalS = paceS;
+        let finalH = paceH;
+        if (finalS === 60) {
+            finalS = 0;
+            finalM += 1;
+        }
+        if (finalM === 60) {
+            finalM = 0;
+            finalH += 1;
+        }
+
+        const paceFormatted = finalH > 0
+            ? `${finalH}:${finalM.toString().padStart(2, '0')}:${finalS.toString().padStart(2, '0')}`
+            : `${finalM}:${finalS.toString().padStart(2, '0')}`
+
+        paceStr = `${paceFormatted}/${isKm ? 'km' : 'mi'} (${speed.toFixed(1)} ${isKm ? 'km/h' : 'mph'})`
+    }
+
+    const formatPace = (minPerMile: number) => {
+        if (!minPerMile) return '--'
+        const pace = isKm ? minPerMile / 1.60934 : minPerMile
+        let m = Math.floor(pace)
+        let s = Math.round((pace % 1) * 60)
+        if (s === 60) {
+            s = 0
+            m += 1
+        }
+        return `${m}:${s.toString().padStart(2, '0')}`
+    }
+
+    const isNight = (arrivalMinutes: number) => {
+        if (!race.start_datetime) return false
+        const start = new Date(race.start_datetime)
+        const current = new Date(start.getTime() + arrivalMinutes * 60000)
+        const hour = current.getHours()
+        return hour >= 20 || hour < 6
     }
 
     return (
@@ -96,57 +144,56 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                     </h2>
 
                     {/* Mode Selector */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-6 bg-neutral-950 p-1 rounded-lg border border-neutral-800">
+                    <div className="grid grid-cols-3 gap-2 mb-6 bg-neutral-950 p-1 rounded-lg border border-neutral-800">
                         <button
-                            className={`py-2 text-xs font-medium rounded ${strategyMode === 'time' ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:text-neutral-200'}`}
-                            onClick={() => setStrategyMode('time')}
+                            className={`py-2 text-xs font-medium rounded ${strategyMode === 'planA' ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:text-neutral-200'}`}
+                            onClick={() => setStrategyMode('planA')}
                         >
-                            Total Time
+                            Plan A (Goal)
                         </button>
                         <button
-                            className={`py-2 text-xs font-medium rounded ${strategyMode === 'cutoff' ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:text-neutral-200'}`}
-                            onClick={() => setStrategyMode('cutoff')}
+                            className={`py-2 text-xs font-medium rounded ${strategyMode === 'planB' ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:text-neutral-200'}`}
+                            onClick={() => setStrategyMode('planB')}
                         >
-                            Cutoff
+                            Plan B (Mid)
                         </button>
                         <button
-                            className={`py-2 text-xs font-medium rounded ${strategyMode === 'pace' ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:text-neutral-200'}`}
-                            onClick={() => setStrategyMode('pace')}
+                            className={`py-2 text-xs font-medium rounded ${strategyMode === 'planC' ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:text-neutral-200'}`}
+                            onClick={() => setStrategyMode('planC')}
                         >
-                            Avg Pace
-                        </button>
-                        <button
-                            className={`py-2 text-xs font-medium rounded ${strategyMode === 'gap' ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:text-neutral-200'}`}
-                            onClick={() => setStrategyMode('gap')}
-                        >
-                            Norm. Pace
+                            Plan C (Cutoff)
                         </button>
                     </div>
 
                     {/* Main Input */}
                     <div className="mb-6">
                         <label className="block text-sm font-medium text-neutral-400 mb-2">
-                            {strategyMode === 'time' ? 'Target Finish Time (HH:MM)' :
-                                strategyMode === 'cutoff' ? 'Safety Buffer (HH:MM ahead of cutoff)' :
-                                    strategyMode === 'pace' ? 'Average Overall Pace (MM:SS/mi)' :
-                                        'Normalized Pace (GAP) (MM:SS/mi)'}
+                            {strategyMode === 'planA' ? 'Target Finish Time (HH:MM)' :
+                                strategyMode === 'planC' ? 'Safety Buffer (HH:MM ahead of cutoff)' :
+                                    'Target Finish Time (Calculated Midpoint)'}
                         </label>
-                        {strategyMode === 'cutoff' && !race.overall_cutoff && (
+                        {strategyMode === 'planC' && !race.overall_cutoff && (
                             <div className="text-red-400 text-xs mb-2">Race has no overall cutoff time set.</div>
                         )}
                         <input
                             type="text"
                             className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-3 text-white text-lg font-mono placeholder-neutral-600 focus:ring-2 focus:ring-blue-500 outline-none"
-                            placeholder={strategyMode === 'time' ? "24:00" : strategyMode === 'cutoff' ? "00:30" : "12:00"}
-                            value={strategyMode === 'time' ? targetTimeStr : (strategyMode === 'cutoff' ? cutoffBufferStr : (strategyMode === 'pace' ? targetPaceStr : targetGapStr))}
+                            placeholder={strategyMode === 'planA' ? "24:00" : strategyMode === 'planC' ? "00:30" : `${Math.floor(getPlanBAutoMinutes() / 60)}:${(Math.floor(getPlanBAutoMinutes() % 60)).toString().padStart(2, '0')}`}
+                            value={strategyMode === 'planA' ? planATimeStr : strategyMode === 'planC' ? planCBufferStr : (planBTimeStr || `${Math.floor(getPlanBAutoMinutes() / 60)}:${(Math.floor(getPlanBAutoMinutes() % 60)).toString().padStart(2, '0')}`)}
                             onChange={(e) => {
-                                if (strategyMode === 'time') setTargetTimeStr(e.target.value)
-                                else if (strategyMode === 'cutoff') setCutoffBufferStr(e.target.value)
-                                else if (strategyMode === 'pace') setTargetPaceStr(e.target.value)
-                                else setTargetGapStr(e.target.value)
+                                if (strategyMode === 'planA') { setPlanATimeStr(e.target.value); setPlanBTimeStr(''); }
+                                else if (strategyMode === 'planC') { setPlanCBufferStr(e.target.value); setPlanBTimeStr(''); }
+                                else if (strategyMode === 'planB') setPlanBTimeStr(e.target.value);
                             }}
                         />
-                        {strategyMode === 'cutoff' && race.overall_cutoff && (
+
+                        {paceStr && (
+                            <div className="mt-2 text-sm text-blue-400 font-mono">
+                                Pace Required: {paceStr}
+                            </div>
+                        )}
+
+                        {strategyMode === 'planC' && race.overall_cutoff && (
                             <div className="mt-2 text-xs text-neutral-500">
                                 Race Cutoff: {race.overall_cutoff}
                             </div>
@@ -183,37 +230,42 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                                     <Activity className="w-3 h-3" /> Avg Pace
                                 </div>
                                 <div className="text-2xl font-black text-white font-mono">
-                                    {Math.floor(plan.avgPace)}:{(Math.round((plan.avgPace % 1) * 60)).toString().padStart(2, '0')}
+                                    {formatPace(plan.avgPace)}
                                 </div>
-                                <div className="text-xs text-neutral-500">/mi (Moving)</div>
+                                <div className="text-xs text-neutral-500">/{isKm ? 'km' : 'mi'} (Moving)</div>
                             </div>
                             <div className="bg-neutral-800/50 rounded-xl p-4 border border-neutral-800">
                                 <div className="text-neutral-500 text-xs uppercase tracking-wider mb-1 flex items-center gap-1">
                                     <TrendingUp className="w-3 h-3" /> Norm. Pace
                                 </div>
                                 <div className="text-2xl font-black text-blue-400 font-mono">
-                                    {Math.floor(plan.avgGap)}:{(Math.round((plan.avgGap % 1) * 60)).toString().padStart(2, '0')}
+                                    {formatPace(plan.avgGap)}
                                 </div>
-                                <div className="text-xs text-neutral-500">/mi (GAP)</div>
+                                <div className="text-xs text-neutral-500">/{isKm ? 'km' : 'mi'} (GAP)</div>
                             </div>
                             {/* Extra slot */}
                         </div>
 
                         {/* Splits Table */}
-                        <div className="bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden">
-                            <div className="px-6 py-4 border-b border-neutral-800">
+                        <div className="bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden mt-6">
+                            <div className="px-6 py-4 border-b border-neutral-800 flex items-center justify-between">
                                 <h3 className="font-bold text-white">Splits</h3>
+                                <div className="text-xs text-neutral-500 flex items-center gap-1 md:hidden">
+                                    Swipe <ArrowRight className="w-3 h-3" />
+                                </div>
                             </div>
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm text-left">
                                     <thead className="bg-neutral-950 text-neutral-400 uppercase text-xs font-semibold">
                                         <tr>
                                             <th className="px-6 py-3">Location</th>
-                                            <th className="px-6 py-3">Mile</th>
-                                            <th className="px-6 py-3">Seg Mile</th>
+                                            <th className="px-6 py-3">{isKm ? 'Km' : 'Mile'}</th>
+                                            <th className="px-6 py-3">Seg {isKm ? 'Km' : 'Mile'}</th>
                                             <th className="px-6 py-3 text-right">Segment Time</th>
                                             <th className="px-6 py-3 text-right">Clock Time</th>
                                             <th className="px-6 py-3 text-right">Elapsed Time</th>
+                                            <th className="px-6 py-3 text-right">Segment Pace</th>
+                                            <th className="px-6 py-3 text-right">Overall Pace</th>
                                             <th className="px-6 py-3 text-right">Cutoff Time</th>
                                         </tr>
                                     </thead>
@@ -226,8 +278,15 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                                                 <tr key={arrival.waypointId} className="hover:bg-neutral-800/50 transition-colors">
                                                     <td className="px-6 py-4">
                                                         <div className="font-medium text-white flex items-center gap-2">
-                                                            {wp.name}
-                                                            <div className="flex gap-1">
+                                                            <span>
+                                                                {wp.name}
+                                                                {race.start_datetime && (
+                                                                    isNight(arrival.arrivalTime)
+                                                                        ? <span title="Nighttime Arrival" className="inline-flex items-center"><Moon className="w-3.5 h-3.5 text-blue-300 ml-1.5" /></span>
+                                                                        : <span title="Daytime Arrival" className="inline-flex items-center"><Sun className="w-3.5 h-3.5 text-yellow-500 ml-1.5" /></span>
+                                                                )}
+                                                            </span>
+                                                            <div className="flex gap-1 ml-1">
                                                                 {wp.crew_allowed && <span title="Crew Allowed"><Users className="w-4 h-4 text-green-400" /></span>}
                                                                 {wp.pacer_allowed && <span title="Pacer Allowed"><Footprints className="w-4 h-4 text-blue-400" /></span>}
                                                                 {wp.has_drop_bag && <span title="Drop Bag" className="text-[12px] opacity-90 leading-none flex items-center justify-center pt-0.5">🎒</span>}
@@ -235,19 +294,25 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-4 font-mono text-neutral-300">
-                                                        {wp.mile.toFixed(2)}
+                                                        {(isKm ? wp.mile * 1.60934 : wp.mile).toFixed(2)}
                                                     </td>
                                                     <td className="px-6 py-4 font-mono text-neutral-400">
-                                                        {arrival.segmentMile.toFixed(2)}
+                                                        {(isKm ? arrival.segmentMile * 1.60934 : arrival.segmentMile).toFixed(2)}
                                                     </td>
                                                     <td className="px-6 py-4 text-right font-mono text-neutral-400">
                                                         {arrival.segmentTime}
                                                     </td>
-                                                    <td className="px-6 py-4 text-right font-mono text-white">
+                                                    <td className="px-6 py-4 text-right font-mono text-neutral-400">
                                                         {arrival.timeOfDay}
                                                     </td>
                                                     <td className="px-6 py-4 text-right font-mono text-neutral-400">
                                                         {Math.floor(arrival.arrivalTime / 60)}:{Math.floor(arrival.arrivalTime % 60).toString().padStart(2, '0')}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right font-mono text-neutral-400">
+                                                        {formatPace(arrival.segmentPace)}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right font-mono text-neutral-400">
+                                                        {formatPace(arrival.overallPace)}
                                                     </td>
                                                     <td className="px-6 py-4 text-right font-mono text-red-400">
                                                         {arrival.cutoffTime}
