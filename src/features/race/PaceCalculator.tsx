@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Course, Race, TerrainNode, Waypoint } from '@/types/database'
 import { calculatePacePlan, PacingStrategy } from './pace-utils'
+import { usePacePlans, computePlanMinutes } from './usePacePlans'
 import { Calculator, Clock, TrendingUp, Activity, Users, Footprints, Moon, Sun, ArrowRight, Printer } from 'lucide-react'
 
 interface PaceCalculatorProps {
@@ -16,47 +17,17 @@ interface PaceCalculatorProps {
 
 export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h = false, unitsDistance = 'miles' }: PaceCalculatorProps) {
     const [strategyMode, setStrategyMode] = useState<'planA' | 'planB' | 'planC'>('planA')
-    const [planATimeStr, setPlanATimeStr] = useState('24:00') // HH:MM
-    const [planBTimeStr, setPlanBTimeStr] = useState('') // empty means auto-calculate
-    const [planCBufferStr, setPlanCBufferStr] = useState('00:30') // HH:MM
-
     const [plan, setPlan] = useState<ReturnType<typeof calculatePacePlan> | null>(null)
 
-    const parseTimeStr = (str: string) => {
-        const [h, m] = str.split(':').map(Number)
-        return ((h || 0) * 60) + (m || 0)
-    }
+    const { plans, setPlanA, setPlanB, setPlanCBuffer, markCalculated } = usePacePlans(race.id)
+    const { planATimeStr, planBTimeStr, planCBufferStr } = plans
 
-    const getPlanCMinutes = () => {
-        if (!race.overall_cutoff) return 0
-        let cutoffMin = 0
-        if (race.overall_cutoff.includes(':')) {
-            const [h, m] = race.overall_cutoff.split(':').map(Number)
-            cutoffMin = (h || 0) * 60 + (m || 0)
-        } else {
-            const val = parseFloat(race.overall_cutoff)
-            if (!isNaN(val)) cutoffMin = val * 60
-        }
-        return Math.max(0, cutoffMin - parseTimeStr(planCBufferStr))
-    }
-
-    const getPlanAMinutes = () => parseTimeStr(planATimeStr)
-
-    const getPlanBAutoMinutes = () => {
-        const a = getPlanAMinutes()
-        let c = getPlanCMinutes()
-        if (c === 0) c = a * 1.25 // Fallback if no cutoff definition exists
-        return (a + c) / 2
-    }
+    const { a: planAMinutes, b: planBMinutes, c: planCMinutes } = computePlanMinutes(plans, race.overall_cutoff)
 
     const getStrategyValue = (): number => {
-        if (strategyMode === 'planA') return getPlanAMinutes()
-        if (strategyMode === 'planC') return getPlanCMinutes()
-        if (strategyMode === 'planB') {
-            if (planBTimeStr) return parseTimeStr(planBTimeStr)
-            return getPlanBAutoMinutes()
-        }
-        return 0
+        if (strategyMode === 'planA') return planAMinutes
+        if (strategyMode === 'planC') return planCMinutes ?? 0
+        return planBMinutes
     }
 
     const handleCalculate = () => {
@@ -80,6 +51,7 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
         )
 
         setPlan(result)
+        markCalculated()
     }
 
     const isKm = unitsDistance === 'kilometers'
@@ -178,12 +150,12 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                         <input
                             type="text"
                             className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-3 text-white text-lg font-mono placeholder-neutral-600 focus:ring-2 focus:ring-blue-500 outline-none"
-                            placeholder={strategyMode === 'planA' ? "24:00" : strategyMode === 'planC' ? "00:30" : `${Math.floor(getPlanBAutoMinutes() / 60)}:${(Math.floor(getPlanBAutoMinutes() % 60)).toString().padStart(2, '0')}`}
-                            value={strategyMode === 'planA' ? planATimeStr : strategyMode === 'planC' ? planCBufferStr : (planBTimeStr || `${Math.floor(getPlanBAutoMinutes() / 60)}:${(Math.floor(getPlanBAutoMinutes() % 60)).toString().padStart(2, '0')}`)}
+                            placeholder={strategyMode === 'planA' ? "24:00" : strategyMode === 'planC' ? "00:30" : `${Math.floor(planBMinutes / 60)}:${(Math.floor(planBMinutes % 60)).toString().padStart(2, '0')}`}
+                            value={strategyMode === 'planA' ? planATimeStr : strategyMode === 'planC' ? planCBufferStr : (planBTimeStr || `${Math.floor(planBMinutes / 60)}:${(Math.floor(planBMinutes % 60)).toString().padStart(2, '0')}`)}
                             onChange={(e) => {
-                                if (strategyMode === 'planA') { setPlanATimeStr(e.target.value); setPlanBTimeStr(''); }
-                                else if (strategyMode === 'planC') { setPlanCBufferStr(e.target.value); setPlanBTimeStr(''); }
-                                else if (strategyMode === 'planB') setPlanBTimeStr(e.target.value);
+                                if (strategyMode === 'planA') { setPlanA(e.target.value); setPlanB(''); }
+                                else if (strategyMode === 'planC') { setPlanCBuffer(e.target.value); setPlanB(''); }
+                                else if (strategyMode === 'planB') setPlanB(e.target.value);
                             }}
                         />
 
