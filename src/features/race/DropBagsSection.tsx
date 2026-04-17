@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Race, Course, Waypoint, TerrainNode } from '@/types/database'
-import { calculatePacePlan, PacingStrategy } from './pace-utils'
-import { Backpack, Clock, Sun, Moon, Info, Printer, List, ChevronDown, ChevronUp } from 'lucide-react'
+import { calculatePacePlan } from './pace-utils'
+import { usePacePlans, computePlanMinutes } from './usePacePlans'
+import { Backpack, Clock, Sun, Moon, Info, Printer, List, ChevronDown, ChevronUp, Target } from 'lucide-react'
 import { DropBagModal } from './DropBagModal'
 import SunCalc from 'suncalc'
 
@@ -11,9 +12,10 @@ interface DropBagsSectionProps {
     waypoints: Waypoint[]
     terrainNodes: TerrainNode[]
     clock24h?: boolean
+    onGoToPacePlan: () => void
 }
 
-export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24h = false }: DropBagsSectionProps) {
+export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24h = false, onGoToPacePlan }: DropBagsSectionProps) {
     const [selectedWaypoint, setSelectedWaypoint] = useState<Waypoint | null>(null)
     const [isSidePanelOpen, setIsSidePanelOpen] = useState(true)
     const [collapsedStations, setCollapsedStations] = useState<Record<string, boolean>>({})
@@ -27,40 +29,25 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
 
     const dropBagWaypoints = waypoints.filter(wp => wp.has_drop_bag).sort((a, b) => a.mile - b.mile)
 
-    // Calculate generic Pace Plan (Plan B fallback) to get estimated arrival times
-    const getCalculatedPlan = () => {
-        if (!course?.elevation_samples) return null
+    const { plans } = usePacePlans(race.id)
+    const { a: planAMinutes, b: planBMinutes, c: planCMinutes } = computePlanMinutes(plans, race.overall_cutoff)
 
-        let c = 0
-        if (race.overall_cutoff) {
-            if (race.overall_cutoff.includes(':')) {
-                const [h, m] = race.overall_cutoff.split(':').map(Number)
-                c = (h || 0) * 60 + (m || 0)
-            } else {
-                const val = parseFloat(race.overall_cutoff)
-                if (!isNaN(val)) c = val * 60
-            }
-        }
-
-        let targetMinutes = c * 0.8 // target 80% of cutoff as generic estimate
-        if (targetMinutes === 0) { // fallback
-            targetMinutes = (course.total_distance_miles || 0) * 15 // 15 min/mi avg
-        }
-
-        const strategy: PacingStrategy = { mode: 'time', value: targetMinutes }
-
+    const buildPlan = (minutes: number) => {
+        if (!course?.elevation_samples || minutes <= 0) return null
         return calculatePacePlan(
             course.elevation_samples as { distance: number; elevation: number }[],
             course.total_distance_miles || 0,
             waypoints,
             terrainNodes,
-            strategy,
+            { mode: 'time', value: minutes },
             race,
             clock24h
         )
     }
 
-    const plan = getCalculatedPlan()
+    const planA = plans.hasCalculated ? buildPlan(planAMinutes) : null
+    const planB = plans.hasCalculated ? buildPlan(planBMinutes) : null
+    const planC = (plans.hasCalculated && planCMinutes !== null) ? buildPlan(planCMinutes) : null
 
     const isNight = (arrivalMinutes: number, wpLat: number, wpLon: number) => {
         if (!race.start_datetime) return false
@@ -129,9 +116,6 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {dropBagWaypoints.map(wp => {
-                        const arrival = plan?.waypointArrivals.find(a => a.waypointId === wp.id)
-                        const nightArrival = arrival ? isNight(arrival.arrivalTime, wp.lat, wp.lon) : false
-
                         return (
                             <div
                                 key={wp.id}
@@ -149,15 +133,38 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                                 </div>
 
                                 <div className="space-y-3 flex-1">
-                                    {arrival && (
-                                        <div className="flex items-center gap-2 text-sm bg-neutral-950/50 p-2 rounded border border-neutral-800">
-                                            <Clock className="w-4 h-4 text-neutral-400" />
-                                            <span className="text-neutral-300">ETA: {arrival.timeOfDay}</span>
-                                            {race.start_datetime && (
-                                                nightArrival
-                                                    ? <Moon className="w-4 h-4 text-blue-300 ml-auto" />
-                                                    : <Sun className="w-4 h-4 text-yellow-500 ml-auto" />
-                                            )}
+                                    {!plans.hasCalculated ? (
+                                        <div className="text-center py-3 space-y-2">
+                                            <p className="text-sm text-neutral-500">Set your goal time to see ETAs.</p>
+                                            <button
+                                                onClick={onGoToPacePlan}
+                                                className="text-sm text-orange-400 hover:text-orange-300 font-medium flex items-center gap-1 mx-auto transition-colors"
+                                            >
+                                                <Target className="w-4 h-4" />
+                                                Go to Pace Plan
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-1.5">
+                                            {[
+                                                { label: 'A', plan: planA, color: 'text-emerald-400' },
+                                                { label: 'B', plan: planB, color: 'text-blue-400' },
+                                                ...(planCMinutes !== null ? [{ label: 'C', plan: planC, color: 'text-orange-400' }] : []),
+                                            ].map(({ label, plan: p, color }) => {
+                                                const arrival = p?.waypointArrivals.find(a => a.waypointId === wp.id)
+                                                return (
+                                                    <div key={label} className="flex items-center gap-2 text-sm bg-neutral-950/50 px-2 py-1.5 rounded border border-neutral-800">
+                                                        <span className={`text-xs font-bold w-4 shrink-0 ${color}`}>{label}</span>
+                                                        <Clock className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+                                                        <span className="text-neutral-300">{arrival?.timeOfDay ?? '—'}</span>
+                                                        {arrival && race.start_datetime && (
+                                                            isNight(arrival.arrivalTime, wp.lat, wp.lon)
+                                                                ? <Moon className="w-3.5 h-3.5 text-blue-300 ml-auto" />
+                                                                : <Sun className="w-3.5 h-3.5 text-yellow-500 ml-auto" />
+                                                        )}
+                                                    </div>
+                                                )
+                                            })}
                                         </div>
                                     )}
 
@@ -175,12 +182,16 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                     })}
                 </div>
 
-                {selectedWaypoint && plan && (
+                {selectedWaypoint && (
                     <DropBagModal
                         waypoint={selectedWaypoint}
                         race={race}
-                        arrivalTime={plan.waypointArrivals.find(a => a.waypointId === selectedWaypoint.id)}
-                        isNight={plan.waypointArrivals.find(a => a.waypointId === selectedWaypoint.id) ? isNight(plan.waypointArrivals.find(a => a.waypointId === selectedWaypoint.id)!.arrivalTime, selectedWaypoint.lat, selectedWaypoint.lon) : false}
+                        arrivalTime={planA?.waypointArrivals.find(a => a.waypointId === selectedWaypoint.id)}
+                        isNight={
+                            planA?.waypointArrivals.find(a => a.waypointId === selectedWaypoint.id)
+                                ? isNight(planA.waypointArrivals.find(a => a.waypointId === selectedWaypoint.id)!.arrivalTime, selectedWaypoint.lat, selectedWaypoint.lon)
+                                : false
+                        }
                         onClose={() => setSelectedWaypoint(null)}
                     />
                 )}

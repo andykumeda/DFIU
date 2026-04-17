@@ -1239,6 +1239,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
               waypoints={waypoints}
               terrainNodes={terrainNodes}
               clock24h={clock24h}
+              onGoToPacePlan={() => setActiveTab('plan')}
             />
           </div>
         )}
