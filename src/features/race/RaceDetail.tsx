@@ -1037,7 +1037,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
                     {isOwner ? (
                       <div className='mt-4 pt-4 border-t border-neutral-800'>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-wrap">
                           <button
                             onClick={() => setIsReimporting(!isReimporting)}
                             className='flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-medium transition-colors'
