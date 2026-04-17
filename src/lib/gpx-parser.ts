@@ -67,25 +67,51 @@ function metersToFeet(meters: number): number {
 }
 
 /**
- * Smooth an array of elevation values (in meters) using a centered moving average.
- * This reduces GPS noise before computing gain/loss statistics.
- * Points with null elevation are skipped (their indices are preserved as null).
+ * Compute elevation gain and loss using hysteresis.
+ *
+ * Counts gain only after a cumulative rise of >= minGainM above the last low
+ * point, and loss only after a cumulative drop of >= minGainM below the last
+ * high point. This is recording-density-agnostic: it works correctly whether
+ * the GPS logged points every 5m or every 50m.
+ *
+ * The previous moving-average approach used a fixed point-count window (7
+ * points), which over-smoothed sparse tracks (e.g. Garmin smart recording at
+ * ~50m intervals), causing ~1000ft of under-counting on a 50-mile race.
  */
-function smoothElevations(elevations: (number | null)[], windowSize: number = 10): (number | null)[] {
-    const half = Math.floor(windowSize / 2)
-    return elevations.map((ele, i) => {
-        if (ele === null) return null
-        let sum = 0
-        let count = 0
-        for (let j = Math.max(0, i - half); j <= Math.min(elevations.length - 1, i + half); j++) {
-            const v = elevations[j]
-            if (v !== null && Number.isFinite(v)) {
-                sum += v
-                count++
-            }
+function computeElevationStats(
+    elevations: (number | null)[],
+    minGainM: number = 5.0
+): { gain: number; loss: number } {
+    const valid = elevations.filter((e): e is number => e !== null && Number.isFinite(e))
+    if (valid.length < 2) return { gain: 0, loss: 0 }
+
+    let gain = 0
+    let loss = 0
+    // Track low/high water marks independently for gain and loss
+    let gainLow = valid[0]   // lowest point since last gain was counted
+    let lossHigh = valid[0]  // highest point since last loss was counted
+
+    for (let i = 1; i < valid.length; i++) {
+        const e = valid[i]
+
+        // Gain: count when we've risen >= minGainM above the last low
+        if (e < gainLow) {
+            gainLow = e
+        } else if (e - gainLow >= minGainM) {
+            gain += e - gainLow
+            gainLow = e
         }
-        return count > 0 ? sum / count : ele
-    })
+
+        // Loss: count when we've dropped >= minGainM below the last high
+        if (e > lossHigh) {
+            lossHigh = e
+        } else if (lossHigh - e >= minGainM) {
+            loss += lossHigh - e
+            lossHigh = e
+        }
+    }
+
+    return { gain, loss }
 }
 
 /**
@@ -197,26 +223,11 @@ export function parseGpx(gpxString: string): GpxParseResult {
         }
     }
 
-    // Second pass: smooth elevations, then compute gain/loss from smoothed data
+    // Second pass: compute gain/loss using hysteresis (density-agnostic)
     const rawElevations = allPoints.map(p => p.ele)
-    const smoothed = smoothElevations(rawElevations, 7)
-    const GAIN_LOSS_THRESHOLD = 0.8 // meters – applied to smoothed data to catch residual noise
-
-    for (let i = 1; i < smoothed.length; i++) {
-        const prev = smoothed[i - 1]
-        const curr = smoothed[i]
-        if (prev !== null && curr !== null) {
-            const delta = curr - prev
-            if (Math.abs(delta) > GAIN_LOSS_THRESHOLD) {
-                const deltaFt = metersToFeet(delta)
-                if (delta > 0) {
-                    totalGain += deltaFt
-                } else {
-                    totalLoss += Math.abs(deltaFt)
-                }
-            }
-        }
-    }
+    const { gain, loss } = computeElevationStats(rawElevations)
+    totalGain = metersToFeet(gain)
+    totalLoss = metersToFeet(loss)
 
     // Handle edge case where no elevation data exists
     if (minEle === Infinity) minEle = 0
