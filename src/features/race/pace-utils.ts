@@ -1,5 +1,5 @@
-
 import { TerrainNode, Waypoint, Race } from '@/types/database'
+import SunCalc from 'suncalc'
 
 export interface PacingStrategy {
     mode: 'time' | 'pace' | 'gap' | 'cutoff'
@@ -70,7 +70,9 @@ function getDynamicFactors(
     mile: number,
     totalDistance: number,
     elapsedMinutes: number,
-    race: Partial<Race>
+    race: Partial<Race>,
+    lat?: number,
+    lon?: number
 ): number {
     let factor = 1.0
 
@@ -85,9 +87,18 @@ function getDynamicFactors(
         const current = new Date(start.getTime() + elapsedMinutes * 60000)
         const hour = current.getHours()
 
-        // Time of Day (Nighttime factor)
-        // Assume nighttime is between 20:00 (8 PM) and 6:00 (6 AM)
-        const isNight = hour >= 20 || hour < 6
+        // Fallback night (8 PM to 6 AM)
+        let isNight = hour >= 20 || hour < 6
+
+        // Use precise twilight if we have coordinates
+        if (lat !== undefined && lon !== undefined) {
+            const times = SunCalc.getTimes(current, lat, lon)
+            if (times.dusk && times.dawn) {
+                // Night is after dusk but before dawn
+                isNight = current > times.dusk || current < times.dawn
+            }
+        }
+
         if (isNight) {
             factor += 0.10 // 10% slower at night
         }
@@ -125,8 +136,7 @@ export function calculatePacePlan(
 ): PacePlanResult {
     // 1. Determine Target GAP (Moving Baseline)
 
-    // Step 1: Calculate Total Weights (Effort Factor sum)
-    let totalEffortMiles = 0
+    // Step 1: Calculate effort-weighted segment details
     const segmentDetails: {
         dist: number;
         gradeFactor: number;
@@ -152,9 +162,6 @@ export function calculatePacePlan(
         const gradient = eleChangeMeters / distMeters
         const gradeFactor = getGradeFactor(gradient)
         const terrainFactor = getTerrainFactor(p1.distance, terrainNodes)
-
-        const effortMiles = dist * gradeFactor * terrainFactor
-        totalEffortMiles += effortMiles
 
         segmentDetails.push({
             dist,
@@ -195,11 +202,14 @@ export function calculatePacePlan(
 
         const waypointArrivals: PacePlanResult['waypointArrivals'] = []
 
+        const lat = waypoints.length > 0 ? waypoints[0].lat : undefined
+        const lon = waypoints.length > 0 ? waypoints[0].lon : undefined
+
         // We iterate through profile segments
         for (let i = 0; i < samples.length - 1; i++) {
             const detail = segmentDetails[i]
 
-            const dynamicFactor = getDynamicFactors(samples[i].distance, totalDistance, currentElapsedTime, race)
+            const dynamicFactor = getDynamicFactors(samples[i].distance, totalDistance, currentElapsedTime, race, lat, lon)
             const segmentGap = testBaseGap
             const segmentPace = segmentGap * detail.gradeFactor * detail.terrainFactor * dynamicFactor
             const segmentTime = segmentPace * detail.dist

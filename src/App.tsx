@@ -9,6 +9,7 @@ import RaceDetailPage from './pages/RaceDetailPage'
 import NewRacePage from './pages/NewRacePage'
 import SplashPage from './pages/SplashPage'
 import StravaCallback from './features/auth/StravaCallback'
+import { ScrollToTop } from './components/ui/ScrollToTop'
 
 const queryClient = new QueryClient()
 
@@ -66,6 +67,7 @@ export default function App() {
             <Route path='/auth/strava/callback' element={<StravaCallback />} />
             <Route path='/' element={<SplashPage />} />
           </Routes>
+          <ScrollToTop />
         </BrowserRouter>
       </AuthProvider>
     </QueryClientProvider>

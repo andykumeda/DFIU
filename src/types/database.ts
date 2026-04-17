@@ -1,305 +1,490 @@
 export type Json =
-    | string
-    | number
-    | boolean
-    | null
-    | { [key: string]: Json | undefined }
-    | Json[]
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
-export interface Database {
-    public: {
-        Tables: {
-            profiles: {
-                Row: {
-                    id: string
-                    email: string | null
-                    name: string | null
-                    created_at: string
-                    units_distance: 'miles' | 'kilometers'
-                    units_elevation: 'feet' | 'meters'
-                    clock_24h: boolean
-                    display_name: string | null
-                }
-                Insert: {
-                    id: string
-                    email?: string | null
-                    name?: string | null
-                    created_at?: string
-                    units_distance?: 'miles' | 'kilometers'
-                    units_elevation?: 'feet' | 'meters'
-                    clock_24h?: boolean
-                    display_name?: string | null
-                }
-                Update: {
-                    id?: string
-                    email?: string | null
-                    name?: string | null
-                    created_at?: string
-                    units_distance?: 'miles' | 'kilometers'
-                    units_elevation?: 'feet' | 'meters'
-                    clock_24h?: boolean
-                    display_name?: string | null
-                }
-            }
-            races: {
-                Row: {
-                    id: string
-                    user_id: string
-                    name: string
-                    location: string | null
-                    start_datetime: string | null
-                    distance_miles: number | null
-                    website_url: string | null
-                    registration_url: string | null
-                    packet_pickup_info: string | null
-                    avg_temp_high: string | null
-                    avg_temp_low: string | null
-                    precip_chance: string | null
-                    weather_notes: string | null
-                    moon_phase: string | null
-                    sunrise_time: string | null
-                    sunset_time: string | null
-                    overall_cutoff: string | null
-                    course_record_male: string | null
-                    course_record_female: string | null
-                    qualifies_for: string | null
-                    course_type: string | null
-                    is_public: boolean
-                    created_at: string
-                    updated_at: string
-                    timezone: string | null
-                    racebook_url: string | null
-                    racebook_last_updated: string | null
-                    briefing_url: string | null
-                    packet_pickup_url: string | null
-                    past_results_url: string | null
-                    media_url: string | null
-                    entrants_url: string | null
-                    tracking_url: string | null
-                    lodging_info: string | null
-                    packet_pickup_datetime: string | null
-                    briefing_datetime: string | null
-                    terrain_type: string | null
-                }
-                Insert: {
-                    id?: string
-                    user_id: string
-                    name: string
-                    location?: string | null
-                    start_datetime?: string | null
-                    distance_miles?: number | null
-                    website_url?: string | null
-                    registration_url?: string | null
-                    packet_pickup_info?: string | null
-                    avg_temp_high?: string | null
-                    avg_temp_low?: string | null
-                    precip_chance?: string | null
-                    weather_notes?: string | null
-                    moon_phase?: string | null
-                    sunrise_time?: string | null
-                    sunset_time?: string | null
-                    overall_cutoff?: string | null
-                    course_record_male?: string | null
-                    course_record_female?: string | null
-                    qualifies_for?: string | null
-                    course_type?: string | null
-                    is_public?: boolean
-                    created_at?: string
-                    updated_at?: string
-                    timezone?: string | null
-                    racebook_url?: string | null
-                    racebook_last_updated?: string | null
-                    briefing_url?: string | null
-                    packet_pickup_url?: string | null
-                    past_results_url?: string | null
-                    media_url?: string | null
-                    entrants_url?: string | null
-                    tracking_url?: string | null
-                    lodging_info?: string | null
-                    packet_pickup_datetime?: string | null
-                    briefing_datetime?: string | null
-                    terrain_type?: string | null
-                }
-                Update: {
-                    id?: string
-                    user_id?: string
-                    name?: string
-                    location?: string | null
-                    start_datetime?: string | null
-                    distance_miles?: number | null
-                    website_url?: string | null
-                    registration_url?: string | null
-                    packet_pickup_info?: string | null
-                    avg_temp_high?: string | null
-                    avg_temp_low?: string | null
-                    precip_chance?: string | null
-                    weather_notes?: string | null
-                    moon_phase?: string | null
-                    sunrise_time?: string | null
-                    sunset_time?: string | null
-                    overall_cutoff?: string | null
-                    course_record_male?: string | null
-                    course_record_female?: string | null
-                    qualifies_for?: string | null
-                    course_type?: string | null
-                    is_public?: boolean
-                    created_at?: string
-                    updated_at?: string
-                    timezone?: string | null
-                    racebook_url?: string | null
-                    racebook_last_updated?: string | null
-                    briefing_url?: string | null
-                    packet_pickup_url?: string | null
-                    past_results_url?: string | null
-                    media_url?: string | null
-                    entrants_url?: string | null
-                    tracking_url?: string | null
-                    lodging_info?: string | null
-                    packet_pickup_datetime?: string | null
-                    briefing_datetime?: string | null
-                    terrain_type?: string | null
-                }
-            }
-            courses: {
-                Row: {
-                    id: string
-                    race_id: string
-                    raw_gpx: string | null
-                    geometry: Json | null
-                    elevation_samples: Json | null
-                    total_distance_miles: number | null
-                    total_elevation_gain_ft: number | null
-                    total_elevation_loss_ft: number | null
-                    min_elevation_ft: number | null
-                    max_elevation_ft: number | null
-                    created_at: string
-                }
-                Insert: {
-                    id?: string
-                    race_id: string
-                    raw_gpx?: string | null
-                    geometry?: Json | null
-                    elevation_samples?: Json | null
-                    total_distance_miles?: number | null
-                    total_elevation_gain_ft?: number | null
-                    total_elevation_loss_ft?: number | null
-                    min_elevation_ft?: number | null
-                    max_elevation_ft?: number | null
-                    created_at?: string
-                }
-                Update: {
-                    id?: string
-                    race_id?: string
-                    raw_gpx?: string | null
-                    geometry?: Json | null
-                    elevation_samples?: Json | null
-                    total_distance_miles?: number | null
-                    total_elevation_gain_ft?: number | null
-                    total_elevation_loss_ft?: number | null
-                    min_elevation_ft?: number | null
-                    max_elevation_ft?: number | null
-                    created_at?: string
-                }
-            }
-            waypoints: {
-                Row: {
-                    id: string
-                    course_id: string
-                    type: string
-                    name: string
-                    mile: number
-                    lat: number
-                    lon: number
-                    cutoff_time: string | null
-                    has_drop_bag: boolean
-                    crew_allowed: boolean
-                    pacer_allowed: boolean
-                    notes: string | null
-                    order_index: number
-                    delay: number | null
-                    created_at: string
-                }
-                Insert: {
-                    id?: string
-                    course_id: string
-                    type: string
-                    name: string
-                    mile: number
-                    lat: number
-                    lon: number
-                    cutoff_time?: string | null
-                    has_drop_bag?: boolean
-                    crew_allowed?: boolean
-                    pacer_allowed?: boolean
-                    notes?: string | null
-                    order_index: number
-                    delay?: number | null
-                    created_at?: string
-                }
-                Update: {
-                    id?: string
-                    course_id?: string
-                    type?: string
-                    name?: string
-                    mile?: number
-                    lat?: number
-                    lon?: number
-                    cutoff_time?: string | null
-                    has_drop_bag?: boolean
-                    crew_allowed?: boolean
-                    pacer_allowed?: boolean
-                    notes?: string | null
-                    order_index?: number
-                    delay?: number | null
-                    created_at?: string
-                }
-            }
-            terrain_nodes: {
-                Row: {
-                    id: string
-                    course_id: string
-                    mile: number
-                    lat: number
-                    lon: number
-                    type: 'paved' | 'dirt' | 'technical' | 'double_track' | 'single_track' | 'other'
-                    difficulty: number
-                    created_at: string
-                }
-                Insert: {
-                    id?: string
-                    course_id: string
-                    mile: number
-                    lat: number
-                    lon: number
-                    type?: 'paved' | 'dirt' | 'technical' | 'double_track' | 'single_track' | 'other'
-                    difficulty?: number
-                    created_at?: string
-                }
-                Update: {
-                    id?: string
-                    course_id?: string
-                    mile?: number
-                    lat?: number
-                    lon?: number
-                    type?: 'paved' | 'dirt' | 'technical' | 'double_track' | 'single_track' | 'other'
-                    difficulty?: number
-                    created_at?: string
-                }
-            }
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.1"
+  }
+  public: {
+    Tables: {
+      courses: {
+        Row: {
+          created_at: string | null
+          elevation_samples: Json | null
+          geometry: Json | null
+          id: string
+          max_elevation_ft: number | null
+          min_elevation_ft: number | null
+          race_id: string
+          raw_gpx: string | null
+          total_distance_miles: number | null
+          total_elevation_gain_ft: number | null
+          total_elevation_loss_ft: number | null
         }
-        Views: {
-            [_ in never]: never
+        Insert: {
+          created_at?: string | null
+          elevation_samples?: Json | null
+          geometry?: Json | null
+          id?: string
+          max_elevation_ft?: number | null
+          min_elevation_ft?: number | null
+          race_id: string
+          raw_gpx?: string | null
+          total_distance_miles?: number | null
+          total_elevation_gain_ft?: number | null
+          total_elevation_loss_ft?: number | null
         }
-        Functions: {
-            [_ in never]: never
+        Update: {
+          created_at?: string | null
+          elevation_samples?: Json | null
+          geometry?: Json | null
+          id?: string
+          max_elevation_ft?: number | null
+          min_elevation_ft?: number | null
+          race_id?: string
+          raw_gpx?: string | null
+          total_distance_miles?: number | null
+          total_elevation_gain_ft?: number | null
+          total_elevation_loss_ft?: number | null
         }
-        Enums: {
-            [_ in never]: never
+        Relationships: [
+          {
+            foreignKeyName: "courses_race_id_fkey"
+            columns: ["race_id"]
+            isOneToOne: true
+            referencedRelation: "races"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          clock_24h: boolean
+          created_at: string | null
+          email: string | null
+          id: string
+          name: string | null
+          units_distance: string
+          units_elevation: string
+          updated_at: string | null
         }
+        Insert: {
+          avatar_url?: string | null
+          clock_24h?: boolean
+          created_at?: string | null
+          email?: string | null
+          id: string
+          name?: string | null
+          units_distance?: string
+          units_elevation?: string
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          clock_24h?: boolean
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          name?: string | null
+          units_distance?: string
+          units_elevation?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      races: {
+        Row: {
+          avg_temp_high: string | null
+          avg_temp_low: string | null
+          briefing_datetime: string | null
+          briefing_url: string | null
+          course_record_female: string | null
+          course_record_male: string | null
+          course_type: string | null
+          created_at: string | null
+          distance_miles: number | null
+          entrants_url: string | null
+          id: string
+          is_public: boolean | null
+          location: string | null
+          lodging_info: string | null
+          media_url: string | null
+          moon_phase: string | null
+          name: string
+          overall_cutoff: string | null
+          packet_pickup_datetime: string | null
+          packet_pickup_info: string | null
+          packet_pickup_url: string | null
+          past_results_url: string | null
+          precip_chance: string | null
+          qualifies_for: string | null
+          racebook_last_updated: string | null
+          racebook_url: string | null
+          registration_url: string | null
+          start_datetime: string | null
+          sunrise_time: string | null
+          sunset_time: string | null
+          terrain_type: string | null
+          timezone: string | null
+          tracking_url: string | null
+          updated_at: string | null
+          user_id: string
+          weather_history: Json | null
+          weather_notes: string | null
+          website_url: string | null
+        }
+        Insert: {
+          avg_temp_high?: string | null
+          avg_temp_low?: string | null
+          briefing_datetime?: string | null
+          briefing_url?: string | null
+          course_record_female?: string | null
+          course_record_male?: string | null
+          course_type?: string | null
+          created_at?: string | null
+          distance_miles?: number | null
+          entrants_url?: string | null
+          id?: string
+          is_public?: boolean | null
+          location?: string | null
+          lodging_info?: string | null
+          media_url?: string | null
+          moon_phase?: string | null
+          name: string
+          overall_cutoff?: string | null
+          packet_pickup_datetime?: string | null
+          packet_pickup_info?: string | null
+          packet_pickup_url?: string | null
+          past_results_url?: string | null
+          precip_chance?: string | null
+          qualifies_for?: string | null
+          racebook_last_updated?: string | null
+          racebook_url?: string | null
+          registration_url?: string | null
+          start_datetime?: string | null
+          sunrise_time?: string | null
+          sunset_time?: string | null
+          terrain_type?: string | null
+          timezone?: string | null
+          tracking_url?: string | null
+          updated_at?: string | null
+          user_id: string
+          weather_history?: Json | null
+          weather_notes?: string | null
+          website_url?: string | null
+        }
+        Update: {
+          avg_temp_high?: string | null
+          avg_temp_low?: string | null
+          briefing_datetime?: string | null
+          briefing_url?: string | null
+          course_record_female?: string | null
+          course_record_male?: string | null
+          course_type?: string | null
+          created_at?: string | null
+          distance_miles?: number | null
+          entrants_url?: string | null
+          id?: string
+          is_public?: boolean | null
+          location?: string | null
+          lodging_info?: string | null
+          media_url?: string | null
+          moon_phase?: string | null
+          name?: string
+          overall_cutoff?: string | null
+          packet_pickup_datetime?: string | null
+          packet_pickup_info?: string | null
+          packet_pickup_url?: string | null
+          past_results_url?: string | null
+          precip_chance?: string | null
+          qualifies_for?: string | null
+          racebook_last_updated?: string | null
+          racebook_url?: string | null
+          registration_url?: string | null
+          start_datetime?: string | null
+          sunrise_time?: string | null
+          sunset_time?: string | null
+          terrain_type?: string | null
+          timezone?: string | null
+          tracking_url?: string | null
+          updated_at?: string | null
+          user_id?: string
+          weather_history?: Json | null
+          weather_notes?: string | null
+          website_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "races_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      terrain_nodes: {
+        Row: {
+          course_id: string
+          created_at: string
+          difficulty: number
+          id: string
+          lat: number
+          lon: number
+          mile: number
+          type: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          difficulty?: number
+          id?: string
+          lat: number
+          lon: number
+          mile: number
+          type?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          difficulty?: number
+          id?: string
+          lat?: number
+          lon?: number
+          mile?: number
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "terrain_nodes_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      waypoints: {
+        Row: {
+          course_id: string
+          created_at: string | null
+          crew_allowed: boolean | null
+          cutoff_time: string | null
+          delay: number | null
+          drop_bag_items: Json | null
+          drop_bag_name: string | null
+          drop_bag_notes: string | null
+          elevation_ft: number | null
+          has_drop_bag: boolean | null
+          id: string
+          lat: number
+          lon: number
+          mile: number
+          name: string
+          notes: string | null
+          order_index: number
+          pacer_allowed: boolean | null
+          type: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string | null
+          crew_allowed?: boolean | null
+          cutoff_time?: string | null
+          delay?: number | null
+          drop_bag_items?: Json | null
+          drop_bag_name?: string | null
+          drop_bag_notes?: string | null
+          elevation_ft?: number | null
+          has_drop_bag?: boolean | null
+          id?: string
+          lat: number
+          lon: number
+          mile: number
+          name: string
+          notes?: string | null
+          order_index?: number
+          pacer_allowed?: boolean | null
+          type?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string | null
+          crew_allowed?: boolean | null
+          cutoff_time?: string | null
+          delay?: number | null
+          drop_bag_items?: Json | null
+          drop_bag_name?: string | null
+          drop_bag_notes?: string | null
+          elevation_ft?: number | null
+          has_drop_bag?: boolean | null
+          id?: string
+          lat?: number
+          lon?: number
+          mile?: number
+          name?: string
+          notes?: string | null
+          order_index?: number
+          pacer_allowed?: boolean | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "waypoints_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      clone_race: { Args: { p_race_id: string }; Returns: string }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
 }
 
-// Convenience types
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+  | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+  | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+  ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+  : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+  ? R
+  : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+    DefaultSchema["Views"])
+  ? (DefaultSchema["Tables"] &
+    DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+      Row: infer R
+    }
+  ? R
+  : never
+  : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+  | keyof DefaultSchema["Tables"]
+  | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+  : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+    Insert: infer I
+  }
+  ? I
+  : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+    Insert: infer I
+  }
+  ? I
+  : never
+  : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+  | keyof DefaultSchema["Tables"]
+  | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+  : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+    Update: infer U
+  }
+  ? U
+  : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+    Update: infer U
+  }
+  ? U
+  : never
+  : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+  | keyof DefaultSchema["Enums"]
+  | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+  ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+  : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+  ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+  : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+  | keyof DefaultSchema["CompositeTypes"]
+  | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+  ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+  : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+  ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+  : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const
+
 export type Profile = Database['public']['Tables']['profiles']['Row']
 export type Race = Database['public']['Tables']['races']['Row']
 export type Course = Database['public']['Tables']['courses']['Row']

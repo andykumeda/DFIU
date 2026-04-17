@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function fetchProfile(userId: string) {
     try {
-      const { data } = await supabase.from('profiles').select('*').eq('id', userId).single()
+      const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
       setProfile(data)
     } catch (e) {
       console.error('Error fetching profile', e)

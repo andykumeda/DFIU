@@ -1,0 +1,258 @@
+import { useState } from 'react'
+import { Race, Course, Waypoint, TerrainNode } from '@/types/database'
+import { calculatePacePlan, PacingStrategy } from './pace-utils'
+import { Backpack, Clock, Sun, Moon, Info, Printer, List, ChevronDown, ChevronUp } from 'lucide-react'
+import { DropBagModal } from './DropBagModal'
+import SunCalc from 'suncalc'
+
+interface DropBagsSectionProps {
+    race: Race
+    course: Course | null
+    waypoints: Waypoint[]
+    terrainNodes: TerrainNode[]
+    clock24h?: boolean
+}
+
+export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24h = false }: DropBagsSectionProps) {
+    const [selectedWaypoint, setSelectedWaypoint] = useState<Waypoint | null>(null)
+    const [isSidePanelOpen, setIsSidePanelOpen] = useState(true)
+    const [collapsedStations, setCollapsedStations] = useState<Record<string, boolean>>({})
+
+    const toggleStation = (wpId: string) => {
+        setCollapsedStations(prev => ({
+            ...prev,
+            [wpId]: !prev[wpId]
+        }))
+    }
+
+    const dropBagWaypoints = waypoints.filter(wp => wp.has_drop_bag).sort((a, b) => a.mile - b.mile)
+
+    // Calculate generic Pace Plan (Plan B fallback) to get estimated arrival times
+    const getCalculatedPlan = () => {
+        if (!course?.elevation_samples) return null
+
+        let c = 0
+        if (race.overall_cutoff) {
+            if (race.overall_cutoff.includes(':')) {
+                const [h, m] = race.overall_cutoff.split(':').map(Number)
+                c = (h || 0) * 60 + (m || 0)
+            } else {
+                const val = parseFloat(race.overall_cutoff)
+                if (!isNaN(val)) c = val * 60
+            }
+        }
+
+        let targetMinutes = c * 0.8 // target 80% of cutoff as generic estimate
+        if (targetMinutes === 0) { // fallback
+            targetMinutes = (course.total_distance_miles || 0) * 15 // 15 min/mi avg
+        }
+
+        const strategy: PacingStrategy = { mode: 'time', value: targetMinutes }
+
+        return calculatePacePlan(
+            course.elevation_samples as { distance: number; elevation: number }[],
+            course.total_distance_miles || 0,
+            waypoints,
+            terrainNodes,
+            strategy,
+            race,
+            clock24h
+        )
+    }
+
+    const plan = getCalculatedPlan()
+
+    const isNight = (arrivalMinutes: number, wpLat: number, wpLon: number) => {
+        if (!race.start_datetime) return false
+        const start = new Date(race.start_datetime)
+        const current = new Date(start.getTime() + arrivalMinutes * 60000)
+
+        let isNightTime = false
+        const hour = current.getHours()
+        isNightTime = hour >= 20 || hour < 6 // fallback
+
+        if (wpLat && wpLon) {
+            const times = SunCalc.getTimes(current, wpLat, wpLon)
+            if (times.dusk && times.dawn) {
+                isNightTime = current > times.dusk || current < times.dawn
+            }
+        }
+        return isNightTime
+    }
+
+    // Determine overall conditions
+    const isHot = parseInt(race.avg_temp_high || '0') >= 80
+    const isCold = parseInt(race.avg_temp_low || '100') <= 40
+    const hasConditions = isHot || isCold || !!race.weather_notes
+
+    if (dropBagWaypoints.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center p-12 text-center text-neutral-500 border-2 border-dashed border-neutral-800 rounded-xl my-6">
+                <Backpack className="w-12 h-12 mb-4 opacity-20" />
+                <h3 className="text-xl font-medium text-white mb-2">No Drop Bags configured</h3>
+                <p>Go to the map tab and edit aid stations to enable Drop Bags for specific locations.</p>
+            </div>
+        )
+    }
+
+    return (
+        <div className="p-4 md:p-8 animate-in fade-in duration-500 max-w-7xl mx-auto flex flex-col lg:flex-row gap-8 items-start relative">
+
+            <div className="flex-1 space-y-6 min-w-0 w-full print:hidden">
+
+                <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                        <Backpack className="w-6 h-6 text-orange-500 print:hidden" />
+                        <span className="print:hidden">Drop Bag Planner</span>
+                        <span className="hidden print:inline-block">Drop Bags - {race.name}</span>
+                    </h2>
+                    <button
+                        onClick={() => window.print()}
+                        className="print:hidden flex items-center gap-2 bg-neutral-800 hover:bg-neutral-700 text-white px-4 py-2 rounded-lg transition-colors text-sm font-medium"
+                    >
+                        <Printer className="w-4 h-4" />
+                        Print List
+                    </button>
+                </div>
+
+                {hasConditions && (
+                    <div className="bg-neutral-900/50 border border-neutral-800 rounded-xl p-4 mb-6 flex gap-3">
+                        <Info className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
+                        <div className="text-sm text-neutral-300">
+                            <strong className="text-white block mb-1">Weather Context for Drop Bags</strong>
+                            {isHot && <div className="text-orange-400">• High temps projected ({race.avg_temp_high}°): Plan for ice bandanas and extra fluids/electrolytes.</div>}
+                            {isCold && <div className="text-blue-300">• Low temps projected ({race.avg_temp_low}°): Consider packing layers, gloves, and dry socks.</div>}
+                            {race.weather_notes && <div className="text-neutral-400 mt-1 italic">{race.weather_notes}</div>}
+                        </div>
+                    </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {dropBagWaypoints.map(wp => {
+                        const arrival = plan?.waypointArrivals.find(a => a.waypointId === wp.id)
+                        const nightArrival = arrival ? isNight(arrival.arrivalTime, wp.lat, wp.lon) : false
+
+                        return (
+                            <div
+                                key={wp.id}
+                                className="bg-neutral-900 border border-neutral-800 hover:border-neutral-700 rounded-xl p-5 cursor-pointer transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-black/50 group flex flex-col"
+                                onClick={() => setSelectedWaypoint(wp)}
+                            >
+                                <div className="flex justify-between items-start mb-4">
+                                    <div>
+                                        <h3 className="text-lg font-bold text-white mb-1 group-hover:text-orange-400 transition-colors">{wp.name}</h3>
+                                        <div className="text-neutral-500 text-sm font-mono">Mile {wp.mile.toFixed(1)}</div>
+                                    </div>
+                                    <div className="w-10 h-10 rounded-full bg-neutral-950 flex items-center justify-center border border-neutral-800 group-hover:border-orange-500/50 transition-colors">
+                                        <Backpack className="w-5 h-5 text-neutral-400 group-hover:text-orange-500 transition-colors" />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-3 flex-1">
+                                    {arrival && (
+                                        <div className="flex items-center gap-2 text-sm bg-neutral-950/50 p-2 rounded border border-neutral-800">
+                                            <Clock className="w-4 h-4 text-neutral-400" />
+                                            <span className="text-neutral-300">ETA: {arrival.timeOfDay}</span>
+                                            {race.start_datetime && (
+                                                nightArrival
+                                                    ? <Moon className="w-4 h-4 text-blue-300 ml-auto" />
+                                                    : <Sun className="w-4 h-4 text-yellow-500 ml-auto" />
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {wp.drop_bag_name && (
+                                        <div className="mt-2 p-2 bg-neutral-950/50 rounded border border-neutral-800">
+                                            <div className="text-xs text-neutral-500 uppercase tracking-wider mb-0.5">Bag Name</div>
+                                            <div className="text-sm text-neutral-300 font-medium">
+                                                {wp.drop_bag_name}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )
+                    })}
+                </div>
+
+                {selectedWaypoint && plan && (
+                    <DropBagModal
+                        waypoint={selectedWaypoint}
+                        race={race}
+                        arrivalTime={plan.waypointArrivals.find(a => a.waypointId === selectedWaypoint.id)}
+                        isNight={plan.waypointArrivals.find(a => a.waypointId === selectedWaypoint.id) ? isNight(plan.waypointArrivals.find(a => a.waypointId === selectedWaypoint.id)!.arrivalTime, selectedWaypoint.lat, selectedWaypoint.lon) : false}
+                        onClose={() => setSelectedWaypoint(null)}
+                    />
+                )}
+            </div>
+
+            {/* Side Panel */}
+            <div className={`w-full shrink-0 print:w-full print:block ${isSidePanelOpen ? 'lg:w-80' : 'lg:w-auto'}`}>
+                <div className="bg-neutral-900 border border-neutral-800 rounded-xl sticky top-24 overflow-hidden print:border-none print:bg-transparent">
+                    <button
+                        onClick={() => setIsSidePanelOpen(!isSidePanelOpen)}
+                        className="w-full p-4 flex items-center justify-between text-white font-bold bg-neutral-800/50 hover:bg-neutral-800 transition-colors print:hidden"
+                    >
+                        <div className="flex items-center gap-2">
+                            <List className="w-5 h-5 text-orange-500" />
+                            {isSidePanelOpen ? <span>All Drop Bags</span> : <span className="hidden lg:hidden">All Drop Bags</span>}
+                        </div>
+                        {isSidePanelOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                    </button>
+
+                    <h3 className="hidden print:block text-xl font-bold text-neutral-800 mb-4 border-b border-neutral-300 pb-2">All Drop Bags Contents</h3>
+
+                    <div className={`${isSidePanelOpen ? 'block' : 'hidden'} print:block p-4 space-y-6 max-h-[calc(100vh-150px)] overflow-y-auto print:max-h-none print:overflow-visible`}>
+                        {dropBagWaypoints.map(wp => {
+                            const items = wp.drop_bag_items as { checked: boolean, text: string, quantity?: string }[] || []
+                            const packedItems = items.filter(i => i.checked)
+                            if (packedItems.length === 0) return null
+
+                            const isCollapsed = collapsedStations[wp.id]
+
+                            return (
+                                <div key={wp.id} className="print:break-inside-avoid">
+                                    <h4
+                                        className="text-sm font-bold text-neutral-300 print:text-neutral-800 mb-2 flex justify-between items-center cursor-pointer hover:text-white transition-colors"
+                                        onClick={() => toggleStation(wp.id)}
+                                    >
+                                        <div className="flex items-center gap-1 text-orange-400">
+                                            {isCollapsed ? <ChevronDown className="w-4 h-4 print:hidden" /> : <ChevronUp className="w-4 h-4 print:hidden" />}
+                                            <span className="text-neutral-300">
+                                                {wp.name}
+                                                {wp.drop_bag_name ? ` (${wp.drop_bag_name})` : ''}
+                                            </span>
+                                        </div>
+                                        <span className="text-neutral-500 print:text-neutral-600 font-mono text-xs">Mile {wp.mile.toFixed(1)}</span>
+                                    </h4>
+                                    {!isCollapsed && (
+                                        <ul className="space-y-1 pl-5">
+                                            {packedItems.map((item, idx) => (
+                                                <li key={idx} className="text-sm text-neutral-400 print:text-neutral-700 flex items-start gap-2">
+                                                    <span className="text-orange-500/50 print:text-neutral-400 mt-1">&bull;</span>
+                                                    <span className="leading-snug">
+                                                        {item.quantity && <span className="text-neutral-300 print:text-neutral-900 font-medium mr-1">{item.quantity}x</span>}
+                                                        {item.text}
+                                                    </span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </div>
+                            )
+                        })}
+                        {dropBagWaypoints.every(wp => {
+                            const items = wp.drop_bag_items as { checked: boolean }[] || [];
+                            return items.filter(i => i.checked).length === 0;
+                        }) && (
+                                <div className="text-sm text-neutral-500 italic text-center py-4 print:hidden">
+                                    No items packed yet. Click an aid station to add items.
+                                </div>
+                            )}
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    )
+}

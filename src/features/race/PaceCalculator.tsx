@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Course, Race, TerrainNode, Waypoint } from '@/types/database'
 import { calculatePacePlan, PacingStrategy } from './pace-utils'
-import { Calculator, Clock, TrendingUp, Activity, Users, Footprints, Moon, Sun, ArrowRight } from 'lucide-react'
+import { Calculator, Clock, TrendingUp, Activity, Users, Footprints, Moon, Sun, ArrowRight, Printer } from 'lucide-react'
 
 interface PaceCalculatorProps {
     race: Race
@@ -135,9 +135,9 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
     }
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6 max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6 max-w-7xl mx-auto print:block print:p-0">
             {/* Left Col: Configuration */}
-            <div className="lg:col-span-1 space-y-6">
+            <div className="lg:col-span-1 space-y-6 print:hidden">
                 <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6">
                     <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
                         <Calculator className="w-5 h-5 text-blue-500" /> Goal Setting
@@ -212,11 +212,11 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
             </div>
 
             {/* Right Col: Results */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="lg:col-span-2 space-y-6 print:block">
                 {plan ? (
                     <>
                         {/* Summary Cards */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 print:hidden">
                             <div className="bg-neutral-800/50 rounded-xl p-4 border border-neutral-800">
                                 <div className="text-neutral-500 text-xs uppercase tracking-wider mb-1 flex items-center gap-1">
                                     <Clock className="w-3 h-3" /> Total Time
@@ -247,16 +247,27 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                         </div>
 
                         {/* Splits Table */}
-                        <div className="bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden mt-6">
-                            <div className="px-6 py-4 border-b border-neutral-800 flex items-center justify-between">
-                                <h3 className="font-bold text-white">Splits</h3>
-                                <div className="text-xs text-neutral-500 flex items-center gap-1 md:hidden">
-                                    Swipe <ArrowRight className="w-3 h-3" />
+                        <div className="bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden mt-6 print:border-none print:shadow-none print:bg-white text-black print:text-black">
+                            <div className="px-6 py-4 border-b border-neutral-800 flex items-center justify-between print:border-neutral-300">
+                                <h3 className="font-bold text-white print:text-black print:hidden">Splits</h3>
+                                <h3 className="hidden font-bold text-xl mb-2 text-black print:block">{race.name} - Pace Plan</h3>
+
+                                <div className="flex items-center gap-4">
+                                    <div className="text-xs text-neutral-500 flex items-center gap-1 md:hidden print:hidden">
+                                        Swipe <ArrowRight className="w-3 h-3" />
+                                    </div>
+                                    <button
+                                        onClick={() => window.print()}
+                                        className="print:hidden flex items-center gap-2 bg-neutral-800 hover:bg-neutral-700 text-white px-3 py-1.5 rounded-lg transition-colors text-sm font-medium border border-neutral-700 hover:border-neutral-600"
+                                    >
+                                        <Printer className="w-4 h-4" />
+                                        Print
+                                    </button>
                                 </div>
                             </div>
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm text-left">
-                                    <thead className="bg-neutral-950 text-neutral-400 uppercase text-xs font-semibold">
+                            <div className="overflow-x-auto print:overflow-visible">
+                                <table className="w-full text-sm text-left print:text-xs">
+                                    <thead className="bg-neutral-950 text-neutral-400 print:bg-neutral-100 print:text-black uppercase text-xs font-semibold">
                                         <tr>
                                             <th className="px-6 py-3">Location</th>
                                             <th className="px-6 py-3">{isKm ? 'Km' : 'Mile'}</th>
@@ -275,47 +286,47 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                                             if (!wp) return null
 
                                             return (
-                                                <tr key={arrival.waypointId} className="hover:bg-neutral-800/50 transition-colors">
-                                                    <td className="px-6 py-4">
-                                                        <div className="font-medium text-white flex items-center gap-2">
+                                                <tr key={arrival.waypointId} className="hover:bg-neutral-800/50 transition-colors print:border-b print:border-neutral-200">
+                                                    <td className="px-6 py-4 print:py-2">
+                                                        <div className="font-medium text-white print:text-black flex items-center gap-2">
                                                             <span>
                                                                 {wp.name}
                                                                 {race.start_datetime && (
                                                                     isNight(arrival.arrivalTime)
-                                                                        ? <span title="Nighttime Arrival" className="inline-flex items-center"><Moon className="w-3.5 h-3.5 text-blue-300 ml-1.5" /></span>
-                                                                        : <span title="Daytime Arrival" className="inline-flex items-center"><Sun className="w-3.5 h-3.5 text-yellow-500 ml-1.5" /></span>
+                                                                        ? <span title="Nighttime Arrival" className="inline-flex items-center"><Moon className="w-3.5 h-3.5 text-blue-300 print:text-neutral-500 ml-1.5 print:hidden" /><span className="hidden print:inline text-neutral-500 ml-1 border px-1 rounded text-[10px]">NIGHT</span></span>
+                                                                        : <span title="Daytime Arrival" className="inline-flex items-center print:hidden"><Sun className="w-3.5 h-3.5 text-yellow-500 ml-1.5" /></span>
                                                                 )}
                                                             </span>
-                                                            <div className="flex gap-1 ml-1">
+                                                            <div className="flex gap-1 ml-1 print:hidden">
                                                                 {wp.crew_allowed && <span title="Crew Allowed"><Users className="w-4 h-4 text-green-400" /></span>}
                                                                 {wp.pacer_allowed && <span title="Pacer Allowed"><Footprints className="w-4 h-4 text-blue-400" /></span>}
                                                                 {wp.has_drop_bag && <span title="Drop Bag" className="text-[12px] opacity-90 leading-none flex items-center justify-center pt-0.5">🎒</span>}
                                                             </div>
                                                         </div>
                                                     </td>
-                                                    <td className="px-6 py-4 font-mono text-neutral-300">
+                                                    <td className="px-6 py-4 print:py-2 font-mono text-neutral-300 print:text-neutral-800">
                                                         {(isKm ? wp.mile * 1.60934 : wp.mile).toFixed(2)}
                                                     </td>
-                                                    <td className="px-6 py-4 font-mono text-neutral-400">
+                                                    <td className="px-6 py-4 print:py-2 font-mono text-neutral-400 print:text-neutral-600">
                                                         {(isKm ? arrival.segmentMile * 1.60934 : arrival.segmentMile).toFixed(2)}
                                                     </td>
-                                                    <td className="px-6 py-4 text-right font-mono text-neutral-400">
+                                                    <td className="px-6 py-4 print:py-2 text-right font-mono text-neutral-400 print:text-neutral-600">
                                                         {arrival.segmentTime}
                                                     </td>
-                                                    <td className="px-6 py-4 text-right font-mono text-neutral-400">
+                                                    <td className="px-6 py-4 print:py-2 text-right font-mono text-neutral-400 print:text-black font-semibold">
                                                         {arrival.timeOfDay}
                                                     </td>
-                                                    <td className="px-6 py-4 text-right font-mono text-neutral-400">
+                                                    <td className="px-6 py-4 print:py-2 text-right font-mono text-neutral-400 print:text-neutral-600">
                                                         {Math.floor(arrival.arrivalTime / 60)}:{Math.floor(arrival.arrivalTime % 60).toString().padStart(2, '0')}
                                                     </td>
-                                                    <td className="px-6 py-4 text-right font-mono text-neutral-400">
+                                                    <td className="px-6 py-4 print:py-2 text-right font-mono text-neutral-400 print:text-neutral-600">
                                                         {formatPace(arrival.segmentPace)}
                                                     </td>
-                                                    <td className="px-6 py-4 text-right font-mono text-neutral-400">
+                                                    <td className="px-6 py-4 print:py-2 text-right font-mono text-neutral-400 print:text-neutral-600">
                                                         {formatPace(arrival.overallPace)}
                                                     </td>
-                                                    <td className="px-6 py-4 text-right font-mono text-red-400">
-                                                        {arrival.cutoffTime}
+                                                    <td className="px-6 py-4 print:py-2 text-right font-mono text-red-400 print:text-red-700 font-semibold max-w-[120px] truncate" title={arrival.cutoffTime}>
+                                                        {arrival.cutoffTime || '--'}
                                                     </td>
                                                 </tr>
                                             )

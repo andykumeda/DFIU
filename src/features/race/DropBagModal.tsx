@@ -1,0 +1,316 @@
+import { useState, useEffect } from 'react'
+import { Race, Waypoint } from '@/types/database'
+import { X, Save, Plus, Trash2, Clock, Sun, Moon, Info, CheckCircle2, Circle } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
+import { supabase } from '@/lib/supabase'
+
+interface DropBagItem {
+    id: string
+    text: string
+    category: string
+    checked: boolean
+    quantity?: string
+}
+
+interface DropBagModalProps {
+    waypoint: Waypoint
+    race: Race
+    arrivalTime?: { arrivalTime: number, timeOfDay: string }
+    isNight: boolean
+    onClose: () => void
+}
+
+const CATEGORIES = [
+    { id: 'hydration', label: 'Hydration & Nutrition' },
+    { id: 'gear', label: 'Gear & Clothing' },
+    { id: 'medical', label: 'Medical & Care' },
+    { id: 'conditions', label: 'Condition Specific (Smart)' },
+    { id: 'custom', label: 'Custom' }
+]
+
+const STANDARD_ITEMS = [
+    { text: 'Flasks / Bladder refilled', category: 'hydration' },
+    { text: 'Gels / Chews', category: 'hydration' },
+    { text: 'Drink Mix / Electrolytes', category: 'hydration' },
+    { text: 'Solid Food (Bars, Waffles)', category: 'hydration' },
+    { text: 'Fresh Socks', category: 'gear' },
+    { text: 'Extra Shoes', category: 'gear' },
+    { text: 'Clean Shirt', category: 'gear' },
+    { text: 'Chafe Cream', category: 'medical' },
+    { text: 'Blister Kit / Tape', category: 'medical' },
+    { text: 'Sunscreen', category: 'medical' },
+    { text: 'Tissues / Wipes', category: 'medical' },
+]
+
+export function DropBagModal({ waypoint, race, arrivalTime, isNight, onClose }: DropBagModalProps) {
+    const queryClient = useQueryClient()
+    const [items, setItems] = useState<DropBagItem[]>([])
+    const [newItemText, setNewItemText] = useState('')
+    const [saving, setSaving] = useState(false)
+    const [bagName, setBagName] = useState(waypoint.drop_bag_name || '')
+    const [bagNotes, setBagNotes] = useState(waypoint.drop_bag_notes || '')
+
+    // Build smart suggestions based on conditions
+    const isHot = parseInt(race.avg_temp_high || '0') >= 80
+    const isCold = parseInt(race.avg_temp_low || '100') <= 40
+
+    useEffect(() => {
+        const existingData = waypoint.drop_bag_items as unknown as DropBagItem[]
+        if (existingData && Array.isArray(existingData) && existingData.length > 0) {
+            setItems(existingData)
+        } else {
+            // Seed with sensible defaults if empty
+            const seedItems: DropBagItem[] = STANDARD_ITEMS.map((item, i) => ({
+                id: `std_${i}`,
+                text: item.text,
+                category: item.category,
+                checked: false
+            }))
+
+            // Add smart suggestions
+            if (isNight) {
+                seedItems.push({ id: 'smart_night_1', text: 'Headlamp', category: 'conditions', checked: false })
+                seedItems.push({ id: 'smart_night_2', text: 'Backup Batteries/Light', category: 'conditions', checked: false })
+                seedItems.push({ id: 'smart_night_3', text: 'Reflective Gear', category: 'conditions', checked: false })
+            }
+            if (isHot) {
+                seedItems.push({ id: 'smart_hot_1', text: 'Ice Bandana', category: 'conditions', checked: false })
+                seedItems.push({ id: 'smart_hot_2', text: 'Arm Coolers', category: 'conditions', checked: false })
+            }
+            if (isCold) {
+                seedItems.push({ id: 'smart_cold_1', text: 'Warm Gloves', category: 'conditions', checked: false })
+                seedItems.push({ id: 'smart_cold_2', text: 'Jacket / Windbreaker', category: 'conditions', checked: false })
+                seedItems.push({ id: 'smart_cold_3', text: 'Beanie / Buff', category: 'conditions', checked: false })
+            }
+
+            setItems(seedItems)
+        }
+    }, [waypoint.drop_bag_items, isNight, isHot, isCold])
+
+    const handleSave = async () => {
+        setSaving(true)
+        try {
+            const { error } = await (supabase
+                .from('waypoints') as any)
+                .update({
+                    drop_bag_items: items,
+                    drop_bag_name: bagName,
+                    drop_bag_notes: bagNotes
+                })
+                .eq('id', waypoint.id)
+
+            if (error) throw error
+            queryClient.invalidateQueries({ queryKey: ['waypoints', waypoint.course_id] })
+            onClose()
+        } catch (err) {
+            console.error('Failed to save drop bag:', err)
+            alert('Failed to save drop bag contents')
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    const toggleItem = (id: string) => {
+        setItems(prev => prev.map(item => item.id === id ? { ...item, checked: !item.checked } : item))
+    }
+
+    const deleteItem = (id: string) => {
+        setItems(prev => prev.filter(item => item.id !== id))
+    }
+
+    const updateQuantity = (id: string, quantity: string) => {
+        setItems(prev => prev.map(item => item.id === id ? { ...item, quantity } : item))
+    }
+
+    const addItem = (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!newItemText.trim()) return
+
+        const newItem: DropBagItem = {
+            id: `custom_${Date.now()}`,
+            text: newItemText.trim(),
+            category: 'custom',
+            checked: true // auto-check custom items
+        }
+        setItems(prev => [...prev, newItem])
+        setNewItemText('')
+    }
+
+    // Group items for display
+    const itemsByCategory = CATEGORIES.reduce((acc, cat) => {
+        const catItems = items.filter(i => i.category === cat.id)
+        if (catItems.length > 0) acc[cat.id] = catItems
+        return acc
+    }, {} as Record<string, DropBagItem[]>)
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+            <div className="bg-neutral-900 w-full max-w-2xl rounded-2xl border border-neutral-800 shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
+
+                {/* Header */}
+                <div className="flex justify-between items-center p-6 border-b border-neutral-800 shrink-0">
+                    <div>
+                        <h2 className="text-xl font-bold text-white mb-1 flex items-center gap-2">
+                            {bagName || `Drop Bag: ${waypoint.name}`}
+                        </h2>
+                        <div className="flex items-center gap-3 text-sm text-neutral-400">
+                            <span>Mile {waypoint.mile.toFixed(1)}</span>
+                            {arrivalTime && (
+                                <span className="flex items-center gap-1 bg-neutral-950 px-2 py-0.5 rounded border border-neutral-800">
+                                    <Clock className="w-3.5 h-3.5" />
+                                    ETA: {arrivalTime.timeOfDay}
+                                    {isNight ? <Moon className="w-3 h-3 text-blue-300 ml-1" /> : <Sun className="w-3 h-3 text-yellow-500 ml-1" />}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                    <button onClick={onClose} className="text-neutral-500 hover:text-white transition-colors bg-neutral-800 hover:bg-neutral-700 p-2 rounded-lg">
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+
+                {/* Body */}
+                <div className="p-6 overflow-y-auto space-y-8 flex-1">
+
+                    {/* Smart Notice */}
+                    {(isNight || isHot || isCold) && (
+                        <div className="bg-blue-900/20 border border-blue-900/50 rounded-xl p-4 flex gap-3 text-sm">
+                            <Info className="w-5 h-5 text-blue-400 shrink-0" />
+                            <div>
+                                <strong className="text-white block mb-0.5">Smart Suggestions Active</strong>
+                                <span className="text-blue-200">
+                                    We've added some suggestions to the "Condition Specific" category below based on your estimated arrival time and race weather data.
+                                </span>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Bag Name */}
+                    <div className="bg-neutral-950/50 border border-neutral-800 rounded-xl p-4">
+                        <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1.5">Bag Name / Identifying Info</label>
+                        <input
+                            type="text"
+                            value={bagName}
+                            onChange={e => setBagName(e.target.value)}
+                            placeholder="e.g. Red Salomon Bag"
+                            className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-white placeholder-neutral-600 focus:outline-none focus:border-orange-500 transition-colors"
+                        />
+                    </div>
+
+                    {/* Checklists */}
+                    <div className="space-y-6">
+                        {CATEGORIES.map(category => {
+                            const catItems = itemsByCategory[category.id]
+                            if (!catItems) return null
+
+                            const isConditionCat = category.id === 'conditions'
+
+                            return (
+                                <div key={category.id} className="space-y-3">
+                                    <h3 className={`text-sm font-bold uppercase tracking-wider ${isConditionCat ? 'text-blue-400' : 'text-neutral-500'}`}>
+                                        {category.label}
+                                    </h3>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                        {catItems.map(item => (
+                                            <div
+                                                key={item.id}
+                                                className={`flex items-center justify-between p-3 rounded-lg border transition-colors cursor-pointer group ${item.checked
+                                                    ? 'bg-neutral-800/80 border-neutral-700 text-white'
+                                                    : 'bg-neutral-950/50 border-neutral-800 text-neutral-400 hover:bg-neutral-900'
+                                                    }`}
+                                            >
+                                                <div className="flex items-center gap-3 flex-1" onClick={() => toggleItem(item.id)}>
+                                                    {item.checked ? (
+                                                        <CheckCircle2 className="w-5 h-5 text-orange-500 shrink-0" />
+                                                    ) : (
+                                                        <Circle className="w-5 h-5 text-neutral-600 group-hover:text-neutral-400 shrink-0" />
+                                                    )}
+                                                    <span className={item.checked ? 'text-neutral-500' : ''}>{item.text}</span>
+                                                </div>
+
+                                                {item.checked && (
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Qty"
+                                                        value={item.quantity || ''}
+                                                        onChange={(e) => updateQuantity(item.id, e.target.value)}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        className="w-16 bg-neutral-950 border border-neutral-700 rounded px-2 py-1 text-sm text-center focus:outline-none focus:border-orange-500 mx-2 text-white"
+                                                    />
+                                                )}
+
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); deleteItem(item.id) }}
+                                                    className="opacity-0 group-hover:opacity-100 text-neutral-600 hover:text-red-400 p-1 rounded transition-all shrink-0"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
+
+                    {/* Add Custom Item (Moved to bottom) */}
+                    <div className="pt-4 border-t border-neutral-800">
+                        <h3 className="text-sm font-bold uppercase tracking-wider text-neutral-500 mb-3">Add Custom Item</h3>
+                        <form onSubmit={addItem} className="flex gap-2">
+                            <input
+                                type="text"
+                                value={newItemText}
+                                onChange={e => setNewItemText(e.target.value)}
+                                placeholder="Add custom item (e.g. Magic Noodle Soup)"
+                                className="flex-1 bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-2.5 text-white placeholder-neutral-600 focus:outline-none focus:border-orange-500 transition-colors"
+                            />
+                            <button
+                                type="submit"
+                                disabled={!newItemText.trim()}
+                                className="bg-neutral-800 hover:bg-neutral-700 disabled:opacity-50 text-white px-4 py-2.5 rounded-lg font-medium transition-colors flex items-center gap-2"
+                            >
+                                <Plus className="w-4 h-4" /> Add
+                            </button>
+                        </form>
+                    </div>
+
+                    {/* Bag Notes */}
+                    <div className="pt-4 border-t border-neutral-800">
+                        <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1.5">Drop Bag Notes & Instructions</label>
+                        <textarea
+                            value={bagNotes}
+                            onChange={e => setBagNotes(e.target.value)}
+                            placeholder="e.g. Change shoes here, grab headlamp for next section..."
+                            rows={2}
+                            className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-white placeholder-neutral-600 focus:outline-none focus:border-orange-500 transition-colors resize-y"
+                        />
+                    </div>
+
+                </div>
+
+                {/* Footer */}
+                <div className="p-6 border-t border-neutral-800 flex justify-end gap-3 shrink-0 bg-neutral-900/80 rounded-b-2xl">
+                    <button
+                        onClick={onClose}
+                        className="px-6 py-2.5 rounded-lg font-medium text-neutral-400 hover:text-white transition-colors"
+                        disabled={saving}
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={handleSave}
+                        disabled={saving}
+                        className="bg-orange-600 hover:bg-orange-500 text-white px-8 py-2.5 rounded-lg font-bold transition-all shadow-lg shadow-orange-900/20 flex items-center gap-2"
+                    >
+                        {saving ? (
+                            <><Clock className="w-4 h-4 animate-spin" /> Saving...</>
+                        ) : (
+                            <><Save className="w-4 h-4" /> Save Checklist</>
+                        )}
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    )
+}

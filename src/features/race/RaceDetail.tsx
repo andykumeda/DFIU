@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '@/features/auth/AuthContext'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Calendar, MapPin, Globe, ArrowUpRight, CloudSun, Trophy, RefreshCw, Settings, Download } from 'lucide-react'
+import { Calendar, MapPin, Globe, ArrowUpRight, CloudSun, Trophy, RefreshCw, Settings, Download, Save } from 'lucide-react'
 
 import { supabase } from '@/lib/supabase'
 import { Race, Course, Waypoint, TerrainNode } from '@/types/database'
@@ -10,6 +10,7 @@ import { fetchWeatherForRace } from '@/lib/weather-service'
 import { sampleElevationProfile, type GpxParseResult } from '@/lib/gpx-parser'
 import { getNearestPointOnLine, getDistanceFromStart } from '@/lib/geo-utils'
 import { formatDate } from '@/lib/utils'
+import SunCalc from 'suncalc'
 
 import { CourseMap } from '@/features/course/CourseMap'
 import { ElevationProfile } from '@/features/course/ElevationProfile'
@@ -20,8 +21,9 @@ import { ViewWaypointModal } from '@/features/course/ViewWaypointModal'
 import { EditTerrainModal } from '@/features/course/EditTerrainModal'
 import { PaceCalculator } from '@/features/race/PaceCalculator'
 import { RaceResources } from '@/features/race/RaceResources'
+import { DropBagsSection } from '@/features/race/DropBagsSection'
 
-type Tab = 'overview' | 'map' | 'plan' | 'resources'
+type Tab = 'overview' | 'map' | 'plan' | 'drop_bags' | 'resources'
 
 // Helper to get icon
 function getWaypointIcon(type: string): string {
@@ -41,6 +43,7 @@ function getWaypointIcon(type: string): string {
 
 export function RaceDetail({ raceId }: { raceId: string }) {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState<Tab>('overview')
   const [showEditModal, setShowEditModal] = useState(false)
@@ -60,6 +63,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   const [isAidListOpen, setIsAidListOpen] = useState(true)
   const [isTerrainListOpen, setIsTerrainListOpen] = useState(true)
   const [isReimporting, setIsReimporting] = useState(false)
+  const [isCloning, setIsCloning] = useState(false)
 
   // Data Fetching
   const { data: race, isLoading: raceLoading } = useQuery({
@@ -684,6 +688,29 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     }
   }
 
+  const handleCloneRace = async () => {
+    if (!user) {
+      alert('You must be logged in to clone a race.')
+      return
+    }
+    if (!confirm('Are you sure you want to clone this public race to your account?')) return
+
+    setIsCloning(true)
+    try {
+      const { data: newRaceId, error } = await supabase.rpc('clone_race', { p_race_id: raceId })
+      if (error) throw error
+
+      if (newRaceId) {
+        navigate(`/race/${newRaceId}`)
+      }
+    } catch (err: any) {
+      console.error('Error cloning race:', err)
+      alert(`Failed to clone race: ${err.message || 'Unknown error'}`)
+    } finally {
+      setIsCloning(false)
+    }
+  }
+
   // Derived State
   const coordinates = (course?.geometry as { coordinates?: [number, number][] })?.coordinates || []
   const elevationProfile = (course?.elevation_samples as { distance: number; elevation: number }[]) || []
@@ -698,9 +725,9 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       lon: wp.lon,
       mile: wp.mile,
       type: wp.type,
-      has_drop_bag: wp.has_drop_bag,
-      crew_allowed: wp.crew_allowed,
-      pacer_allowed: wp.pacer_allowed
+      has_drop_bag: wp.has_drop_bag ?? undefined,
+      crew_allowed: wp.crew_allowed ?? undefined,
+      pacer_allowed: wp.pacer_allowed ?? undefined
     })),
     [waypoints]
   )
@@ -708,8 +735,30 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     { id: 'overview', label: 'Overview' },
     { id: 'map', label: 'Map & Aid Stations' },
     { id: 'plan', label: 'Pace Plan' },
+    { id: 'drop_bags', label: 'Drop Bags' },
     { id: 'resources', label: 'Resources' },
   ]
+
+  const twilight = useMemo(() => {
+    if (!race?.start_datetime || waypoints.length === 0) return null
+    const wp = waypoints[0]
+    if (wp.lat === undefined || wp.lon === undefined) return null
+
+    const date = new Date(race.start_datetime)
+    const times = SunCalc.getTimes(date, wp.lat, wp.lon)
+
+    const formatTime = (d: Date) => d.toLocaleTimeString([], {
+      hour: 'numeric',
+      minute: '2-digit',
+      timeZone: race.timezone || undefined,
+      hour12: !clock24h
+    })
+
+    if (times.dawn && times.dusk) {
+      return { dawn: formatTime(times.dawn), dusk: formatTime(times.dusk) }
+    }
+    return null
+  }, [race?.start_datetime, race?.timezone, waypoints, clock24h])
 
   const isOwner = !!user && race?.user_id === user.id
 
@@ -719,7 +768,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   return (
     <div className='min-h-screen bg-neutral-950 flex flex-col'>
       {/* Header */}
-      <header className='border-b border-neutral-800 bg-neutral-950/50 backdrop-blur-sm sticky top-0 z-[100]'>
+      <header className='print:hidden border-b border-neutral-800 bg-neutral-950/50 backdrop-blur-sm sticky top-0 z-[100]'>
         <div className='max-w-7xl mx-auto px-4 py-4 flex justify-between items-center'>
           <div className='flex items-center gap-2 sm:gap-8'>
             <Link to='/dashboard' className='flex items-center hover:opacity-80 transition-opacity cursor-pointer pointer-events-auto relative z-[999] -space-x-5'>
@@ -780,6 +829,16 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
           </div>
           <div className='flex items-center gap-4'>
+            {user && !isOwner && race.is_public && (
+              <button
+                onClick={handleCloneRace}
+                disabled={isCloning}
+                className="flex items-center gap-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+              >
+                {isCloning ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                Clone Race
+              </button>
+            )}
             {user ? (
               <Link to="/settings" className="flex items-center gap-3 hover:bg-neutral-900 rounded-lg p-2 transition-colors group">
                 <div className="text-right hidden sm:block">
@@ -861,7 +920,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       )}
 
       {/* Tabs */}
-      <nav className='border-b border-neutral-800 bg-neutral-900'>
+      <nav className='print:hidden border-b border-neutral-800 bg-neutral-900'>
         <div className='max-w-7xl mx-auto px-4 flex gap-6'>
           {tabs.map(tab => (
             <button
@@ -1172,6 +1231,18 @@ export function RaceDetail({ raceId }: { raceId: string }) {
           </div>
         )}
 
+        {activeTab === 'drop_bags' && (
+          <div className="animate-in fade-in duration-500">
+            <DropBagsSection
+              race={race}
+              course={course || null}
+              waypoints={waypoints}
+              terrainNodes={terrainNodes}
+              clock24h={clock24h}
+            />
+          </div>
+        )}
+
         {activeTab === 'resources' && (
           <div className="animate-in fade-in duration-500">
             <RaceResources
@@ -1252,11 +1323,15 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                   </div>
                   <div className="bg-neutral-950/50 p-4 rounded-lg">
                     <div className="text-neutral-500 text-xs uppercase tracking-wider mb-1">Sunrise</div>
-                    <div className="text-lg font-mono text-white">{race?.sunrise_time || '--'}</div>
+                    <div className="text-lg font-mono text-white mb-2">{race?.sunrise_time || '--'}</div>
+                    <div className="text-neutral-500 text-xs uppercase tracking-wider mb-1">Civil Twilight (Dawn)</div>
+                    <div className="text-sm font-mono text-blue-300">{twilight?.dawn || '--'}</div>
                   </div>
                   <div className="bg-neutral-950/50 p-4 rounded-lg">
                     <div className="text-neutral-500 text-xs uppercase tracking-wider mb-1">Sunset</div>
-                    <div className="text-lg font-mono text-white">{race?.sunset_time || '--'}</div>
+                    <div className="text-lg font-mono text-white mb-2">{race?.sunset_time || '--'}</div>
+                    <div className="text-neutral-500 text-xs uppercase tracking-wider mb-1">Civil Twilight (Dusk)</div>
+                    <div className="text-sm font-mono text-blue-300">{twilight?.dusk || '--'}</div>
                   </div>
                 </div>
                 {(race?.weather_notes || race?.moon_phase || race?.precip_chance) && (

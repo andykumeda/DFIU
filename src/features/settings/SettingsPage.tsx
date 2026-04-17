@@ -45,7 +45,7 @@ export default function SettingsPage() {
                 .from('profiles')
                 .select('*')
                 .eq('id', user.id)
-                .single()
+                .maybeSingle()
 
             if (error) throw error
 
@@ -64,6 +64,12 @@ export default function SettingsPage() {
                     units_elevation: profile.units_elevation || 'feet',
                     clock_24h: profile.clock_24h || false
                 })
+            } else {
+                setFormData(prev => ({
+                    ...prev,
+                    id: user.id,
+                    email: (user.email?.endsWith('@strava.dfiu.app') ? '' : user.email) || ''
+                }))
             }
         } catch (error) {
             console.error('Error loading profile:', error)
@@ -118,7 +124,8 @@ export default function SettingsPage() {
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const { error } = await (supabase.from('profiles') as any)
-                .update({
+                .upsert({
+                    id: user.id,
                     name: formData.display_name,
                     email: formData.email, // Save email to profile for everyone
                     avatar_url: formData.avatar_url,
@@ -127,7 +134,6 @@ export default function SettingsPage() {
                     clock_24h: formData.clock_24h,
                     updated_at: new Date().toISOString()
                 })
-                .eq('id', user.id)
                 .select()
 
 

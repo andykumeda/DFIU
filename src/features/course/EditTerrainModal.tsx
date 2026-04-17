@@ -28,20 +28,16 @@ export function EditTerrainModal({ node, startMile: initialStartMile, endMile: i
 
     useEffect(() => {
         if (node) {
+            // eslint-disable-next-line
             setFormData(prev => ({
                 ...prev,
                 type: node.type || 'dirt',
                 difficulty: node.difficulty || 104,
                 startMile: node.mile ?? 0,
-                // If endMile prop changes, we might want to update, but usually node change drives it.
-                // We keep endMile from prop if available and not set?
-                // Actually, best to just respect props on mount/change.
             }))
         }
-        if (initialEndMile !== undefined) {
-            setFormData(prev => ({ ...prev, endMile: initialEndMile }))
-        }
-    }, [node, initialEndMile])
+        // removing initialEndMile side-effect to avoid cascading renders
+    }, [node])
 
     const handleTypeChange = (newType: string) => {
         let defaultDiff = 100
