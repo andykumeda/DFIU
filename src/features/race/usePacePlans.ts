@@ -22,7 +22,14 @@ function load(raceId: string): PacePlans {
     try {
         const raw = localStorage.getItem(storageKey(raceId))
         if (!raw) return { ...DEFAULTS }
-        return { ...DEFAULTS, ...JSON.parse(raw) }
+        const p = JSON.parse(raw)
+        return {
+            ...DEFAULTS,
+            ...(typeof p.planATimeStr === 'string' ? { planATimeStr: p.planATimeStr } : {}),
+            ...(typeof p.planBTimeStr === 'string' ? { planBTimeStr: p.planBTimeStr } : {}),
+            ...(typeof p.planCBufferStr === 'string' ? { planCBufferStr: p.planCBufferStr } : {}),
+            ...(typeof p.hasCalculated === 'boolean' ? { hasCalculated: p.hasCalculated } : {}),
+        }
     } catch {
         return { ...DEFAULTS }
     }
@@ -34,6 +41,10 @@ function save(raceId: string, plans: PacePlans) {
 
 export function usePacePlans(raceId: string) {
     const [plans, setPlans] = React.useState<PacePlans>(() => load(raceId))
+
+    React.useEffect(() => {
+        setPlans(load(raceId))
+    }, [raceId])
 
     const update = (patch: Partial<PacePlans>) => {
         setPlans(prev => {
@@ -53,8 +64,8 @@ export function usePacePlans(raceId: string) {
 }
 
 export function parseTimeStr(str: string): number {
-    const [h, m] = str.split(':').map(Number)
-    return ((h || 0) * 60) + (m || 0)
+    const parts = str.split(':').map(x => { const n = Number(x); return isNaN(n) ? 0 : n })
+    return (parts[0] ?? 0) * 60 + (parts[1] ?? 0)
 }
 
 export function parseCutoffMinutes(overallCutoff: string | null | undefined): number {
