@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Race, Course, Waypoint, TerrainNode } from '@/types/database'
 import { calculatePacePlan } from './pace-utils'
 import { usePacePlans, computePlanMinutes } from './usePacePlans'
@@ -32,7 +32,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
     const { plans } = usePacePlans(race.id)
     const { a: planAMinutes, b: planBMinutes, c: planCMinutes } = computePlanMinutes(plans, race.overall_cutoff)
 
-    const buildPlan = (minutes: number) => {
+    const buildPlan = useMemo(() => (minutes: number) => {
         if (!course?.elevation_samples || minutes <= 0) return null
         return calculatePacePlan(
             course.elevation_samples as { distance: number; elevation: number }[],
@@ -43,11 +43,20 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
             race,
             clock24h
         )
-    }
+    }, [course, waypoints, terrainNodes, race, clock24h])
 
-    const planA = plans.hasCalculated ? buildPlan(planAMinutes) : null
-    const planB = plans.hasCalculated ? buildPlan(planBMinutes) : null
-    const planC = (plans.hasCalculated && planCMinutes !== null) ? buildPlan(planCMinutes) : null
+    const planA = useMemo(
+        () => plans.hasCalculated ? buildPlan(planAMinutes) : null,
+        [plans.hasCalculated, planAMinutes, buildPlan]
+    )
+    const planB = useMemo(
+        () => plans.hasCalculated ? buildPlan(planBMinutes) : null,
+        [plans.hasCalculated, planBMinutes, buildPlan]
+    )
+    const planC = useMemo(
+        () => (plans.hasCalculated && planCMinutes !== null) ? buildPlan(planCMinutes!) : null,
+        [plans.hasCalculated, planCMinutes, buildPlan]
+    )
 
     const isNight = (arrivalMinutes: number, wpLat: number, wpLon: number) => {
         if (!race.start_datetime) return false
@@ -137,7 +146,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                                         <div className="text-center py-3 space-y-2">
                                             <p className="text-sm text-neutral-500">Set your goal time to see ETAs.</p>
                                             <button
-                                                onClick={onGoToPacePlan}
+                                                onClick={(e) => { e.stopPropagation(); onGoToPacePlan() }}
                                                 className="text-sm text-orange-400 hover:text-orange-300 font-medium flex items-center gap-1 mx-auto transition-colors"
                                             >
                                                 <Target className="w-4 h-4" />

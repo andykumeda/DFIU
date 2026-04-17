@@ -153,8 +153,8 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                             placeholder={strategyMode === 'planA' ? "24:00" : strategyMode === 'planC' ? "00:30" : `${Math.floor(planBMinutes / 60)}:${(Math.floor(planBMinutes % 60)).toString().padStart(2, '0')}`}
                             value={strategyMode === 'planA' ? planATimeStr : strategyMode === 'planC' ? planCBufferStr : (planBTimeStr || `${Math.floor(planBMinutes / 60)}:${(Math.floor(planBMinutes % 60)).toString().padStart(2, '0')}`)}
                             onChange={(e) => {
-                                if (strategyMode === 'planA') { setPlanA(e.target.value); setPlanB(''); }
-                                else if (strategyMode === 'planC') { setPlanCBuffer(e.target.value); setPlanB(''); }
+                                if (strategyMode === 'planA') { setPlanA(e.target.value) }
+                                else if (strategyMode === 'planC') { setPlanCBuffer(e.target.value) }
                                 else if (strategyMode === 'planB') setPlanB(e.target.value);
                             }}
                         />
