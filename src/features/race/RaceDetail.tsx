@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, Suspense, lazy } from 'react'
 import { useAuth } from '@/features/auth/AuthContext'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -12,7 +12,9 @@ import { getNearestPointOnLine, getDistanceFromStart } from '@/lib/geo-utils'
 import { formatDate } from '@/lib/utils'
 import SunCalc from 'suncalc'
 
-import { CourseMap } from '@/features/course/CourseMap'
+const CourseMap = lazy(() =>
+    import('@/features/course/CourseMap').then(m => ({ default: m.CourseMap }))
+)
 import { ElevationProfile } from '@/features/course/ElevationProfile'
 import { GpxUploader } from '@/features/course/GpxUploader'
 import { EditRaceModal } from '@/features/race/EditRaceModal'
@@ -943,42 +945,48 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                 {/* Left Column: Map + Elevation */}
                 <div className='flex-1 flex flex-col min-w-0 relative'>
                   <div className='relative overflow-hidden h-[40vh] md:h-auto md:flex-1'>
-                    <CourseMap
-                      highlightedWaypointId={hoveredWaypointId}
-                      coordinates={coordinates}
-                      waypoints={courseMapWaypoints}
-                      isTerrainMode={isOwner && isTerrainMode}
-                      onMapClick={isOwner ? handleMapClick : undefined}
-                      onWaypointClick={(id: string) => {
-                        const wp = waypoints.find(w => w.id === id)
-                        if (wp) setViewingWaypoint(wp)
-                      }}
-                      onWaypointMove={isOwner ? handleWaypointMove : undefined}
-                      onHover={setHoveredMile}
-                      highlightMile={hoveredMile ?? undefined}
-                      showMileMarkers={showMileMarkers}
-                      onToggleMileMarkers={() => setShowMileMarkers(!showMileMarkers)}
-                      totalDistance={course?.total_distance_miles || 0}
-                      highlightElevation={hoveredMile != null && sampledProfile.length > 0 ? (() => {
-                        for (let i = 0; i < sampledProfile.length - 1; i++) {
-                          if (sampledProfile[i].distance <= hoveredMile && sampledProfile[i + 1].distance >= hoveredMile) {
-                            const t = (hoveredMile - sampledProfile[i].distance) / (sampledProfile[i + 1].distance - sampledProfile[i].distance)
-                            return sampledProfile[i].elevation + t * (sampledProfile[i + 1].elevation - sampledProfile[i].elevation)
+                    <Suspense fallback={
+                      <div className="w-full h-[600px] bg-neutral-900 animate-pulse rounded-xl flex items-center justify-center">
+                        <RefreshCw className="w-6 h-6 text-neutral-600 animate-spin" />
+                      </div>
+                    }>
+                      <CourseMap
+                        highlightedWaypointId={hoveredWaypointId}
+                        coordinates={coordinates}
+                        waypoints={courseMapWaypoints}
+                        isTerrainMode={isOwner && isTerrainMode}
+                        onMapClick={isOwner ? handleMapClick : undefined}
+                        onWaypointClick={(id: string) => {
+                          const wp = waypoints.find(w => w.id === id)
+                          if (wp) setViewingWaypoint(wp)
+                        }}
+                        onWaypointMove={isOwner ? handleWaypointMove : undefined}
+                        onHover={setHoveredMile}
+                        highlightMile={hoveredMile ?? undefined}
+                        showMileMarkers={showMileMarkers}
+                        onToggleMileMarkers={() => setShowMileMarkers(!showMileMarkers)}
+                        totalDistance={course?.total_distance_miles || 0}
+                        highlightElevation={hoveredMile != null && sampledProfile.length > 0 ? (() => {
+                          for (let i = 0; i < sampledProfile.length - 1; i++) {
+                            if (sampledProfile[i].distance <= hoveredMile && sampledProfile[i + 1].distance >= hoveredMile) {
+                              const t = (hoveredMile - sampledProfile[i].distance) / (sampledProfile[i + 1].distance - sampledProfile[i].distance)
+                              return sampledProfile[i].elevation + t * (sampledProfile[i + 1].elevation - sampledProfile[i].elevation)
+                            }
                           }
-                        }
-                        return null
-                      })() : null}
+                          return null
+                        })() : null}
 
 
-                      highlightedTerrainId={hoveredTerrainId} // New Prop
-                      terrainNodes={terrainNodes}
-                      onTerrainNodeClick={isOwner ? (id: string) => {
-                        const node = terrainNodes.find(n => n.id === id)
-                        if (node) setEditingTerrainNode(node)
-                      } : undefined}
-                      onSaveTerrain={isOwner ? handleSaveTerrainSegment : undefined}
-                      onTerrainNodeMove={isOwner ? handleTerrainNodeMove : undefined}
-                    />
+                        highlightedTerrainId={hoveredTerrainId} // New Prop
+                        terrainNodes={terrainNodes}
+                        onTerrainNodeClick={isOwner ? (id: string) => {
+                          const node = terrainNodes.find(n => n.id === id)
+                          if (node) setEditingTerrainNode(node)
+                        } : undefined}
+                        onSaveTerrain={isOwner ? handleSaveTerrainSegment : undefined}
+                        onTerrainNodeMove={isOwner ? handleTerrainNodeMove : undefined}
+                      />
+                    </Suspense>
                   </div>
                   <div className='h-32 md:h-40 flex-shrink-0 border-t border-neutral-800 bg-neutral-900 z-10 relative'>
                     <ElevationProfile

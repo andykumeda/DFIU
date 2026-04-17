@@ -1,11 +1,14 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, Suspense, lazy } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { GpxUploader } from '@/features/course/GpxUploader'
-import { CourseMap } from '@/features/course/CourseMap'
 import { ElevationProfile } from '@/features/course/ElevationProfile'
 import { CourseStats } from '@/features/course/CourseStats'
 import { GpxParseResult, sampleElevationProfile, getPointAtMile } from '@/lib/gpx-parser'
+
+const CourseMap = lazy(() =>
+    import('@/features/course/CourseMap').then(m => ({ default: m.CourseMap }))
+)
 
 export default function NewRacePage() {
   const navigate = useNavigate()
@@ -201,11 +204,17 @@ export default function NewRacePage() {
             {gpxData ? (
               <>
                 <div className='flex-1 relative'>
-                  <CourseMap
-                    coordinates={gpxData.coordinates}
-                    // bounds={gpxData.bounds} // removed in refactor
-                    highlightPoint={highlightPoint ? { lat: highlightPoint.lat, lon: highlightPoint.lon } : null}
-                  />
+                  <Suspense fallback={
+                    <div className="w-full h-full bg-neutral-900 animate-pulse rounded-xl flex items-center justify-center">
+                      <div className="text-neutral-600">Loading map...</div>
+                    </div>
+                  }>
+                    <CourseMap
+                      coordinates={gpxData.coordinates}
+                      // bounds={gpxData.bounds} // removed in refactor
+                      highlightPoint={highlightPoint ? { lat: highlightPoint.lat, lon: highlightPoint.lon } : null}
+                    />
+                  </Suspense>
                   <button
                     type='button'
                     onClick={() => {
