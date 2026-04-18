@@ -281,15 +281,17 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                                     </thead>
                                     <tbody className="divide-y divide-neutral-800">
                                         {plan.waypointArrivals.map((arrival) => {
+                                            // Synthetic Start/Finish rows have no DB waypoint; fall back to arrival's own name/mile.
                                             const wp = waypoints.find(w => w.id === arrival.waypointId)
-                                            if (!wp) return null
+                                            const displayName = wp?.name ?? arrival.name
+                                            const displayMile = wp?.mile ?? arrival.mile
 
                                             return (
                                                 <tr key={arrival.waypointId} className="hover:bg-neutral-800/50 transition-colors print:border-b print:border-neutral-200">
                                                     <td className="px-6 py-4 print:py-2">
                                                         <div className="font-medium text-white print:text-black flex items-center gap-2">
                                                             <span>
-                                                                {wp.name}
+                                                                {displayName}
                                                                 {race.start_datetime && (
                                                                     isNight(arrival.arrivalTime)
                                                                         ? <span title="Nighttime Arrival" className="inline-flex items-center"><Moon className="w-3.5 h-3.5 text-blue-300 print:text-neutral-500 ml-1.5 print:hidden" /><span className="hidden print:inline text-neutral-500 ml-1 border px-1 rounded text-[10px]">NIGHT</span></span>
@@ -297,14 +299,14 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                                                                 )}
                                                             </span>
                                                             <div className="flex gap-1 ml-1 print:hidden">
-                                                                {wp.crew_allowed && <span title="Crew Allowed"><Users className="w-4 h-4 text-green-400" /></span>}
-                                                                {wp.pacer_allowed && <span title="Pacer Allowed"><Footprints className="w-4 h-4 text-blue-400" /></span>}
-                                                                {wp.has_drop_bag && <span title="Drop Bag" className="text-[12px] opacity-90 leading-none flex items-center justify-center pt-0.5">🎒</span>}
+                                                                {wp?.crew_allowed && <span title="Crew Allowed"><Users className="w-4 h-4 text-green-400" /></span>}
+                                                                {wp?.pacer_allowed && <span title="Pacer Allowed"><Footprints className="w-4 h-4 text-blue-400" /></span>}
+                                                                {wp?.has_drop_bag && <span title="Drop Bag" className="text-[12px] opacity-90 leading-none flex items-center justify-center pt-0.5">🎒</span>}
                                                             </div>
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-4 print:py-2 font-mono text-neutral-300 print:text-neutral-800">
-                                                        {(isKm ? wp.mile * 1.60934 : wp.mile).toFixed(2)}
+                                                        {(isKm ? displayMile * 1.60934 : displayMile).toFixed(2)}
                                                     </td>
                                                     <td className="px-6 py-4 print:py-2 font-mono text-neutral-400 print:text-neutral-600">
                                                         {(isKm ? arrival.segmentMile * 1.60934 : arrival.segmentMile).toFixed(2)}

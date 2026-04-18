@@ -34,6 +34,11 @@ export interface PacePlanResult {
         cutoffTime: string // numeric or formatted from WP
         segmentPace: number // raw min/mile
         overallPace: number // raw min/mile
+        // name/mile let us render synthetic Start/Finish rows for races that
+        // don't have those waypoints in the DB. Populated for every arrival.
+        name: string
+        mile: number
+        synthetic?: boolean
     }[]
 }
 
@@ -287,7 +292,9 @@ export function calculatePacePlan(
                         segmentTime: '--',
                         cutoffTime: wp.cutoff_time ? new Date(wp.cutoff_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZone, hour12: !clock24h }) : '--',
                         segmentPace: 0,
-                        overallPace: 0
+                        overallPace: 0,
+                        name: wp.name,
+                        mile: wp.mile,
                     })
                     prevWaypointDist = wp.mile
                     prevDepartureTime = 0
@@ -315,7 +322,9 @@ export function calculatePacePlan(
                         segmentTime: formatDuration(segmentTimeMin),
                         cutoffTime: wp.cutoff_time && wp.cutoff_time.length > 5 ? new Date(wp.cutoff_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZone, hour12: !clock24h }) : '--',
                         segmentPace: segPace,
-                        overallPace: ovPace
+                        overallPace: ovPace,
+                        name: wp.name,
+                        mile: wp.mile,
                     })
 
                     prevWaypointDist = wp.mile
@@ -353,11 +362,51 @@ export function calculatePacePlan(
                 segmentTime: formatDuration(segmentTimeMin),
                 cutoffTime: wp.cutoff_time ? new Date(wp.cutoff_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZone, hour12: !clock24h }) : '--',
                 segmentPace: segPace,
-                overallPace: ovPace
+                overallPace: ovPace,
+                name: wp.name,
+                mile: wp.mile,
             })
             prevWaypointDist = wp.mile
             prevDepartureTime = currentElapsedTime
             waypointIdx++
+        }
+
+        // Synthesize Start/Finish rows if no real waypoint covers mile 0 or mile totalDistance.
+        // These appear in the Pace Plan table so the printed plan has clear endpoints.
+        const hasStart = waypointArrivals.some(a => a.mile <= 0.01)
+        if (!hasStart) {
+            waypointArrivals.unshift({
+                waypointId: '__synthetic_start__',
+                arrivalTime: 0,
+                timeOfDay: startTime ? formatTimeOfDay(0, startTime, timeZone, clock24h) : '00:00',
+                segmentMile: 0,
+                segmentTime: '--',
+                cutoffTime: '--',
+                segmentPace: 0,
+                overallPace: 0,
+                name: 'Start',
+                mile: 0,
+                synthetic: true,
+            })
+        }
+        const hasFinish = waypointArrivals.some(a => a.mile >= totalDistance - 0.01)
+        if (!hasFinish && totalDistance > 0) {
+            const prevMile = waypointArrivals.length > 0 ? waypointArrivals[waypointArrivals.length - 1].mile : 0
+            const segDist = totalDistance - prevMile
+            const segTimeMin = currentElapsedTime - prevDepartureTime
+            waypointArrivals.push({
+                waypointId: '__synthetic_finish__',
+                arrivalTime: currentElapsedTime,
+                timeOfDay: formatTimeOfDay(currentElapsedTime, startTime, timeZone, clock24h),
+                segmentMile: segDist,
+                segmentTime: formatDuration(segTimeMin),
+                cutoffTime: '--',
+                segmentPace: segDist > 0 ? segTimeMin / segDist : 0,
+                overallPace: totalDistance > 0 ? currentElapsedTime / totalDistance : 0,
+                name: 'Finish',
+                mile: totalDistance,
+                synthetic: true,
+            })
         }
 
         return {
