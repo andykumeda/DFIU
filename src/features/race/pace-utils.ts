@@ -53,6 +53,22 @@ function getGradeFactor(gradient: number): number {
     return Math.max(0.5, cost / costFlat)
 }
 
+// Reusing an Intl.DateTimeFormat instance is ~50x faster than calling
+// Date.prototype.toLocaleString with options per call (V8 rebuilds the formatter
+// every time otherwise). This matters because getDynamicFactors runs per sample
+// and calculatePacePlan is called three times per Drop Bag tab click.
+const hourFormatterCache = new Map<string, Intl.DateTimeFormat>()
+function getHourFormatter(tz: string): Intl.DateTimeFormat {
+    let f = hourFormatterCache.get(tz)
+    if (!f) {
+        f = new Intl.DateTimeFormat('en-US', { hour: '2-digit', hour12: false, timeZone: tz })
+        hourFormatterCache.set(tz, f)
+    }
+    return f
+}
+
+type SunCache = Map<number, { dusk: Date | null; dawn: Date | null }>
+
 function getTerrainFactor(mile: number, terrainNodes: TerrainNode[]): number {
     // No node covers this mile yet → default "undefined" terrain (1.0).
     let activeNode: TerrainNode | null = null
@@ -75,7 +91,8 @@ function getDynamicFactors(
     lat?: number,
     lon?: number,
     elevationFt?: number,
-    terrainFactor?: number
+    terrainFactor?: number,
+    sunCache?: SunCache
 ): number {
     let factor = 1.0
 
@@ -97,17 +114,23 @@ function getDynamicFactors(
 
         // Hour-of-day in the race's local timezone, not the device's.
         const hour = race.timezone
-            ? parseInt(current.toLocaleString('en-US', { hour: '2-digit', hour12: false, timeZone: race.timezone }), 10)
+            ? parseInt(getHourFormatter(race.timezone).format(current), 10)
             : current.getHours()
 
         // Fallback night (8 PM to 6 AM, race-local)
         let isNight = hour >= 20 || hour < 6
 
-        // Use precise twilight if we have coordinates
+        // Use precise twilight if we have coordinates. SunCalc output is stable per
+        // calendar day, so cache by day index — a race spans at most ~2 days.
         if (lat !== undefined && lon !== undefined) {
-            const times = SunCalc.getTimes(current, lat, lon)
+            const dayKey = Math.floor(current.getTime() / 86400000)
+            let times = sunCache?.get(dayKey)
+            if (!times) {
+                const t = SunCalc.getTimes(current, lat, lon)
+                times = { dusk: t.dusk, dawn: t.dawn }
+                sunCache?.set(dayKey, times)
+            }
             if (times.dusk && times.dawn) {
-                // Night is after dusk but before dawn
                 isNight = current > times.dusk || current < times.dawn
             }
         }
@@ -225,6 +248,10 @@ export function calculatePacePlan(
         const lat = waypoints.length > 0 ? waypoints[0].lat : undefined
         const lon = waypoints.length > 0 ? waypoints[0].lon : undefined
 
+        // Scoped per-plan-simulation caches: SunCalc and Intl formatter lookups dominate
+        // the hot loop without these.
+        const sunCache: SunCache = new Map()
+
         // We iterate through profile segments
         for (let i = 0; i < samples.length - 1; i++) {
             const detail = segmentDetails[i]
@@ -237,7 +264,8 @@ export function calculatePacePlan(
                 lat,
                 lon,
                 samples[i].elevation,
-                detail.terrainFactor
+                detail.terrainFactor,
+                sunCache
             )
             const segmentGap = testBaseGap
             const segmentPace = segmentGap * detail.gradeFactor * detail.terrainFactor * dynamicFactor
