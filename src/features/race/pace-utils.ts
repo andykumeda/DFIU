@@ -371,9 +371,14 @@ export function calculatePacePlan(
             waypointIdx++
         }
 
-        // Synthesize Start/Finish rows if no real waypoint covers mile 0 or mile totalDistance.
-        // These appear in the Pace Plan table so the printed plan has clear endpoints.
-        const hasStart = waypointArrivals.some(a => a.mile <= 0.01)
+        // Synthesize Start/Finish rows if no real waypoint covers each end of the
+        // course. Uses the actual sample bounds (robust when course.total_distance_miles
+        // is 0, missing, or mismatched). Tolerance of 0.1mi is wide enough to collapse
+        // real "Start"/"Finish" waypoints that are close but not exactly at 0/end.
+        const courseStartMile = samples[0].distance
+        const courseEndMile = samples[samples.length - 1].distance
+        const EDGE_TOL = 0.1
+        const hasStart = waypointArrivals.some(a => a.mile - courseStartMile <= EDGE_TOL)
         if (!hasStart) {
             waypointArrivals.unshift({
                 waypointId: '__synthetic_start__',
@@ -385,14 +390,14 @@ export function calculatePacePlan(
                 segmentPace: 0,
                 overallPace: 0,
                 name: 'Start',
-                mile: 0,
+                mile: courseStartMile,
                 synthetic: true,
             })
         }
-        const hasFinish = waypointArrivals.some(a => a.mile >= totalDistance - 0.01)
-        if (!hasFinish && totalDistance > 0) {
+        const hasFinish = waypointArrivals.some(a => courseEndMile - a.mile <= EDGE_TOL)
+        if (!hasFinish && courseEndMile > 0) {
             const prevMile = waypointArrivals.length > 0 ? waypointArrivals[waypointArrivals.length - 1].mile : 0
-            const segDist = totalDistance - prevMile
+            const segDist = courseEndMile - prevMile
             const segTimeMin = currentElapsedTime - prevDepartureTime
             waypointArrivals.push({
                 waypointId: '__synthetic_finish__',
@@ -402,9 +407,9 @@ export function calculatePacePlan(
                 segmentTime: formatDuration(segTimeMin),
                 cutoffTime: '--',
                 segmentPace: segDist > 0 ? segTimeMin / segDist : 0,
-                overallPace: totalDistance > 0 ? currentElapsedTime / totalDistance : 0,
+                overallPace: courseEndMile > 0 ? currentElapsedTime / courseEndMile : 0,
                 name: 'Finish',
-                mile: totalDistance,
+                mile: courseEndMile,
                 synthetic: true,
             })
         }
