@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, Suspense, lazy } from 'react'
+import { useState, useEffect, useMemo, useRef, Suspense, lazy } from 'react'
 import { useAuth } from '@/features/auth/AuthContext'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -6,7 +6,7 @@ import { Calendar, MapPin, Globe, ArrowUpRight, CloudSun, Trophy, RefreshCw, Set
 
 import { supabase } from '@/lib/supabase'
 import { Race, Course, Waypoint, TerrainNode } from '@/types/database'
-import { fetchWeatherForRace } from '@/lib/weather-service'
+import { fetchWeatherForRace, fetchCurrentWeather } from '@/lib/weather-service'
 import { sampleElevationProfile, type GpxParseResult } from '@/lib/gpx-parser'
 import { getNearestPointOnLine, getDistanceFromStart, getAllVisitsOnLine } from '@/lib/geo-utils'
 import { formatDate } from '@/lib/utils'
@@ -65,6 +65,21 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   const [isAidListOpen, setIsAidListOpen] = useState(true)
   const [isTerrainListOpen, setIsTerrainListOpen] = useState(true)
   const [isReimporting, setIsReimporting] = useState(false)
+
+  // Measure the sticky page header so child sticky elements (pace plan thead)
+  // can pin directly below it, even when mobile chrome / font scaling shift things.
+  const headerRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const el = headerRef.current
+    if (!el) return
+    const apply = () => {
+      document.documentElement.style.setProperty('--page-header-h', `${el.offsetHeight}px`)
+    }
+    apply()
+    const ro = new ResizeObserver(apply)
+    ro.observe(el)
+    return () => { ro.disconnect(); document.documentElement.style.removeProperty('--page-header-h') }
+  }, [])
   const [isCloning, setIsCloning] = useState(false)
 
   // Data Fetching
@@ -123,6 +138,16 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       if (error && error.code !== 'PGRST116') throw error
       return data as Course | null
     }
+  })
+
+  // Today's weather at the race location (refetched hourly). Kept separate from the
+  // race-day forecast so users can compare current conditions to race day.
+  const { data: currentWeather } = useQuery({
+    queryKey: ['current-weather', race?.location],
+    enabled: !!race?.location,
+    staleTime: 60 * 60 * 1000,
+    retry: false,
+    queryFn: async () => fetchCurrentWeather(race!.location!)
   })
 
   const { data: waypoints = [] } = useQuery({
@@ -813,11 +838,11 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   return (
     <div className='min-h-screen bg-neutral-950 flex flex-col'>
       {/* Header */}
-      <header className='print:hidden border-b border-neutral-800 bg-neutral-950/50 backdrop-blur-sm sticky top-0 z-[100]'>
-        <div className='max-w-7xl mx-auto px-4 py-4 flex justify-between items-center'>
+      <header ref={headerRef} className='print:hidden border-b border-neutral-800 bg-neutral-950/50 backdrop-blur-sm sticky top-0 z-[100]'>
+        <div className='max-w-7xl mx-auto px-4 py-2 sm:py-4 flex justify-between items-center'>
           <div className='flex items-center gap-2 sm:gap-8'>
             <Link to='/dashboard' className='flex items-center hover:opacity-80 transition-opacity cursor-pointer pointer-events-auto relative z-[999] -space-x-5'>
-              <img src="/logo.png" alt="DFIU Logo" className="h-20 sm:h-24 w-auto object-contain drop-shadow-md relative z-10" />
+              <img src="/logo.png" alt="DFIU Logo" className="h-12 sm:h-24 w-auto object-contain drop-shadow-md relative z-10" />
               <div className="hidden sm:flex flex-col justify-center items-start">
                 <span className="font-black italic tracking-tighter text-6xl uppercase bg-gradient-to-br from-orange-400 to-orange-600 bg-clip-text text-transparent pr-1 relative z-0 leading-[0.8]">DFIU</span>
                 <span className="text-neutral-400 text-[10px] font-bold tracking-[0.15em] uppercase opacity-70 -ml-0.5">Don't F* It Up!</span>
@@ -1360,10 +1385,11 @@ export function RaceDetail({ raceId }: { raceId: string }) {
               <div className="bg-neutral-900/30 rounded-xl p-6 border border-neutral-800/50">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                    <CloudSun className="w-5 h-5 text-yellow-500" /> Weather & Conditions
+                    <CloudSun className="w-5 h-5 text-yellow-500" /> Race Day Weather & Conditions
                     {fetchingWeather && <RefreshCw className="w-4 h-4 text-neutral-500 animate-spin ml-2" />}
                   </h3>
                 </div>
+                <div className="text-neutral-500 text-xs uppercase tracking-wider mb-2">Forecast for race day</div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-neutral-950/50 p-4 rounded-lg">
                     <div className="text-neutral-500 text-xs uppercase tracking-wider mb-1">Avg High</div>
@@ -1391,6 +1417,21 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                     {race?.moon_phase && <div><span className="text-neutral-500 block text-xs uppercase">Moon</span> {race.moon_phase}</div>}
                     {race?.precip_chance && <div><span className="text-neutral-500 block text-xs uppercase">Precip</span> {race.precip_chance}</div>}
                     {race?.weather_notes && <div><span className="text-neutral-500 block text-xs uppercase">Conditions</span> {race.weather_notes}</div>}
+                  </div>
+                )}
+
+                {/* Today's Conditions at the race location */}
+                {currentWeather && (
+                  <div className="mt-4 pt-4 border-t border-neutral-800">
+                    <div className="text-neutral-500 text-xs uppercase tracking-wider mb-2">Today at Race Location</div>
+                    <div className="flex items-center justify-between bg-neutral-950/50 px-3 py-2 rounded text-sm">
+                      <span className="text-neutral-400 font-mono">{new Date(currentWeather.asOfDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                      <div className="flex items-center gap-4">
+                        <span className="text-red-400 font-mono">{currentWeather.high}°</span>
+                        <span className="text-blue-400 font-mono">{currentWeather.low}°</span>
+                        <span className="text-neutral-400 text-xs w-24 truncate text-right">{currentWeather.conditions}</span>
+                      </div>
+                    </div>
                   </div>
                 )}
 

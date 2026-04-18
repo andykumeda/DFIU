@@ -40,6 +40,14 @@ export interface FullWeatherResult {
     history: WeatherHistory
 }
 
+export interface CurrentConditions {
+    high: number
+    low: number
+    precipChance: number
+    conditions: string
+    asOfDate: string // YYYY-MM-DD local to the location
+}
+
 interface VisualCrossingDay {
     tempmax: number
     tempmin: number
@@ -99,6 +107,29 @@ async function fetchDay(location: string, date: string): Promise<VisualCrossingR
         throw new Error(`Weather API error (${response.status}): ${text}`)
     }
     return response.json()
+}
+
+/**
+ * Fetch today's conditions at the given location. Separate from the race-day
+ * forecast so users can compare "what it's like now" to "what it'll be on race day".
+ */
+export async function fetchCurrentWeather(location: string): Promise<CurrentConditions> {
+    if (!VISUAL_CROSSING_KEY) {
+        throw new Error('Visual Crossing API key not configured. Add VITE_VISUAL_CROSSING_KEY to .env.local')
+    }
+    const today = new Date().toISOString().split('T')[0]
+    const data = await fetchDay(location, today)
+    if (!data.days || data.days.length === 0) {
+        throw new Error('No weather data returned for current conditions')
+    }
+    const d = data.days[0]
+    return {
+        high: Math.round(d.tempmax),
+        low: Math.round(d.tempmin),
+        precipChance: Math.round(d.precipprob),
+        conditions: d.conditions,
+        asOfDate: today,
+    }
 }
 
 /**
