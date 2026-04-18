@@ -198,7 +198,25 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       // Import GPX waypoints as aid stations if present
       if (result.waypoints.length > 0 && courseId && result.coordinates.length > 0) {
         try {
-          const maxOrder = Math.max(...waypoints.map(w => w.order_index), 0)
+          // On re-import: ask whether to replace existing waypoints. Otherwise the GPX waypoints
+          // would be appended on top, producing duplicates.
+          let replaceExisting = true
+          if (waypoints.length > 0) {
+            replaceExisting = confirm(
+              `This GPX contains ${result.waypoints.length} waypoints. Replace the ${waypoints.length} existing waypoints (cutoffs, drop bags, notes will be lost)?\n\nOK = replace, Cancel = keep existing and skip GPX waypoints.`
+            )
+            if (!replaceExisting) {
+              queryClient.invalidateQueries({ queryKey: ['course', raceId] })
+              queryClient.invalidateQueries({ queryKey: ['race', raceId] })
+              queryClient.invalidateQueries({ queryKey: ['waypoints', courseId] })
+              setIsReimporting(false)
+              return
+            }
+            const { error: delErr } = await supabase.from('waypoints').delete().eq('course_id', courseId)
+            if (delErr) throw delErr
+          }
+
+          const maxOrder = replaceExisting ? 0 : Math.max(...waypoints.map(w => w.order_index), 0)
           const totalDist = result.stats.totalDistanceMiles
           const waypointsToInsert = result.waypoints.flatMap((wpt, i) => {
             // Snap waypoint to the route and compute mile
