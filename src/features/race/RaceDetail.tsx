@@ -150,7 +150,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     queryFn: async () => fetchCurrentWeather(race!.location!)
   })
 
-  const { data: waypoints = [] } = useQuery({
+  const { data: waypoints = [], isLoading: waypointsLoading } = useQuery({
     queryKey: ['waypoints', course?.id],
     enabled: !!course?.id,
     queryFn: async () => {
@@ -164,7 +164,48 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     }
   })
 
+  // Backfill Start/Finish waypoints for courses that don't have them. Older
+  // races uploaded before the GPX-import auto-insert fallback existed, or
+  // races where the user deleted Start/Finish, still need these two rows so
+  // the Aid Stations panel exposes the full waypoint options (cutoff, drop
+  // bag, crew, pacer) for them.
+  useEffect(() => {
+    if (waypointsLoading || !course?.id || !course.geometry || !user) return
+    if (race?.user_id !== user.id) return
+    const coords = (course.geometry as { coordinates: [number, number][] }).coordinates
+    if (!coords || coords.length < 2) return
 
+    const hasStart = waypoints.some(w => w.type === 'start')
+    const hasFinish = waypoints.some(w => w.type === 'finish')
+    if (hasStart && hasFinish) return
+
+    const totalDist = course.total_distance_miles || 0
+    const maxOrder = Math.max(...waypoints.map(w => w.order_index), 0)
+    const toInsert: Partial<Waypoint>[] = []
+    if (!hasStart) {
+      toInsert.push({
+        course_id: course.id, name: 'Start', type: 'start',
+        lat: coords[0][1], lon: coords[0][0], mile: 0,
+        order_index: maxOrder + 1,
+        has_drop_bag: false, crew_allowed: false, pacer_allowed: false,
+      })
+    }
+    if (!hasFinish && totalDist > 0) {
+      const last = coords[coords.length - 1]
+      toInsert.push({
+        course_id: course.id, name: 'Finish', type: 'finish',
+        lat: last[1], lon: last[0], mile: Math.round(totalDist * 100) / 100,
+        order_index: maxOrder + toInsert.length + 1,
+        has_drop_bag: false, crew_allowed: false, pacer_allowed: false,
+      })
+    }
+    if (toInsert.length === 0) return
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(supabase.from('waypoints') as any).insert(toInsert).then(({ error }: { error: unknown }) => {
+      if (error) { console.error('Failed to backfill Start/Finish waypoints:', error); return }
+      queryClient.invalidateQueries({ queryKey: ['waypoints', course.id] })
+    })
+  }, [waypointsLoading, course?.id, course?.geometry, course?.total_distance_miles, waypoints, user, race?.user_id, queryClient])
 
   // Fetch Terrain Nodes
   useEffect(() => {

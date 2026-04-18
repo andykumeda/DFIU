@@ -567,6 +567,9 @@ export function CourseMap({
 
             const primaryWp = group[0]
             const isStack = group.length > 1
+            const isStartFinishPair = isStack && group.length === 2
+                && group.some(w => w.type === 'start')
+                && group.some(w => w.type === 'finish')
             let wasDragged = false
 
             const container = document.createElement('div')
@@ -590,7 +593,41 @@ export function CourseMap({
             const el = document.createElement('div')
             el.className = styles.marker
 
-            if (primaryWp.type === 'aid_station') {
+            if (isStartFinishPair) {
+                // Split marker: green Start on the left, red Finish on the right.
+                el.style.backgroundColor = 'transparent'
+                el.style.border = 'none'
+                el.style.boxShadow = 'none'
+                el.style.position = 'relative'
+                el.style.overflow = 'visible'
+
+                const startHalf = document.createElement('div')
+                startHalf.style.cssText = `
+                    position: absolute; top: 0; left: 0;
+                    width: 50%; height: 100%;
+                    background: #16a34a;
+                    border: 2px solid white; border-right: 1px solid white;
+                    border-top-left-radius: 12px; border-bottom-left-radius: 12px;
+                    display: flex; align-items: center; justify-content: center;
+                    font-size: 10px; box-sizing: border-box;
+                `
+                startHalf.innerHTML = '🟢'
+
+                const finishHalf = document.createElement('div')
+                finishHalf.style.cssText = `
+                    position: absolute; top: 0; right: 0;
+                    width: 50%; height: 100%;
+                    background: #dc2626;
+                    border: 2px solid white; border-left: 1px solid white;
+                    border-top-right-radius: 12px; border-bottom-right-radius: 12px;
+                    display: flex; align-items: center; justify-content: center;
+                    font-size: 10px; box-sizing: border-box;
+                `
+                finishHalf.innerHTML = '🏁'
+
+                el.appendChild(startHalf)
+                el.appendChild(finishHalf)
+            } else if (primaryWp.type === 'aid_station') {
                 // Custom Style for Aid Station: Red bg, White Bold +
                 el.innerHTML = '+'
                 el.style.backgroundColor = '#ef4444' // red-500
@@ -613,11 +650,11 @@ export function CourseMap({
                 else if (primaryWp.type === 'medical') el.style.backgroundColor = '#ef4444'
             }
 
-            el.title = isStack ? `${group.length} Waypoints here` : primaryWp.name
+            el.title = isStartFinishPair ? 'Start / Finish' : (isStack ? `${group.length} Waypoints here` : primaryWp.name)
 
             container.appendChild(el)
 
-            if (isStack) {
+            if (isStack && !isStartFinishPair) {
                 const stackBadge = document.createElement('div')
                 stackBadge.style.cssText = `
                     position: absolute; top: -6px; right: -6px;
@@ -630,7 +667,7 @@ export function CourseMap({
                 `
                 stackBadge.textContent = String(group.length)
                 container.appendChild(stackBadge)
-            } else {
+            } else if (!isStack) {
                 // Badges
                 if (primaryWp.crew_allowed) {
                     const badge = document.createElement('div')
