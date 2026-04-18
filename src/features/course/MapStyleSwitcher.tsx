@@ -18,13 +18,13 @@ const MapStyleSwitcher: React.FC<MapStyleSwitcherProps> = ({ currentStyle, onSty
     ]
 
     return (
-        <div className="absolute top-4 left-4 bg-white rounded-md shadow-md p-1 flex flex-col gap-1 z-50 text-gray-800 border border-gray-200">
+        <div className="absolute top-2 left-2 sm:top-4 sm:left-4 bg-white rounded-md shadow-md p-1 flex flex-col gap-0.5 sm:gap-1 z-50 text-gray-800 border border-gray-200 [&_svg]:w-3.5 [&_svg]:h-3.5 sm:[&_svg]:w-4 sm:[&_svg]:h-4">
             {styles.map((style) => (
                 <button
                     key={style.id}
                     onClick={() => onStyleChange(style.id)}
                     className={`
-            p-2 rounded hover:bg-gray-100 flex items-center gap-2 transition-colors
+            p-1.5 sm:p-2 rounded hover:bg-gray-100 flex items-center gap-2 transition-colors
             ${currentStyle === style.id ? 'bg-blue-50 text-blue-600' : 'text-gray-700'}
           `}
                     title={style.name}
