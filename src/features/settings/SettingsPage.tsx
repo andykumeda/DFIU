@@ -99,7 +99,7 @@ export default function SettingsPage() {
 
             const { data } = supabase.storage.from('avatars').getPublicUrl(filePath)
 
-            setFormData(prev => ({ ...prev, avatar_url: data.publicUrl }))
+            setFormData(prev => ({ ...prev, avatar_url: `${data.publicUrl}?t=${Date.now()}` }))
             toast.success('Photo uploaded')
         } catch (error) {
             console.error('Error uploading avatar:', error)
