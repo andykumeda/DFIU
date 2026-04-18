@@ -1,10 +1,11 @@
 'use client'
 
 import { useState } from 'react'
+import { toast } from 'react-hot-toast'
 import { Course, Race, TerrainNode, Waypoint } from '@/types/database'
-import { calculatePacePlan, PacingStrategy } from './pace-utils'
+import { calculatePacePlan } from './pace-utils'
 import { usePacePlans, computePlanMinutes } from './usePacePlans'
-import { Calculator, Clock, TrendingUp, Activity, Users, Footprints, Moon, Sun, ArrowRight, Printer } from 'lucide-react'
+import { Calculator, Clock, TrendingUp, Activity, Users, Footprints, Moon, Sun, ArrowRight, Printer, AlertTriangle } from 'lucide-react'
 
 interface PaceCalculatorProps {
     race: Race
@@ -18,6 +19,7 @@ interface PaceCalculatorProps {
 export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h = false, unitsDistance = 'miles' }: PaceCalculatorProps) {
     const [strategyMode, setStrategyMode] = useState<'planA' | 'planB' | 'planC'>('planA')
     const [plan, setPlan] = useState<ReturnType<typeof calculatePacePlan> | null>(null)
+    const [calcError, setCalcError] = useState<string | null>(null)
 
     const { plans, setPlanA, setPlanB, setPlanCBuffer, markCalculated } = usePacePlans(race.id)
     const { planATimeStr, planBTimeStr, planCBufferStr } = plans
@@ -31,27 +33,52 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
     }
 
     const handleCalculate = () => {
-        if (!course.elevation_samples) return
+        setCalcError(null)
 
-        const strategy: PacingStrategy = {
-            mode: 'time',
-            value: getStrategyValue()
+        const profile = course.elevation_samples as { distance: number; elevation: number }[] | null
+        if (!profile || !Array.isArray(profile) || profile.length < 2) {
+            const msg = 'No elevation data on this course. Re-upload the GPX from the Map tab.'
+            setCalcError(msg)
+            toast.error(msg)
+            return
         }
 
-        const profile = course.elevation_samples as { distance: number; elevation: number }[]
+        const totalDist = course.total_distance_miles || 0
+        if (totalDist <= 0) {
+            const msg = 'Course total distance is 0. Re-upload the GPX from the Map tab.'
+            setCalcError(msg)
+            toast.error(msg)
+            return
+        }
 
-        const result = calculatePacePlan(
-            profile,
-            course.total_distance_miles || 0,
-            waypoints,
-            terrainNodes,
-            strategy,
-            race,
-            clock24h
-        )
+        const targetMinutes = getStrategyValue()
+        if (!targetMinutes || targetMinutes <= 0 || !isFinite(targetMinutes)) {
+            const msg = strategyMode === 'planC'
+                ? 'Race has no overall cutoff set, so Plan C cannot be computed.'
+                : 'Enter a valid goal time (HH:MM).'
+            setCalcError(msg)
+            toast.error(msg)
+            return
+        }
 
-        setPlan(result)
-        markCalculated()
+        try {
+            const result = calculatePacePlan(
+                profile,
+                totalDist,
+                waypoints,
+                terrainNodes,
+                { mode: 'time', value: targetMinutes },
+                race,
+                clock24h
+            )
+            setPlan(result)
+            markCalculated()
+        } catch (err) {
+            console.error('calculatePacePlan failed:', err)
+            const msg = `Pace plan failed: ${err instanceof Error ? err.message : String(err)}`
+            setCalcError(msg)
+            toast.error(msg)
+        }
     }
 
     const isKm = unitsDistance === 'kilometers'
@@ -308,6 +335,11 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                             </div>
                         </div>
                     </>
+                ) : calcError ? (
+                    <div className="h-full flex flex-col items-center justify-center border-2 border-dashed border-red-900/60 bg-red-950/20 rounded-xl p-12">
+                        <AlertTriangle className="w-12 h-12 mb-4 text-red-400" />
+                        <p className="text-lg font-medium text-red-300 text-center max-w-md">{calcError}</p>
+                    </div>
                 ) : (
                     <div className="h-full flex flex-col items-center justify-center text-neutral-500 border-2 border-dashed border-neutral-800 rounded-xl p-12">
                         <Calculator className="w-12 h-12 mb-4 opacity-20" />
