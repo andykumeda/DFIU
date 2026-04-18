@@ -1127,8 +1127,8 @@ export function CourseMap({
                 style={{ width: '100%', height: '100%' }}
             />
 
-            {/* Toolbar */}
-            <div className={styles.toolbar}>
+            {/* Toolbar — only shown when the parent wired up edit handlers (owner view) */}
+            {onMapClick && <div className={styles.toolbar}>
                 <button
                     onClick={() => {
                         setIsDeleteMode(false)
@@ -1181,7 +1181,7 @@ export function CourseMap({
                         <X size={14} />
                     </button>
                 )}
-            </div>
+            </div>}
 
             {/* Terrain Selection Popup */}
             {isTerrainMode && terrainSelection.start && terrainSelection.end && (
