@@ -251,7 +251,7 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                         </div>
 
                         {/* Splits Table */}
-                        <div className="bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden mt-6 print:border-none print:shadow-none print:bg-white text-black print:text-black">
+                        <div className="bg-neutral-900 border border-neutral-800 rounded-xl mt-6 print:border-none print:shadow-none print:bg-white text-black print:text-black">
                             <div className="px-6 py-4 border-b border-neutral-800 flex items-center justify-between print:border-neutral-300">
                                 <h3 className="font-bold text-white print:text-black print:hidden">Splits</h3>
                                 <h3 className="hidden font-bold text-xl mb-2 text-black print:block">{race.name} - Pace Plan</h3>
