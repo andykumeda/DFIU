@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { Race, Course, Waypoint, TerrainNode } from '@/types/database'
 import { calculatePacePlan } from './pace-utils'
 import { usePacePlans, computePlanMinutes } from './usePacePlans'
@@ -32,31 +32,37 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
     const { plans } = usePacePlans(race.id)
     const { a: planAMinutes, b: planBMinutes, c: planCMinutes } = computePlanMinutes(plans, race.overall_cutoff)
 
-    const buildPlan = useMemo(() => (minutes: number) => {
-        if (!course?.elevation_samples || minutes <= 0) return null
-        return calculatePacePlan(
-            course.elevation_samples as { distance: number; elevation: number }[],
-            course.total_distance_miles || 0,
-            waypoints,
-            terrainNodes,
-            { mode: 'time', value: minutes },
-            race,
-            clock24h
-        )
-    }, [course, waypoints, terrainNodes, race, clock24h])
+    // Defer the three pace-plan simulations off the click path: each one runs a
+    // bisection up to ~16 simulateRun iterations over thousands of samples, which
+    // was making the tab feel unresponsive. useEffect + setTimeout(0) yields to
+    // the browser so the new tab paints before the compute starts.
+    type Plan = ReturnType<typeof calculatePacePlan> | null
+    const [computed, setComputed] = useState<{ A: Plan; B: Plan; C: Plan } | null>(null)
 
-    const planA = useMemo(
-        () => plans.hasCalculated ? buildPlan(planAMinutes) : null,
-        [plans.hasCalculated, planAMinutes, buildPlan]
-    )
-    const planB = useMemo(
-        () => plans.hasCalculated ? buildPlan(planBMinutes) : null,
-        [plans.hasCalculated, planBMinutes, buildPlan]
-    )
-    const planC = useMemo(
-        () => (plans.hasCalculated && planCMinutes !== null) ? buildPlan(planCMinutes!) : null,
-        [plans.hasCalculated, planCMinutes, buildPlan]
-    )
+    useEffect(() => {
+        if (!plans.hasCalculated || !course?.elevation_samples) {
+            const handle = setTimeout(() => setComputed(null), 0)
+            return () => clearTimeout(handle)
+        }
+        const handle = setTimeout(() => {
+            const samples = course.elevation_samples as { distance: number; elevation: number }[]
+            const totalDist = course.total_distance_miles || 0
+            const build = (minutes: number): Plan =>
+                minutes > 0
+                    ? calculatePacePlan(samples, totalDist, waypoints, terrainNodes, { mode: 'time', value: minutes }, race, clock24h)
+                    : null
+            setComputed({
+                A: build(planAMinutes),
+                B: build(planBMinutes),
+                C: planCMinutes !== null ? build(planCMinutes) : null,
+            })
+        }, 0)
+        return () => clearTimeout(handle)
+    }, [plans.hasCalculated, planAMinutes, planBMinutes, planCMinutes, course, waypoints, terrainNodes, race, clock24h])
+
+    const planA = computed?.A ?? null
+    const planB = computed?.B ?? null
+    const planC = computed?.C ?? null
 
     const isNight = (arrivalMinutes: number, wpLat: number, wpLon: number) => {
         if (!race.start_datetime) return false
