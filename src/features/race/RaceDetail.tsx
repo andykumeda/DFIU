@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, Suspense, lazy } from 'react'
+import { useState, useEffect, useMemo, Suspense, lazy } from 'react'
 import { useAuth } from '@/features/auth/AuthContext'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -68,18 +68,17 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
   // Measure the sticky page header so child sticky elements (pace plan thead)
   // can pin directly below it, even when mobile chrome / font scaling shift things.
-  const headerRef = useRef<HTMLElement>(null)
+  const [headerEl, setHeaderEl] = useState<HTMLElement | null>(null)
   useEffect(() => {
-    const el = headerRef.current
-    if (!el) return
+    if (!headerEl) return
     const apply = () => {
-      document.documentElement.style.setProperty('--page-header-h', `${el.offsetHeight}px`)
+      document.documentElement.style.setProperty('--page-header-h', `${headerEl.offsetHeight}px`)
     }
     apply()
     const ro = new ResizeObserver(apply)
-    ro.observe(el)
+    ro.observe(headerEl)
     return () => { ro.disconnect(); document.documentElement.style.removeProperty('--page-header-h') }
-  }, [])
+  }, [headerEl])
   const [isCloning, setIsCloning] = useState(false)
 
   // Data Fetching
@@ -879,7 +878,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   return (
     <div className='min-h-screen bg-neutral-950 flex flex-col'>
       {/* Header */}
-      <header ref={headerRef} className='print:hidden border-b border-neutral-800 bg-neutral-950/50 backdrop-blur-sm sticky top-0 z-[100]'>
+      <header ref={setHeaderEl} className='print:hidden border-b border-neutral-800 bg-neutral-950/50 backdrop-blur-sm sticky top-0 z-[100]'>
         <div className='max-w-7xl mx-auto px-3 sm:px-4 py-1.5 sm:py-4 flex justify-between items-center gap-2'>
           <div className='flex items-center gap-1 sm:gap-8 min-w-0 flex-1'>
             <Link to='/dashboard' className='flex items-center hover:opacity-80 transition-opacity cursor-pointer pointer-events-auto relative z-[999] -space-x-5 shrink-0'>
