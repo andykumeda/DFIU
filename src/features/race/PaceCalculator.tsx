@@ -269,7 +269,8 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                                     </button>
                                 </div>
                             </div>
-                            <table className="w-full text-sm text-left print:text-xs">
+                            <div className="overflow-x-auto sm:contents print:contents">
+                                <table className="w-full text-sm text-left print:text-xs">
                                     <thead
                                         className="bg-neutral-950 text-neutral-400 print:bg-neutral-100 print:text-black uppercase text-xs font-semibold sticky z-10 print:static shadow-sm shadow-neutral-950"
                                         style={{ top: 'var(--page-header-h, 112px)' }}
@@ -341,6 +342,7 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                                         })}
                                     </tbody>
                                 </table>
+                            </div>
                         </div>
                     </>
                 ) : calcError ? (
