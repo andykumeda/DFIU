@@ -269,15 +269,11 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                                     </button>
                                 </div>
                             </div>
-                            <div
-                                className="overflow-auto sticky print:overflow-visible print:max-h-none print:static"
-                                style={{
-                                    top: 'var(--page-header-h, 112px)',
-                                    maxHeight: 'calc(100vh - var(--page-header-h, 112px) - 16px)',
-                                }}
-                            >
-                                <table className="w-full text-sm text-left print:text-xs">
-                                    <thead className="bg-neutral-950 text-neutral-400 print:bg-neutral-100 print:text-black uppercase text-xs font-semibold sticky top-0 z-10 print:static shadow-sm shadow-neutral-950">
+                            <table className="w-full text-sm text-left print:text-xs">
+                                    <thead
+                                        className="bg-neutral-950 text-neutral-400 print:bg-neutral-100 print:text-black uppercase text-xs font-semibold sticky z-10 print:static shadow-sm shadow-neutral-950"
+                                        style={{ top: 'var(--page-header-h, 112px)' }}
+                                    >
                                         <tr>
                                             <th className="px-6 py-3">Location</th>
                                             <th className="px-6 py-3">{isKm ? 'Km' : 'Mile'}</th>
@@ -345,7 +341,6 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                                         })}
                                     </tbody>
                                 </table>
-                            </div>
                         </div>
                     </>
                 ) : calcError ? (
