@@ -189,6 +189,71 @@ export function getNearestPointOnLine(
 }
 
 /**
+ * Find every visit of the polyline to a point (out-and-back, loops, multi-lap).
+ * A "visit" is a contiguous run of segments whose snap-distance is at or below
+ * `thresholdMi`. Visits closer along the route than `minSeparationMi` are merged
+ * (collapses GPS noise at the aid station itself into a single visit).
+ */
+export function getAllVisitsOnLine(
+    pt: { lat: number; lon: number },
+    line: [number, number][],
+    thresholdMi: number = 0.1,
+    minSeparationMi: number = 1.0
+): { lat: number; lon: number; mile: number; distance: number }[] {
+    if (!line || line.length < 2) return [];
+
+    try {
+        const p = point([pt.lon, pt.lat]);
+
+        const cumDist: number[] = [0];
+        for (let i = 0; i < line.length - 1; i++) {
+            cumDist.push(cumDist[i] + getDistance(line[i][1], line[i][0], line[i + 1][1], line[i + 1][0]));
+        }
+
+        type Visit = { lat: number; lon: number; mile: number; distance: number };
+        const visits: Visit[] = [];
+        let active: Visit | null = null;
+
+        for (let i = 0; i < line.length - 1; i++) {
+            const segment = {
+                type: 'Feature' as const,
+                geometry: { type: 'LineString' as const, coordinates: [line[i], line[i + 1]] },
+                properties: {}
+            };
+            const snapped = nearestPointOnLine(segment, p, { units: 'miles' });
+            const dist = snapped.properties?.dist ?? Infinity;
+
+            if (dist <= thresholdMi) {
+                const [lon, lat] = snapped.geometry.coordinates;
+                const distOnSeg = getDistance(line[i][1], line[i][0], lat, lon);
+                const mile = cumDist[i] + distOnSeg;
+                if (!active || dist < active.distance) {
+                    active = { lat, lon, mile, distance: dist };
+                }
+            } else if (active) {
+                visits.push(active);
+                active = null;
+            }
+        }
+        if (active) visits.push(active);
+
+        const merged: Visit[] = [];
+        for (const v of visits) {
+            const prev = merged[merged.length - 1];
+            if (prev && v.mile - prev.mile < minSeparationMi) {
+                if (v.distance < prev.distance) merged[merged.length - 1] = v;
+            } else {
+                merged.push(v);
+            }
+        }
+        return merged;
+    } catch (e) {
+        console.error('getAllVisitsOnLine error:', e);
+        return [];
+    }
+}
+
+/**
  * Calculate the cumulative distance along the path up to a specific point index
  */
 export function getDistanceFromStart(line: [number, number][], index: number, pointOnSegment: { lat: number, lon: number }): number {

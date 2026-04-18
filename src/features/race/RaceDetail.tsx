@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase'
 import { Race, Course, Waypoint, TerrainNode } from '@/types/database'
 import { fetchWeatherForRace } from '@/lib/weather-service'
 import { sampleElevationProfile, type GpxParseResult } from '@/lib/gpx-parser'
-import { getNearestPointOnLine, getDistanceFromStart } from '@/lib/geo-utils'
+import { getNearestPointOnLine, getDistanceFromStart, getAllVisitsOnLine } from '@/lib/geo-utils'
 import { formatDate } from '@/lib/utils'
 import SunCalc from 'suncalc'
 
@@ -218,46 +218,71 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
           const maxOrder = replaceExisting ? 0 : Math.max(...waypoints.map(w => w.order_index), 0)
           const totalDist = result.stats.totalDistanceMiles
-          const waypointsToInsert = result.waypoints.flatMap((wpt, i) => {
-            // Snap waypoint to the route and compute mile
+
+          type Candidate = {
+            course_id: string
+            name: string
+            type: string
+            lat: number
+            lon: number
+            mile: number
+            has_drop_bag: boolean
+            crew_allowed: boolean
+            pacer_allowed: boolean
+          }
+
+          const candidates: Candidate[] = result.waypoints.flatMap((wpt, i) => {
+            const name = wpt.name || `Aid Station ${i + 1}`
+            const lower = name.toLowerCase()
+
+            if (lower.includes('start & finish') || lower.includes('start/finish')) {
+              // Prefer the actual route endpoints for start/finish rather than whatever
+              // the GPX <wpt> coordinates say.
+              const first = result.coordinates[0]
+              const last = result.coordinates[result.coordinates.length - 1]
+              return [
+                { course_id: courseId, name: 'Start', type: 'start', lat: first[1], lon: first[0], mile: 0, has_drop_bag: false, crew_allowed: false, pacer_allowed: false },
+                { course_id: courseId, name: 'Finish', type: 'finish', lat: last[1], lon: last[0], mile: Math.round(totalDist * 100) / 100, has_drop_bag: false, crew_allowed: false, pacer_allowed: false },
+              ]
+            }
+
+            // Detect out-and-back / loops: if the route passes near this waypoint
+            // at more than one point, emit a row per visit.
+            const visits = getAllVisitsOnLine({ lat: wpt.lat, lon: wpt.lon }, result.coordinates)
+
+            let type = 'aid_station'
+            if (lower === 'start') type = 'start'
+            if (lower === 'finish') type = 'finish'
+
+            if (visits.length >= 2) {
+              return visits.map(v => ({
+                course_id: courseId,
+                name: `${name} (mi ${Math.round(v.mile)})`,
+                type,
+                lat: v.lat,
+                lon: v.lon,
+                mile: Math.round(v.mile * 100) / 100,
+                has_drop_bag: false,
+                crew_allowed: false,
+                pacer_allowed: false,
+              }))
+            }
+
+            // Single visit — fall back to the lenient 2-mile snap so waypoints
+            // placed slightly off-route still land somewhere sensible.
             const nearest = getNearestPointOnLine({ lat: wpt.lat, lon: wpt.lon }, result.coordinates)
             let mile = 0
             let lat = wpt.lat
             let lon = wpt.lon
-            if (nearest && nearest.distance < 2) { // within 2 miles of route
+            if (visits.length === 1) {
+              mile = visits[0].mile
+              lat = visits[0].lat
+              lon = visits[0].lon
+            } else if (nearest && nearest.distance < 2) {
               mile = getDistanceFromStart(result.coordinates, nearest.index, { lat: nearest.lat, lon: nearest.lon })
               lat = nearest.lat
               lon = nearest.lon
             }
-
-            const name = wpt.name || `Aid Station ${i + 1}`
-            let type = 'aid_station'
-
-            if (name.toLowerCase().includes('start & finish') || name.toLowerCase().includes('start/finish')) {
-              return [
-                {
-                  course_id: courseId,
-                  name: 'Start',
-                  type: 'start',
-                  lat, lon,
-                  mile: 0,
-                  order_index: maxOrder + i * 2 + 1,
-                  has_drop_bag: false, crew_allowed: false, pacer_allowed: false,
-                },
-                {
-                  course_id: courseId,
-                  name: 'Finish',
-                  type: 'finish',
-                  lat, lon,
-                  mile: Math.round(totalDist * 100) / 100,
-                  order_index: maxOrder + i * 2 + 2,
-                  has_drop_bag: false, crew_allowed: false, pacer_allowed: false,
-                }
-              ]
-            }
-
-            if (name.toLowerCase() === 'start') type = 'start'
-            if (name.toLowerCase() === 'finish') type = 'finish'
 
             return [{
               course_id: courseId,
@@ -266,41 +291,41 @@ export function RaceDetail({ raceId }: { raceId: string }) {
               lat,
               lon,
               mile: Math.round(mile * 100) / 100,
-              order_index: maxOrder + i + 1,
               has_drop_bag: false,
               crew_allowed: false,
               pacer_allowed: false,
             }]
           })
 
-          const hasStart = waypointsToInsert.some(w => w.type === 'start') || waypoints.some(w => w.type === 'start')
-          const hasFinish = waypointsToInsert.some(w => w.type === 'finish') || waypoints.some(w => w.type === 'finish')
+          const hasStart = candidates.some(w => w.type === 'start') || waypoints.some(w => w.type === 'start')
+          const hasFinish = candidates.some(w => w.type === 'finish') || waypoints.some(w => w.type === 'finish')
 
           if (!hasStart && result.coordinates.length > 0) {
-            waypointsToInsert.push({
+            candidates.push({
               course_id: courseId,
               name: 'Start',
               type: 'start',
               lat: result.coordinates[0][1],
               lon: result.coordinates[0][0],
               mile: 0,
-              order_index: maxOrder + waypointsToInsert.length + 1,
               has_drop_bag: false, crew_allowed: false, pacer_allowed: false,
             })
           }
           if (!hasFinish && result.coordinates.length > 0) {
             const last = result.coordinates[result.coordinates.length - 1]
-            waypointsToInsert.push({
+            candidates.push({
               course_id: courseId,
               name: 'Finish',
               type: 'finish',
               lat: last[1],
               lon: last[0],
               mile: Math.round(totalDist * 100) / 100,
-              order_index: maxOrder + waypointsToInsert.length + 2,
               has_drop_bag: false, crew_allowed: false, pacer_allowed: false,
             })
           }
+
+          candidates.sort((a, b) => a.mile - b.mile)
+          const waypointsToInsert = candidates.map((c, idx) => ({ ...c, order_index: maxOrder + idx + 1 }))
 
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const { error: wpError } = await (supabase.from('waypoints') as any).insert(waypointsToInsert)
