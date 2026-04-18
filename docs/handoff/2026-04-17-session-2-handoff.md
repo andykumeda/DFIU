@@ -5,6 +5,7 @@ Continuation of `2026-04-17-session-handoff.md`. Focus this session: map UX poli
 ## Commits Made This Session
 
 ```
+7b578c3 fix(settings): bust browser cache after avatar upload
 674e562 fix(dashboard): hide DFIU wordmark on mobile so avatar + sign out fit
 bcac716 fix(pace-plan): restore the scroll-pane so sticky thead + horizontal scroll both work
 b3d2b9e fix(pace-plan): confine horizontal overflow to the table on mobile
@@ -36,6 +37,10 @@ d47336a refactor(map): move Mile Markers toggle into the style switcher
 
 ### 3. Dashboard mobile header
 - Hid the entire DFIU wordmark block (`hidden sm:flex`) on mobile. Fixes the bug where the `text-3xl` wordmark was pushing the avatar and Sign Out button off the right side of the viewport.
+
+### 4. Avatar upload was silently cached
+- `SettingsPage.tsx` uploads to `avatars/{user.id}.{ext}` with `upsert: true`. The object was being replaced in storage correctly, but `getPublicUrl()` returns a stable URL for the same path, so the browser served the cached old image — it looked like the upload reverted.
+- Fixed by appending `?t=${Date.now()}` to the public URL before storing it in state / the `profiles.avatar_url` column. Each upload gets a unique URL, browser refetches, new image renders. The same persisted URL then updates the header avatar on the dashboard after Save → `refreshProfile()`.
 
 ---
 
@@ -85,6 +90,7 @@ d47336a refactor(map): move Mile Markers toggle into the style switcher
 | `src/features/race/RaceDetail.tsx` | Mobile header shrink, callback-ref ResizeObserver for `--page-header-h` |
 | `src/features/race/PaceCalculator.tsx` | Sticky pane iterations (final: scroll-pane approach restored) |
 | `src/pages/DashboardPage.tsx` | Mobile: hide DFIU wordmark block entirely |
+| `src/features/settings/SettingsPage.tsx` | Cache-bust avatar URL on upload |
 
 ## Build / Deploy
 
