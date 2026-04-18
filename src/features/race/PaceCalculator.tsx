@@ -55,7 +55,7 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
         if (!targetMinutes || targetMinutes <= 0 || !isFinite(targetMinutes)) {
             const msg = strategyMode === 'planC'
                 ? 'Race has no overall cutoff set, so Plan C cannot be computed.'
-                : 'Enter a valid goal time (HH:MM).'
+                : 'Enter a valid total time (HH:MM), e.g. 12:30 for 12 hours 30 minutes.'
             setCalcError(msg)
             toast.error(msg)
             return
@@ -167,9 +167,9 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                     {/* Main Input */}
                     <div className="mb-6">
                         <label className="block text-sm font-medium text-neutral-400 mb-2">
-                            {strategyMode === 'planA' ? 'Target Finish Time (HH:MM)' :
-                                strategyMode === 'planC' ? 'Safety Buffer (HH:MM ahead of cutoff)' :
-                                    'Target Finish Time (Calculated Midpoint)'}
+                            {strategyMode === 'planA' ? 'Goal Total Time (HH:MM)' :
+                                strategyMode === 'planC' ? 'Safety Buffer Before Cutoff (HH:MM)' :
+                                    'Goal Total Time (calculated midpoint)'}
                         </label>
                         {strategyMode === 'planC' && !race.overall_cutoff && (
                             <div className="text-red-400 text-xs mb-2">Race has no overall cutoff time set.</div>
@@ -177,7 +177,7 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                         <input
                             type="text"
                             className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-3 text-white text-lg font-mono placeholder-neutral-600 focus:ring-2 focus:ring-blue-500 outline-none"
-                            placeholder={strategyMode === 'planA' ? "24:00" : strategyMode === 'planC' ? "00:30" : `${Math.floor(planBMinutes / 60)}:${(Math.floor(planBMinutes % 60)).toString().padStart(2, '0')}`}
+                            placeholder={strategyMode === 'planA' ? "e.g. 24:00" : strategyMode === 'planC' ? "e.g. 00:30" : `${Math.floor(planBMinutes / 60)}:${(Math.floor(planBMinutes % 60)).toString().padStart(2, '0')}`}
                             value={strategyMode === 'planA' ? planATimeStr : strategyMode === 'planC' ? planCBufferStr : (planBTimeStr || `${Math.floor(planBMinutes / 60)}:${(Math.floor(planBMinutes % 60)).toString().padStart(2, '0')}`)}
                             onChange={(e) => {
                                 if (strategyMode === 'planA') { setPlanA(e.target.value) }
@@ -185,6 +185,11 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                                 else if (strategyMode === 'planB') setPlanB(e.target.value);
                             }}
                         />
+                        <div className="mt-1.5 text-xs text-neutral-500">
+                            {strategyMode === 'planC'
+                                ? 'How many hours earlier than the cutoff you want to finish (e.g. 00:30 = 30 min buffer).'
+                                : 'Total hours and minutes to complete the race — not a clock time. E.g. 20:30 = 20 hours 30 minutes of running, not 8:30 PM.'}
+                        </div>
 
                         {paceStr && (
                             <div className="mt-2 text-sm text-blue-400 font-mono">
