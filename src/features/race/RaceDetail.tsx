@@ -880,28 +880,28 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     <div className='min-h-screen bg-neutral-950 flex flex-col'>
       {/* Header */}
       <header ref={headerRef} className='print:hidden border-b border-neutral-800 bg-neutral-950/50 backdrop-blur-sm sticky top-0 z-[100]'>
-        <div className='max-w-7xl mx-auto px-4 py-2 sm:py-4 flex justify-between items-center'>
-          <div className='flex items-center gap-2 sm:gap-8'>
-            <Link to='/dashboard' className='flex items-center hover:opacity-80 transition-opacity cursor-pointer pointer-events-auto relative z-[999] -space-x-5'>
-              <img src="/logo.png" alt="DFIU Logo" className="h-12 sm:h-24 w-auto object-contain drop-shadow-md relative z-10" />
+        <div className='max-w-7xl mx-auto px-3 sm:px-4 py-1.5 sm:py-4 flex justify-between items-center gap-2'>
+          <div className='flex items-center gap-1 sm:gap-8 min-w-0 flex-1'>
+            <Link to='/dashboard' className='flex items-center hover:opacity-80 transition-opacity cursor-pointer pointer-events-auto relative z-[999] -space-x-5 shrink-0'>
+              <img src="/logo.png" alt="DFIU Logo" className="h-10 sm:h-24 w-auto object-contain drop-shadow-md relative z-10" />
               <div className="hidden sm:flex flex-col justify-center items-start">
                 <span className="font-black italic tracking-tighter text-6xl uppercase bg-gradient-to-br from-orange-400 to-orange-600 bg-clip-text text-transparent pr-1 relative z-0 leading-[0.8]">DFIU</span>
                 <span className="text-neutral-400 text-[10px] font-bold tracking-[0.15em] uppercase opacity-70 -ml-0.5">Don't F* It Up!</span>
               </div>
             </Link>
 
-            <div className="flex sm:hidden flex-col gap-1">
-              <div className='flex items-center gap-2'>
-                <h1 className='text-lg font-bold text-white'>{race.name}</h1>
+            <div className="flex sm:hidden flex-col min-w-0 flex-1 leading-tight">
+              <div className='flex items-center gap-1.5 min-w-0'>
+                <h1 className='text-base font-bold text-white truncate'>{race.name}</h1>
                 {isOwner && (
-                  <button onClick={() => setShowEditModal(true)} className='text-neutral-400 hover:text-white text-sm'>
+                  <button onClick={() => setShowEditModal(true)} className='text-neutral-400 hover:text-white text-sm shrink-0'>
                     ✎
                   </button>
                 )}
               </div>
-              <div className="flex items-center gap-2 text-xs">
+              <div className="flex items-center gap-2 text-[11px] text-neutral-400">
                 {race.start_datetime && (
-                  <div className='text-neutral-400 font-medium flex items-center gap-1'>
+                  <div className='font-medium flex items-center gap-1'>
                     <Calendar className="w-3 h-3" />
                     {formatDate(race.start_datetime, 'MMM d, yyyy')}
                   </div>
@@ -939,32 +939,33 @@ export function RaceDetail({ raceId }: { raceId: string }) {
             </div>
 
           </div>
-          <div className='flex items-center gap-4'>
+          <div className='flex items-center gap-2 sm:gap-4'>
             {user && !isOwner && race.is_public && (
               <button
                 onClick={handleCloneRace}
                 disabled={isCloning}
-                className="flex items-center gap-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                title="Clone Race"
+                className="flex items-center gap-2 p-1.5 sm:px-3 sm:py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
               >
                 {isCloning ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                Clone Race
+                <span className="hidden sm:inline">Clone Race</span>
               </button>
             )}
             {user ? (
-              <Link to="/settings" className="flex items-center gap-3 hover:bg-neutral-900 rounded-lg p-2 transition-colors group">
+              <Link to="/settings" className="flex items-center gap-3 hover:bg-neutral-900 rounded-lg p-1 sm:p-2 transition-colors group">
                 <div className="text-right hidden sm:block">
                   <div className="text-sm font-medium text-white group-hover:text-orange-500 transition-colors">
                     {profile?.name || 'User'}
                   </div>
                 </div>
                 {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt="Profile" className="w-9 h-9 rounded-full border border-neutral-700 object-cover" />
+                  <img src={profile.avatar_url} alt="Profile" className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-neutral-700 object-cover" />
                 ) : (
-                  <div className="w-9 h-9 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center text-xs font-bold text-neutral-400 group-hover:border-orange-500/50 transition-colors">
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center text-xs font-bold text-neutral-400 group-hover:border-orange-500/50 transition-colors">
                     {(profile?.name?.[0] || '?').toUpperCase()}
                   </div>
                 )}
-                <Settings className="w-5 h-5 text-neutral-500 group-hover:text-white transition-colors" />
+                <Settings className="hidden sm:block w-5 h-5 text-neutral-500 group-hover:text-white transition-colors" />
               </Link>
             ) : (
               <Link to="/login" className="text-sm font-medium text-neutral-400 hover:text-white px-3 py-1.5 rounded-lg border border-neutral-700 hover:border-neutral-500 transition-colors">
