@@ -1,16 +1,23 @@
 'use client'
 
 import React from 'react'
-import { Mountain, Map as MapIcon, Satellite } from 'lucide-react'
+import { Mountain, Map as MapIcon, Satellite, Milestone } from 'lucide-react'
 
 export type MapStyle = 'outdoors' | 'streets' | 'satellite'
 
 interface MapStyleSwitcherProps {
     currentStyle: MapStyle
     onStyleChange: (style: MapStyle) => void
+    showMileMarkers?: boolean
+    onToggleMileMarkers?: () => void
 }
 
-const MapStyleSwitcher: React.FC<MapStyleSwitcherProps> = ({ currentStyle, onStyleChange }) => {
+const MapStyleSwitcher: React.FC<MapStyleSwitcherProps> = ({
+    currentStyle,
+    onStyleChange,
+    showMileMarkers,
+    onToggleMileMarkers,
+}) => {
     const styles: { id: MapStyle; name: string; icon: React.ReactNode }[] = [
         { id: 'outdoors', name: 'Outdoors', icon: <Mountain size={16} /> },
         { id: 'streets', name: 'Streets', icon: <MapIcon size={16} /> },
@@ -33,6 +40,24 @@ const MapStyleSwitcher: React.FC<MapStyleSwitcherProps> = ({ currentStyle, onSty
                     <span className="sr-only">{style.name}</span>
                 </button>
             ))}
+
+            {onToggleMileMarkers && (
+                <>
+                    <div className="h-px bg-gray-200 mx-1" />
+                    <button
+                        onClick={onToggleMileMarkers}
+                        className={`
+            p-1.5 sm:p-2 rounded hover:bg-gray-100 flex items-center gap-2 transition-colors
+            ${showMileMarkers ? 'bg-blue-50 text-blue-600' : 'text-gray-700'}
+          `}
+                        title="Toggle Mile Markers"
+                        type="button"
+                    >
+                        <Milestone size={16} />
+                        <span className="sr-only">Mile Markers</span>
+                    </button>
+                </>
+            )}
         </div>
     )
 }

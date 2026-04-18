@@ -4,7 +4,7 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 import along from '@turf/along'
 import length from '@turf/length'
 import { lineString } from '@turf/helpers'
-import { X, Trash2, MapPin, Milestone } from 'lucide-react'
+import { X, Trash2, MapPin } from 'lucide-react'
 
 import MapStyleSwitcher from './MapStyleSwitcher'
 import { getNearestPointOnLine, getDistanceFromStart, getCoordinateAtDistance, getDistanceAtCoordinate } from '@/lib/geo-utils'
@@ -1113,8 +1113,13 @@ export function CourseMap({
     }, [mapLoaded, onMapClick, coordinates]) // Added coordinates dependency
     return (
         <div className={`${styles.container} ${className || ''}`} style={{ position: 'relative', width: '100%', height: '100%', minHeight: '300px' }}>
-            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-            < MapStyleSwitcher currentStyle={mapStyle as any} onStyleChange={handleStyleChange as any} />
+            { }
+            < MapStyleSwitcher
+                currentStyle={mapStyle as any}
+                onStyleChange={handleStyleChange as any}
+                showMileMarkers={showMileMarkers}
+                onToggleMileMarkers={onToggleMileMarkers}
+            />
 
             <div
                 ref={mapContainer}
@@ -1134,15 +1139,6 @@ export function CourseMap({
                     type="button"
                 >
                     <MapPin size={18} />
-                </button>
-
-                <button
-                    onClick={onToggleMileMarkers}
-                    className={`${styles.toolBtn} ${showMileMarkers ? styles.activeTool : ''}`}
-                    title="Toggle Mile Markers"
-                    type="button"
-                >
-                    <Milestone size={18} />
                 </button>
 
                 <button
