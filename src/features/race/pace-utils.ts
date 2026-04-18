@@ -54,8 +54,8 @@ function getGradeFactor(gradient: number): number {
 }
 
 function getTerrainFactor(mile: number, terrainNodes: TerrainNode[]): number {
-    if (terrainNodes.length === 0) return 1.0
-    let activeNode = terrainNodes[0]
+    // No node covers this mile yet → default "undefined" terrain (1.0).
+    let activeNode: TerrainNode | null = null
     for (const node of terrainNodes) {
         if (node.mile <= mile) {
             activeNode = node
@@ -63,6 +63,7 @@ function getTerrainFactor(mile: number, terrainNodes: TerrainNode[]): number {
             break
         }
     }
+    if (!activeNode) return 1.0
     return (activeNode.difficulty || 100) / 100
 }
 
@@ -72,22 +73,34 @@ function getDynamicFactors(
     elapsedMinutes: number,
     race: Partial<Race>,
     lat?: number,
-    lon?: number
+    lon?: number,
+    elevationFt?: number,
+    terrainFactor?: number
 ): number {
     let factor = 1.0
 
-    // Fatigue: linearly add up to +15% by the end of the race
+    // Fatigue: quadratic ramp, +25% at the finish. The back half hurts more than the front.
+    // pct^1.8 gives ~7% at halfway, ~15% at 75%, ~25% at 100%.
     if (totalDistance > 0) {
-        const fatigue = (mile / totalDistance) * 0.15
-        factor += fatigue
+        const pct = Math.min(1.0, mile / totalDistance)
+        factor += Math.pow(pct, 1.8) * 0.25
+    }
+
+    // Altitude: +1% per 1000ft above 5000ft, capped at +15%. Hypoxia only meaningful above ~5000ft.
+    if (elevationFt !== undefined && elevationFt > 5000) {
+        factor += Math.min(0.15, ((elevationFt - 5000) / 1000) * 0.01)
     }
 
     if (race && race.start_datetime) {
         const start = new Date(race.start_datetime)
         const current = new Date(start.getTime() + elapsedMinutes * 60000)
-        const hour = current.getHours()
 
-        // Fallback night (8 PM to 6 AM)
+        // Hour-of-day in the race's local timezone, not the device's.
+        const hour = race.timezone
+            ? parseInt(current.toLocaleString('en-US', { hour: '2-digit', hour12: false, timeZone: race.timezone }), 10)
+            : current.getHours()
+
+        // Fallback night (8 PM to 6 AM, race-local)
         let isNight = hour >= 20 || hour < 6
 
         // Use precise twilight if we have coordinates
@@ -99,25 +112,27 @@ function getDynamicFactors(
             }
         }
 
+        // Night: base 8%, scaled up by terrain difficulty (technical trails hurt more in the dark).
+        // Terrain factor clamp 1.0..1.5 → adds 0 to +7% on top of the base 8%. Max night hit: 15%.
         if (isNight) {
-            factor += 0.10 // 10% slower at night
+            const terrainMult = terrainFactor ? Math.max(1.0, terrainFactor) : 1.0
+            factor += 0.08 + Math.min(0.07, (terrainMult - 1.0) * 0.15)
         }
 
-        // Temperature Factor
-        // Hot hours: 12 PM (12:00) to 4 PM (16:00)
-        const isHotHours = hour >= 12 && hour <= 16
+        // Heat: continuous ramp 75°F→0% up to 95°F→+10%. Active 11am–6pm local.
+        const isHotHours = hour >= 11 && hour <= 18
         if (isHotHours && race.avg_temp_high) {
-            const highTemp = parseInt(race.avg_temp_high.toString())
-            if (!isNaN(highTemp) && highTemp >= 80) {
-                factor += 0.05 // 5% slower in peak heat if temp >= 80F
+            const highTemp = parseFloat(race.avg_temp_high.toString())
+            if (!isNaN(highTemp) && highTemp > 75) {
+                factor += Math.min(0.10, ((highTemp - 75) / 20) * 0.10)
             }
         }
 
-        // Cold Night Factor
+        // Cold: continuous ramp 40°F→0% down to 20°F→+8%. Only counts at night.
         if (isNight && race.avg_temp_low) {
-            const lowTemp = parseInt(race.avg_temp_low.toString())
-            if (!isNaN(lowTemp) && lowTemp <= 35) {
-                factor += 0.05 // extra 5% slower if night is freezing/cold
+            const lowTemp = parseFloat(race.avg_temp_low.toString())
+            if (!isNaN(lowTemp) && lowTemp < 40) {
+                factor += Math.min(0.08, ((40 - lowTemp) / 20) * 0.08)
             }
         }
     }
@@ -143,8 +158,13 @@ export function calculatePacePlan(
         terrainFactor: number
     }[] = []
 
-    // Ensure profile covers the full distance
-    const samples = [...courseProfile]
+    // Drop duplicate/non-advancing samples so segmentDetails stays in lockstep with samples.
+    const samples: { distance: number; elevation: number }[] = []
+    for (const s of courseProfile) {
+        if (samples.length === 0 || s.distance > samples[samples.length - 1].distance) {
+            samples.push(s)
+        }
+    }
     if (samples.length < 2) {
         return { totalTime: 0, movingTime: 0, avgPace: 0, avgGap: 0, splits: [], waypointArrivals: [] }
     }
@@ -152,8 +172,7 @@ export function calculatePacePlan(
     for (let i = 0; i < samples.length - 1; i++) {
         const p1 = samples[i]
         const p2 = samples[i + 1]
-        const dist = p2.distance - p1.distance // miles
-        if (dist <= 0) continue
+        const dist = p2.distance - p1.distance // miles, guaranteed > 0 after dedupe
 
         const eleChangeFt = p2.elevation - p1.elevation
         const eleChangeMeters = eleChangeFt * 0.3048
@@ -197,6 +216,7 @@ export function calculatePacePlan(
         let currentMovingTime = 0 // minutes
         let currentDist = 0
         let prevWaypointDist = 0
+        let prevDepartureTime = 0 // wall-clock time the runner leaves the previous waypoint (arrival + its delay)
         let waypointIdx = 0
         const sortedWaypoints = [...waypoints].sort((a, b) => a.mile - b.mile)
 
@@ -209,7 +229,16 @@ export function calculatePacePlan(
         for (let i = 0; i < samples.length - 1; i++) {
             const detail = segmentDetails[i]
 
-            const dynamicFactor = getDynamicFactors(samples[i].distance, totalDistance, currentElapsedTime, race, lat, lon)
+            const dynamicFactor = getDynamicFactors(
+                samples[i].distance,
+                totalDistance,
+                currentElapsedTime,
+                race,
+                lat,
+                lon,
+                samples[i].elevation,
+                detail.terrainFactor
+            )
             const segmentGap = testBaseGap
             const segmentPace = segmentGap * detail.gradeFactor * detail.terrainFactor * dynamicFactor
             const segmentTime = segmentPace * detail.dist
@@ -233,6 +262,7 @@ export function calculatePacePlan(
                         overallPace: 0
                     })
                     prevWaypointDist = wp.mile
+                    prevDepartureTime = 0
                     waypointIdx++
                     continue
                 }
@@ -243,8 +273,7 @@ export function calculatePacePlan(
                     const timeIntoSegment = segmentTime * (distIntoSegment / detail.dist)
                     const arrivalTime = currentElapsedTime + timeIntoSegment
 
-                    const prevArrival = waypointArrivals.length > 0 ? waypointArrivals[waypointArrivals.length - 1].arrivalTime : 0
-                    const segmentTimeMin = arrivalTime - prevArrival
+                    const segmentTimeMin = arrivalTime - prevDepartureTime
 
                     const segDist = wp.mile - prevWaypointDist
                     const segPace = segDist > 0 ? segmentTimeMin / segDist : 0
@@ -266,6 +295,7 @@ export function calculatePacePlan(
                     // Add delay
                     const delay = waypointDelays[wp.id] || 0
                     currentElapsedTime += delay
+                    prevDepartureTime = arrivalTime + delay
                     waypointIdx++
                 } else {
                     break
@@ -281,8 +311,7 @@ export function calculatePacePlan(
         while (waypointIdx < sortedWaypoints.length) {
             const wp = sortedWaypoints[waypointIdx]
 
-            const prevArrival = waypointArrivals.length > 0 ? waypointArrivals[waypointArrivals.length - 1].arrivalTime : 0
-            const segmentTimeMin = currentElapsedTime - prevArrival
+            const segmentTimeMin = currentElapsedTime - prevDepartureTime
 
             const segDist = wp.mile - prevWaypointDist
             const segPace = segDist > 0 ? segmentTimeMin / segDist : 0
@@ -299,6 +328,7 @@ export function calculatePacePlan(
                 overallPace: ovPace
             })
             prevWaypointDist = wp.mile
+            prevDepartureTime = currentElapsedTime
             waypointIdx++
         }
 
