@@ -66,41 +66,60 @@ function metersToFeet(meters: number): number {
     return meters * 3.28084
 }
 
-// Distance-window smoothing before summation: a fixed-meter moving average
-// neutralizes elevation noise regardless of GPX point density. 60m window
-// balances clean StravaGPX exports vs noisier device/race-provided tracks —
-// validated against Strava ground-truth on Bay Area 100 (−1.6%) and Leona
-// Divide 50 (+1.9%).
-const ELEVATION_SMOOTH_WINDOW_METERS = 60
-const ELEVATION_SMOOTH_WINDOW_MILES = ELEVATION_SMOOTH_WINDOW_METERS / 1609.344
+// Distance-window smoothing before summation neutralizes elevation noise
+// regardless of GPX point density. Window size depends on noise level:
+// clean DEM-corrected StravaGPX exports use 60m; noisier wearable/race
+// exports use 100m. Validated against Strava ground-truth:
+//   Bay Area 100 (StravaGPX)   −1.6%
+//   Leona Divide (RubyGem)     −0.4%
+//   Cocodona 250  (COROS)      +1.3%
+const ELEVATION_WINDOW_CLEAN_M = 60
+const ELEVATION_WINDOW_NOISY_M = 100
+const ELEVATION_NOISE_RATIO_THRESHOLD = 1.10
 
-function computeElevationStatsFromProfile(
-    profile: { distance: number; elevation: number }[]
-): { gainFt: number; lossFt: number } {
-    if (profile.length < 2) return { gainFt: 0, lossFt: 0 }
-    const half = ELEVATION_SMOOTH_WINDOW_MILES / 2
+function sumSmoothed(profile: { distance: number; elevation: number }[], windowM: number) {
+    const half = (windowM / 1609.344) / 2
     const smoothed = new Array<number>(profile.length)
     let lo = 0, hi = 0, sum = 0
     for (let i = 0; i < profile.length; i++) {
-        const target = profile[i].distance
-        while (hi < profile.length && profile[hi].distance <= target + half) {
+        const t = profile[i].distance
+        while (hi < profile.length && profile[hi].distance <= t + half) {
             sum += profile[hi].elevation
             hi++
         }
-        while (lo < hi && profile[lo].distance < target - half) {
+        while (lo < hi && profile[lo].distance < t - half) {
             sum -= profile[lo].elevation
             lo++
         }
         smoothed[i] = sum / Math.max(1, hi - lo)
     }
-    let gainFt = 0
-    let lossFt = 0
+    let gainFt = 0, lossFt = 0
     for (let i = 1; i < smoothed.length; i++) {
         const d = smoothed[i] - smoothed[i - 1]
         if (d > 0) gainFt += d
         else if (d < 0) lossFt += -d
     }
     return { gainFt, lossFt }
+}
+
+function computeElevationStatsFromProfile(
+    profile: { distance: number; elevation: number }[]
+): { gainFt: number; lossFt: number } {
+    if (profile.length < 2) return { gainFt: 0, lossFt: 0 }
+
+    // Estimate source noise: rawGain / 60m-smoothed gain. DEM-corrected
+    // files sit near 1.03, wearable tracks near 1.43.
+    let rawGain = 0
+    for (let i = 1; i < profile.length; i++) {
+        const d = profile[i].elevation - profile[i - 1].elevation
+        if (d > 0) rawGain += d
+    }
+    const clean = sumSmoothed(profile, ELEVATION_WINDOW_CLEAN_M)
+    const ratio = rawGain / Math.max(clean.gainFt, 1)
+    if (ratio > ELEVATION_NOISE_RATIO_THRESHOLD) {
+        return sumSmoothed(profile, ELEVATION_WINDOW_NOISY_M)
+    }
+    return clean
 }
 
 /**
