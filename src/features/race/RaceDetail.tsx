@@ -516,6 +516,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   }
 
   const [isTerrainMode, setIsTerrainMode] = useState(false)
+  const [isEditMode, setIsEditMode] = useState(false)
 
   // Map Interactions
   const handleMapClick = (lat: number, lon: number, type?: string) => {
@@ -1063,13 +1064,13 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                         highlightedWaypointId={hoveredWaypointId}
                         coordinates={coordinates}
                         waypoints={courseMapWaypoints}
-                        isTerrainMode={isOwner && isTerrainMode}
-                        onMapClick={isOwner ? handleMapClick : undefined}
+                        isTerrainMode={isOwner && isEditMode && isTerrainMode}
+                        onMapClick={isOwner && isEditMode ? handleMapClick : undefined}
                         onWaypointClick={(id: string) => {
                           const wp = waypoints.find(w => w.id === id)
                           if (wp) setViewingWaypoint(wp)
                         }}
-                        onWaypointMove={isOwner ? handleWaypointMove : undefined}
+                        onWaypointMove={isOwner && isEditMode ? handleWaypointMove : undefined}
                         onHover={setHoveredMile}
                         highlightMile={hoveredMile ?? undefined}
                         showMileMarkers={showMileMarkers}
@@ -1088,12 +1089,12 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
                         highlightedTerrainId={hoveredTerrainId} // New Prop
                         terrainNodes={terrainNodes}
-                        onTerrainNodeClick={isOwner ? (id: string) => {
+                        onTerrainNodeClick={isOwner && isEditMode ? (id: string) => {
                           const node = terrainNodes.find(n => n.id === id)
                           if (node) setEditingTerrainNode(node)
                         } : undefined}
-                        onSaveTerrain={isOwner ? handleSaveTerrainSegment : undefined}
-                        onTerrainNodeMove={isOwner ? handleTerrainNodeMove : undefined}
+                        onSaveTerrain={isOwner && isEditMode ? handleSaveTerrainSegment : undefined}
+                        onTerrainNodeMove={isOwner && isEditMode ? handleTerrainNodeMove : undefined}
                       />
                     </Suspense>
                   </div>
@@ -1114,7 +1115,18 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                 {/* Right Sidebar: Stats & Waypoints */}
                 <div className='w-full md:w-80 border-l border-neutral-800 bg-neutral-900 overflow-y-auto flex-shrink-0'>
                   <div className='p-4 border-b border-neutral-800'>
-                    <h3 className='text-sm font-semibold text-neutral-400 mb-4 uppercase tracking-wider'>Route Stats</h3>
+                    <div className='flex items-center justify-between mb-4'>
+                      <h3 className='text-sm font-semibold text-neutral-400 uppercase tracking-wider'>Route Stats</h3>
+                      {isOwner && (
+                        <button
+                          onClick={() => { setIsEditMode(!isEditMode); setIsTerrainMode(false) }}
+                          className={`text-xs px-2 py-1 rounded border transition-colors flex items-center gap-1 ${isEditMode ? 'bg-blue-600 text-white border-blue-500' : 'bg-neutral-800 text-neutral-500 border-neutral-700 hover:bg-neutral-700 hover:text-neutral-300'}`}
+                        >
+                          <Settings className='w-3 h-3' />
+                          {isEditMode ? 'Done' : 'Edit'}
+                        </button>
+                      )}
+                    </div>
                     {course && (
                       <div className='grid grid-cols-2 gap-4'>
                         <div>
@@ -1190,7 +1202,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                       <h3 className='text-sm font-semibold text-neutral-400 flex-1 uppercase tracking-wider flex items-center gap-2'>
                         {isAidListOpen ? '▼' : '▶'} Aid Stations
                       </h3>
-                      {isOwner && (
+                      {isOwner && isEditMode && (
                         <button
                           onClick={(e) => { e.stopPropagation(); setEditingWaypoint({ mile: 0 }) }}
                           className="text-xs bg-neutral-800 hover:bg-neutral-700 text-white px-2 py-1 rounded border border-neutral-700 transition-colors ml-2"
@@ -1243,7 +1255,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                           {isTerrainListOpen ? '▼' : '▶'} Terrain
                         </h3>
                       </div>
-                      {isOwner && (
+                      {isOwner && isEditMode && (
                         <div className="flex gap-2">
                           <button
                             onClick={() => setIsTerrainMode(!isTerrainMode)}

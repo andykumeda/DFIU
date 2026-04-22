@@ -66,51 +66,28 @@ function metersToFeet(meters: number): number {
     return meters * 3.28084
 }
 
-/**
- * Compute elevation gain and loss using hysteresis.
- *
- * Counts gain only after a cumulative rise of >= minGainM above the last low
- * point, and loss only after a cumulative drop of >= minGainM below the last
- * high point. This is recording-density-agnostic: it works correctly whether
- * the GPS logged points every 5m or every 50m.
- *
- * The previous moving-average approach used a fixed point-count window (7
- * points), which over-smoothed sparse tracks (e.g. Garmin smart recording at
- * ~50m intervals), causing ~1000ft of under-counting on a 50-mile race.
- */
-function computeElevationStats(
-    elevations: (number | null)[],
-    minGainM: number = 5.0
-): { gain: number; loss: number } {
+function medianFilter(arr: number[], windowSize: number = 5): number[] {
+    const half = Math.floor(windowSize / 2)
+    return arr.map((_, i) => {
+        const start = Math.max(0, i - half)
+        const end = Math.min(arr.length, i + half + 1)
+        const slice = arr.slice(start, end).sort((a, b) => a - b)
+        return slice[Math.floor(slice.length / 2)]
+    })
+}
+
+function computeElevationStats(elevations: (number | null)[]): { gain: number; loss: number } {
     const valid = elevations.filter((e): e is number => e !== null && Number.isFinite(e))
     if (valid.length < 2) return { gain: 0, loss: 0 }
 
+    const filtered = medianFilter(valid)
     let gain = 0
     let loss = 0
-    // Track low/high water marks independently for gain and loss
-    let gainLow = valid[0]   // lowest point since last gain was counted
-    let lossHigh = valid[0]  // highest point since last loss was counted
-
-    for (let i = 1; i < valid.length; i++) {
-        const e = valid[i]
-
-        // Gain: count when we've risen >= minGainM above the last low
-        if (e < gainLow) {
-            gainLow = e
-        } else if (e - gainLow >= minGainM) {
-            gain += e - gainLow
-            gainLow = e
-        }
-
-        // Loss: count when we've dropped >= minGainM below the last high
-        if (e > lossHigh) {
-            lossHigh = e
-        } else if (lossHigh - e >= minGainM) {
-            loss += lossHigh - e
-            lossHigh = e
-        }
+    for (let i = 1; i < filtered.length; i++) {
+        const delta = filtered[i] - filtered[i - 1]
+        if (delta > 0) gain += delta
+        else if (delta < 0) loss += -delta
     }
-
     return { gain, loss }
 }
 
