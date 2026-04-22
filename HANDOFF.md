@@ -1,8 +1,11 @@
 # Handoff Document
 
-**Date:** 2026-03-05
+**Date:** 2026-04-21
 **Status:** Stable / Production Deployed
-**Last Deployed Commit:** b7f9050
+**Last Deployed Commit:** d3b1d44
+
+> Latest session notes: see `docs/handoff/2026-04-21-session-handoff.md`.
+> Elevation algorithm now within ~2% of Strava on all three tested GPX sources.
 
 > [!IMPORTANT]
 > **PROTOCOL INSTRUCTION:**
