@@ -66,25 +66,14 @@ function metersToFeet(meters: number): number {
     return meters * 3.28084
 }
 
-function medianFilter(arr: number[], windowSize: number = 5): number[] {
-    const half = Math.floor(windowSize / 2)
-    return arr.map((_, i) => {
-        const start = Math.max(0, i - half)
-        const end = Math.min(arr.length, i + half + 1)
-        const slice = arr.slice(start, end).sort((a, b) => a - b)
-        return slice[Math.floor(slice.length / 2)]
-    })
-}
-
 function computeElevationStats(elevations: (number | null)[]): { gain: number; loss: number } {
     const valid = elevations.filter((e): e is number => e !== null && Number.isFinite(e))
     if (valid.length < 2) return { gain: 0, loss: 0 }
 
-    const filtered = medianFilter(valid)
     let gain = 0
     let loss = 0
-    for (let i = 1; i < filtered.length; i++) {
-        const delta = filtered[i] - filtered[i - 1]
+    for (let i = 1; i < valid.length; i++) {
+        const delta = valid[i] - valid[i - 1]
         if (delta > 0) gain += delta
         else if (delta < 0) loss += -delta
     }
@@ -200,7 +189,7 @@ export function parseGpx(gpxString: string): GpxParseResult {
         }
     }
 
-    // Second pass: compute gain/loss using hysteresis (density-agnostic)
+    // Second pass: compute gain/loss via naive summation of positive/negative deltas
     const rawElevations = allPoints.map(p => p.ele)
     const { gain, loss } = computeElevationStats(rawElevations)
     totalGain = metersToFeet(gain)
