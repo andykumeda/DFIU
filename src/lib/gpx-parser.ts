@@ -187,28 +187,23 @@ export function parseGpx(gpxString: string): GpxParseResult {
         // Add to coordinates array (lon, lat for GeoJSON)
         coordinates.push([point.lon, point.lat])
 
-        // Track elevation extremes
+        // Accumulate distance to this point first so the profile entry below
+        // carries the correct cumulative distance at point i.
+        if (i > 0) {
+            const prev = allPoints[i - 1]
+            totalDistance += haversineDistance(prev.lat, prev.lon, point.lat, point.lon)
+        }
+
         if (point.ele !== null && Number.isFinite(point.ele)) {
             const eleFt = metersToFeet(point.ele)
-
-            // Only update extremes if valid
             if (Number.isFinite(eleFt)) {
                 minEle = Math.min(minEle, eleFt)
                 maxEle = Math.max(maxEle, eleFt)
             }
-
-            // Add to elevation profile (raw values for chart fidelity)
             elevationProfile.push({
                 distance: totalDistance,
                 elevation: eleFt
             })
-        }
-
-        // Accumulate distance
-        if (i > 0) {
-            const prev = allPoints[i - 1]
-            const dist = haversineDistance(prev.lat, prev.lon, point.lat, point.lon)
-            totalDistance += dist
         }
     }
 
