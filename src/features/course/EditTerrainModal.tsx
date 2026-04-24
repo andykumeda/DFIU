@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { TerrainNode } from '@/types/database'
 import styles from '../race/EditRaceModal.module.css' // Reuse consistent styles
+import { TERRAIN_TYPES, getTerrainDefaultDifficulty } from './terrain-constants'
 
 
 
@@ -40,16 +41,7 @@ export function EditTerrainModal({ node, startMile: initialStartMile, endMile: i
     }, [node])
 
     const handleTypeChange = (newType: string) => {
-        let defaultDiff = 100
-        switch (newType) {
-            case 'paved': defaultDiff = 100; break;
-            case 'dirt': defaultDiff = 104; break;
-            case 'double_track': defaultDiff = 108; break;
-            case 'single_track': defaultDiff = 115; break;
-            case 'technical': defaultDiff = 130; break;
-            default: defaultDiff = 100;
-        }
-        setFormData(prev => ({ ...prev, type: newType as any, difficulty: defaultDiff }))
+        setFormData(prev => ({ ...prev, type: newType as any, difficulty: getTerrainDefaultDifficulty(newType) }))
     }
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -115,12 +107,11 @@ export function EditTerrainModal({ node, startMile: initialStartMile, endMile: i
                             className={styles.select}
                             style={{ padding: '0.75rem', borderRadius: '6px', border: '1px solid #ddd', width: '100%' }}
                         >
-                            <option value="paved">Paved / Road (0%)</option>
-                            <option value="dirt">Dirt Road (4%)</option>
-                            <option value="double_track">Double Track (8%)</option>
-                            <option value="single_track">Single Track (15%)</option>
-                            <option value="technical">Technical (30%)</option>
-                            <option value="other">Other</option>
+                            {TERRAIN_TYPES.map(t => (
+                                <option key={t.value} value={t.value}>
+                                    {t.label} ({t.defaultDifficulty - 100 >= 0 ? '+' : ''}{t.defaultDifficulty - 100}%)
+                                </option>
+                            ))}
                         </select>
                     </div>
 

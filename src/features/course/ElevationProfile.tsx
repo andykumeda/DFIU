@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import styles from './ElevationProfile.module.css'
+import { getTerrainColor } from './terrain-constants'
 
 interface WaypointMarker {
     id: string
@@ -30,20 +31,6 @@ interface ElevationProfileProps {
     terrainNodes?: TerrainNode[]
 }
 
-function getTerrainColor(type: string): string {
-    switch (type) {
-        case 'paved': return '#3b82f6' // blue-500
-        case 'dirt': return '#eab308' // yellow-500
-        case 'double_track': return '#f97316' // orange-500
-        case 'single_track': return '#ef4444' // red-500
-        case 'technical': return '#7f1d1d' // red-900 (dark red)
-        case 'other': return '#9ca3af' // gray-400
-        case 'default': return '#4b5563' // gray-600 (Base Layer)
-        default: return '#9ca3af'
-    }
-}
-
-// ... ElevationProfile component ...
 
 export function ElevationProfile({
     data,

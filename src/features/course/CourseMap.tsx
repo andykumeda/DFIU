@@ -9,6 +9,7 @@ import { X, Trash2, MapPin } from 'lucide-react'
 import MapStyleSwitcher from './MapStyleSwitcher'
 import { getNearestPointOnLine, getDistanceFromStart, getCoordinateAtDistance, getDistanceAtCoordinate } from '@/lib/geo-utils'
 import styles from './CourseMap.module.css'
+import { TERRAIN_TYPES, getTerrainColor, getTerrainDefaultDifficulty } from './terrain-constants'
 
 interface CourseMapProps {
     coordinates: [number, number][] // [lon, lat] pairs
@@ -1207,28 +1208,18 @@ export function CourseMap({
                                 className="w-full text-sm border border-neutral-300 rounded p-1.5 bg-neutral-50 text-neutral-900"
                                 defaultValue="paved"
                                 onChange={(e) => {
-                                    const val = e.target.value
-                                    let diff = 100
-                                    switch (val) {
-                                        case 'paved': diff = 100; break;
-                                        case 'dirt': diff = 104; break;
-                                        case 'double_track': diff = 108; break;
-                                        case 'single_track': diff = 115; break;
-                                        case 'technical': diff = 130; break;
-                                        default: diff = 100;
-                                    }
+                                    const diff = getTerrainDefaultDifficulty(e.target.value)
                                     const slider = document.getElementById('terrain-factor-slider') as HTMLInputElement
                                     const input = document.getElementById('terrain-factor-input') as HTMLInputElement
                                     if (slider) slider.value = String(diff)
                                     if (input) input.value = String(diff)
                                 }}
                             >
-                                <option value="paved">Paved / Road (0%)</option>
-                                <option value="dirt">Dirt Road (4%)</option>
-                                <option value="double_track">Double Track (8%)</option>
-                                <option value="single_track">Single Track (15%)</option>
-                                <option value="technical">Technical (30%)</option>
-                                <option value="other">Other</option>
+                                {TERRAIN_TYPES.map(t => (
+                                    <option key={t.value} value={t.value}>
+                                        {t.label} ({t.defaultDifficulty - 100 >= 0 ? '+' : ''}{t.defaultDifficulty - 100}%)
+                                    </option>
+                                ))}
                             </select>
                         </div>
 
@@ -1346,15 +1337,3 @@ function getWaypointIcon(type: string): string {
     }
 }
 
-function getTerrainColor(type: string): string {
-    switch (type) {
-        case 'paved': return '#3b82f6' // blue-500
-        case 'dirt': return '#eab308' // yellow-500
-        case 'double_track': return '#f97316' // orange-500
-        case 'single_track': return '#ef4444' // red-500
-        case 'technical': return '#7f1d1d' // red-900 (dark red)
-        case 'other': return '#9ca3af' // gray-400
-        case 'default': return '#4b5563' // gray-600 (Base Layer)
-        default: return '#9ca3af'
-    }
-}
