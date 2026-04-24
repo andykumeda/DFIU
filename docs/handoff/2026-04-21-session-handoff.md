@@ -71,9 +71,11 @@ User will experiment with additional routes and flag discrepancies >5%. If a new
 
 Elevation is computed at GPX upload and stored on `courses.total_elevation_gain_ft` / `total_elevation_loss_ft`. Deploying new code does **not** update existing rows. Re-upload is the only way to refresh. If a systemic backfill is ever wanted, the `courses.raw_gpx` column has the full GPX stored — a one-off script that re-runs `parseGpx` and updates the row would work.
 
-### C. Elevation loss less rigorously ground-truthed
+### C. Elevation loss less rigorously ground-truthed — PROMOTED TO NEXT PHASE
 
-Gains tested against Strava; losses only cross-checked for Cocodona (Strava 33,884 vs DFIU 34,×××, matching direction). If a race's descent stats matter more than gain, spot-check.
+Gains tested against Strava; losses only cross-checked for Cocodona (Strava 33,884 vs DFIU 34,×××, matching direction). User has flagged descents as equally important.
+
+See `docs/handoff/next-phase-descent-verification.md` for the full plan, inputs required from user, and retune playbook.
 
 ---
 

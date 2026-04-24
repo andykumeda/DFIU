@@ -5,7 +5,17 @@
 **Last Deployed Commit:** d3b1d44
 
 > Latest session notes: see `docs/handoff/2026-04-21-session-handoff.md`.
-> Elevation algorithm now within ~2% of Strava on all three tested GPX sources.
+> Elevation **gain** now within ~2% of Strava on all three tested GPX sources.
+>
+> **Next planned phases:**
+> 1. Elevation **loss** ground-truth verification — `docs/handoff/next-phase-descent-verification.md`. Awaiting user-supplied Strava descent numbers for Bay Area 100 and Leona Divide 50 (Cocodona loss: 33,884 ft).
+> 2. Roles & permissions (RBAC) — `docs/handoff/next-phase-roles-permissions.md`. Site admin + event owner + crew + pacer, view/edit per grant. Greenfield — requires design checkpoint with user before code (6 blocking decisions documented).
+> 3. History-based pace calculation — `docs/handoff/next-phase-history-based-pacing.md`. Use runner's past Strava / UltraSignup results (exact race or similar) to seed pace predictions. 5 blocking design decisions.
+> 4. Crew mode: inter-aid-station directions + drive-time ETA — `docs/handoff/next-phase-crew-mode-directions.md`. Google Maps / Mapbox / Apple Maps routing per leg. **Depends on RBAC phase** for crew role gating.
+> 5. Terrain entry UX redesign — `docs/handoff/next-phase-terrain-ux.md`. Replace per-segment modal with elevation-profile / list painting. 5 design decisions. Small prep refactor landed 2026-04-23 (`terrain-constants.ts` dedup) — user should review.
+>
+> **Parallelizable:** phases 1, 2, 3, 5 are independent. Phase 4 depends on 2.
+> **Quick bug to fix early:** drop-bag modal top is clipped — see Known Issues below.
 
 > [!IMPORTANT]
 > **PROTOCOL INSTRUCTION:**
@@ -101,6 +111,7 @@ The drag/drop system for waypoints on the course map involves careful coordinati
 *   **Production Deployment:** The app is deployed to `/var/www/dfiu` via `./scripts/deploy-remote.sh`.
 *   **Known Issues**:
     *   **Logo Navigation**: Clicking the logo/title may not reliably navigate to `/dashboard` despite `z-index` fixes.
+    *   **Drop Bag Modal — top cut off**: Top of the Drop Bag modal is clipped; users cannot see the header/top content. Likely a viewport height / flex overflow issue in `src/features/race/DropBagModal.tsx`. Reproduce on standard desktop viewport and mobile. Should be fixed early in next session — small scope, high-visibility bug.
 
 ## Next Steps
 
