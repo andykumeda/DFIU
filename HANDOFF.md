@@ -1,17 +1,25 @@
 # Handoff Document
 
-**Date:** 2026-04-30 (late evening session)
+**Date:** 2026-04-30 (late evening session — closed)
 **Status:** Stable / Production Deployed
-**Last Deployed Commit:** see `git log -1` (latest: terrain click-then-classify)
+**Last Deployed Commit:** `d78c351` (footer hash now uses `git describe --dirty`, so a `-dirty` suffix flags uncommitted-bundle drift).
 
-> **2026-04-30 evening session shipped (terrain entry UX rework):**
+> **2026-04-30 last-pass fixes (after the terrain rework):**
+> - **DropBag modal top no longer clipped.** Two-step fix:
+>   1. `5c8136f` — `90vh` → `90dvh` + outer `overflow-y-auto`. Helped, but `flex items-center` directly on the scroll container kept clipping when the modal grew taller than the viewport.
+>   2. `f94d53f` — Switched to the standard nested-wrapper pattern: outer = `fixed inset-0 overflow-y-auto`; inner wrapper = `flex min-h-full items-center justify-center p-4`; modal = `max-h-[calc(100dvh-2rem)]`. Short content centers; tall content top-aligns and scrolls.
+>   3. `d78c351` — Modal `z-50` → `z-[200]` so it overlays the page header (which is `z-[100]`).
+> - **Page header trimmed** in `RaceDetail.tsx` — logo `h-24` → `h-14`, title `text-6xl` → `text-4xl`, `py-4` → `py-2`. Removes the empty whitespace under the wordmark.
+> - **Build hash now uses `git describe --always --dirty --abbrev=7`** (`vite.config.ts`). Bundles built on a dirty working tree show `abc1234-dirty` in the footer. Deploy script unchanged.
+>
+> **2026-04-30 evening session shipped (terrain entry UX rework — still current):**
 > - **Click-then-classify replaces brush flow.** Two map clicks define a segment; popup pops up at top-center of the map for terrain type selection (Save/Cancel). Profile drag still works — release fires the same popup.
 > - **Out-and-back auto-paint.** After saving a segment, `findParallelMileRanges` (in `RaceDetail.tsx`) scans the route for coords within 25m of the picked range, groups them into mile ranges, and paints each with the same terrain. Handles out-and-backs, lollipop stems, and repeated loops.
 > - **Adjacent paint snap.** Save tolerance widened from 0.01mi → 0.1mi (`SNAP_TOL` in `handleSaveTerrainSegment`). No more thin "default" sliver between back-to-back segments.
 > - **Inline mile edit in sidebar.** Click a segment's mile range → number input with ✓/× (Enter saves, Esc cancels). Wired to `handleUpdateTerrainNodeMile` (recomputes lat/lon via `getCoordinateAtDistance`).
 > - **Removed:** `T` map toggle button, brush selector chips in sidebar, drag-paint on map, embedded popup in CourseMap, `isTerrainMode` state in RaceDetail, `brushType`/`onPaintRange` plumbing in CourseMap and ElevationProfile.
 >
-> **Files touched:**
+> **Files touched (terrain rework):**
 > - `src/features/course/CourseMap.tsx` — `onSegmentDefined` prop; click handler captures 2 points then fires; T button + popup gone.
 > - `src/features/course/ElevationProfile.tsx` — `onRangeDefined` prop; brushType references stripped; drag preview uses static amber.
 > - `src/features/course/TerrainSidebar.tsx` — brush chips removed; new `onUpdateNodeMile` prop drives inline mile editing.
@@ -22,12 +30,19 @@
 > - `SNAP_TOL = 0.1` in `handleSaveTerrainSegment` — adjacent-paint snap window in miles.
 > - `0.05` minimum range threshold in CourseMap click handler + ElevationProfile drag end — ignores micro-strokes.
 >
-> **2026-04-30 earlier in the day shipped (still valid context):**
-> - **Dropbag modal clipping fix** (`5c8136f`) — `90vh` → `90dvh` + outer `overflow-y-auto`.
-> - **Terrain UX redesign phases 1–3** — hover tooltip, sidebar inline editor, drag-paint brush on elevation profile. Phase 3 brush flow has now been replaced by click-then-classify (this evening's rework).
+> **2026-04-30 earlier in the day shipped (context):**
+> - Terrain UX redesign phases 1–3 — hover tooltip, sidebar inline editor, drag-paint brush on elevation profile. Phase 3 brush flow has now been replaced by click-then-classify (this evening's rework).
 > - Taxonomy and `defaultDifficulty` values frozen per design call (memory: `project_terrain_ux_scope.md`).
 >
-> **Open: continue testing the new flow.** User indicated "It seems like it is working. I will continue to test." If parallel-pass detection misfires, tune `TOL_M`. If popup placement is awkward, it lives in `RaceDetail.tsx` inside the map column (search for `pendingSegment &&`).
+> **Open going into next session:**
+> - **Terrain feature** — user is testing tomorrow. Last quote: "It seems to be working as expected." If parallel-pass detection misfires, tune `TOL_M`. If popup placement is awkward, it lives in `RaceDetail.tsx` inside the map column (search for `pendingSegment &&`).
+> - **Drop bag modal** — confirmed resolved this session. No follow-up expected unless a new viewport edge case appears.
+>
+> **Workflow note for the remote-dev case:**
+> The user develops remotely and only sees prod (no localhost access). Process:
+> 1. **Commit before deploy.** If you build with uncommitted changes, the footer label lags reality — the bundle has the new code but the commit hash shown is the old one. With the new `--dirty` suffix this becomes visible (`abc1234-dirty`), but committing first is still cleaner.
+> 2. **Hard refresh after deploy.** Browser caches `index.html` aggressively. Cmd+Shift+R or DevTools "Disable cache". The bundle filenames are content-hashed so the cache busts automatically once `index.html` is fresh.
+> 3. There is **no service worker**, so the only cache layer to fight is the browser's own.
 >
 > **Next planned phases (still queued, untouched this session):**
 > 1. Elevation **loss** verification — `docs/handoff/next-phase-descent-verification.md`. (User indicated current accuracy is acceptable; can defer.)
