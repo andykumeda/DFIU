@@ -1,24 +1,39 @@
 # Handoff Document
 
-**Date:** 2026-04-30
+**Date:** 2026-04-30 (late evening session)
 **Status:** Stable / Production Deployed
-**Last Deployed Commit:** see `git log -1`
+**Last Deployed Commit:** see `git log -1` (latest: terrain click-then-classify)
 
-> **2026-04-30 session shipped:**
-> - **Dropbag modal clipping fix** (`5c8136f`) — `90vh` → `90dvh` + outer `overflow-y-auto` so mobile browser chrome no longer pushes the header off-screen.
-> - **Terrain UX redesign phases 1–3** shipped:
->   - Phase 1 — hover tooltip on elevation profile (`mi A.A–B.B: type (+%)`).
->   - Phase 2 — `TerrainSidebar` inline editor replaces `EditTerrainModal`. Add/edit/delete segments without leaving the right panel. Hard cutover; `EditTerrainModal.tsx` deleted.
->   - Phase 3 — drag-paint brush on elevation profile. Brush chips in sidebar; drag the profile to paint a range; snaps to 0.1mi (shift = free-drag).
-> - Taxonomy and `defaultDifficulty` values frozen this phase per design call (memory: `project_terrain_ux_scope.md`).
+> **2026-04-30 evening session shipped (terrain entry UX rework):**
+> - **Click-then-classify replaces brush flow.** Two map clicks define a segment; popup pops up at top-center of the map for terrain type selection (Save/Cancel). Profile drag still works — release fires the same popup.
+> - **Out-and-back auto-paint.** After saving a segment, `findParallelMileRanges` (in `RaceDetail.tsx`) scans the route for coords within 25m of the picked range, groups them into mile ranges, and paints each with the same terrain. Handles out-and-backs, lollipop stems, and repeated loops.
+> - **Adjacent paint snap.** Save tolerance widened from 0.01mi → 0.1mi (`SNAP_TOL` in `handleSaveTerrainSegment`). No more thin "default" sliver between back-to-back segments.
+> - **Inline mile edit in sidebar.** Click a segment's mile range → number input with ✓/× (Enter saves, Esc cancels). Wired to `handleUpdateTerrainNodeMile` (recomputes lat/lon via `getCoordinateAtDistance`).
+> - **Removed:** `T` map toggle button, brush selector chips in sidebar, drag-paint on map, embedded popup in CourseMap, `isTerrainMode` state in RaceDetail, `brushType`/`onPaintRange` plumbing in CourseMap and ElevationProfile.
 >
-> **Next planned phases (still queued):**
+> **Files touched:**
+> - `src/features/course/CourseMap.tsx` — `onSegmentDefined` prop; click handler captures 2 points then fires; T button + popup gone.
+> - `src/features/course/ElevationProfile.tsx` — `onRangeDefined` prop; brushType references stripped; drag preview uses static amber.
+> - `src/features/course/TerrainSidebar.tsx` — brush chips removed; new `onUpdateNodeMile` prop drives inline mile editing.
+> - `src/features/race/RaceDetail.tsx` — `pendingSegment` + `pendingType` state; `findParallelMileRanges`; `confirmPendingSegment` (paints primary + parallels); popup rendered as floating overlay above map.
+>
+> **Tunables (in case practice diverges from intent):**
+> - `TOL_M = 25` in `findParallelMileRanges` — meters of proximity for "same physical pass." Bump up if parallel singletracks should merge; bump down if false positives.
+> - `SNAP_TOL = 0.1` in `handleSaveTerrainSegment` — adjacent-paint snap window in miles.
+> - `0.05` minimum range threshold in CourseMap click handler + ElevationProfile drag end — ignores micro-strokes.
+>
+> **2026-04-30 earlier in the day shipped (still valid context):**
+> - **Dropbag modal clipping fix** (`5c8136f`) — `90vh` → `90dvh` + outer `overflow-y-auto`.
+> - **Terrain UX redesign phases 1–3** — hover tooltip, sidebar inline editor, drag-paint brush on elevation profile. Phase 3 brush flow has now been replaced by click-then-classify (this evening's rework).
+> - Taxonomy and `defaultDifficulty` values frozen per design call (memory: `project_terrain_ux_scope.md`).
+>
+> **Open: continue testing the new flow.** User indicated "It seems like it is working. I will continue to test." If parallel-pass detection misfires, tune `TOL_M`. If popup placement is awkward, it lives in `RaceDetail.tsx` inside the map column (search for `pendingSegment &&`).
+>
+> **Next planned phases (still queued, untouched this session):**
 > 1. Elevation **loss** verification — `docs/handoff/next-phase-descent-verification.md`. (User indicated current accuracy is acceptable; can defer.)
 > 2. Roles & permissions (RBAC) — `docs/handoff/next-phase-roles-permissions.md`. 6 blocking design decisions, needs design checkpoint.
 > 3. History-based pace calculation — `docs/handoff/next-phase-history-based-pacing.md`. 5 blocking decisions.
 > 4. Crew mode directions — `docs/handoff/next-phase-crew-mode-directions.md`. Depends on RBAC.
->
-> **Terrain UX follow-ups (small):** map-paint mode (`isTerrainMode`) and the CourseMap "Draw" plumbing are now dead code paths since the brush lives on the elevation profile. Cleanup PR can rip `isTerrainMode` state and the in-map paint handlers when convenient.
 
 > [!IMPORTANT]
 > **PROTOCOL INSTRUCTION:**
@@ -111,10 +126,10 @@ The drag/drop system for waypoints on the course map involves careful coordinati
 
 ## Current State
 
-*   **Production Deployment:** The app is deployed to `/var/www/dfiu` via `./scripts/deploy-remote.sh`.
+*   **Production Deployment:** The app is deployed to `/var/www/dfiu` via `./scripts/deploy-remote.sh`. Deploys are **manual** — push alone does not deploy.
 *   **Known Issues**:
     *   **Logo Navigation**: Clicking the logo/title may not reliably navigate to `/dashboard` despite `z-index` fixes.
-    *   **Drop Bag Modal — top cut off**: Top of the Drop Bag modal is clipped; users cannot see the header/top content. Likely a viewport height / flex overflow issue in `src/features/race/DropBagModal.tsx`. Reproduce on standard desktop viewport and mobile. Should be fixed early in next session — small scope, high-visibility bug.
+    *   **Drop Bag Modal clip**: Fixed 2026-04-30 in `5c8136f`. Verify resolved; remove from list if so.
 
 ## Next Steps
 
