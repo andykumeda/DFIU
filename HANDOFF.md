@@ -1,21 +1,24 @@
 # Handoff Document
 
-**Date:** 2026-04-21
+**Date:** 2026-04-30
 **Status:** Stable / Production Deployed
-**Last Deployed Commit:** d3b1d44
+**Last Deployed Commit:** see `git log -1`
 
-> Latest session notes: see `docs/handoff/2026-04-21-session-handoff.md`.
-> Elevation **gain** now within ~2% of Strava on all three tested GPX sources.
+> **2026-04-30 session shipped:**
+> - **Dropbag modal clipping fix** (`5c8136f`) — `90vh` → `90dvh` + outer `overflow-y-auto` so mobile browser chrome no longer pushes the header off-screen.
+> - **Terrain UX redesign phases 1–3** shipped:
+>   - Phase 1 — hover tooltip on elevation profile (`mi A.A–B.B: type (+%)`).
+>   - Phase 2 — `TerrainSidebar` inline editor replaces `EditTerrainModal`. Add/edit/delete segments without leaving the right panel. Hard cutover; `EditTerrainModal.tsx` deleted.
+>   - Phase 3 — drag-paint brush on elevation profile. Brush chips in sidebar; drag the profile to paint a range; snaps to 0.1mi (shift = free-drag).
+> - Taxonomy and `defaultDifficulty` values frozen this phase per design call (memory: `project_terrain_ux_scope.md`).
 >
-> **Next planned phases:**
-> 1. Elevation **loss** ground-truth verification — `docs/handoff/next-phase-descent-verification.md`. Awaiting user-supplied Strava descent numbers for Bay Area 100 and Leona Divide 50 (Cocodona loss: 33,884 ft).
-> 2. Roles & permissions (RBAC) — `docs/handoff/next-phase-roles-permissions.md`. Site admin + event owner + crew + pacer, view/edit per grant. Greenfield — requires design checkpoint with user before code (6 blocking decisions documented).
-> 3. History-based pace calculation — `docs/handoff/next-phase-history-based-pacing.md`. Use runner's past Strava / UltraSignup results (exact race or similar) to seed pace predictions. 5 blocking design decisions.
-> 4. Crew mode: inter-aid-station directions + drive-time ETA — `docs/handoff/next-phase-crew-mode-directions.md`. Google Maps / Mapbox / Apple Maps routing per leg. **Depends on RBAC phase** for crew role gating.
-> 5. Terrain entry UX redesign — `docs/handoff/next-phase-terrain-ux.md`. Replace per-segment modal with elevation-profile / list painting. 5 design decisions. Small prep refactor landed 2026-04-23 (`terrain-constants.ts` dedup) — user should review.
+> **Next planned phases (still queued):**
+> 1. Elevation **loss** verification — `docs/handoff/next-phase-descent-verification.md`. (User indicated current accuracy is acceptable; can defer.)
+> 2. Roles & permissions (RBAC) — `docs/handoff/next-phase-roles-permissions.md`. 6 blocking design decisions, needs design checkpoint.
+> 3. History-based pace calculation — `docs/handoff/next-phase-history-based-pacing.md`. 5 blocking decisions.
+> 4. Crew mode directions — `docs/handoff/next-phase-crew-mode-directions.md`. Depends on RBAC.
 >
-> **Parallelizable:** phases 1, 2, 3, 5 are independent. Phase 4 depends on 2.
-> **Quick bug to fix early:** drop-bag modal top is clipped — see Known Issues below.
+> **Terrain UX follow-ups (small):** map-paint mode (`isTerrainMode`) and the CourseMap "Draw" plumbing are now dead code paths since the brush lives on the elevation profile. Cleanup PR can rip `isTerrainMode` state and the in-map paint handlers when convenient.
 
 > [!IMPORTANT]
 > **PROTOCOL INSTRUCTION:**
