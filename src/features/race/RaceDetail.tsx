@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase'
 import { Race, Course, Waypoint, TerrainNode } from '@/types/database'
 import { fetchWeatherForRace, fetchCurrentWeather } from '@/lib/weather-service'
 import { sampleElevationProfile, type GpxParseResult } from '@/lib/gpx-parser'
-import { getNearestPointOnLine, getDistanceFromStart, getAllVisitsOnLine } from '@/lib/geo-utils'
+import { getNearestPointOnLine, getDistanceFromStart, getAllVisitsOnLine, getDistance } from '@/lib/geo-utils'
 import { formatDate } from '@/lib/utils'
 import SunCalc from 'suncalc'
 
@@ -21,7 +21,7 @@ import { EditRaceModal } from '@/features/race/EditRaceModal'
 import { EditWaypointModal } from '@/features/course/EditWaypointModal'
 import { ViewWaypointModal } from '@/features/course/ViewWaypointModal'
 import { TerrainSidebar } from '@/features/course/TerrainSidebar'
-import { TerrainTypeValue } from '@/features/course/terrain-constants'
+import { TerrainTypeValue, TERRAIN_TYPES, getTerrainColor, getTerrainDefaultDifficulty } from '@/features/course/terrain-constants'
 import { PaceCalculator } from '@/features/race/PaceCalculator'
 import { RaceResources } from '@/features/race/RaceResources'
 import { DropBagsSection } from '@/features/race/DropBagsSection'
@@ -59,7 +59,9 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   const [hoveredMile, setHoveredMile] = useState<number | null>(null)
   const [hoveredWaypointId, setHoveredWaypointId] = useState<string | null>(null)
   const [hoveredTerrainId, setHoveredTerrainId] = useState<string | null>(null)
-  const [terrainBrush, setTerrainBrush] = useState<TerrainTypeValue | null>(null)
+  // Pending segment: set by map 2-click or profile drag → triggers classification popup.
+  const [pendingSegment, setPendingSegment] = useState<{ startMile: number; endMile: number } | null>(null)
+  const [pendingType, setPendingType] = useState<TerrainTypeValue>('single_track')
 
   const [showMileMarkers, setShowMileMarkers] = useState(true)
   const [fetchingWeather, setFetchingWeather] = useState(false)
@@ -515,7 +517,6 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     }
   }
 
-  const [isTerrainMode, setIsTerrainMode] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
 
   // Map Interactions
@@ -525,9 +526,6 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     if (!coordinates || coordinates.length === 0) return
 
     const nearest = getNearestPointOnLine({ lat, lon }, coordinates)
-
-    // Terrain mode no longer opens a modal — sidebar handles terrain CRUD.
-    if (isTerrainMode) return
 
     // Default: Add Waypoint
     if (nearest && nearest.distance < 0.5) {
@@ -743,6 +741,82 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     } catch (err: any) {
       console.error('Error saving terrain segment:', err)
       alert(`Failed to save segment: ${err.message || JSON.stringify(err)}`)
+    }
+  }
+
+  // For a picked mile range, find OTHER physical passes of the same trail
+  // (out-and-backs, lollipop stems, repeated loops). Returns mile ranges that
+  // should also be painted with the same terrain.
+  const findParallelMileRanges = (startMile: number, endMile: number): [number, number][] => {
+    if (coordinates.length < 2) return []
+    const lo = Math.min(startMile, endMile)
+    const hi = Math.max(startMile, endMile)
+
+    // Convert mile bounds to coord index bounds.
+    // getDistanceFromStart returns miles; walk array until cumulative reaches lo/hi.
+    let cum = 0
+    let iLo = 0
+    let iHi = coordinates.length - 1
+    let foundLo = false
+    for (let i = 1; i < coordinates.length; i++) {
+      const d = getDistance(coordinates[i - 1][1], coordinates[i - 1][0], coordinates[i][1], coordinates[i][0])
+      cum += d
+      if (!foundLo && cum >= lo) { iLo = i; foundLo = true }
+      if (cum >= hi) { iHi = i; break }
+    }
+    if (iLo >= iHi) return []
+
+    const TOL_M = 25
+    const TOL_DEG = TOL_M / 111000
+    const TOL_DEG_SQ = TOL_DEG * TOL_DEG
+
+    const matched = new Set<number>()
+    for (let i = iLo; i <= iHi; i++) {
+      const [loni, lati] = coordinates[i]
+      const cosLat = Math.cos(lati * Math.PI / 180)
+      for (let j = 0; j < coordinates.length; j++) {
+        if (j >= iLo && j <= iHi) continue
+        if (matched.has(j)) continue
+        const [lonj, latj] = coordinates[j]
+        const dy = lati - latj
+        const dx = (loni - lonj) * cosLat
+        if (dx * dx + dy * dy <= TOL_DEG_SQ) matched.add(j)
+      }
+    }
+
+    if (matched.size === 0) return []
+
+    // Group contiguous matched indices, bridge small gaps.
+    const arr = Array.from(matched).sort((a, b) => a - b)
+    const GAP = 4
+    const indexRanges: [number, number][] = []
+    let s = arr[0], e = arr[0]
+    for (let k = 1; k < arr.length; k++) {
+      if (arr[k] - e <= GAP) e = arr[k]
+      else { indexRanges.push([s, e]); s = arr[k]; e = arr[k] }
+    }
+    indexRanges.push([s, e])
+
+    return indexRanges.map(([a, b]) => {
+      const mA = getDistanceFromStart(coordinates, a, { lat: coordinates[a][1], lon: coordinates[a][0] })
+      const mB = getDistanceFromStart(coordinates, b, { lat: coordinates[b][1], lon: coordinates[b][0] })
+      return [Math.min(mA, mB), Math.max(mA, mB)] as [number, number]
+    }).filter(([a, b]) => b - a >= 0.05)
+  }
+
+  // Confirm the pending segment popup → paint primary range + any parallel passes.
+  const confirmPendingSegment = async () => {
+    if (!pendingSegment) return
+    const { startMile, endMile } = pendingSegment
+    const t = pendingType
+    const diff = getTerrainDefaultDifficulty(t)
+    setPendingSegment(null)
+
+    await handleSaveTerrainSegment(startMile, endMile, t, diff)
+
+    const parallels = findParallelMileRanges(startMile, endMile)
+    for (const [a, b] of parallels) {
+      await handleSaveTerrainSegment(a, b, t, diff)
     }
   }
 
@@ -1071,7 +1145,6 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                         highlightedWaypointId={hoveredWaypointId}
                         coordinates={coordinates}
                         waypoints={courseMapWaypoints}
-                        isTerrainMode={isOwner && isEditMode && isTerrainMode}
                         onMapClick={isOwner && isEditMode ? handleMapClick : undefined}
                         onWaypointClick={(id: string) => {
                           const wp = waypoints.find(w => w.id === id)
@@ -1097,10 +1170,57 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                         highlightedTerrainId={hoveredTerrainId}
                         terrainNodes={terrainNodes}
                         onTerrainNodeMove={isOwner && isEditMode ? handleTerrainNodeMove : undefined}
-                        brushType={isOwner && isEditMode ? terrainBrush : null}
-                        onPaintRange={isOwner && isEditMode ? handleSaveTerrainSegment : undefined}
+                        onSegmentDefined={isOwner && isEditMode ? (lo, hi) => setPendingSegment({ startMile: lo, endMile: hi }) : undefined}
                       />
                     </Suspense>
+
+                    {/* Terrain classification popup — appears once a segment is defined
+                        via 2 map clicks or a profile drag. */}
+                    {pendingSegment && (
+                      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 bg-white p-4 rounded-lg shadow-xl w-80 border border-neutral-200">
+                        <div className="flex items-center justify-between mb-3 border-b pb-2">
+                          <h3 className="text-sm font-bold text-neutral-900">Set Terrain</h3>
+                          <span className="text-xs font-mono text-neutral-500">
+                            {pendingSegment.startMile.toFixed(2)}–{pendingSegment.endMile.toFixed(2)} mi
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-1.5 mb-3">
+                          {TERRAIN_TYPES.filter(t => t.value !== 'other').map(t => {
+                            const active = pendingType === t.value
+                            return (
+                              <button
+                                key={t.value}
+                                onClick={() => setPendingType(t.value as TerrainTypeValue)}
+                                className={`text-xs px-2 py-1.5 rounded border text-left transition-colors ${
+                                  active
+                                    ? 'text-white border-transparent'
+                                    : 'text-neutral-700 border-neutral-300 hover:border-neutral-400 bg-white'
+                                }`}
+                                style={active ? { backgroundColor: getTerrainColor(t.value) } : undefined}
+                              >
+                                {t.label}
+                              </button>
+                            )
+                          })}
+                        </div>
+
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setPendingSegment(null)}
+                            className="flex-1 py-1.5 text-xs text-neutral-600 hover:bg-neutral-100 rounded border border-neutral-200"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={confirmPendingSegment}
+                            className="flex-1 py-1.5 text-xs bg-amber-600 hover:bg-amber-700 text-white font-medium rounded shadow-sm"
+                          >
+                            Save
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <div className='h-32 md:h-40 flex-shrink-0 border-t border-neutral-800 bg-neutral-900 z-10 relative'>
                     <ElevationProfile
@@ -1112,8 +1232,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                       showMileMarkers={showMileMarkers}
                       waypoints={waypoints.map(wp => ({ id: wp.id, mile: wp.mile, name: wp.name, type: wp.type }))}
                       terrainNodes={terrainNodes}
-                      brushType={isOwner && isEditMode ? terrainBrush : null}
-                      onPaintRange={isOwner && isEditMode ? handleSaveTerrainSegment : undefined}
+                      onRangeDefined={isOwner && isEditMode ? (lo, hi) => setPendingSegment({ startMile: lo, endMile: hi }) : undefined}
                     />
                   </div>
                 </div>
@@ -1125,7 +1244,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                       <h3 className='text-sm font-semibold text-neutral-400 uppercase tracking-wider'>Route Stats</h3>
                       {isOwner && (
                         <button
-                          onClick={() => { setIsEditMode(!isEditMode); setIsTerrainMode(false) }}
+                          onClick={() => { setIsEditMode(!isEditMode); setPendingSegment(null) }}
                           className={`text-xs px-2 py-1 rounded border transition-colors flex items-center gap-1 ${isEditMode ? 'bg-blue-600 text-white border-blue-500' : 'bg-neutral-800 text-neutral-500 border-neutral-700 hover:bg-neutral-700 hover:text-neutral-300'}`}
                         >
                           <Settings className='w-3 h-3' />
@@ -1263,8 +1382,6 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                     onSaveSegment={handleSaveTerrainSegment}
                     onDeleteNode={handleDeleteTerrainNode}
                     onUpdateNodeMile={handleUpdateTerrainNodeMile}
-                    brushType={terrainBrush}
-                    onBrushChange={setTerrainBrush}
                   />
                 </div>
               </div>

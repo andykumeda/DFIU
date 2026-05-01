@@ -5,8 +5,6 @@ import styles from './ElevationProfile.module.css'
 import {
     getTerrainColor,
     getTerrainLabel,
-    getTerrainDefaultDifficulty,
-    TerrainTypeValue,
 } from './terrain-constants'
 
 interface WaypointMarker {
@@ -35,8 +33,8 @@ interface ElevationProfileProps {
     showMileMarkers?: boolean
     waypoints?: WaypointMarker[]
     terrainNodes?: TerrainNode[]
-    brushType?: TerrainTypeValue | null
-    onPaintRange?: (startMile: number, endMile: number, type: string, difficulty: number) => void | Promise<void>
+    // Drag-release defines a mile range; parent opens the classification popup.
+    onRangeDefined?: (startMile: number, endMile: number) => void
 }
 
 
@@ -50,12 +48,11 @@ export function ElevationProfile({
     showMileMarkers = false,
     waypoints = [],
     terrainNodes = [],
-    brushType = null,
-    onPaintRange,
+    onRangeDefined,
 }: ElevationProfileProps) {
     const [dragStart, setDragStart] = useState<number | null>(null)
     const [dragEnd, setDragEnd] = useState<number | null>(null)
-    const isPainting = brushType != null && !!onPaintRange
+    const isPainting = !!onRangeDefined
     const dragStartRef = useRef<number | null>(null)
 
     const snapMile = (mi: number, freeDrag: boolean) => {
@@ -257,7 +254,7 @@ export function ElevationProfile({
         if (Math.abs(end - start) < 0.05) return // ignore tiny drags
         const lo = Math.min(start, end)
         const hi = Math.max(start, end)
-        onPaintRange?.(lo, hi, brushType!, getTerrainDefaultDifficulty(brushType!))
+        onRangeDefined?.(lo, hi)
     }
 
     const cancelDrag = () => {
@@ -381,7 +378,7 @@ export function ElevationProfile({
                                 y={0}
                                 width={Math.max(0.01, x2 - x1)}
                                 height={100}
-                                fill={getTerrainColor(brushType!)}
+                                fill="#f59e0b"
                                 opacity={0.25}
                                 pointerEvents="none"
                             />
@@ -482,14 +479,14 @@ export function ElevationProfile({
                         />
                     )}
 
-                    {/* Paint-mode status banner */}
-                    {isPainting && (
+                    {/* Active-drag mile range banner */}
+                    {isPainting && dragStart !== null && dragEnd !== null && (
                         <div
                             style={{
                                 position: 'absolute',
                                 top: 4,
                                 right: 4,
-                                background: getTerrainColor(brushType!),
+                                background: '#f59e0b',
                                 color: 'white',
                                 fontSize: 11,
                                 padding: '3px 8px',
@@ -499,14 +496,12 @@ export function ElevationProfile({
                                 boxShadow: '0 1px 4px rgba(0,0,0,0.4)',
                             }}
                         >
-                            {dragStart !== null && dragEnd !== null
-                                ? `Painting ${Math.min(dragStart, dragEnd).toFixed(2)}–${Math.max(dragStart, dragEnd).toFixed(2)} mi`
-                                : `Brush: ${getTerrainLabel(brushType!)} — drag profile`}
+                            {`${Math.min(dragStart, dragEnd).toFixed(2)}–${Math.max(dragStart, dragEnd).toFixed(2)} mi`}
                         </div>
                     )}
 
-                    {/* Terrain tooltip (suppressed in paint mode to avoid overlap) */}
-                    {!isPainting && terrainAtHover && terrainAtHover.type !== 'other' && (
+                    {/* Terrain tooltip (suppressed while actively dragging) */}
+                    {!(isPainting && dragStart !== null && dragEnd !== null) && terrainAtHover && terrainAtHover.type !== 'other' && (
                         <div
                             style={{
                                 position: 'absolute',

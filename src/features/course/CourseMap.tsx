@@ -9,7 +9,7 @@ import { X, Trash2, MapPin } from 'lucide-react'
 import MapStyleSwitcher from './MapStyleSwitcher'
 import { getNearestPointOnLine, getDistanceFromStart, getCoordinateAtDistance, getDistanceAtCoordinate } from '@/lib/geo-utils'
 import styles from './CourseMap.module.css'
-import { TERRAIN_TYPES, getTerrainColor, getTerrainDefaultDifficulty } from './terrain-constants'
+import { getTerrainColor } from './terrain-constants'
 
 interface CourseMapProps {
     coordinates: [number, number][] // [lon, lat] pairs
@@ -47,15 +47,15 @@ interface CourseMapProps {
     onTerrainNodeClick?: (id: string) => void
     showMileMarkers?: boolean
     onToggleMileMarkers?: () => void
-    isTerrainMode?: boolean
     highlightElevation?: number | null
     totalDistance?: number
     highlightedWaypointId?: string | null // New prop
     highlightedTerrainId?: string | null // Highlight terrain node being edited
-    onSaveTerrain?: (start: number, end: number, type: string, difficulty: number) => void
     onTerrainNodeMove?: (id: string, lat: number, lon: number, mile: number) => void
-    brushType?: string | null
-    onPaintRange?: (startMile: number, endMile: number, type: string, difficulty: number) => void | Promise<void>
+    // When provided, the map captures two clicks to define a terrain segment.
+    // RaceDetail then opens a classification popup; the picker is "click start,
+    // click end" rather than "select brush, then drag".
+    onSegmentDefined?: (startMile: number, endMile: number) => void
 }
 
 export function CourseMap({
@@ -76,17 +76,16 @@ export function CourseMap({
     totalDistance,
     highlightedWaypointId,
     highlightedTerrainId,
-    onSaveTerrain,
     onTerrainNodeMove,
-    brushType = null,
-    onPaintRange,
+    onSegmentDefined,
 }: CourseMapProps) {
     const mapContainer = useRef<HTMLDivElement>(null)
     const map = useRef<mapboxgl.Map | null>(null)
     const [mapLoaded, setMapLoaded] = useState(false)
     const [styleLoaded, setStyleLoaded] = useState(false) // Track style loading
     const [selectedPOIType, setSelectedPOIType] = useState<string | null>(null)
-    const [isTerrainMode, setIsTerrainMode] = useState(false)
+    // Terrain segment picking is always-on whenever an onSegmentDefined handler is wired.
+    const [isTerrainMode, setIsTerrainMode] = useState(!!onSegmentDefined)
     const [terrainSelection, setTerrainSelection] = useState<{
         start: { lat: number, lon: number, mile: number } | null
         end: { lat: number, lon: number, mile: number } | null
@@ -109,8 +108,7 @@ export function CourseMap({
     const onMapClickRef = useRef(onMapClick)
     const isTerrainModeRef = useRef(isTerrainMode)
     const terrainSelectionRef = useRef(terrainSelection)
-    const brushTypeRef = useRef<string | null>(null)
-    const onPaintRangeRef = useRef(onPaintRange)
+    const onSegmentDefinedRef = useRef(onSegmentDefined)
 
     // Sync refs for event listeners
     useEffect(() => { selectedPOITypeRef.current = selectedPOIType }, [selectedPOIType])
@@ -122,8 +120,11 @@ export function CourseMap({
     useEffect(() => { onMapClickRef.current = onMapClick }, [onMapClick])
     useEffect(() => { isTerrainModeRef.current = isTerrainMode }, [isTerrainMode])
     useEffect(() => { terrainSelectionRef.current = terrainSelection }, [terrainSelection])
-    useEffect(() => { brushTypeRef.current = brushType ?? null }, [brushType])
-    useEffect(() => { onPaintRangeRef.current = onPaintRange }, [onPaintRange])
+    useEffect(() => { onSegmentDefinedRef.current = onSegmentDefined }, [onSegmentDefined])
+
+    // Terrain editing is always active when the parent wires an onSegmentDefined
+    // handler (i.e. owner + edit mode). No "T" toggle needed.
+    useEffect(() => { setIsTerrainMode(!!onSegmentDefined) }, [onSegmentDefined])
 
     const handleStyleChange = (style: 'outdoors' | 'streets' | 'satellite') => {
         if (style === mapStyle) return
@@ -134,15 +135,6 @@ export function CourseMap({
                 ? 'mapbox://styles/mapbox/satellite-streets-v12'
                 : (style === 'streets' ? 'mapbox://styles/mapbox/streets-v12' : 'mapbox://styles/mapbox/outdoors-v12')
             map.current.setStyle(styleUrl)
-        }
-    }
-
-    // Toggle Terrain Mode
-    const toggleTerrainMode = () => {
-        setIsTerrainMode(!isTerrainMode)
-        // Clear selection when exiting
-        if (isTerrainMode) {
-            setTerrainSelection({ start: null, end: null })
         }
     }
 
@@ -1087,193 +1079,46 @@ export function CourseMap({
             const target = e.originalEvent.target as HTMLElement
             if (target.closest('.mapboxgl-marker')) return
 
-            // Brush mode owns its own pointer interactions; ignore plain clicks here.
-            if (brushTypeRef.current) return
+            // Waypoint placement (selected via toolbar) takes precedence over
+            // terrain picking — otherwise users couldn't add waypoints in edit mode.
+            if (selectedPOITypeRef.current && onMapClickRef.current) {
+                onMapClickRef.current(e.lngLat.lat, e.lngLat.lng, selectedPOITypeRef.current)
+                setSelectedPOIType(null)
+                return
+            }
 
-            // Terrain Selection Mode
+            // Terrain Segment Picking — always-on when an onSegmentDefined handler
+            // is wired. 1st click: set start. 2nd click: fire callback (parent
+            // opens the classification popup) and reset local state.
             if (isTerrainModeRef.current) {
                 const lngLat = e.lngLat
                 const snap = getNearestPointOnLine({ lat: lngLat.lat, lon: lngLat.lng }, coordinates)
+                if (!snap) return
 
-                if (snap) {
-                    const mile = getDistanceFromStart(coordinates, snap.index, { lat: snap.lat, lon: snap.lon })
-                    const point = { lat: snap.lat, lon: snap.lon, mile }
+                const mile = getDistanceFromStart(coordinates, snap.index, { lat: snap.lat, lon: snap.lon })
+                const point = { lat: snap.lat, lon: snap.lon, mile }
 
-                    setTerrainSelection(prev => {
-                        if (!prev.start) return { start: point, end: null }
-                        if (!prev.end) return { ...prev, end: point }
-                        // If both exist, reset start to new point, clear end
-                        return { start: point, end: null }
-                    })
-                }
+                setTerrainSelection(prev => {
+                    if (!prev.start) return { start: point, end: null }
+                    // 2nd click → emit and clear
+                    const a = Math.min(prev.start.mile, point.mile)
+                    const b = Math.max(prev.start.mile, point.mile)
+                    if (b - a >= 0.05) onSegmentDefinedRef.current?.(a, b)
+                    return { start: null, end: null }
+                })
                 return // Stop regular map click
             }
 
-            if (onMapClick) {
-                // Pass the selected type if any
-                onMapClick(e.lngLat.lat, e.lngLat.lng, selectedPOITypeRef.current || undefined)
-
-                // Reset tool after use (optional? RouteSmith resets)
-                if (selectedPOITypeRef.current) {
-                    setSelectedPOIType(null)
-                }
+            // Edit mode without terrain editor (read-only owner view, e.g. before
+            // GPX upload) still routes plain clicks through onMapClick if wired.
+            if (onMapClickRef.current) {
+                onMapClickRef.current(e.lngLat.lat, e.lngLat.lng)
             }
         }
 
         map.current.on('click', clickHandler)
         return () => { map.current?.off('click', clickHandler) }
     }, [mapLoaded, onMapClick, coordinates]) // Added coordinates dependency
-
-    // Map paint-brush — drag along the route to paint terrain.
-    // Multi-range output: out-and-back legs, switchbacks, etc. each become
-    // their own contiguous range, so RaceDetail.handleSaveTerrainSegment is
-    // called once per leg.
-    useEffect(() => {
-        if (!map.current || !mapLoaded || !styleLoaded) return
-        if (!brushType || !onPaintRange || coordinates.length < 2) return
-        const m = map.current
-
-        const PIXEL_BUFFER = 18 // ~touch-friendly radius around cursor
-        const GAP_TOLERANCE = 4 // bridge tiny index gaps from sparse sampling
-        const hitIndices = new Set<number>()
-        let dragging = false
-        let lastPx: { x: number, y: number } | null = null
-
-        const groupRanges = (): [number, number][] => {
-            if (hitIndices.size === 0) return []
-            const arr = Array.from(hitIndices).sort((a, b) => a - b)
-            const ranges: [number, number][] = []
-            let lo = arr[0], hi = arr[0]
-            for (let i = 1; i < arr.length; i++) {
-                if (arr[i] - hi <= GAP_TOLERANCE) hi = arr[i]
-                else { ranges.push([lo, hi]); lo = arr[i]; hi = arr[i] }
-            }
-            ranges.push([lo, hi])
-            return ranges
-        }
-
-        const updatePreview = () => {
-            const src = m.getSource('brush-preview') as mapboxgl.GeoJSONSource | undefined
-            if (!src) return
-            const ranges = groupRanges()
-            const features = ranges.map(([lo, hi]) => ({
-                type: 'Feature',
-                properties: {},
-                geometry: { type: 'LineString', coordinates: coordinates.slice(lo, hi + 1) },
-            })) as any[]
-            src.setData({ type: 'FeatureCollection', features } as any)
-        }
-
-        const sampleAt = (px: { x: number, y: number }) => {
-            const r2 = PIXEL_BUFFER * PIXEL_BUFFER
-            for (let i = 0; i < coordinates.length; i++) {
-                const p = m.project(coordinates[i] as [number, number])
-                const dx = p.x - px.x
-                const dy = p.y - px.y
-                if (dx * dx + dy * dy <= r2) hitIndices.add(i)
-            }
-        }
-
-        const sweepBetween = (a: { x: number, y: number }, b: { x: number, y: number }) => {
-            const dx = b.x - a.x, dy = b.y - a.y
-            const dist = Math.hypot(dx, dy)
-            const steps = Math.max(1, Math.ceil(dist / (PIXEL_BUFFER / 2)))
-            for (let i = 1; i <= steps; i++) {
-                const t = i / steps
-                sampleAt({ x: a.x + dx * t, y: a.y + dy * t })
-            }
-        }
-
-        const finishStroke = () => {
-            if (!dragging) return
-            dragging = false
-            lastPx = null
-
-            const ranges = groupRanges()
-            hitIndices.clear()
-            const src = m.getSource('brush-preview') as mapboxgl.GeoJSONSource | undefined
-            src?.setData({ type: 'FeatureCollection', features: [] } as any)
-
-            const t = brushTypeRef.current
-            const fn = onPaintRangeRef.current
-            if (!t || !fn) return
-            const diff = getTerrainDefaultDifficulty(t)
-
-            for (const [lo, hi] of ranges) {
-                const startMile = getDistanceFromStart(coordinates, lo, { lat: coordinates[lo][1], lon: coordinates[lo][0] })
-                const endMile = getDistanceFromStart(coordinates, hi, { lat: coordinates[hi][1], lon: coordinates[hi][0] })
-                const a = Math.min(startMile, endMile)
-                const b = Math.max(startMile, endMile)
-                if (b - a < 0.05) continue // ignore micro-strokes
-                fn(a, b, t, diff)
-            }
-        }
-
-        const onMouseDown = (e: mapboxgl.MapMouseEvent) => {
-            e.preventDefault()
-            dragging = true
-            hitIndices.clear()
-            const px = { x: e.point.x, y: e.point.y }
-            sampleAt(px)
-            lastPx = px
-            updatePreview()
-        }
-
-        const onMouseMove = (e: mapboxgl.MapMouseEvent) => {
-            if (!dragging) return
-            const px = { x: e.point.x, y: e.point.y }
-            if (lastPx) sweepBetween(lastPx, px)
-            else sampleAt(px)
-            lastPx = px
-            updatePreview()
-        }
-
-        // Preview source/layer
-        if (!m.getSource('brush-preview')) {
-            m.addSource('brush-preview', {
-                type: 'geojson',
-                data: { type: 'FeatureCollection', features: [] },
-            } as any)
-            m.addLayer({
-                id: 'brush-preview',
-                type: 'line',
-                source: 'brush-preview',
-                layout: { 'line-join': 'round', 'line-cap': 'round' },
-                paint: {
-                    'line-color': getTerrainColor(brushType),
-                    'line-width': 10,
-                    'line-opacity': 0.55,
-                },
-            } as any)
-        } else {
-            m.setPaintProperty('brush-preview', 'line-color', getTerrainColor(brushType))
-        }
-
-        m.dragPan.disable()
-        m.boxZoom.disable()
-        const canvas = m.getCanvas()
-        const prevCursor = canvas.style.cursor
-        canvas.style.cursor = 'cell'
-
-        m.on('mousedown', onMouseDown)
-        m.on('mousemove', onMouseMove)
-        m.on('mouseup', finishStroke)
-        // Catch release outside the canvas
-        const winUp = () => finishStroke()
-        window.addEventListener('mouseup', winUp)
-
-        return () => {
-            m.off('mousedown', onMouseDown)
-            m.off('mousemove', onMouseMove)
-            m.off('mouseup', finishStroke)
-            window.removeEventListener('mouseup', winUp)
-            m.dragPan.enable()
-            m.boxZoom.enable()
-            canvas.style.cursor = prevCursor
-            if (m.getLayer('brush-preview')) m.removeLayer('brush-preview')
-            if (m.getSource('brush-preview')) m.removeSource('brush-preview')
-        }
-    }, [mapLoaded, styleLoaded, brushType, onPaintRange, coordinates])
 
     return (
         <div className={`${styles.container} ${className || ''}`} style={{ position: 'relative', width: '100%', height: '100%', minHeight: '300px' }}>
@@ -1305,19 +1150,6 @@ export function CourseMap({
                     <MapPin size={18} />
                 </button>
 
-                <button
-                    onClick={toggleTerrainMode}
-                    className={`${styles.toolBtn} ${isTerrainMode ? 'bg-amber-100 border-amber-500 text-amber-700' : ''}`}
-                    title="Terrain Mode"
-                    type="button"
-                >
-                    {/* Fallback icon if MapPin is used for waypoints, maybe Mountain/Terrain icon? */}
-                    {/* CourseMap imports MapPin. Let's reuse or use something distinct. */}
-                    {/* No Mountain icon imported. I'll use a text char or distinct style MapPin for now, or assume MapPin is fine. */}
-                    {/* Actually, let's just use MapPin with specific style or maybe a different icon if available. */}
-                    <div className={isTerrainMode ? 'text-amber-600 font-bold' : ''}>T</div>
-                </button>
-
                 <div className={styles.divider} />
 
                 <button
@@ -1347,117 +1179,6 @@ export function CourseMap({
                 )}
             </div>}
 
-            {/* Terrain Selection Popup */}
-            {isTerrainMode && terrainSelection.start && terrainSelection.end && (
-                <div className="absolute top-20 left-4 bg-white p-4 rounded-lg shadow-xl z-20 w-72 animate-in fade-in slide-in-from-left-4 border border-neutral-200">
-                    <h3 className="text-sm font-bold text-neutral-900 mb-3 border-b pb-2">Set Terrain Segment</h3>
-
-                    <div className="grid grid-cols-2 gap-2 text-xs mb-3">
-                        <div>
-                            <label className="text-neutral-500 block mb-1">Start Mile</label>
-                            <div className="font-mono font-medium text-neutral-900">{terrainSelection.start.mile.toFixed(2)}</div>
-                        </div>
-                        <div>
-                            <label className="text-neutral-500 block mb-1">End Mile</label>
-                            <div className="font-mono font-medium text-neutral-900">{terrainSelection.end.mile.toFixed(2)}</div>
-                        </div>
-                    </div>
-
-                    <div className="space-y-3">
-                        <div>
-                            <label className="text-xs font-semibold text-neutral-700 block mb-1">Terrain Type</label>
-                            <select
-                                id="terrain-type-select"
-                                className="w-full text-sm border border-neutral-300 rounded p-1.5 bg-neutral-50 text-neutral-900"
-                                defaultValue="paved"
-                                onChange={(e) => {
-                                    const diff = getTerrainDefaultDifficulty(e.target.value)
-                                    const slider = document.getElementById('terrain-factor-slider') as HTMLInputElement
-                                    const input = document.getElementById('terrain-factor-input') as HTMLInputElement
-                                    if (slider) slider.value = String(diff)
-                                    if (input) input.value = String(diff)
-                                }}
-                            >
-                                {TERRAIN_TYPES.map(t => (
-                                    <option key={t.value} value={t.value}>
-                                        {t.label} ({t.defaultDifficulty - 100 >= 0 ? '+' : ''}{t.defaultDifficulty - 100}%)
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div>
-                            <label className="text-xs font-semibold text-neutral-700 block mb-1">Difficulty Factor (%)</label>
-                            <div className="flex items-center gap-2">
-                                <input
-                                    type="range"
-                                    id="terrain-factor-slider"
-                                    min="100"
-                                    max="200"
-                                    defaultValue="100"
-                                    className="flex-1 accent-amber-600"
-                                    onInput={(e) => {
-                                        const val = (e.target as HTMLInputElement).value
-                                        const numInput = document.getElementById('terrain-factor-input') as HTMLInputElement
-                                        if (numInput) numInput.value = val
-                                    }}
-                                />
-                                <input
-                                    type="number"
-                                    id="terrain-factor-input"
-                                    className="w-14 text-sm border border-neutral-300 rounded p-1 text-right text-neutral-900"
-                                    defaultValue="100"
-                                    min="100"
-                                    max="500"
-                                    onChange={(e) => {
-                                        const val = e.target.value
-                                        const slider = document.getElementById('terrain-factor-slider') as HTMLInputElement
-                                        if (slider) slider.value = val
-                                    }}
-                                />
-                                <span className="text-xs text-neutral-500">%</span>
-                            </div>
-                            <p className="text-[10px] text-neutral-500 mt-1">100% = Normal. 150% = 1.5x slower.</p>
-                        </div>
-
-                        <div className="flex gap-2 pt-2">
-                            <button
-                                onClick={() => {
-                                    setTerrainSelection({ start: null, end: null })
-                                }}
-                                className="flex-1 py-1.5 text-xs text-neutral-600 hover:bg-neutral-100 rounded border border-neutral-200"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={() => {
-                                    const typeSelect = document.getElementById('terrain-type-select') as HTMLSelectElement
-                                    const factorInput = document.getElementById('terrain-factor-input') as HTMLInputElement
-
-                                    if (onSaveTerrain && terrainSelection.start && terrainSelection.end) {
-                                        const s = terrainSelection.start.mile
-                                        const e = terrainSelection.end.mile
-                                        const min = Math.min(s, e)
-                                        const max = Math.max(s, e)
-
-                                        onSaveTerrain(min, max, typeSelect.value, parseInt(factorInput.value))
-
-                                        // CONTINUOUS ADDITION: Set start to the end of this segment
-                                        // We need the point object of the END.
-                                        // If s < e, end point was 'end'. If s > e, end point was 'start'.
-                                        const newStart = s < e ? terrainSelection.end : terrainSelection.start
-
-                                        setTerrainSelection({ start: newStart, end: null })
-                                    }
-                                }}
-                                className="flex-1 py-1.5 text-xs bg-amber-600 hover:bg-amber-700 text-white font-medium rounded shadow-sm"
-                            >
-                                Save
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {
                 !import.meta.env.VITE_MAPBOX_TOKEN && (
