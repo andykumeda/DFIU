@@ -144,8 +144,8 @@ export function DropBagModal({ waypoint, race, arrivalTime, isNight, onClose }: 
     }, {} as Record<string, DropBagItem[]>)
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className="bg-neutral-900 w-full max-w-2xl rounded-2xl border border-neutral-800 shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
+            <div className="bg-neutral-900 w-full max-w-2xl rounded-2xl border border-neutral-800 shadow-2xl flex flex-col max-h-[90dvh] my-auto animate-in zoom-in-95 duration-200">
 
                 {/* Header */}
                 <div className="flex justify-between items-center p-6 border-b border-neutral-800 shrink-0">
