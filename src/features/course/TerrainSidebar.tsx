@@ -26,6 +26,7 @@ interface TerrainSidebarProps {
   onHoverNode?: (id: string | null) => void
   onSaveSegment: (startMile: number, endMile: number, type: string, difficulty: number) => Promise<void> | void
   onDeleteNode: (id: string) => Promise<void> | void
+  onUpdateNodeMile?: (id: string, mile: number) => Promise<void> | void
   brushType?: TerrainTypeValue | null
   onBrushChange?: (type: TerrainTypeValue | null) => void
 }
@@ -38,6 +39,7 @@ export function TerrainSidebar({
   onHoverNode,
   onSaveSegment,
   onDeleteNode,
+  onUpdateNodeMile,
   brushType = null,
   onBrushChange,
 }: TerrainSidebarProps) {
@@ -48,6 +50,8 @@ export function TerrainSidebar({
   const [newType, setNewType] = useState<TerrainTypeValue>('single_track')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [editingMileId, setEditingMileId] = useState<string | null>(null)
+  const [editMileVal, setEditMileVal] = useState('')
 
   const segments = useMemo<Segment[]>(() => {
     const sorted = [...terrainNodes].sort((a, b) => a.mile - b.mile)
@@ -119,6 +123,30 @@ export function TerrainSidebar({
     }
   }
 
+  const startEditMile = (seg: Segment) => {
+    setEditingMileId(seg.startNodeId)
+    setEditMileVal(seg.startMile.toFixed(2))
+  }
+
+  const cancelEditMile = () => {
+    setEditingMileId(null)
+    setEditMileVal('')
+  }
+
+  const saveEditMile = async (seg: Segment) => {
+    if (!onUpdateNodeMile) return
+    const v = parseFloat(editMileVal)
+    if (Number.isNaN(v) || v < 0) return
+    if (totalDistance && v > totalDistance) return
+    setBusy(true)
+    try {
+      await onUpdateNodeMile(seg.startNodeId, v)
+      cancelEditMile()
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="p-4 border-t border-neutral-800">
       <div
@@ -142,7 +170,7 @@ export function TerrainSidebar({
         <div className="mb-3 p-2 rounded bg-neutral-950/60 border border-neutral-800">
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-[10px] text-neutral-500 uppercase tracking-wider font-semibold">
-              Brush — drag on profile
+              Brush — drag on map or profile
             </span>
             {brushType && (
               <button
@@ -251,9 +279,48 @@ export function TerrainSidebar({
                     className="w-2.5 h-2.5 rounded-full shrink-0"
                     style={{ backgroundColor: getTerrainColor(seg.type) }}
                   />
-                  <span className="text-xs text-neutral-300 font-mono shrink-0 w-[88px]">
-                    {seg.startMile.toFixed(2)}–{seg.endMile.toFixed(2)}
-                  </span>
+                  {editingMileId === seg.startNodeId && canEdit && onUpdateNodeMile ? (
+                    <span className="flex items-center gap-1 shrink-0">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={editMileVal}
+                        onChange={e => setEditMileVal(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') saveEditMile(seg)
+                          if (e.key === 'Escape') cancelEditMile()
+                        }}
+                        autoFocus
+                        disabled={busy}
+                        className="w-16 bg-neutral-900 border border-neutral-700 rounded px-1 py-0.5 text-xs text-white font-mono focus:outline-none focus:border-orange-500"
+                      />
+                      <button
+                        onClick={() => saveEditMile(seg)}
+                        disabled={busy}
+                        className="text-green-400 hover:text-green-300 text-xs disabled:opacity-50"
+                        title="Save"
+                      >
+                        ✓
+                      </button>
+                      <button
+                        onClick={cancelEditMile}
+                        disabled={busy}
+                        className="text-neutral-500 hover:text-neutral-300 text-xs disabled:opacity-50"
+                        title="Cancel"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ) : (
+                    <span
+                      className={`text-xs text-neutral-300 font-mono shrink-0 w-[88px] ${canEdit && onUpdateNodeMile ? 'cursor-pointer hover:text-orange-300' : ''}`}
+                      onClick={() => canEdit && onUpdateNodeMile && startEditMile(seg)}
+                      title={canEdit && onUpdateNodeMile ? 'Click to edit start mile' : undefined}
+                    >
+                      {seg.startMile.toFixed(2)}–{seg.endMile.toFixed(2)}
+                    </span>
+                  )}
                   {canEdit ? (
                     <select
                       value={seg.type}

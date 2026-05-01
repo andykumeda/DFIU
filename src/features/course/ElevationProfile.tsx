@@ -338,7 +338,7 @@ export function ElevationProfile({
                     onMouseLeave={() => { cancelDrag(); handleMouseLeave() }}
                     onMouseDown={handleMouseDown}
                     onMouseUp={handleMouseUp}
-                    style={isPainting ? { cursor: 'crosshair' } : undefined}
+                    style={isPainting ? { cursor: 'cell' } : undefined}
                 >
                     {/* Gradient definition */}
                     <defs>
@@ -482,8 +482,31 @@ export function ElevationProfile({
                         />
                     )}
 
-                    {/* Terrain tooltip */}
-                    {terrainAtHover && terrainAtHover.type !== 'other' && (
+                    {/* Paint-mode status banner */}
+                    {isPainting && (
+                        <div
+                            style={{
+                                position: 'absolute',
+                                top: 4,
+                                right: 4,
+                                background: getTerrainColor(brushType!),
+                                color: 'white',
+                                fontSize: 11,
+                                padding: '3px 8px',
+                                borderRadius: 4,
+                                fontWeight: 600,
+                                pointerEvents: 'none',
+                                boxShadow: '0 1px 4px rgba(0,0,0,0.4)',
+                            }}
+                        >
+                            {dragStart !== null && dragEnd !== null
+                                ? `Painting ${Math.min(dragStart, dragEnd).toFixed(2)}–${Math.max(dragStart, dragEnd).toFixed(2)} mi`
+                                : `Brush: ${getTerrainLabel(brushType!)} — drag profile`}
+                        </div>
+                    )}
+
+                    {/* Terrain tooltip (suppressed in paint mode to avoid overlap) */}
+                    {!isPainting && terrainAtHover && terrainAtHover.type !== 'other' && (
                         <div
                             style={{
                                 position: 'absolute',

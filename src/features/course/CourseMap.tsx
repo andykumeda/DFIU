@@ -54,6 +54,8 @@ interface CourseMapProps {
     highlightedTerrainId?: string | null // Highlight terrain node being edited
     onSaveTerrain?: (start: number, end: number, type: string, difficulty: number) => void
     onTerrainNodeMove?: (id: string, lat: number, lon: number, mile: number) => void
+    brushType?: string | null
+    onPaintRange?: (startMile: number, endMile: number, type: string, difficulty: number) => void | Promise<void>
 }
 
 export function CourseMap({
@@ -75,7 +77,9 @@ export function CourseMap({
     highlightedWaypointId,
     highlightedTerrainId,
     onSaveTerrain,
-    onTerrainNodeMove
+    onTerrainNodeMove,
+    brushType = null,
+    onPaintRange,
 }: CourseMapProps) {
     const mapContainer = useRef<HTMLDivElement>(null)
     const map = useRef<mapboxgl.Map | null>(null)
@@ -105,6 +109,8 @@ export function CourseMap({
     const onMapClickRef = useRef(onMapClick)
     const isTerrainModeRef = useRef(isTerrainMode)
     const terrainSelectionRef = useRef(terrainSelection)
+    const brushTypeRef = useRef<string | null>(null)
+    const onPaintRangeRef = useRef(onPaintRange)
 
     // Sync refs for event listeners
     useEffect(() => { selectedPOITypeRef.current = selectedPOIType }, [selectedPOIType])
@@ -116,6 +122,8 @@ export function CourseMap({
     useEffect(() => { onMapClickRef.current = onMapClick }, [onMapClick])
     useEffect(() => { isTerrainModeRef.current = isTerrainMode }, [isTerrainMode])
     useEffect(() => { terrainSelectionRef.current = terrainSelection }, [terrainSelection])
+    useEffect(() => { brushTypeRef.current = brushType ?? null }, [brushType])
+    useEffect(() => { onPaintRangeRef.current = onPaintRange }, [onPaintRange])
 
     const handleStyleChange = (style: 'outdoors' | 'streets' | 'satellite') => {
         if (style === mapStyle) return
@@ -1079,6 +1087,9 @@ export function CourseMap({
             const target = e.originalEvent.target as HTMLElement
             if (target.closest('.mapboxgl-marker')) return
 
+            // Brush mode owns its own pointer interactions; ignore plain clicks here.
+            if (brushTypeRef.current) return
+
             // Terrain Selection Mode
             if (isTerrainModeRef.current) {
                 const lngLat = e.lngLat
@@ -1112,6 +1123,158 @@ export function CourseMap({
         map.current.on('click', clickHandler)
         return () => { map.current?.off('click', clickHandler) }
     }, [mapLoaded, onMapClick, coordinates]) // Added coordinates dependency
+
+    // Map paint-brush — drag along the route to paint terrain.
+    // Multi-range output: out-and-back legs, switchbacks, etc. each become
+    // their own contiguous range, so RaceDetail.handleSaveTerrainSegment is
+    // called once per leg.
+    useEffect(() => {
+        if (!map.current || !mapLoaded || !styleLoaded) return
+        if (!brushType || !onPaintRange || coordinates.length < 2) return
+        const m = map.current
+
+        const PIXEL_BUFFER = 18 // ~touch-friendly radius around cursor
+        const GAP_TOLERANCE = 4 // bridge tiny index gaps from sparse sampling
+        const hitIndices = new Set<number>()
+        let dragging = false
+        let lastPx: { x: number, y: number } | null = null
+
+        const groupRanges = (): [number, number][] => {
+            if (hitIndices.size === 0) return []
+            const arr = Array.from(hitIndices).sort((a, b) => a - b)
+            const ranges: [number, number][] = []
+            let lo = arr[0], hi = arr[0]
+            for (let i = 1; i < arr.length; i++) {
+                if (arr[i] - hi <= GAP_TOLERANCE) hi = arr[i]
+                else { ranges.push([lo, hi]); lo = arr[i]; hi = arr[i] }
+            }
+            ranges.push([lo, hi])
+            return ranges
+        }
+
+        const updatePreview = () => {
+            const src = m.getSource('brush-preview') as mapboxgl.GeoJSONSource | undefined
+            if (!src) return
+            const ranges = groupRanges()
+            const features = ranges.map(([lo, hi]) => ({
+                type: 'Feature',
+                properties: {},
+                geometry: { type: 'LineString', coordinates: coordinates.slice(lo, hi + 1) },
+            })) as any[]
+            src.setData({ type: 'FeatureCollection', features } as any)
+        }
+
+        const sampleAt = (px: { x: number, y: number }) => {
+            const r2 = PIXEL_BUFFER * PIXEL_BUFFER
+            for (let i = 0; i < coordinates.length; i++) {
+                const p = m.project(coordinates[i] as [number, number])
+                const dx = p.x - px.x
+                const dy = p.y - px.y
+                if (dx * dx + dy * dy <= r2) hitIndices.add(i)
+            }
+        }
+
+        const sweepBetween = (a: { x: number, y: number }, b: { x: number, y: number }) => {
+            const dx = b.x - a.x, dy = b.y - a.y
+            const dist = Math.hypot(dx, dy)
+            const steps = Math.max(1, Math.ceil(dist / (PIXEL_BUFFER / 2)))
+            for (let i = 1; i <= steps; i++) {
+                const t = i / steps
+                sampleAt({ x: a.x + dx * t, y: a.y + dy * t })
+            }
+        }
+
+        const finishStroke = () => {
+            if (!dragging) return
+            dragging = false
+            lastPx = null
+
+            const ranges = groupRanges()
+            hitIndices.clear()
+            const src = m.getSource('brush-preview') as mapboxgl.GeoJSONSource | undefined
+            src?.setData({ type: 'FeatureCollection', features: [] } as any)
+
+            const t = brushTypeRef.current
+            const fn = onPaintRangeRef.current
+            if (!t || !fn) return
+            const diff = getTerrainDefaultDifficulty(t)
+
+            for (const [lo, hi] of ranges) {
+                const startMile = getDistanceFromStart(coordinates, lo, { lat: coordinates[lo][1], lon: coordinates[lo][0] })
+                const endMile = getDistanceFromStart(coordinates, hi, { lat: coordinates[hi][1], lon: coordinates[hi][0] })
+                const a = Math.min(startMile, endMile)
+                const b = Math.max(startMile, endMile)
+                if (b - a < 0.05) continue // ignore micro-strokes
+                fn(a, b, t, diff)
+            }
+        }
+
+        const onMouseDown = (e: mapboxgl.MapMouseEvent) => {
+            e.preventDefault()
+            dragging = true
+            hitIndices.clear()
+            const px = { x: e.point.x, y: e.point.y }
+            sampleAt(px)
+            lastPx = px
+            updatePreview()
+        }
+
+        const onMouseMove = (e: mapboxgl.MapMouseEvent) => {
+            if (!dragging) return
+            const px = { x: e.point.x, y: e.point.y }
+            if (lastPx) sweepBetween(lastPx, px)
+            else sampleAt(px)
+            lastPx = px
+            updatePreview()
+        }
+
+        // Preview source/layer
+        if (!m.getSource('brush-preview')) {
+            m.addSource('brush-preview', {
+                type: 'geojson',
+                data: { type: 'FeatureCollection', features: [] },
+            } as any)
+            m.addLayer({
+                id: 'brush-preview',
+                type: 'line',
+                source: 'brush-preview',
+                layout: { 'line-join': 'round', 'line-cap': 'round' },
+                paint: {
+                    'line-color': getTerrainColor(brushType),
+                    'line-width': 10,
+                    'line-opacity': 0.55,
+                },
+            } as any)
+        } else {
+            m.setPaintProperty('brush-preview', 'line-color', getTerrainColor(brushType))
+        }
+
+        m.dragPan.disable()
+        m.boxZoom.disable()
+        const canvas = m.getCanvas()
+        const prevCursor = canvas.style.cursor
+        canvas.style.cursor = 'cell'
+
+        m.on('mousedown', onMouseDown)
+        m.on('mousemove', onMouseMove)
+        m.on('mouseup', finishStroke)
+        // Catch release outside the canvas
+        const winUp = () => finishStroke()
+        window.addEventListener('mouseup', winUp)
+
+        return () => {
+            m.off('mousedown', onMouseDown)
+            m.off('mousemove', onMouseMove)
+            m.off('mouseup', finishStroke)
+            window.removeEventListener('mouseup', winUp)
+            m.dragPan.enable()
+            m.boxZoom.enable()
+            canvas.style.cursor = prevCursor
+            if (m.getLayer('brush-preview')) m.removeLayer('brush-preview')
+            if (m.getSource('brush-preview')) m.removeSource('brush-preview')
+        }
+    }, [mapLoaded, styleLoaded, brushType, onPaintRange, coordinates])
+
     return (
         <div className={`${styles.container} ${className || ''}`} style={{ position: 'relative', width: '100%', height: '100%', minHeight: '300px' }}>
             { }

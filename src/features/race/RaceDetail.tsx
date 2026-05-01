@@ -616,6 +616,20 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   }
 
 
+  // Update a terrain node's mile (and recompute lat/lon from route).
+  // Used by TerrainSidebar inline mile editing.
+  const handleUpdateTerrainNodeMile = async (id: string, mile: number) => {
+    if (!course?.id) return
+    let lat = 0, lon = 0
+    if (course.geometry) {
+      const { getCoordinateAtDistance } = await import('@/lib/geo-utils')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const coord = getCoordinateAtDistance(course.geometry as any, mile * 1609.34)
+      if (coord) { lon = coord[0]; lat = coord[1] }
+    }
+    await handleTerrainNodeMove(id, lat, lon, mile)
+  }
+
   // Handle saving a range/segment of terrain
   const handleSaveTerrainSegment = async (startMile: number, endMile: number, type: string, difficulty: number) => {
     try {
@@ -687,8 +701,12 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       const diffAtEnd = prevAtEnd.difficulty
 
 
+      // Snap tolerance: ~0.1mi (~160m). Wider than insert dedupe so adjacent
+      // paints bridge automatically (no thin "default" sliver between segments).
+      const SNAP_TOL = 0.1
+
       // A. Insert/Update Start Node
-      const existingStart = terrainNodes.find(n => Math.abs(n.mile - startMile) < 0.01)
+      const existingStart = terrainNodes.find(n => Math.abs(n.mile - startMile) < SNAP_TOL)
       if (existingStart) {
         console.log('Updating existing start node:', existingStart.id)
         const { error } = await (supabase.from('terrain_nodes') as any).update({ type, difficulty }).eq('id', existingStart.id)
@@ -700,7 +718,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
       // B. Insert/Update End Node (Restore previous state)
       if (endMile < (course.total_distance_miles || 100)) {
-        const existingEnd = terrainNodes.find(n => Math.abs(n.mile - endMile) < 0.01)
+        const existingEnd = terrainNodes.find(n => Math.abs(n.mile - endMile) < SNAP_TOL)
         if (existingEnd) {
           console.log('Existing end node found, skipping restore:', existingEnd)
         } else {
@@ -711,11 +729,9 @@ export function RaceDetail({ raceId }: { raceId: string }) {
         console.log('End mile is at course end, skipping restore node.')
       }
 
-      // C. Delete Intermediate Nodes
-
       // C. Delete Intermediate Nodes (they are overridden by this new segment)
-      // Nodes strictly between start and end
-      const nodesToDelete = terrainNodes.filter(n => n.mile > (startMile + 0.01) && n.mile < (endMile - 0.01))
+      // Nodes strictly between start and end (outside snap tolerance of either)
+      const nodesToDelete = terrainNodes.filter(n => n.mile > (startMile + SNAP_TOL) && n.mile < (endMile - SNAP_TOL))
       if (nodesToDelete.length > 0) {
         await supabase.from('terrain_nodes').delete().in('id', nodesToDelete.map(n => n.id))
       }
@@ -1081,6 +1097,8 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                         highlightedTerrainId={hoveredTerrainId}
                         terrainNodes={terrainNodes}
                         onTerrainNodeMove={isOwner && isEditMode ? handleTerrainNodeMove : undefined}
+                        brushType={isOwner && isEditMode ? terrainBrush : null}
+                        onPaintRange={isOwner && isEditMode ? handleSaveTerrainSegment : undefined}
                       />
                     </Suspense>
                   </div>
@@ -1244,6 +1262,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                     onHoverNode={setHoveredTerrainId}
                     onSaveSegment={handleSaveTerrainSegment}
                     onDeleteNode={handleDeleteTerrainNode}
+                    onUpdateNodeMile={handleUpdateTerrainNodeMile}
                     brushType={terrainBrush}
                     onBrushChange={setTerrainBrush}
                   />
