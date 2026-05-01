@@ -21,6 +21,7 @@ import { EditRaceModal } from '@/features/race/EditRaceModal'
 import { EditWaypointModal } from '@/features/course/EditWaypointModal'
 import { ViewWaypointModal } from '@/features/course/ViewWaypointModal'
 import { TerrainSidebar } from '@/features/course/TerrainSidebar'
+import { TerrainTypeValue } from '@/features/course/terrain-constants'
 import { PaceCalculator } from '@/features/race/PaceCalculator'
 import { RaceResources } from '@/features/race/RaceResources'
 import { DropBagsSection } from '@/features/race/DropBagsSection'
@@ -58,6 +59,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   const [hoveredMile, setHoveredMile] = useState<number | null>(null)
   const [hoveredWaypointId, setHoveredWaypointId] = useState<string | null>(null)
   const [hoveredTerrainId, setHoveredTerrainId] = useState<string | null>(null)
+  const [terrainBrush, setTerrainBrush] = useState<TerrainTypeValue | null>(null)
 
   const [showMileMarkers, setShowMileMarkers] = useState(true)
   const [fetchingWeather, setFetchingWeather] = useState(false)
@@ -1092,6 +1094,8 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                       showMileMarkers={showMileMarkers}
                       waypoints={waypoints.map(wp => ({ id: wp.id, mile: wp.mile, name: wp.name, type: wp.type }))}
                       terrainNodes={terrainNodes}
+                      brushType={isOwner && isEditMode ? terrainBrush : null}
+                      onPaintRange={isOwner && isEditMode ? handleSaveTerrainSegment : undefined}
                     />
                   </div>
                 </div>
@@ -1240,6 +1244,8 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                     onHoverNode={setHoveredTerrainId}
                     onSaveSegment={handleSaveTerrainSegment}
                     onDeleteNode={handleDeleteTerrainNode}
+                    brushType={terrainBrush}
+                    onBrushChange={setTerrainBrush}
                   />
                 </div>
               </div>

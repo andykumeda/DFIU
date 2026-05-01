@@ -26,6 +26,8 @@ interface TerrainSidebarProps {
   onHoverNode?: (id: string | null) => void
   onSaveSegment: (startMile: number, endMile: number, type: string, difficulty: number) => Promise<void> | void
   onDeleteNode: (id: string) => Promise<void> | void
+  brushType?: TerrainTypeValue | null
+  onBrushChange?: (type: TerrainTypeValue | null) => void
 }
 
 export function TerrainSidebar({
@@ -36,6 +38,8 @@ export function TerrainSidebar({
   onHoverNode,
   onSaveSegment,
   onDeleteNode,
+  brushType = null,
+  onBrushChange,
 }: TerrainSidebarProps) {
   const [isOpen, setIsOpen] = useState(true)
   const [adding, setAdding] = useState(false)
@@ -133,6 +137,43 @@ export function TerrainSidebar({
           </button>
         )}
       </div>
+
+      {isOpen && canEdit && onBrushChange && (
+        <div className="mb-3 p-2 rounded bg-neutral-950/60 border border-neutral-800">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[10px] text-neutral-500 uppercase tracking-wider font-semibold">
+              Brush — drag on profile
+            </span>
+            {brushType && (
+              <button
+                onClick={() => onBrushChange(null)}
+                className="text-[10px] text-neutral-500 hover:text-white"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {TERRAIN_TYPES.filter(t => t.value !== 'other').map(t => {
+              const active = brushType === t.value
+              return (
+                <button
+                  key={t.value}
+                  onClick={() => onBrushChange(active ? null : t.value)}
+                  className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${
+                    active
+                      ? 'text-white border-transparent'
+                      : 'text-neutral-400 border-neutral-700 hover:border-neutral-500'
+                  }`}
+                  style={active ? { backgroundColor: getTerrainColor(t.value) } : undefined}
+                >
+                  {t.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {isOpen && (
         <div className="space-y-1.5">

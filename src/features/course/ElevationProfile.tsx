@@ -1,8 +1,13 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState, useRef } from 'react'
 import styles from './ElevationProfile.module.css'
-import { getTerrainColor, getTerrainLabel } from './terrain-constants'
+import {
+    getTerrainColor,
+    getTerrainLabel,
+    getTerrainDefaultDifficulty,
+    TerrainTypeValue,
+} from './terrain-constants'
 
 interface WaypointMarker {
     id: string
@@ -30,6 +35,8 @@ interface ElevationProfileProps {
     showMileMarkers?: boolean
     waypoints?: WaypointMarker[]
     terrainNodes?: TerrainNode[]
+    brushType?: TerrainTypeValue | null
+    onPaintRange?: (startMile: number, endMile: number, type: string, difficulty: number) => void | Promise<void>
 }
 
 
@@ -42,8 +49,20 @@ export function ElevationProfile({
     className,
     showMileMarkers = false,
     waypoints = [],
-    terrainNodes = []
+    terrainNodes = [],
+    brushType = null,
+    onPaintRange,
 }: ElevationProfileProps) {
+    const [dragStart, setDragStart] = useState<number | null>(null)
+    const [dragEnd, setDragEnd] = useState<number | null>(null)
+    const isPainting = brushType != null && !!onPaintRange
+    const dragStartRef = useRef<number | null>(null)
+
+    const snapMile = (mi: number, freeDrag: boolean) => {
+        if (freeDrag) return Math.max(0, Math.min(totalDistance, mi))
+        const snapped = Math.round(mi * 10) / 10
+        return Math.max(0, Math.min(totalDistance, snapped))
+    }
     const { segments, minEle, maxEle, areaPath } = useMemo(() => {
         if (!data || data.length === 0) return { segments: [], minEle: 0, maxEle: 0, areaPath: '' }
 
@@ -200,16 +219,51 @@ export function ElevationProfile({
             })
     }, [waypoints, data, totalDistance, minEle, maxEle])
 
-    const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
-        if (!onHover) return
+    const distanceFromEvent = (e: React.MouseEvent<SVGSVGElement>) => {
         const rect = e.currentTarget.getBoundingClientRect()
         const x = e.clientX - rect.left
-        const distance = (x / rect.width) * totalDistance
-        onHover(distance)
+        return (x / rect.width) * totalDistance
+    }
+
+    const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+        const distance = distanceFromEvent(e)
+        if (isPainting && dragStartRef.current !== null) {
+            setDragEnd(snapMile(distance, e.shiftKey))
+            return
+        }
+        onHover?.(distance)
     }
 
     const handleMouseLeave = () => {
         onHover?.(null)
+    }
+
+    const handleMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
+        if (!isPainting) return
+        e.preventDefault()
+        const distance = snapMile(distanceFromEvent(e), e.shiftKey)
+        dragStartRef.current = distance
+        setDragStart(distance)
+        setDragEnd(distance)
+    }
+
+    const handleMouseUp = (e: React.MouseEvent<SVGSVGElement>) => {
+        if (!isPainting || dragStartRef.current === null) return
+        const start = dragStartRef.current
+        const end = snapMile(distanceFromEvent(e), e.shiftKey)
+        dragStartRef.current = null
+        setDragStart(null)
+        setDragEnd(null)
+        if (Math.abs(end - start) < 0.05) return // ignore tiny drags
+        const lo = Math.min(start, end)
+        const hi = Math.max(start, end)
+        onPaintRange?.(lo, hi, brushType!, getTerrainDefaultDifficulty(brushType!))
+    }
+
+    const cancelDrag = () => {
+        dragStartRef.current = null
+        setDragStart(null)
+        setDragEnd(null)
     }
 
     const terrainAtHover = useMemo(() => {
@@ -281,7 +335,10 @@ export function ElevationProfile({
                     viewBox="0 0 100 100"
                     preserveAspectRatio="none"
                     onMouseMove={handleMouseMove}
-                    onMouseLeave={handleMouseLeave}
+                    onMouseLeave={() => { cancelDrag(); handleMouseLeave() }}
+                    onMouseDown={handleMouseDown}
+                    onMouseUp={handleMouseUp}
+                    style={isPainting ? { cursor: 'crosshair' } : undefined}
                 >
                     {/* Gradient definition */}
                     <defs>
@@ -311,6 +368,25 @@ export function ElevationProfile({
                             strokeLinejoin="round"
                         />
                     ))}
+
+                    {/* Brush drag preview */}
+                    {isPainting && dragStart !== null && dragEnd !== null && totalDistance > 0 && (() => {
+                        const lo = Math.min(dragStart, dragEnd)
+                        const hi = Math.max(dragStart, dragEnd)
+                        const x1 = (lo / totalDistance) * 100
+                        const x2 = (hi / totalDistance) * 100
+                        return (
+                            <rect
+                                x={x1}
+                                y={0}
+                                width={Math.max(0.01, x2 - x1)}
+                                height={100}
+                                fill={getTerrainColor(brushType!)}
+                                opacity={0.25}
+                                pointerEvents="none"
+                            />
+                        )
+                    })()}
                 </svg>
 
                 {/* Marker Overlay */}
