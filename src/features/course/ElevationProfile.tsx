@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import styles from './ElevationProfile.module.css'
-import { getTerrainColor } from './terrain-constants'
+import { getTerrainColor, getTerrainLabel } from './terrain-constants'
 
 interface WaypointMarker {
     id: string
@@ -17,6 +17,7 @@ interface TerrainNode {
     id: string
     mile: number
     type: string
+    difficulty?: number
 }
 
 interface ElevationProfileProps {
@@ -211,6 +212,29 @@ export function ElevationProfile({
         onHover?.(null)
     }
 
+    const terrainAtHover = useMemo(() => {
+        if (highlightDistance === undefined || highlightDistance === null) return null
+        const sorted = [...(terrainNodes || [])].sort((a, b) => a.mile - b.mile)
+        if (sorted.length === 0) return null
+        if (sorted[0].mile > highlightDistance) return null
+        let active = sorted[0]
+        let endMile = totalDistance
+        for (let i = 0; i < sorted.length; i++) {
+            if (sorted[i].mile <= highlightDistance) {
+                active = sorted[i]
+            } else {
+                endMile = sorted[i].mile
+                break
+            }
+        }
+        return {
+            startMile: active.mile,
+            endMile,
+            type: active.type,
+            difficulty: active.difficulty ?? 100,
+        }
+    }, [highlightDistance, terrainNodes, totalDistance])
+
     // Find elevation at highlight distance
     const highlightPoint = useMemo(() => {
         if (highlightDistance === undefined || data.length === 0) return null
@@ -380,6 +404,30 @@ export function ElevationProfile({
                             className={styles.highlightDot}
                             style={{ left: `${highlightPoint.x}%`, top: `${highlightPoint.y}%` }}
                         />
+                    )}
+
+                    {/* Terrain tooltip */}
+                    {terrainAtHover && terrainAtHover.type !== 'other' && (
+                        <div
+                            style={{
+                                position: 'absolute',
+                                top: 4,
+                                left: '50%',
+                                transform: 'translateX(-50%)',
+                                background: 'rgba(0,0,0,0.75)',
+                                color: 'white',
+                                fontSize: 11,
+                                padding: '3px 8px',
+                                borderRadius: 4,
+                                whiteSpace: 'nowrap',
+                                pointerEvents: 'none',
+                                fontWeight: 500,
+                                border: `1px solid ${getTerrainColor(terrainAtHover.type)}`,
+                            }}
+                        >
+                            mi {terrainAtHover.startMile.toFixed(1)}–{terrainAtHover.endMile.toFixed(1)}: {getTerrainLabel(terrainAtHover.type)}
+                            {terrainAtHover.difficulty !== 100 && ` (${terrainAtHover.difficulty - 100 >= 0 ? '+' : ''}${terrainAtHover.difficulty - 100}%)`}
+                        </div>
                     )}
                 </div>
             </div>
