@@ -20,7 +20,7 @@ import { GpxUploader } from '@/features/course/GpxUploader'
 import { EditRaceModal } from '@/features/race/EditRaceModal'
 import { EditWaypointModal } from '@/features/course/EditWaypointModal'
 import { ViewWaypointModal } from '@/features/course/ViewWaypointModal'
-import { EditTerrainModal } from '@/features/course/EditTerrainModal'
+import { TerrainSidebar } from '@/features/course/TerrainSidebar'
 import { PaceCalculator } from '@/features/race/PaceCalculator'
 import { RaceResources } from '@/features/race/RaceResources'
 import { DropBagsSection } from '@/features/race/DropBagsSection'
@@ -54,7 +54,6 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
   // Terrain State
   const [terrainNodes, setTerrainNodes] = useState<TerrainNode[]>([])
-  const [editingTerrainNode, setEditingTerrainNode] = useState<Partial<TerrainNode> | null>(null)
 
   const [hoveredMile, setHoveredMile] = useState<number | null>(null)
   const [hoveredWaypointId, setHoveredWaypointId] = useState<string | null>(null)
@@ -63,7 +62,6 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   const [showMileMarkers, setShowMileMarkers] = useState(true)
   const [fetchingWeather, setFetchingWeather] = useState(false)
   const [isAidListOpen, setIsAidListOpen] = useState(true)
-  const [isTerrainListOpen, setIsTerrainListOpen] = useState(true)
   const [isReimporting, setIsReimporting] = useState(false)
 
   // Measure the sticky page header so child sticky elements (pace plan thead)
@@ -526,14 +524,8 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
     const nearest = getNearestPointOnLine({ lat, lon }, coordinates)
 
-    // If we are in Terrain Mode, clicking anywhere adds a terrain segment there
-    if (isTerrainMode) {
-      if (nearest) {
-        const mile = getDistanceFromStart(coordinates, nearest.index, { lat: nearest.lat, lon: nearest.lon })
-        setEditingTerrainNode({ mile })
-      }
-      return
-    }
+    // Terrain mode no longer opens a modal — sidebar handles terrain CRUD.
+    if (isTerrainMode) return
 
     // Default: Add Waypoint
     if (nearest && nearest.distance < 0.5) {
@@ -580,11 +572,8 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
 
   const handleDeleteTerrainNode = async (id: string) => {
-    if (!confirm('Delete this terrain change?')) return
-
     // Optimistic update to remove it immediately for responsiveness
     setTerrainNodes(prev => prev.filter(n => n.id !== id))
-    setEditingTerrainNode(null)
 
     const { error } = await supabase.from('terrain_nodes').delete().eq('id', id)
     if (error) {
@@ -1087,13 +1076,8 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                         })() : null}
 
 
-                        highlightedTerrainId={hoveredTerrainId} // New Prop
+                        highlightedTerrainId={hoveredTerrainId}
                         terrainNodes={terrainNodes}
-                        onTerrainNodeClick={isOwner && isEditMode ? (id: string) => {
-                          const node = terrainNodes.find(n => n.id === id)
-                          if (node) setEditingTerrainNode(node)
-                        } : undefined}
-                        onSaveTerrain={isOwner && isEditMode ? handleSaveTerrainSegment : undefined}
                         onTerrainNodeMove={isOwner && isEditMode ? handleTerrainNodeMove : undefined}
                       />
                     </Suspense>
@@ -1248,86 +1232,15 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                     )}
                   </div>
 
-                  <div className='p-4 border-t border-neutral-800'>
-                    <div className='flex items-center justify-between mb-4'>
-                      <div className='flex items-center gap-2 cursor-pointer' onClick={() => setIsTerrainListOpen(!isTerrainListOpen)}>
-                        <h3 className='text-sm font-semibold text-neutral-400 uppercase tracking-wider'>
-                          {isTerrainListOpen ? '▼' : '▶'} Terrain
-                        </h3>
-                      </div>
-                      {isOwner && isEditMode && (
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => setIsTerrainMode(!isTerrainMode)}
-                            className={`text-xs px-2 py-1 rounded border transition-colors flex items-center gap-1 ${isTerrainMode ? 'bg-blue-600 text-white border-blue-500' : 'bg-neutral-800 text-neutral-400 border-neutral-700 hover:bg-neutral-700'}`}
-                            title="Click map to add segments"
-                          >
-                            {isTerrainMode ? '✏️ Drawing' : '✏️ Draw'}
-                          </button>
-                          <button
-                            onClick={() => setEditingTerrainNode({})}
-                            className="text-xs bg-neutral-800 hover:bg-neutral-700 text-white px-2 py-1 rounded border border-neutral-700 transition-colors"
-                          >
-                            + Manual
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    {isTerrainListOpen && (
-                      <div className="space-y-1">
-                        {terrainNodes.length === 0 ? (
-                          <p className="text-xs text-neutral-600 italic">No terrain segments defined. Entire course defaults to 'Undefined' (Gray).</p>
-                        ) : (
-                          <>
-                            {/* Synthetic Start Gap */}
-                            {terrainNodes[0].mile > 0.05 && (
-                              <div
-                                className="p-2 hover:bg-neutral-800 rounded cursor-pointer transition-colors text-xs text-neutral-400 flex justify-between items-center group"
-                                onClick={() => setEditingTerrainNode({ mile: 0, type: 'other', difficulty: 100 })}
-                              >
-                                <div>
-                                  <span className="text-neutral-500">0.00 - {terrainNodes[0].mile.toFixed(2)}: </span>
-                                  <span className="text-neutral-500 font-medium italic">Undefined</span>
-                                </div>
-                                <span className="bg-neutral-900 px-1.5 py-0.5 rounded text-neutral-700 border border-neutral-800 group-hover:text-white">
-                                  Edit
-                                </span>
-                              </div>
-                            )}
-
-                            {/* Actual Segments */}
-                            {terrainNodes.map((node, i) => {
-                              const nextNode = terrainNodes[i + 1]
-                              const startMile = node.mile
-                              const endMile = nextNode ? nextNode.mile : (course?.total_distance_miles || 100)
-                              const isUndefined = node.type === 'other'
-
-                              return (
-                                <div
-                                  key={node.id}
-                                  className="p-2 hover:bg-neutral-800 rounded cursor-pointer transition-colors text-xs text-neutral-400 flex justify-between items-center group"
-                                  onClick={() => setEditingTerrainNode(node)}
-                                  onMouseEnter={() => setHoveredTerrainId(node.id)}
-                                  onMouseLeave={() => setHoveredTerrainId(null)}
-                                >
-                                  <div>
-                                    <span className="text-neutral-500">{startMile.toFixed(2)} - {endMile.toFixed(2)}: </span>
-                                    <span className={`font-medium capitalize ${isUndefined ? 'text-neutral-500 italic' : 'text-white'}`}>
-                                      {isUndefined ? 'Undefined' : node.type.replace('_', ' ')}
-                                    </span>
-                                  </div>
-                                  <span className="bg-neutral-900 px-1.5 py-0.5 rounded text-neutral-500 group-hover:text-white border border-neutral-800">
-                                    {node.difficulty}%
-                                  </span>
-                                </div>
-                              )
-                            })}
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                  <TerrainSidebar
+                    terrainNodes={terrainNodes}
+                    totalDistance={course?.total_distance_miles ?? 0}
+                    canEdit={!!isOwner && isEditMode}
+                    highlightedTerrainId={hoveredTerrainId}
+                    onHoverNode={setHoveredTerrainId}
+                    onSaveSegment={handleSaveTerrainSegment}
+                    onDeleteNode={handleDeleteTerrainNode}
+                  />
                 </div>
               </div>
             ) : (
@@ -1611,58 +1524,6 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
       </main >
 
-      {editingTerrainNode && (
-        <EditTerrainModal
-          node={editingTerrainNode}
-          startMile={editingTerrainNode.mile ?? 0}
-          endMile={(() => {
-            // 1. If modifying an existing node, find the next one
-            if (editingTerrainNode.id) {
-              const idx = terrainNodes.findIndex(n => n.id === editingTerrainNode.id)
-              if (idx >= 0 && idx < terrainNodes.length - 1) {
-                return terrainNodes[idx + 1].mile
-              }
-            } else {
-              // 2. If creating a NEW node (e.g. filling a gap), search for the *next* existing node
-              const start = editingTerrainNode.mile ?? 0
-              // Find the first node AFTER this start point
-              const nextNode = terrainNodes.find(n => n.mile > start + 0.001)
-              if (nextNode) {
-                return nextNode.mile // Default to filling the gap
-              }
-            }
-
-            // 3. Default for New Node or Last Node: Start + 0.5 (capped)
-            const start = editingTerrainNode.mile ?? 0
-            const total = course?.total_distance_miles || 100
-            return Math.min(start + 0.5, total)
-          })()}
-          onClose={() => setEditingTerrainNode(null)}
-          onSave={async (start, end, type, diff) => {
-            // Delete-then-Paint Strategy:
-            // 1. Delete the "Old Start" node (editingTerrainNode) ONLY if we moved the start mile.
-            //    If we didn't move it, handleSaveTerrainSegment handles the update correctly.
-            //    If we delete it, handleSaveTerrainSegment (with stale state) might try to update a deleted node ID.
-
-            // Only consider deleting if we are editing an EXISTING node
-            if (editingTerrainNode.id) {
-              const currentStartMile = editingTerrainNode.mile ?? 0
-              const isMove = Math.abs(start - currentStartMile) > 0.001
-
-              if (isMove) {
-                await handleDeleteTerrainNode(editingTerrainNode.id)
-              }
-            }
-
-            await handleSaveTerrainSegment(start, end, type, diff)
-            setEditingTerrainNode(null)
-          }}
-          onDelete={async (id) => {
-            await handleDeleteTerrainNode(id)
-            setEditingTerrainNode(null)
-          }}
-        />
-      )}
     </div >
   )
 }
