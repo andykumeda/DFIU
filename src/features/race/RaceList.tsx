@@ -1,18 +1,24 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/features/auth/AuthContext'
 import type { Race } from '@/types/database'
 import { formatDate } from '@/lib/utils'
 
 export function RaceList() {
+  const { user } = useAuth()
   const { data: races, isLoading, error } = useQuery({
-    queryKey: ['races'],
+    queryKey: ['races', user?.id ?? 'anon'],
     queryFn: async () => {
+      const filter = user
+        ? `user_id.eq.${user.id},is_public.eq.true`
+        : `is_public.eq.true`
       const { data, error } = await supabase
         .from('races')
         .select('*')
+        .or(filter)
         .order('created_at', { ascending: false })
-      
+
       if (error) throw error
       return data as Race[]
     }

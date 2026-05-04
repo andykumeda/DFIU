@@ -764,10 +764,17 @@ export function CourseMap({
                     group.forEach(wp => {
                         const btn = document.createElement('button')
                         btn.className = 'text-left text-sm py-2 px-2 hover:bg-blue-50 rounded flex justify-between items-center transition-colors w-full group'
-                        btn.innerHTML = `
-                            <span class="font-medium text-neutral-700">${wp.name}</span>
-                            <span class="text-[10px] font-mono text-neutral-400 bg-neutral-100 px-1.5 py-0.5 rounded group-hover:bg-white transition-colors">Mi ${wp.mile.toFixed(1)}</span>
-                        `
+
+                        const nameSpan = document.createElement('span')
+                        nameSpan.className = 'font-medium text-neutral-700'
+                        nameSpan.textContent = wp.name
+                        btn.appendChild(nameSpan)
+
+                        const mileSpan = document.createElement('span')
+                        mileSpan.className = 'text-[10px] font-mono text-neutral-400 bg-neutral-100 px-1.5 py-0.5 rounded group-hover:bg-white transition-colors'
+                        mileSpan.textContent = `Mi ${wp.mile.toFixed(1)}`
+                        btn.appendChild(mileSpan)
+
                         btn.onclick = () => {
                             if (onWaypointClickRef.current) onWaypointClickRef.current(wp.id)
                             marker.getPopup()?.remove()

@@ -93,8 +93,9 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     }
   })
 
-  // Auto-fetch weather if missing
+  // Auto-fetch weather if missing — owner-only to avoid races and unauthorized writes
   useEffect(() => {
+    if (!user || race?.user_id !== user.id) return
     if (race?.location && race?.start_datetime && !race.avg_temp_high && !fetchingWeather) {
       const loc = race.location!
       const date = race.start_datetime!
@@ -117,7 +118,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       }
       autoFetch()
     }
-  }, [race?.location, race?.start_datetime, race?.avg_temp_high, raceId, fetchingWeather, queryClient])
+  }, [race?.location, race?.start_datetime, race?.avg_temp_high, race?.user_id, raceId, user, fetchingWeather, queryClient])
 
   const { data: profile } = useQuery({
     queryKey: ['profile'],
