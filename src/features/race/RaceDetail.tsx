@@ -7,6 +7,7 @@ import { Calendar, MapPin, Globe, ArrowUpRight, CloudSun, Trophy, RefreshCw, Set
 
 import { supabase } from '@/lib/supabase'
 import { Race, Course, Waypoint, TerrainNode } from '@/types/database'
+import { RaceMembersSection } from './RaceMembersSection'
 import { fetchWeatherForRace, fetchCurrentWeather } from '@/lib/weather-service'
 import { sampleElevationProfile, type GpxParseResult } from '@/lib/gpx-parser'
 import { getNearestPointOnLine, getDistanceFromStart, getAllVisitsOnLine, getDistance } from '@/lib/geo-utils'
@@ -27,7 +28,7 @@ import { PaceCalculator } from '@/features/race/PaceCalculator'
 import { RaceResources } from '@/features/race/RaceResources'
 import { DropBagsSection } from '@/features/race/DropBagsSection'
 
-type Tab = 'overview' | 'map' | 'plan' | 'drop_bags' | 'resources'
+type Tab = 'overview' | 'map' | 'plan' | 'drop_bags' | 'resources' | 'members'
 
 // Helper to get icon
 function getWaypointIcon(type: string): string {
@@ -932,6 +933,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     { id: 'plan', label: 'Pace Plan' },
     { id: 'drop_bags', label: 'Drop Bags' },
     { id: 'resources', label: 'Resources' },
+    ...(isStrictOwner ? [{ id: 'members' as Tab, label: 'Members' }] : []),
   ]
 
   const twilight = useMemo(() => {
@@ -957,11 +959,9 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
   // Legacy alias: every existing `isOwner` usage gates editing (buttons,
   // drag handles, modal edit controls). Map to canEdit so crew/pacer with
-  // edit permission inherit the same UI. Use isStrictOwner from the hook
-  // for owner-only operations (e.g. transfer, delete).
+  // edit permission inherit the same UI. isStrictOwner gates owner-only
+  // controls like the Members tab.
   const isOwner = canEdit
-  // Suppress unused-warning until owner-only UI is wired.
-  void isStrictOwner
 
   if (raceLoading) return <div className='p-8 text-white'>Loading race...</div>
   if (!race) return <div className='p-8 text-white'>Race not found</div>
@@ -1443,6 +1443,12 @@ export function RaceDetail({ raceId }: { raceId: string }) {
               race={race}
               onUpdate={() => queryClient.invalidateQueries({ queryKey: ['race', raceId] })}
             />
+          </div>
+        )}
+
+        {activeTab === 'members' && isStrictOwner && (
+          <div className="animate-in fade-in duration-500">
+            <RaceMembersSection raceId={raceId} canManage={isStrictOwner} />
           </div>
         )}
 

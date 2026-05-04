@@ -405,6 +405,25 @@ export type Database = {
     }
     Functions: {
       clone_race: { Args: { p_race_id: string }; Returns: string }
+      find_user_by_email: {
+        Args: { p_email: string }
+        Returns: {
+          avatar_url: string
+          id: string
+          name: string
+        }[]
+      }
+      get_race_members: {
+        Args: { p_race_id: string }
+        Returns: {
+          avatar_url: string
+          granted_at: string
+          name: string
+          permission: string
+          role: string
+          user_id: string
+        }[]
+      }
       user_can_edit_race: { Args: { rid: string }; Returns: boolean }
       user_can_view_race: { Args: { rid: string }; Returns: boolean }
       user_owns_race: { Args: { rid: string }; Returns: boolean }
