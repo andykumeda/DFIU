@@ -1,8 +1,135 @@
 # Handoff Document
 
-**Date:** 2026-04-30 (late evening session — closed)
+**Date:** 2026-05-03 (evening session — closed)
 **Status:** Stable / Production Deployed
-**Last Deployed Commit:** `d78c351` (footer hash now uses `git describe --dirty`, so a `-dirty` suffix flags uncommitted-bundle drift).
+**Last Deployed Commit:** `3df3cc0` (RBAC Phase D — Members tab + invite-by-email).
+
+> **2026-05-03 session shipped (security hardening + full RBAC scaffold):**
+>
+> **Phase 0 — security audit triage (`ab9e2f1`, `6e2d301`):**
+> - Audit file `check` reviewed. Findings reconciled against prod schema:
+>   most tables already had owner-scoped policies; only `terrain_nodes` was
+>   wide open (`USING (true)`).
+> - **P0 client fixes:** RaceList filtered to `user_id OR is_public`, XSS
+>   in CourseMap waypoint-stack popup (`innerHTML` → `textContent`),
+>   auto-weather effect gated on ownership, `.gitignore` adds `.env*`.
+> - **`terrain_nodes` RLS lockdown:** scoped to course → race chain
+>   (real schema is `courses.race_id`, NOT `races.course_id`; my first
+>   draft was wrong, corrected in `6e2d301`).
+>
+> **Phase B — RBAC schema (`67b1b58`):**
+> - New tables: `site_admins`, `race_memberships(race_id, user_id, role,
+>   permission, capabilities, granted_by, granted_at)`. Roles =
+>   owner/crew/pacer; permissions = view/edit; capabilities reserved for
+>   future per-resource scoping (Q3=c).
+> - `SECURITY DEFINER` helpers `user_can_view_race` /
+>   `user_can_edit_race` / `user_owns_race` avoid RLS recursion. All four
+>   public tables (races/courses/waypoints/terrain_nodes) now key off
+>   memberships instead of `races.user_id` directly.
+> - `AFTER INSERT` trigger on `races` auto-creates owner+edit membership
+>   for the creator so the new-race flow keeps working.
+> - Backfill: every existing `races.user_id` → `(role=owner,
+>   permission=edit)` row. Owners experienced no behavior change.
+> - `site_admins` bootstrap: `andy@kumeda.com` (`eda6cfd7-3fc5-407f-
+>   ae97-03e7ceced324`). Q1 = manual SQL.
+>
+> **Phase C — client wiring (`140088b`):**
+> - `database.ts` regenerated; adds `race_memberships`, `site_admins`,
+>   helper Functions section.
+> - `AuthContext` now loads `{ isSiteAdmin, memberships }` on login.
+>   `refreshMemberships()` exposed for after-write invalidation.
+> - New `usePermission(raceId)` hook returns `{ canView, canEdit,
+>   isOwner, isAdmin }`. Single source of truth for UI gating.
+> - `RaceDetail.tsx` legacy `isOwner` aliased to `canEdit`.
+>   `isStrictOwner` (real owner) reserved for owner-only ops.
+>
+> **Phase D — invite UX, slice (c) — search existing users (`3df3cc0`):**
+> - Two SECURITY DEFINER RPCs: `find_user_by_email` (returns
+>   id/name/avatar_url only — never the caller's own row, never email
+>   itself), `get_race_members` (joined roster gated on
+>   `user_can_view_race`).
+> - `<RaceMembersSection>` lists members with role/permission, inline
+>   permission flip, remove. Owner-only "Add member" panel: email
+>   search → role + permission picker → insert via standard supabase
+>   client. RLS enforces owner-only mutations from Phase B.
+> - New "Members" tab in RaceDetail, gated on `isStrictOwner`.
+>
+> **Decisions locked (RBAC blocking questions):**
+> - Q1 admin bootstrap: manual SQL.
+> - Q2 invite UX: hybrid d, ship slice c first; email-link path
+>   deferred.
+> - Q3 granularity: view/edit only, capabilities jsonb reserved.
+> - Q4 transfer-of-ownership: owner-initiated; not yet implemented
+>   (UPDATE memberships, flip the two roles).
+> - Q5 pacer leg scoping: full pace plan (defer per-leg).
+> - Q6 audit log: deferred.
+> - Q7 lockdown migration applied first, RBAC overwrote — done.
+> - Q8 public races readable to anon — confirmed in helpers.
+>
+> **Verified:**
+> - As bootstrap admin, `user_can_view_race` / `_edit_race` /
+>   `_owns_race` return `true` for all 5 races. Public races still
+>   readable via `is_public` branch with no auth.
+> - Build clean post-Phase D (no type errors). Prod deployed.
+> - **Not yet verified end-to-end:** crew/pacer flow with a second
+>   account. See "Pick up here" below.
+>
+> **Pick up here (next session):**
+> 1. **Smoke-test Phase D in browser.** Open prod, confirm Members tab
+>    on a race, add yourself + try fake email (should report "no user
+>    found").
+> 2. **Second-account RBAC verification.** Sign up a second account
+>    (different email), invite as crew+edit, log in as that user,
+>    confirm:
+>    - Race appears on their dashboard.
+>    - They can edit waypoints/terrain.
+>    - They CANNOT delete the race (RLS-blocked).
+>    - Members tab is hidden for them.
+>    - Auto-weather effect does not fire on their view.
+>    - Anon read still works for `is_public` races.
+> 3. If verification surfaces issues: most likely culprits are
+>    `AuthContext.loadAuthData` race conditions or the membership
+>    cache not invalidating after grant. `refreshMemberships()` is
+>    wired post-mutation but a cross-session real-time listener is
+>    not.
+> 4. **Outstanding RBAC slices:**
+>    - Email-link invite (Q2 part a) — needs Supabase auth invite
+>      flow + invitation token table. ~3 days.
+>    - Owner-transfer UI (Q4) — flip role of two membership rows.
+>      ~30 min.
+>    - Admin panel (`/admin`) — list users, list races, edit grants.
+>      Site-admin only.
+> 5. **P1 security still open:**
+>    - `VITE_VISUAL_CROSSING_KEY` is still client-side bundled. Move
+>      to Supabase Edge Function; client calls function instead.
+>
+> **Migration files written this session:**
+> - `supabase/migrations/20260503_lockdown_rls_policies.sql`
+> - `supabase/migrations/20260503_rbac_memberships.sql`
+> - `supabase/migrations/20260503_member_rpcs.sql`
+> All applied to prod via Supabase MCP. Repo + DB in sync.
+>
+> **Files added/changed for RBAC (client):**
+> - `src/features/auth/AuthContext.tsx` — loads admin + memberships.
+> - `src/features/auth/usePermission.ts` — new hook.
+> - `src/features/race/RaceMembersSection.tsx` — new component.
+> - `src/features/race/RaceDetail.tsx` — Members tab + canEdit
+>   refactor.
+> - `src/features/race/RaceList.tsx` — filtered query.
+> - `src/features/course/CourseMap.tsx` — XSS fix.
+> - `src/types/database.ts` — regenerated from prod (twice).
+> - `.gitignore` — `.env*`.
+>
+> **Terrain feature (carried over from 2026-04-30):**
+> User testing in field. No regressions reported. Tunables in
+> `RaceDetail.tsx`: `TOL_M = 25` (parallel-pass meters), `SNAP_TOL =
+> 0.1` (mile-snap window).
+>
+> **Next phases still queued (untouched):**
+> 1. Elevation **loss** verification.
+> 2. Crew mode directions — RBAC unblocks this; build on top of
+>    `role='crew'` membership.
+> 3. History-based pacing (5 design decisions still open).
 
 > **2026-04-30 last-pass fixes (after the terrain rework):**
 > - **DropBag modal top no longer clipped.** Two-step fix:
