@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, Suspense, lazy } from 'react'
 import { useAuth } from '@/features/auth/AuthContext'
+import { usePermission } from '@/features/auth/usePermission'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Calendar, MapPin, Globe, ArrowUpRight, CloudSun, Trophy, RefreshCw, Settings, Download, Save } from 'lucide-react'
@@ -46,6 +47,7 @@ function getWaypointIcon(type: string): string {
 
 export function RaceDetail({ raceId }: { raceId: string }) {
   const { user } = useAuth()
+  const { canEdit, isOwner: isStrictOwner } = usePermission(raceId)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState<Tab>('overview')
@@ -93,9 +95,9 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     }
   })
 
-  // Auto-fetch weather if missing — owner-only to avoid races and unauthorized writes
+  // Auto-fetch weather if missing — edit-perm only to avoid races and unauthorized writes
   useEffect(() => {
-    if (!user || race?.user_id !== user.id) return
+    if (!user || !canEdit) return
     if (race?.location && race?.start_datetime && !race.avg_temp_high && !fetchingWeather) {
       const loc = race.location!
       const date = race.start_datetime!
@@ -118,7 +120,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       }
       autoFetch()
     }
-  }, [race?.location, race?.start_datetime, race?.avg_temp_high, race?.user_id, raceId, user, fetchingWeather, queryClient])
+  }, [race?.location, race?.start_datetime, race?.avg_temp_high, canEdit, raceId, user, fetchingWeather, queryClient])
 
   const { data: profile } = useQuery({
     queryKey: ['profile'],
@@ -173,7 +175,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   // bag, crew, pacer) for them.
   useEffect(() => {
     if (waypointsLoading || !course?.id || !course.geometry || !user) return
-    if (race?.user_id !== user.id) return
+    if (!canEdit) return
     const coords = (course.geometry as { coordinates: [number, number][] }).coordinates
     if (!coords || coords.length < 2) return
 
@@ -207,7 +209,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       if (error) { console.error('Failed to backfill Start/Finish waypoints:', error); return }
       queryClient.invalidateQueries({ queryKey: ['waypoints', course.id] })
     })
-  }, [waypointsLoading, course?.id, course?.geometry, course?.total_distance_miles, waypoints, user, race?.user_id, queryClient])
+  }, [waypointsLoading, course?.id, course?.geometry, course?.total_distance_miles, waypoints, user, canEdit, queryClient])
 
   // Fetch Terrain Nodes
   useEffect(() => {
@@ -953,7 +955,13 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     return null
   }, [race?.start_datetime, race?.timezone, waypoints, clock24h])
 
-  const isOwner = !!user && race?.user_id === user.id
+  // Legacy alias: every existing `isOwner` usage gates editing (buttons,
+  // drag handles, modal edit controls). Map to canEdit so crew/pacer with
+  // edit permission inherit the same UI. Use isStrictOwner from the hook
+  // for owner-only operations (e.g. transfer, delete).
+  const isOwner = canEdit
+  // Suppress unused-warning until owner-only UI is wired.
+  void isStrictOwner
 
   if (raceLoading) return <div className='p-8 text-white'>Loading race...</div>
   if (!race) return <div className='p-8 text-white'>Race not found</div>
