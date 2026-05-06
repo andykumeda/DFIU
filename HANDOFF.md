@@ -1,8 +1,64 @@
 # Handoff Document
 
-**Date:** 2026-05-03 (evening session — closed)
-**Status:** Stable / Production Deployed
-**Last Deployed Commit:** `3df3cc0` (RBAC Phase D — Members tab + invite-by-email).
+**Date:** 2026-05-05 (evening session — closed)
+**Status:** Stable / Production Deployed / Verified
+**Last Deployed Commit:** `75f6857` (terrain RBAC visibility gate + Route Stats restack).
+
+> **2026-05-05 session shipped (terrain RBAC visibility + Map stats cosmetic):**
+>
+> **Terrain RBAC — visibility gate (`75f6857`):**
+> - Phase B/C/D from 2026-05-03 already gated terrain *editing* on
+>   `canEdit`. This session extends gating to *visibility*: non-editor
+>   users (view-only members, public viewers, anon) no longer see the
+>   terrain layer at all.
+> - `src/features/race/RaceDetail.tsx`:
+>   - `<CourseMap terrainNodes={isOwner ? terrainNodes : []}>` —
+>     route line uncolored + drag handles absent for non-editors.
+>   - `<ElevationProfile terrainNodes={isOwner ? terrainNodes : []}>`
+>     — terrain bands suppressed on profile.
+>   - `<TerrainSidebar>` wrapped in `{isOwner && (...)}` — entire
+>     sidebar section hidden.
+> - `isOwner` here is the file-local alias for `canEdit` (owner +
+>   designated editors), set at line ~964. Naming is legacy; behavior
+>   matches the new rule.
+> - **Open question deferred:** view-only members get no terrain at
+>   all under this rule. If product wants view-only to *see* terrain
+>   (just not edit), swap visibility to `canView` and keep edit on
+>   `canEdit`. User confirmed current behavior is correct for now.
+>
+> **Map tab "Route Stats" sidebar — cosmetic restack:**
+> - Old: 2-col grid, 5 cells (Miles / Gain / Loss / Max / Min).
+> - New (3 rows):
+>   1. **Miles** — `text-4xl`, centered, full-width.
+>   2. **Gain** | **Loss** (2-col).
+>   3. **Max Elev** | **Min Elev** (2-col).
+> - Inline in `RaceDetail.tsx` (~line 1264). `CourseStats.tsx` is the
+>   *NewRacePage* preview — untouched.
+>
+> **Deploy workflow change:**
+> - User directive 2026-05-05: every successful build should
+>   auto-deploy to prod. Saved as feedback memory
+>   (`feedback_auto_deploy.md`). Existing
+>   `project_deploy_mechanism.md` (manual deploy) still describes the
+>   *mechanism* (rsync via `npm run deploy`); the *cadence* is now
+>   automatic-after-build.
+>
+> **Verified:**
+> - TS clean (`npx tsc --noEmit`), build clean.
+> - Prod deployed via `npm run deploy` (rsync to
+>   `web:/var/www/dfiu`). Stale chunks deleted, 10 files transferred.
+> - User confirmed terrain hidden for non-editors and stats restack
+>   correct in browser.
+>
+> **Pick up here (next session):**
+> 1. Second-account RBAC end-to-end verification (still open from
+>    2026-05-03): invite as crew+edit, confirm restricted view,
+>    confirm RLS blocks delete, confirm terrain *now* hidden for
+>    view-only invitees.
+> 2. Outstanding RBAC slices (unchanged): email-link invite,
+>    owner-transfer UI, `/admin` panel.
+> 3. P1 security still open: `VITE_VISUAL_CROSSING_KEY` client-bundled
+>    — move to Supabase Edge Function.
 
 > **2026-05-03 session shipped (security hardening + full RBAC scaffold):**
 >
