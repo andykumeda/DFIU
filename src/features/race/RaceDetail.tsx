@@ -1177,7 +1177,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
 
                         highlightedTerrainId={hoveredTerrainId}
-                        terrainNodes={terrainNodes}
+                        terrainNodes={isOwner ? terrainNodes : []}
                         onTerrainNodeMove={isOwner && isEditMode ? handleTerrainNodeMove : undefined}
                         onSegmentDefined={isOwner && isEditMode ? (lo, hi) => setPendingSegment({ startMile: lo, endMile: hi }) : undefined}
                       />
@@ -1240,7 +1240,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                       highlightedWaypointId={hoveredWaypointId}
                       showMileMarkers={showMileMarkers}
                       waypoints={waypoints.map(wp => ({ id: wp.id, mile: wp.mile, name: wp.name, type: wp.type }))}
-                      terrainNodes={terrainNodes}
+                      terrainNodes={isOwner ? terrainNodes : []}
                       onRangeDefined={isOwner && isEditMode ? (lo, hi) => setPendingSegment({ startMile: lo, endMile: hi }) : undefined}
                     />
                   </div>
@@ -1262,30 +1262,34 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                       )}
                     </div>
                     {course && (
-                      <div className='grid grid-cols-2 gap-4'>
-                        <div>
-                          <div className='text-2xl font-bold text-white'>{(course.total_distance_miles ?? 0).toFixed(2)}</div>
+                      <div className='space-y-4'>
+                        <div className='text-center'>
+                          <div className='text-4xl font-bold text-white'>{(course.total_distance_miles ?? 0).toFixed(2)}</div>
                           <div className='text-xs text-neutral-500'>Miles</div>
                         </div>
-                        <div>
-                          <div className='text-2xl font-bold text-green-500'>+{(course.total_elevation_gain_ft || (sampledProfile.length > 0 ? (Math.max(...elevationProfile.map(p => p.elevation)) - Math.min(...elevationProfile.map(p => p.elevation))) : 0)).toLocaleString()}</div>
-                          <div className='text-xs text-neutral-500'>Gain (ft)</div>
-                        </div>
-                        <div>
-                          <div className='text-2xl font-bold text-red-400'>-{((course as any).total_elevation_loss_ft || 0).toLocaleString()}</div>
-                          <div className='text-xs text-neutral-500'>Loss (ft)</div>
-                        </div>
-                        <div>
-                          <div className='text-2xl font-bold text-white'>
-                            {(course.max_elevation_ft || (elevationProfile.length > 0 ? Math.max(...elevationProfile.map(p => p.elevation)) : 0)).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        <div className='grid grid-cols-2 gap-4'>
+                          <div>
+                            <div className='text-2xl font-bold text-green-500'>+{(course.total_elevation_gain_ft || (sampledProfile.length > 0 ? (Math.max(...elevationProfile.map(p => p.elevation)) - Math.min(...elevationProfile.map(p => p.elevation))) : 0)).toLocaleString()}</div>
+                            <div className='text-xs text-neutral-500'>Gain (ft)</div>
                           </div>
-                          <div className='text-xs text-neutral-500'>Max Elev (ft)</div>
-                        </div>
-                        <div>
-                          <div className='text-2xl font-bold text-white'>
-                            {(course.min_elevation_ft || (elevationProfile.length > 0 ? Math.min(...elevationProfile.map(p => p.elevation)) : 0)).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                          <div>
+                            <div className='text-2xl font-bold text-red-400'>-{((course as any).total_elevation_loss_ft || 0).toLocaleString()}</div>
+                            <div className='text-xs text-neutral-500'>Loss (ft)</div>
                           </div>
-                          <div className='text-xs text-neutral-500'>Min Elev (ft)</div>
+                        </div>
+                        <div className='grid grid-cols-2 gap-4'>
+                          <div>
+                            <div className='text-2xl font-bold text-white'>
+                              {(course.max_elevation_ft || (elevationProfile.length > 0 ? Math.max(...elevationProfile.map(p => p.elevation)) : 0)).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                            </div>
+                            <div className='text-xs text-neutral-500'>Max Elev (ft)</div>
+                          </div>
+                          <div>
+                            <div className='text-2xl font-bold text-white'>
+                              {(course.min_elevation_ft || (elevationProfile.length > 0 ? Math.min(...elevationProfile.map(p => p.elevation)) : 0)).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                            </div>
+                            <div className='text-xs text-neutral-500'>Min Elev (ft)</div>
+                          </div>
                         </div>
                       </div>
                     )}
@@ -1382,16 +1386,18 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                     )}
                   </div>
 
-                  <TerrainSidebar
-                    terrainNodes={terrainNodes}
-                    totalDistance={course?.total_distance_miles ?? 0}
-                    canEdit={!!isOwner && isEditMode}
-                    highlightedTerrainId={hoveredTerrainId}
-                    onHoverNode={setHoveredTerrainId}
-                    onSaveSegment={handleSaveTerrainSegment}
-                    onDeleteNode={handleDeleteTerrainNode}
-                    onUpdateNodeMile={handleUpdateTerrainNodeMile}
-                  />
+                  {isOwner && (
+                    <TerrainSidebar
+                      terrainNodes={terrainNodes}
+                      totalDistance={course?.total_distance_miles ?? 0}
+                      canEdit={!!isOwner && isEditMode}
+                      highlightedTerrainId={hoveredTerrainId}
+                      onHoverNode={setHoveredTerrainId}
+                      onSaveSegment={handleSaveTerrainSegment}
+                      onDeleteNode={handleDeleteTerrainNode}
+                      onUpdateNodeMile={handleUpdateTerrainNodeMile}
+                    />
+                  )}
                 </div>
               </div>
             ) : (
