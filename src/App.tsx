@@ -6,6 +6,7 @@ import SignupPage from './pages/SignupPage'
 import DashboardPage from './pages/DashboardPage'
 import SettingsPage from './features/settings/SettingsPage'
 import RaceDetailPage from './pages/RaceDetailPage'
+import CrewViewPage from './pages/CrewViewPage'
 import NewRacePage from './pages/NewRacePage'
 import SplashPage from './pages/SplashPage'
 import StravaCallback from './features/auth/StravaCallback'
@@ -63,6 +64,7 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
+            <Route path='/race/:id/crew' element={<CrewViewPage />} />
             <Route path='/race/:id' element={<RaceDetailPage />} />
             <Route path='/auth/strava/callback' element={<StravaCallback />} />
             <Route path='/' element={<SplashPage />} />

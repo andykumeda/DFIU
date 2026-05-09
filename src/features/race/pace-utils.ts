@@ -19,6 +19,11 @@ export interface Split {
     cutoffMargin?: number // minutes ahead of cutoff
 }
 
+export interface ActualCheckin {
+    waypointId: string
+    arrivedAt: Date
+}
+
 export interface PacePlanResult {
     totalTime: number // minutes
     movingTime: number // minutes
@@ -175,7 +180,8 @@ export function calculatePacePlan(
     terrainNodes: TerrainNode[],
     strategy: PacingStrategy,
     race: Partial<Race>,
-    clock24h: boolean = false
+    clock24h: boolean = false,
+    actualCheckins: ActualCheckin[] = []
 ): PacePlanResult {
     // 1. Determine Target GAP (Moving Baseline)
 
@@ -457,7 +463,102 @@ export function calculatePacePlan(
         }
     }
 
-    return bestResult
+    return applyActualCheckins(bestResult, actualCheckins, race, clock24h)
+}
+
+// Re-extrapolation: replace planned arrivals with actuals up through the last
+// check-in, then scale the remaining (downstream) planned segments by the
+// observed-vs-planned ratio at the anchor. Terrain/grade/sun weighting is
+// preserved because the planned segment proportions already encode them — we
+// just stretch the remaining time budget.
+//
+// Arrivals before the anchor without a matching check-in are linearly
+// interpolated by mile between flanking actuals (or between start-time and
+// the next actual).
+function applyActualCheckins(
+    result: PacePlanResult,
+    actualCheckins: ActualCheckin[],
+    race: Partial<Race>,
+    clock24h: boolean
+): PacePlanResult {
+    if (!actualCheckins || actualCheckins.length === 0) return result
+    if (!race.start_datetime) return result
+    if (result.waypointArrivals.length === 0) return result
+
+    const startTime = new Date(race.start_datetime)
+    const tz = race.timezone || undefined
+    const arrivalsById = new Map(result.waypointArrivals.map(a => [a.waypointId, a]))
+
+    type Resolved = { waypointId: string; mile: number; observedElapsed: number }
+    const resolved: Resolved[] = []
+    for (const ck of actualCheckins) {
+        const wa = arrivalsById.get(ck.waypointId)
+        if (!wa) continue
+        const observedElapsed = (ck.arrivedAt.getTime() - startTime.getTime()) / 60000
+        if (!isFinite(observedElapsed) || observedElapsed <= 0) continue
+        resolved.push({ waypointId: ck.waypointId, mile: wa.mile, observedElapsed })
+    }
+    if (resolved.length === 0) return result
+    resolved.sort((a, b) => a.mile - b.mile)
+
+    const anchor = resolved[resolved.length - 1]
+    const anchorWa = arrivalsById.get(anchor.waypointId)
+    if (!anchorWa || anchorWa.arrivalTime <= 0) return result
+    const anchorPlanned = anchorWa.arrivalTime
+    const paceRatio = anchor.observedElapsed / anchorPlanned
+
+    const interpAnchors: { mile: number; elapsed: number }[] = [
+        { mile: 0, elapsed: 0 },
+        ...resolved.map(r => ({ mile: r.mile, elapsed: r.observedElapsed })),
+    ]
+    const interpElapsedAtMile = (m: number): number => {
+        for (let i = 0; i < interpAnchors.length - 1; i++) {
+            const a = interpAnchors[i]
+            const b = interpAnchors[i + 1]
+            if (m >= a.mile && m <= b.mile) {
+                const t = b.mile === a.mile ? 0 : (m - a.mile) / (b.mile - a.mile)
+                return a.elapsed + (b.elapsed - a.elapsed) * t
+            }
+        }
+        return NaN
+    }
+
+    const checkinByWpId = new Map(resolved.map(r => [r.waypointId, r]))
+
+    const remappedArrivals = result.waypointArrivals.map(wa => {
+        let newElapsed: number
+        const direct = checkinByWpId.get(wa.waypointId)
+        if (direct) {
+            newElapsed = direct.observedElapsed
+        } else if (wa.mile <= anchor.mile + 0.001) {
+            const interp = interpElapsedAtMile(wa.mile)
+            newElapsed = isFinite(interp) ? interp : wa.arrivalTime
+        } else {
+            newElapsed = anchor.observedElapsed + (wa.arrivalTime - anchorPlanned) * paceRatio
+        }
+        return { ...wa, arrivalTime: newElapsed }
+    })
+
+    let prev: typeof remappedArrivals[number] | null = null
+    for (let i = 0; i < remappedArrivals.length; i++) {
+        const wa = remappedArrivals[i]
+        const segDist = prev ? Math.max(0, wa.mile - prev.mile) : 0
+        const segTimeMin = prev ? Math.max(0, wa.arrivalTime - prev.arrivalTime) : 0
+        wa.segmentMile = segDist
+        wa.segmentTime = prev ? formatDuration(segTimeMin) : '--'
+        wa.segmentPace = segDist > 0 ? segTimeMin / segDist : 0
+        wa.overallPace = wa.mile > 0 ? wa.arrivalTime / wa.mile : 0
+        wa.timeOfDay = formatTimeOfDay(wa.arrivalTime, startTime, tz, clock24h)
+        prev = wa
+    }
+
+    const lastArrival = remappedArrivals[remappedArrivals.length - 1]
+    const newTotal = lastArrival ? lastArrival.arrivalTime : result.totalTime
+    return {
+        ...result,
+        waypointArrivals: remappedArrivals,
+        totalTime: newTotal,
+    }
 }
 
 function formatDuration(minutes: number): string {

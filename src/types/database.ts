@@ -138,6 +138,44 @@ export type Database = {
           },
         ]
       }
+      race_pace_plans: {
+        Row: {
+          has_calculated: boolean
+          plan_a_time: string
+          plan_b_time: string | null
+          plan_c_buffer: string
+          race_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          has_calculated?: boolean
+          plan_a_time?: string
+          plan_b_time?: string | null
+          plan_c_buffer?: string
+          race_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          has_calculated?: boolean
+          plan_a_time?: string
+          plan_b_time?: string | null
+          plan_c_buffer?: string
+          race_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "race_pace_plans_race_id_fkey"
+            columns: ["race_id"]
+            isOneToOne: true
+            referencedRelation: "races"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       races: {
         Row: {
           avg_temp_high: string | null
@@ -265,6 +303,51 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      runner_checkins: {
+        Row: {
+          arrived_at: string
+          created_at: string
+          entered_by: string | null
+          id: string
+          notes: string | null
+          race_id: string
+          waypoint_id: string
+        }
+        Insert: {
+          arrived_at: string
+          created_at?: string
+          entered_by?: string | null
+          id?: string
+          notes?: string | null
+          race_id: string
+          waypoint_id: string
+        }
+        Update: {
+          arrived_at?: string
+          created_at?: string
+          entered_by?: string | null
+          id?: string
+          notes?: string | null
+          race_id?: string
+          waypoint_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "runner_checkins_race_id_fkey"
+            columns: ["race_id"]
+            isOneToOne: false
+            referencedRelation: "races"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "runner_checkins_waypoint_id_fkey"
+            columns: ["waypoint_id"]
+            isOneToOne: false
+            referencedRelation: "waypoints"
             referencedColumns: ["id"]
           },
         ]
@@ -568,3 +651,5 @@ export type Profile = Tables<"profiles">
 export type TerrainNode = Tables<"terrain_nodes">
 export type RaceMembership = Tables<"race_memberships">
 export type SiteAdmin = Tables<"site_admins">
+export type RacePacePlan = Tables<"race_pace_plans">
+export type RunnerCheckin = Tables<"runner_checkins">

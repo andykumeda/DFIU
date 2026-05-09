@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, Suspense, lazy } from 'react'
 import { useAuth } from '@/features/auth/AuthContext'
 import { usePermission } from '@/features/auth/usePermission'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Calendar, MapPin, Globe, ArrowUpRight, CloudSun, Trophy, RefreshCw, Settings, Download, Save } from 'lucide-react'
 
@@ -28,7 +28,11 @@ import { PaceCalculator } from '@/features/race/PaceCalculator'
 import { RaceResources } from '@/features/race/RaceResources'
 import { DropBagsSection } from '@/features/race/DropBagsSection'
 
-type Tab = 'overview' | 'map' | 'plan' | 'drop_bags' | 'resources' | 'members'
+const CrewView = lazy(() =>
+    import('@/features/race/CrewView').then(m => ({ default: m.CrewView }))
+)
+
+type Tab = 'overview' | 'map' | 'plan' | 'drop_bags' | 'resources' | 'crew' | 'members'
 
 // Helper to get icon
 function getWaypointIcon(type: string): string {
@@ -48,10 +52,21 @@ function getWaypointIcon(type: string): string {
 
 export function RaceDetail({ raceId }: { raceId: string }) {
   const { user } = useAuth()
-  const { canEdit, isOwner: isStrictOwner } = usePermission(raceId)
+  const { canEdit, canView, isOwner: isStrictOwner } = usePermission(raceId)
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState<Tab>('overview')
+
+  // Mobile auto-redirect to dedicated crew route. ?full=1 escape hatch lets
+  // users opt back into the full editor on phones.
+  useEffect(() => {
+    if (searchParams.get('full') === '1') return
+    if (typeof window === 'undefined') return
+    const isMobile = window.matchMedia('(max-width: 768px)').matches
+    if (isMobile) navigate(`/race/${raceId}/crew`, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingWaypoint, setEditingWaypoint] = useState<Partial<Waypoint> | null>(null)
   const [viewingWaypoint, setViewingWaypoint] = useState<Waypoint | null>(null)
@@ -933,6 +948,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     { id: 'plan', label: 'Pace Plan' },
     { id: 'drop_bags', label: 'Drop Bags' },
     { id: 'resources', label: 'Resources' },
+    ...(canView ? [{ id: 'crew' as Tab, label: 'Crew' }] : []),
     ...(isStrictOwner ? [{ id: 'members' as Tab, label: 'Members' }] : []),
   ]
 
@@ -1449,6 +1465,14 @@ export function RaceDetail({ raceId }: { raceId: string }) {
               race={race}
               onUpdate={() => queryClient.invalidateQueries({ queryKey: ['race', raceId] })}
             />
+          </div>
+        )}
+
+        {activeTab === 'crew' && canView && (
+          <div className="animate-in fade-in duration-500 max-w-5xl mx-auto">
+            <Suspense fallback={<div className='p-6 text-white text-center'>Loading crew view…</div>}>
+              <CrewView raceId={raceId} embedded />
+            </Suspense>
           </div>
         )}
 

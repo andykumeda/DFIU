@@ -1,10 +1,175 @@
 # Handoff Document
 
-**Date:** 2026-05-05 (evening session — closed)
-**Status:** Stable / Production Deployed / Verified
-**Last Deployed Commit:** `75f6857` (terrain RBAC visibility gate + Route Stats restack).
+**Date:** 2026-05-08 (evening session — paused mid-phase, P1–P3 of crew feature shipped to prod, P4 deferred)
+**Status:** Stable / Production Deployed / Phase 4 (offline/PWA) not yet started
+**Last Deployed:** Crew phases 1–3 (DB schema + re-extrapolation logic + Crew View UI). All migrations applied to Supabase project `nyjgyyuoscgekavheeqi`. **Not yet git-committed at session pause.**
+
+> **2026-05-08 session — Crew feature scaffold (paused before P4):**
+>
+> **Goal:** Build crew-facing view for runners' support teams. Mobile-first.
+> Lets crew see runner's predicted position, next crew-accessible aid station,
+> drop bag contents, drive directions (Google Maps deeplink), and log actual
+> arrival times that re-extrapolate downstream ETAs.
+>
+> **Design decisions locked (Q-A through Q-E):**
+> - Q-A **Re-extrapolation behavior**: observed pace (start→last check-in) ratio
+>   applied to remaining planned segments. Terrain/grade/sun weighting preserved
+>   because planned segment proportions already encode them.
+> - Q-B **Whose actuals**: anyone with `canEdit` (owner + crew/pacer with
+>   edit perm). RLS already enforces.
+> - Q-C **Pace plan storage**: new table `race_pace_plans` (1 row per race),
+>   not bolted onto `races`.
+> - Q-D **Check-ins schema**: `runner_checkins` with unique
+>   `(race_id, waypoint_id)`. Upsert overwrites prior actual for same WP.
+> - Q-E **Active plan**: Plan A is primary in UI; B/C as smaller chips
+>   (toggleable). User can switch active plan client-side without persisting.
+>
+> ---
+>
+> **Phase 1 — Schema + persistence (DEPLOYED):**
+> - Migration `supabase/migrations/20260508_crew_phase1_pace_plans_checkins.sql`.
+>   Two new tables, 8 RLS policies (read=`user_can_view_race`,
+>   write=`user_can_edit_race`, delete=`user_owns_race` for plans / `user_can_edit_race` for check-ins).
+> - **`race_pace_plans`** — `race_id PK`, `plan_a_time text '24:00'`,
+>   `plan_b_time text` (null = auto midpoint), `plan_c_buffer text '00:30'`,
+>   `has_calculated bool`, `updated_at`, `updated_by`.
+> - **`runner_checkins`** — `id`, `race_id`, `waypoint_id`, `arrived_at timestamptz`,
+>   `entered_by`, `notes`, `created_at`. Unique on `(race_id, waypoint_id)`.
+> - TS types regenerated. `RacePacePlan` + `RunnerCheckin` aliases in
+>   `src/types/database.ts`.
+> - **`usePacePlans` hook rewritten** (was localStorage). Now:
+>   - SELECT row → if missing, one-shot migrate from `pace_plans_<raceId>`
+>     localStorage key (only if `canEdit`; viewers stay read-only) → else defaults.
+>   - Realtime subscribe via `supabase.channel('race_pace_plans:<id>')` so crew
+>     sees runner's edits live.
+>   - Setters upsert to DB, gated on `canEdit`.
+>   - Surface preserved (`{ plans, setPlanA, setPlanB, setPlanCBuffer, markCalculated }`)
+>     so existing call sites (`PaceCalculator`, `DropBagsSection`) unchanged.
+> - **`useRunnerCheckins(raceId)` new hook** — list + `upsertCheckin` +
+>   `deleteCheckin` + realtime via `supabase.channel('runner_checkins:<id>')`.
+>
+> **Phase 2 — Re-extrapolation logic (DEPLOYED):**
+> - `src/features/race/pace-utils.ts` — `calculatePacePlan()` gains optional
+>   `actualCheckins: ActualCheckin[]` param (default `[]`). Existing callers
+>   unchanged.
+> - **Algorithm** (`applyActualCheckins` post-processor):
+>   1. Resolve each checkin → observed elapsed minutes from
+>      `race.start_datetime`. Drop if `<=0` or non-finite.
+>   2. Sort resolved by mile. Last = anchor.
+>   3. `paceRatio = anchor.observedElapsed / anchor.plannedElapsed`.
+>   4. For each `waypointArrivals[i]`:
+>      - Direct match in checkins: use actual elapsed.
+>      - Upstream of anchor (no actual): linear-interp by mile between flanking
+>        actuals (`(mile=0, e=0)` → next actual → ... → anchor).
+>      - Downstream of anchor:
+>        `anchor.observedElapsed + (planned[i] - anchorPlanned) × paceRatio`.
+>        Preserves terrain/grade weighting (planned proportions already encode them).
+>   5. Re-derive `segmentMile`, `segmentTime`, `segmentPace`, `overallPace`,
+>      `timeOfDay` from new arrival times. Update `totalTime`.
+> - Edge cases handled: no `start_datetime`, future-start race, missing waypoint,
+>   anchor at mile 0, empty checkin list, single checkin.
+>
+> **Phase 3 — Crew View UI (DEPLOYED):**
+> - **New route** `/race/:id/crew` (lazy-loaded, mobile-first).
+> - **Mobile auto-redirect**: `RaceDetail` checks
+>   `matchMedia('(max-width: 768px)')` on mount → navigates to `/crew`.
+>   Escape hatch: `?full=1` query param skips the redirect.
+> - **Desktop tab**: new "Crew" tab in RaceDetail (visible to `canView`),
+>   embeds `<CrewView embedded />` so RaceDetail header/back-nav stays.
+> - **Components added:**
+>   - `src/features/race/CrewMap.tsx` — minimal Mapbox GL component (course
+>     line + WP pins with crew highlight + red runner predicted marker + blue
+>     crew location marker). Auto-fits to runner + next-WP bounds with
+>     `maxZoom: 14`.
+>   - `src/features/race/CrewView.tsx` — main page. Sections:
+>     - Plan toggle (A primary big, B/C buttons w/ minutes inline). Shows
+>       elapsed-time + delta vs Plan A when checkins exist.
+>     - "Next crew aid station" card: drive distance (haversine, straight-line),
+>       time-you-have countdown (= predicted ETA at WP − now), Google Maps
+>       deeplink (`https://www.google.com/maps/dir/?api=1&destination=lat,lon&travelmode=driving`),
+>       enable-location prompt if denied.
+>     - Map.
+>     - Drop bag panel for next crew AS — items + `drop_bag_notes`.
+>     - "What runner carries" — distance + ETA to next-any-AS vs next-crew-AS.
+>     - Last check-in banner (when present).
+>     - All aid stations list with predicted ETAs, status dots
+>       (checked=emerald / past=amber / upcoming-crew=blue / other=neutral),
+>       per-row "Log" button (`canEdit` only).
+>     - Sticky check-in CTA at bottom (`canEdit` only) → modal with WP picker
+>       + date + time inputs, defaulting to now.
+>   - `src/pages/CrewViewPage.tsx` — Suspense + lazy wrapper for `/race/:id/crew`.
+> - **Bundle hygiene**: CrewView lazy-loaded from RaceDetail too; mapbox-gl
+>   extracted to its own 1.68MB chunk (was leaking into root index when
+>   CrewView/CrewMap statically imported). Index back to ~683KB.
+>
+> ---
+>
+> **Verified end-to-end:**
+> - TS clean (`npx tsc --noEmit`) after each phase.
+> - Build clean.
+> - Deployed via `npm run deploy` (auto-deploy directive).
+> - Migration applied to Supabase. RLS verified via
+>   `pg_policies` (8 policies present, correct cmds).
+>
+> **NOT YET DONE (open at session pause):**
+>
+> 1. **Git commit** — none of the P1–P3 changes are committed. Working
+>    tree dirty. Suggested commit (single squash):
+>    `feat(crew): phase 1–3 — pace plans + check-ins + Crew View`.
+>    Files in scope:
+>    - `supabase/migrations/20260508_crew_phase1_pace_plans_checkins.sql`
+>    - `src/types/database.ts`
+>    - `src/features/race/usePacePlans.ts` (rewritten)
+>    - `src/features/race/useRunnerCheckins.ts` (new)
+>    - `src/features/race/pace-utils.ts` (extended)
+>    - `src/features/race/CrewMap.tsx` (new)
+>    - `src/features/race/CrewView.tsx` (new)
+>    - `src/features/race/RaceDetail.tsx` (tab + redirect + lazy CrewView)
+>    - `src/App.tsx` (route)
+>    - `src/pages/CrewViewPage.tsx` (new)
+>    - `HANDOFF.md` (this update)
+>
+> 2. **Phase 4 — Offline / PWA (NOT STARTED):**
+>    User confirmed scope: maps + pace plan downloadable ahead of time, manual
+>    arrival entry should recalc future ETAs offline. Plan was:
+>    - **Service worker** via `vite-plugin-pwa`. App shell cache (HTML/JS/CSS).
+>    - **Tile cache**: pre-download bbox of course on user opt-in
+>      ("Download for offline" button). **TOS check first** — current
+>      Mapbox usage may need to switch to a cache-friendlier tier or
+>      Stadia/MapTiler for compliant offline tile bundling.
+>    - **IndexedDB**: cache `{race, course, waypoints, terrain_nodes,
+>      pace_plans, drop_bag_items, checkins}` keyed by `race_id` so the entire
+>      view renders cold offline.
+>    - **Write queue**: offline `runner_checkins` upserts → IndexedDB →
+>      replayed via `supabase.channel` reconnect or background sync API.
+>    - Recalc on manual entry already works offline once data is cached
+>      (`calculatePacePlan` is pure JS, no network).
+>
+> 3. **Open product question deferred from earlier in session:** view-only
+>    members currently see no terrain (gating by `canEdit`, not `canView`).
+>    Same gate applies to Crew View — `canView` enables the Crew tab itself,
+>    but writes (check-ins) require `canEdit`. Fine as-is for now.
+>
+> 4. **Pre-existing items still open** (carried from prior sessions):
+>    - Second-account RBAC end-to-end verification.
+>    - Email-link invite flow (RBAC slice (d)).
+>    - Owner-transfer UI.
+>    - `/admin` panel.
+>    - P1 security: `VITE_VISUAL_CROSSING_KEY` still client-bundled — move to
+>      Supabase Edge Function.
+>
+> ---
+>
+> **How to resume next session:**
+> 1. Read this section first.
+> 2. Decide: commit P1–P3 work as-is, or test more before committing.
+> 3. If continuing → start P4 with the tile-provider TOS check before any
+>    offline work begins.
+> 4. Or split: ship P1–P3 commit now, evaluate offline scope after real
+>    crew testing on a live race.
 
 > **2026-05-05 session shipped (terrain RBAC visibility + Map stats cosmetic):**
+> Last Deployed Commit: `75f6857`
 >
 > **Terrain RBAC — visibility gate (`75f6857`):**
 > - Phase B/C/D from 2026-05-03 already gated terrain *editing* on
