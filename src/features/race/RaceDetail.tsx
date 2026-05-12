@@ -1478,7 +1478,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
         {activeTab === 'members' && isStrictOwner && (
           <div className="animate-in fade-in duration-500">
-            <RaceMembersSection raceId={raceId} canManage={isStrictOwner} />
+            <RaceMembersSection raceId={raceId} canInvite={canView} canManage={isStrictOwner} />
           </div>
         )}
 

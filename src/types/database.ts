@@ -100,6 +100,44 @@ export type Database = {
         }
         Relationships: []
       }
+      pending_race_memberships: {
+        Row: {
+          id: string
+          race_id: string
+          email: string
+          role: string
+          permission: string
+          invited_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          race_id: string
+          email: string
+          role: string
+          permission?: string
+          invited_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          race_id?: string
+          email?: string
+          role?: string
+          permission?: string
+          invited_by?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_race_memberships_race_id_fkey"
+            columns: ["race_id"]
+            isOneToOne: false
+            referencedRelation: "races"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       race_memberships: {
         Row: {
           capabilities: Json
@@ -507,8 +545,21 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_pending_race_invites: {
+        Args: { p_race_id: string }
+        Returns: {
+          id: string
+          email: string
+          role: string
+          permission: string
+          invited_by: string | null
+          invited_by_name: string | null
+          created_at: string
+        }[]
+      }
       user_can_edit_race: { Args: { rid: string }; Returns: boolean }
       user_can_view_race: { Args: { rid: string }; Returns: boolean }
+      user_is_race_member: { Args: { rid: string }; Returns: boolean }
       user_owns_race: { Args: { rid: string }; Returns: boolean }
     }
     Enums: {
