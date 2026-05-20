@@ -1,9 +1,9 @@
 # Handoff Document
 
 **Date:** 2026-05-20
-**Status:** Role/official-event implementation complete; production DB migration, Edge Function deploy, and first frontend deploy completed.
+**Status:** Cleaning repo after role/official-event production deploy; preserving production repair migration in git.
 **Current HEAD before role work:** `67ea768 chore: clean repo docs and generated files`.
-**Active follow-up:** Commit, push, and redeploy from the clean commit hash.
+**Active follow-up:** Commit migration repair, push `main`, and redeploy from the clean commit hash.
 
 ## Current Task
 
@@ -24,6 +24,7 @@ Implementation notes:
 - Updated invite flow to add crew/pacer as view-log team members.
 - `npm run lint` passes with existing warnings; `npm run build` passes.
 - Production migration `official_events_role_views_runner_gps` applied to Supabase project `nyjgyyuoscgekavheeqi`.
+- Production repair migration `repair_team_membership_policies` applied to remove stale permissive invite policies and enforce team-manager membership control.
 - `invite-race-member` Edge Function deployed as version 2 with JWT verification enabled.
 - Frontend deployed once from the working tree; final step is commit/push and redeploy from the clean commit hash.
 
@@ -40,7 +41,7 @@ DFIU is a React/Vite/Supabase race-planning app for ultrarunners. Current `main`
 
 ## Open Work
 
-1. **Commit/push role-view implementation** and redeploy from clean commit hash.
+1. **Commit/push migration repair** and redeploy from clean commit hash.
 2. **Second-account RBAC/invite verification:** test owner/RD, runner, crew, pacer, pending invite, invite acceptance, and anonymous public access with separate accounts.
 3. **Weather security:** move Visual Crossing calls out of the client bundle and into a Supabase Edge Function.
 4. **Admin UX:** build `/admin` for broader site-admin management beyond the inline official toggle.
