@@ -223,9 +223,8 @@ export function calculatePacePlan(
         })
     }
 
-    // Determine Total Delays
-    // Iterate waypoints and sum delays from wp.delay property
-    let totalDelaysMin = 0
+    // Determine per-waypoint delays. These are applied when computing
+    // departures, not added as a single aggregate.
     const waypointDelays: Record<string, number> = {}
 
     waypoints.forEach(wp => {
@@ -238,7 +237,6 @@ export function calculatePacePlan(
 
         if (d > 0) {
             waypointDelays[wp.id] = d
-            totalDelaysMin += d
         }
     })
 

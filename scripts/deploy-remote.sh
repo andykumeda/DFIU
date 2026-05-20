@@ -14,7 +14,7 @@ if [ -f .env.local ]; then
 fi
 
 # Default Configuration
-USER=${DEPLOY_USER:-"root"}
+USER=${DEPLOY_USER:-$(whoami)}
 HOST=${DEPLOY_HOST:-"web"}
 DIR=${DEPLOY_DIR:-"/var/www/dfiu"}
 

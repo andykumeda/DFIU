@@ -20,6 +20,8 @@ DEPLOY_HOST=your_server_ip_or_domain
 DEPLOY_DIR=/var/www/dfiu
 ```
 
+If `DEPLOY_USER` is omitted, the deploy script uses the current local username. The current production directory is writable by the `andy` SSH user, not `root`.
+
 ## Deployment Steps
 
 ### 1. Frontend Deployment (Static Files)
@@ -29,25 +31,35 @@ We use a script to build the React application locally and `rsync` the files to 
 Run the following command from the project root:
 
 ```bash
-./scripts/deploy-remote.sh
+npm run deploy
 ```
 
 **What this does:**
-1.  Builds the project locally (`npm run build`).
-2.  Connects to `DEPLOY_HOST` via SSH.
-3.  Syncs the contents of `dist/` to `DEPLOY_DIR` on the server using `rsync`.
+1.  Installs exact dependencies with `npm ci`.
+2.  Builds the project locally (`npm run build`).
+3.  Connects to `DEPLOY_HOST` via SSH.
+4.  Syncs the contents of `dist/` to `DEPLOY_DIR` on the server using `rsync`.
+
+After deploy, compare the app footer/build label with:
+
+```bash
+git describe --always --dirty --abbrev=7
+```
 
 ### 2. Backend Deployment (Supabase Edge Functions)
 
 Since the backend logic runs on Supabase Edge Functions, you deploy them directly to Supabase, not your Linux server.
 
-Run this command:
+Run these commands when the corresponding function changes:
 
 ```bash
 supabase functions deploy strava-auth --no-verify-jwt
+supabase functions deploy invite-race-member
 ```
 
 *Note: Ensure you have logged in via `supabase login` and linked your project.*
+
+Current Supabase-backed features also depend on applying migrations in `supabase/migrations/`, including RBAC memberships, pending invites, DB-backed pace plans, and runner check-ins.
 
 ## Nginx Configuration (Example)
 

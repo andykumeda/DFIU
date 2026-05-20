@@ -10,7 +10,7 @@ import { Race, Course, Waypoint, TerrainNode } from '@/types/database'
 import { RaceMembersSection } from './RaceMembersSection'
 import { fetchWeatherForRace, fetchCurrentWeather } from '@/lib/weather-service'
 import { sampleElevationProfile, type GpxParseResult } from '@/lib/gpx-parser'
-import { getNearestPointOnLine, getDistanceFromStart, getAllVisitsOnLine, getDistance } from '@/lib/geo-utils'
+import { getCoordinateAtDistance, getNearestPointOnLine, getDistanceFromStart, getAllVisitsOnLine, getDistance } from '@/lib/geo-utils'
 import { formatDate } from '@/lib/utils'
 import SunCalc from 'suncalc'
 
@@ -439,7 +439,6 @@ export function RaceDetail({ raceId }: { raceId: string }) {
         let lon = data.lon
         const existingWp = waypoints.find(w => w.id === data.id)
         if (existingWp && data.mile !== undefined && data.mile !== existingWp.mile && course?.geometry) {
-          const { getCoordinateAtDistance, getNearestPointOnLine } = await import('@/lib/geo-utils')
           const coords = (course.geometry as { coordinates: [number, number][] }).coordinates
           const coord = getCoordinateAtDistance(course.geometry as any, data.mile * 1609.34)
           if (coord) {
@@ -476,7 +475,6 @@ export function RaceDetail({ raceId }: { raceId: string }) {
         let lon = data.lon
 
         if (data.mile !== undefined && course?.geometry) {
-          const { getCoordinateAtDistance, getNearestPointOnLine } = await import('@/lib/geo-utils')
           const coords = (course.geometry as { coordinates: [number, number][] }).coordinates
           // Use turf/along to get approximate position at target mile
           const coord = getCoordinateAtDistance(course.geometry as any, data.mile * 1609.34)
@@ -639,7 +637,6 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     if (!course?.id) return
     let lat = 0, lon = 0
     if (course.geometry) {
-      const { getCoordinateAtDistance } = await import('@/lib/geo-utils')
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const coord = getCoordinateAtDistance(course.geometry as any, mile * 1609.34)
       if (coord) { lon = coord[0]; lat = coord[1] }
@@ -655,7 +652,6 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       const helperInsert = async (mile: number, t: string, d: number) => {
         let lat = 0, lon = 0
         if (course.geometry) {
-          const { getCoordinateAtDistance } = await import('@/lib/geo-utils')
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const coord = getCoordinateAtDistance(course.geometry as any, mile * 1609.34)
           if (coord) {
@@ -708,11 +704,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       //      We should probably restore THAT type to maintain continuity of the *other* segment.
       //    - If getTerrainAt(endMile) returns Paved, we restore Paved.
 
-      console.log('--- Saving Segment ---')
-      console.log('Inputs:', { startMile, endMile, type, difficulty })
-
       const prevAtEnd = getTerrainAt(endMile)
-      console.log('Terrain at End (Restore Target):', prevAtEnd)
 
       const typeAtEnd = prevAtEnd.type
       const diffAtEnd = prevAtEnd.difficulty
@@ -725,25 +717,18 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       // A. Insert/Update Start Node
       const existingStart = terrainNodes.find(n => Math.abs(n.mile - startMile) < SNAP_TOL)
       if (existingStart) {
-        console.log('Updating existing start node:', existingStart.id)
         const { error } = await (supabase.from('terrain_nodes') as any).update({ type, difficulty }).eq('id', existingStart.id)
         if (error) throw error
       } else {
-        console.log('Inserting new start node at', startMile)
         await helperInsert(startMile, type, difficulty)
       }
 
       // B. Insert/Update End Node (Restore previous state)
       if (endMile < (course.total_distance_miles || 100)) {
         const existingEnd = terrainNodes.find(n => Math.abs(n.mile - endMile) < SNAP_TOL)
-        if (existingEnd) {
-          console.log('Existing end node found, skipping restore:', existingEnd)
-        } else {
-          console.log('Inserting restore node at', endMile, 'Type:', typeAtEnd)
+        if (!existingEnd) {
           await helperInsert(endMile, typeAtEnd, diffAtEnd)
         }
-      } else {
-        console.log('End mile is at course end, skipping restore node.')
       }
 
       // C. Delete Intermediate Nodes (they are overridden by this new segment)

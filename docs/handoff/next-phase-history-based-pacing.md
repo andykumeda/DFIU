@@ -1,83 +1,49 @@
-# Next Phase — History-Based Pace Calculation
+# Next Phase - History-Based Pacing
 
-**Status:** Planned / design + data pipeline.
-**Prereq:** Existing pacing system (Plan A/B/C, bisection solver, terrain + gradient + time-of-day + temperature factors — see HANDOFF.md §1 "Pace Plan Enhancements").
-
----
+**Status:** Planned. No implementation has started.
 
 ## Goal
 
-Use runner's past race history to inform pace predictions for the current race. Two modes:
+Use a runner's prior race results to seed or adjust the existing pace-plan model. Current pacing is based on course distance, terrain, grade, night, temperature, weather, and aid-station delays. This phase would add personal history as another input.
 
-1. **Same race, prior year(s)** — if user has run this exact race before, weight that performance heavily.
-2. **Similar race** — if no prior run of this race, find comparable races by characteristic (distance, gain/loss, terrain mix, climate) from user history.
+## Open Decisions
 
-Output feeds the existing bisection solver as a prior / seed, or adjusts the pace matrix directly.
+1. **History source:** Strava activities, manual entry, UltraSignup import, or a combination.
+2. **Race matching:** how users confirm that a past activity/result corresponds to a DFIU race.
+3. **Similarity model:** which factors matter most for "similar race" matching: distance, gain/loss, terrain mix, altitude, heat, or date recency.
+4. **Blending behavior:** whether history acts as a solver seed, a weighted adjustment, or a user-controlled confidence slider.
+5. **Privacy:** whether crew/pacer members can see the runner's historical results or only the derived pace plan.
 
-## What the User Must Provide / Decide
-
-1. **Data source** — where does history come from?
-   - Strava activities (already OAuth'd per `StravaCallback.tsx`).
-   - UltraSignup results scraped by runner name.
-   - Manual entry (last-mile fallback).
-   - Combination?
-2. **Identity matching** — how to link a Strava activity to a specific DFIU race record? Name fuzzy match + date window? User confirms link?
-3. **Similarity metric** — what fields define "similar"?
-   - Distance (± how many mi?)
-   - Elevation gain/loss (± %)
-   - Terrain mix (paved / dirt / technical)
-   - Climate (avg temp, altitude)
-   - Weight/priority order?
-4. **How to blend** — prior-run data vs. course-model prediction:
-   - Bayesian prior with confidence shrinkage?
-   - Simple weighted average?
-   - User-selectable ("trust my history more" slider)?
-5. **Staleness** — does a 5-year-old result count as much as last year's? Decay function?
-
-## Data Model Sketch
+## Likely Data Model
 
 ```sql
 create table runner_history (
-  id uuid primary key,
-  user_id uuid references auth.users(id),
-  source text check (source in ('strava','ultrasignup','manual')),
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade not null,
+  source text not null check (source in ('strava', 'manual', 'import')),
   external_id text,
-  race_name text,
+  race_name text not null,
   race_date date,
   distance_mi numeric,
   elevation_gain_ft integer,
   elevation_loss_ft integer,
   finish_time_sec integer,
-  avg_pace_sec_per_mi numeric,
   terrain_profile jsonb,
-  linked_race_id uuid references races(id) null,  -- user-confirmed match
-  created_at timestamptz default now()
+  linked_race_id uuid references races(id) on delete set null,
+  created_at timestamptz default now() not null
 );
-
-create index on runner_history(user_id, race_date desc);
 ```
 
-## Work Breakdown
+## Implementation Sketch
 
-1. **Design checkpoint** on 5 blocking questions above.
-2. **Ingest:** Strava activity pull → normalize → store in `runner_history`. Run on Strava link + periodic refresh.
-3. **Matcher:** "did this runner run this race before?" — name + date proximity. UI confirmation to link.
-4. **Similarity search:** given current race characteristics, rank history rows by similarity. Top N feed the pace engine.
-5. **Pace engine integration:** extend bisection solver to accept prior estimate + confidence. Determine how to fold in without destabilizing the terrain/temp/night factors already working.
-6. **UI:** show "based on your 2024 Bay Area 100 (24h 30m)" as visible rationale on pace plan page. Let user toggle "ignore history" if they want pure model.
-7. **Tests:** synthetic runner with known history; verify prediction converges toward historical pace when same race, blends when similar.
+1. Add `runner_history` storage and RLS scoped to the owning user.
+2. Add manual history entry first; add Strava import later if needed.
+3. Add a history matcher that suggests exact and similar races.
+4. Extend `calculatePacePlan` with an optional history prior while preserving the current no-history behavior.
+5. Show which history rows influenced the plan and allow users to disable history weighting.
 
 ## Success Criteria
 
-- Runner who has completed Race X last year sees a pace plan seeded by that result, not pure model.
-- Runner with no exact match but two similar-profile finishes sees a blended estimate with UI showing which races informed it.
-- Runner with no history falls back cleanly to current model (no regression).
-
-## Reference
-
-- Current pace engine location: referenced in HANDOFF.md §1; trace from race-detail pace-plan component.
-- Strava OAuth: `src/features/auth/StravaCallback.tsx`, settings in `src/features/settings/SettingsPage.tsx`.
-
-## Relationship to Other Phases
-
-Independent of descent-verification and RBAC phases. Pairs naturally with RBAC: owner/crew might have different read access to a runner's history.
+- A runner with a prior finish for the same race sees a pace plan influenced by that result.
+- A runner with similar races sees a transparent blended estimate.
+- A runner with no history gets the same output as today's model.

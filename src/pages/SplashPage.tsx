@@ -25,18 +25,6 @@ export default function SplashPage() {
     fetchPublicRaces()
   }, [])
 
-  // If already logged in, redirect to dashboard?
-  // The user asked to restore the splash page. Usually, if logged in, you go to dashboard.
-  // But maybe they want to see the splash page even if logged in?
-  // Standard pattern: Splash -> Login -> Dashboard.
-  // If user visits /, and is logged in, they often get redirected to /dashboard.
-  // However, the user specifically asked "this goes straight to the login box. is there a way to recover that page".
-  // This implies they want to see it at /.
-  // I will leave it accessible even if logged in, but the "Get Started" / "Sign In" buttons will take them to where they need to go.
-  // Actually, if they click "Sign In" and are already logged in, the Login page usually redirects to Dashboard.
-  // Let's just render the splash page.
-  
-  // OPTIONAL: If we strictly want to redirect logged-in users:
   if (user) {
     return <Navigate to="/dashboard" replace />
   }
@@ -52,7 +40,7 @@ export default function SplashPage() {
         </p>
         <p className={styles.subtitle}>
           Centralize your course, pace plan, logistics, and crew info in one place.
-          Get AI-powered insights so you don&apos;t F*.It.Up on race day!
+          Keep the details visible so you don&apos;t F*.It.Up on race day.
         </p>
 
         <div className={styles.cta}>
@@ -95,9 +83,9 @@ export default function SplashPage() {
           <p>Build detailed pace charts with cutoff tracking and printable crew sheets.</p>
         </div>
         <div className={styles.feature}>
-          <span className={styles.featureIcon}>🤖</span>
-          <h3>AI Insights</h3>
-          <p>Ask questions like &ldquo;When will I hit mile 60?&rdquo; and get instant answers.</p>
+          <span className={styles.featureIcon}>📍</span>
+          <h3>Crew View</h3>
+          <p>Give crew a mobile view of the next aid station, runner ETA, and drop bag details.</p>
         </div>
         <div className={styles.feature}>
           <span className={styles.featureIcon}>🌙</span>

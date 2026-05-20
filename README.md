@@ -24,7 +24,10 @@ DFIU helps you centralize your course, pace plan, logistics, and crew info in on
 -   **Route Stats:** Total distance, elevation gain, lowest point, and max elevation — automatically calculated from GPX data with fallback computation.
 -   **Race Overview:** Event details, weather forecasts, course records, cutoffs, qualifiers, and direct links to registration.
 -   **Mile Markers:** Toggle mile markers along the route (auto-scaled by distance).
--   **Terrain Segments:** Visualize terrain types (paved, dirt, single track, technical) as colored overlays on the route. Includes "Paint Mode" for easy segment creation and distinct "Undefined" (Gray) vs "Paved" (Blue) visualization.
+-   **Terrain Segments:** Visualize terrain types (paved, dirt, single track, technical) as colored overlays on the route. Supports map two-click range selection, elevation-profile drag selection, sidebar editing, and out-and-back auto-painting.
+-   **Pace Plans:** Plan A/B/C pacing with terrain, grade, time-of-day, weather, and aid-station-delay factors. Pace plan inputs are stored in Supabase and sync realtime between race members.
+-   **Crew View:** Mobile-first `/race/:id/crew` view with predicted runner location, next crew aid station, Google Maps destination links, drop bag details, and runner arrival check-ins.
+-   **Roles & Invites:** Race owners can manage crew/pacer memberships, grant view/edit permissions, invite existing users, and send email invites to new users.
 -   **Weather Integration:** Fetch weather data for race locations.
 -   **Settings:** User preferences and Strava integration.
 
@@ -54,7 +57,10 @@ DFIU helps you centralize your course, pace plan, logistics, and crew info in on
     VITE_SUPABASE_URL=your_supabase_url
     VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
     VITE_MAPBOX_TOKEN=your_mapbox_token
+    VITE_VISUAL_CROSSING_KEY=your_visual_crossing_key
     ```
+
+    Security note: `VITE_VISUAL_CROSSING_KEY` is currently bundled client-side. Moving weather calls behind a Supabase Edge Function is the top open security task.
 
 4.  Start the development server:
     ```bash
@@ -81,10 +87,17 @@ This script builds the app and copies the `dist/` folder to `/var/www/dfiu`. No 
 
 ## Directory Structure
 
--   `src/features/auth/` - Authentication (login, signup).
+-   `src/features/auth/` - Authentication, session/profile loading, RBAC permission hook.
 -   `src/features/course/` - Course map, elevation profile, map style switcher.
--   `src/features/race/` - Race detail, overview, resources, waypoint editing.
+-   `src/features/race/` - Race detail, overview, resources, waypoint editing, pace plans, members, crew view, check-ins.
 -   `src/features/settings/` - User settings and integrations.
 -   `src/pages/` - Application route pages (Dashboard, Login, Race Detail, etc.).
 -   `src/lib/` - Shared utilities (Supabase client, geo-utils, GPX parser, weather service).
 -   `src/components/ui/` - Shared UI components.
+
+## Current Open Work
+
+-   Second-account RBAC/invite verification.
+-   Supabase Edge Function proxy for Visual Crossing weather.
+-   Admin panel and owner-transfer UI.
+-   Offline/PWA support for Crew View.
