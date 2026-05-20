@@ -27,6 +27,8 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, raceDate, timeZone
         crew_allowed: boolean
         pacer_allowed: boolean
         notes: string
+        crew_relay_notes: string
+        runner_next_leg_notes: string
         mile: string | number
         delay: string | number // Minutes
     }>({
@@ -38,6 +40,8 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, raceDate, timeZone
         crew_allowed: waypoint?.crew_allowed || false,
         pacer_allowed: waypoint?.pacer_allowed || false,
         notes: waypoint?.notes || '',
+        crew_relay_notes: waypoint?.crew_relay_notes || '',
+        runner_next_leg_notes: waypoint?.runner_next_leg_notes || '',
         mile: (mile ?? waypoint?.mile ?? 0).toFixed(2),
         delay: waypoint?.delay ?? (waypoint?.type === 'aid_station' || (!waypoint && true) ? 2 : 0)
     })
@@ -93,6 +97,8 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, raceDate, timeZone
                 crew_allowed: waypoint?.crew_allowed || false,
                 pacer_allowed: waypoint?.pacer_allowed || false,
                 notes: waypoint?.notes || '',
+                crew_relay_notes: waypoint?.crew_relay_notes || '',
+                runner_next_leg_notes: waypoint?.runner_next_leg_notes || '',
                 mile: (waypoint?.mile ?? mile ?? 0).toFixed(2),
                 delay: waypoint?.delay ?? (waypoint?.type === 'aid_station' ? 2 : 0)
             }))
@@ -257,6 +263,28 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, raceDate, timeZone
                             value={formData.notes}
                             onChange={e => setFormData({ ...formData, notes: e.target.value })}
                             rows={3}
+                            style={{ padding: '0.75rem', borderRadius: '6px', border: '1px solid #ddd', fontFamily: 'inherit' }}
+                        />
+                    </div>
+
+                    <div className={styles.field}>
+                        <label>Crew Relay Notes</label>
+                        <textarea
+                            value={formData.crew_relay_notes}
+                            onChange={e => setFormData({ ...formData, crew_relay_notes: e.target.value })}
+                            rows={3}
+                            placeholder="What crew should tell the runner at this aid station"
+                            style={{ padding: '0.75rem', borderRadius: '6px', border: '1px solid #ddd', fontFamily: 'inherit' }}
+                        />
+                    </div>
+
+                    <div className={styles.field}>
+                        <label>Runner Next-Leg Notes</label>
+                        <textarea
+                            value={formData.runner_next_leg_notes}
+                            onChange={e => setFormData({ ...formData, runner_next_leg_notes: e.target.value })}
+                            rows={3}
+                            placeholder="What the runner should expect between this aid station and the next"
                             style={{ padding: '0.75rem', borderRadius: '6px', border: '1px solid #ddd', fontFamily: 'inherit' }}
                         />
                     </div>

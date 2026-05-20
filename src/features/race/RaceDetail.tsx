@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo, Suspense, lazy } from 'react'
 import { useAuth } from '@/features/auth/AuthContext'
 import { usePermission } from '@/features/auth/usePermission'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Calendar, MapPin, Globe, ArrowUpRight, CloudSun, Trophy, RefreshCw, Settings, Download, Save } from 'lucide-react'
+import { Calendar, MapPin, Globe, ArrowUpRight, CloudSun, Trophy, RefreshCw, Settings, Download, Save, CheckCircle2 } from 'lucide-react'
 
 import { supabase } from '@/lib/supabase'
 import { Race, Course, Waypoint, TerrainNode } from '@/types/database'
@@ -50,23 +50,38 @@ function getWaypointIcon(type: string): string {
   }
 }
 
+function RoleSwitcher({ raceId, views }: { raceId: string; views: Array<'full' | 'runner' | 'crew' | 'pacer'> }) {
+  const uniqueViews = Array.from(new Set(views.length ? views : ['full']))
+  if (uniqueViews.length <= 1) return null
+
+  const hrefFor = (view: string) => view === 'full' ? `/race/${raceId}` : `/race/${raceId}/${view}`
+  return (
+    <div className='flex items-center gap-1 rounded-lg border border-neutral-800 bg-neutral-900 p-1 max-w-[48vw] overflow-x-auto'>
+      {uniqueViews.map(view => (
+        <Link
+          key={view}
+          to={hrefFor(view)}
+          className='px-2 py-1 rounded text-xs font-medium text-neutral-300 hover:bg-neutral-800 hover:text-white capitalize'
+        >
+          {view}
+        </Link>
+      ))}
+    </div>
+  )
+}
+
 export function RaceDetail({ raceId }: { raceId: string }) {
   const { user } = useAuth()
-  const { canEdit, canView, isOwner: isStrictOwner } = usePermission(raceId)
+  const {
+    canEdit,
+    canView,
+    isAdmin,
+    canManageTeam,
+    availableRoleViews,
+  } = usePermission(raceId)
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
   const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState<Tab>('overview')
-
-  // Mobile auto-redirect to dedicated crew route. ?full=1 escape hatch lets
-  // users opt back into the full editor on phones.
-  useEffect(() => {
-    if (searchParams.get('full') === '1') return
-    if (typeof window === 'undefined') return
-    const isMobile = window.matchMedia('(max-width: 768px)').matches
-    if (isMobile) navigate(`/race/${raceId}/crew`, { replace: true })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingWaypoint, setEditingWaypoint] = useState<Partial<Waypoint> | null>(null)
   const [viewingWaypoint, setViewingWaypoint] = useState<Waypoint | null>(null)
@@ -464,7 +479,9 @@ export function RaceDetail({ raceId }: { raceId: string }) {
           has_drop_bag: data.has_drop_bag,
           crew_allowed: data.crew_allowed,
           pacer_allowed: data.pacer_allowed,
-          notes: data.notes
+          notes: data.notes,
+          crew_relay_notes: data.crew_relay_notes || null,
+          runner_next_leg_notes: data.runner_next_leg_notes || null
         }).eq('id', data.id)
         if (error) throw error
       } else {
@@ -510,7 +527,9 @@ export function RaceDetail({ raceId }: { raceId: string }) {
           has_drop_bag: data.has_drop_bag,
           crew_allowed: data.crew_allowed,
           pacer_allowed: data.pacer_allowed,
-          notes: data.notes
+          notes: data.notes,
+          crew_relay_notes: data.crew_relay_notes || null,
+          runner_next_leg_notes: data.runner_next_leg_notes || null
         })
         if (error) throw error
       }
@@ -907,6 +926,46 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     }
   }
 
+  const handleMarkOfficial = async () => {
+    if (!race || !isAdmin) return
+    const { error } = await supabase
+      .from('races')
+      .update({
+        is_official: true,
+        official_at: new Date().toISOString(),
+        race_director_user_id: race.user_id,
+      })
+      .eq('id', race.id)
+    if (error) {
+      alert(`Failed to mark official: ${error.message}`)
+      return
+    }
+    await supabase
+      .from('race_memberships')
+      .update({ is_runner: false, is_crew: false, is_pacer: false })
+      .eq('race_id', race.id)
+      .eq('user_id', race.user_id)
+    queryClient.invalidateQueries({ queryKey: ['race', raceId] })
+  }
+
+  const handleClearOfficial = async () => {
+    if (!race || !isAdmin) return
+    if (!confirm('Remove official status from this event?')) return
+    const { error } = await supabase
+      .from('races')
+      .update({
+        is_official: false,
+        official_at: null,
+        race_director_user_id: null,
+      })
+      .eq('id', race.id)
+    if (error) {
+      alert(`Failed to update official status: ${error.message}`)
+      return
+    }
+    queryClient.invalidateQueries({ queryKey: ['race', raceId] })
+  }
+
   // Derived State
   const coordinates = (course?.geometry as { coordinates?: [number, number][] })?.coordinates || []
   const elevationProfile = (course?.elevation_samples as { distance: number; elevation: number }[]) || []
@@ -934,7 +993,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     { id: 'drop_bags', label: 'Drop Bags' },
     { id: 'resources', label: 'Resources' },
     ...(canView ? [{ id: 'crew' as Tab, label: 'Crew' }] : []),
-    ...(isStrictOwner ? [{ id: 'members' as Tab, label: 'Members' }] : []),
+    ...(canManageTeam ? [{ id: 'members' as Tab, label: 'Members' }] : []),
   ]
 
   const twilight = useMemo(() => {
@@ -958,10 +1017,8 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     return null
   }, [race?.start_datetime, race?.timezone, waypoints, clock24h])
 
-  // Legacy alias: every existing `isOwner` usage gates editing (buttons,
-  // drag handles, modal edit controls). Map to canEdit so crew/pacer with
-  // edit permission inherit the same UI. isStrictOwner gates owner-only
-  // controls like the Members tab.
+  // Legacy alias: existing usage gates full race editing. New crew/pacer
+  // role flags do not grant this; they get logging-only permissions.
   const isOwner = canEdit
 
   if (raceLoading) return <div className='p-8 text-white'>Loading race...</div>
@@ -984,6 +1041,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
             <div className="flex sm:hidden flex-col min-w-0 flex-1 leading-tight">
               <div className='flex items-center gap-1.5 min-w-0'>
                 <h1 className='text-base font-bold text-white truncate'>{race.name}</h1>
+                {race.is_official && <CheckCircle2 className='w-4 h-4 text-blue-400 shrink-0' aria-label='Official event' />}
                 {isOwner && (
                   <button onClick={() => setShowEditModal(true)} className='text-neutral-400 hover:text-white text-sm shrink-0'>
                     ✎
@@ -1008,6 +1066,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
             <div className="hidden sm:flex flex-col gap-1">
               <div className='flex items-center gap-2'>
                 <h1 className='text-xl font-bold text-white'>{race.name}</h1>
+                {race.is_official && <CheckCircle2 className='w-5 h-5 text-blue-400' aria-label='Official event' />}
                 {isOwner && (
                   <button onClick={() => setShowEditModal(true)} className='text-neutral-400 hover:text-white'>
                     ✎
@@ -1031,6 +1090,16 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
           </div>
           <div className='flex items-center gap-2 sm:gap-4'>
+            <RoleSwitcher raceId={raceId} views={race.is_official ? ['full'] : availableRoleViews} />
+            {isAdmin && (
+              <button
+                onClick={race.is_official ? handleClearOfficial : handleMarkOfficial}
+                className='hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-blue-800 bg-blue-950/40 text-blue-200 hover:bg-blue-900/50 text-xs font-medium'
+              >
+                <CheckCircle2 className='w-3.5 h-3.5' />
+                {race.is_official ? 'Official' : 'Make official'}
+              </button>
+            )}
             {user && !isOwner && race.is_public && (
               <button
                 onClick={handleCloneRace}
@@ -1461,9 +1530,9 @@ export function RaceDetail({ raceId }: { raceId: string }) {
           </div>
         )}
 
-        {activeTab === 'members' && isStrictOwner && (
+        {activeTab === 'members' && canManageTeam && (
           <div className="animate-in fade-in duration-500">
-            <RaceMembersSection raceId={raceId} canInvite={canView} canManage={isStrictOwner} />
+            <RaceMembersSection raceId={raceId} canInvite={canManageTeam} canManage={canManageTeam} />
           </div>
         )}
 
@@ -1477,7 +1546,14 @@ export function RaceDetail({ raceId }: { raceId: string }) {
               <div className="relative z-10">
                 <h1 className="text-4xl md:text-5xl font-black italic tracking-tighter text-white mb-4 uppercase">
                   {race?.name}
+                  {race?.is_official && <CheckCircle2 className='inline-block w-8 h-8 ml-3 text-blue-400 align-baseline' aria-label='Official event' />}
                 </h1>
+                {!race?.is_official && race?.official_source_race_id && (
+                  <div className='inline-flex items-center gap-1.5 mb-4 px-2 py-1 rounded-full bg-blue-950/50 border border-blue-900/60 text-blue-200 text-xs font-medium'>
+                    <CheckCircle2 className='w-3.5 h-3.5' />
+                    Based on official event
+                  </div>
+                )}
                 <div className="flex flex-wrap gap-6 text-lg text-neutral-300">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-5 h-5 text-orange-500" />

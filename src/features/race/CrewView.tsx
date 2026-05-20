@@ -7,6 +7,7 @@ import { useAuth } from '@/features/auth/AuthContext'
 import { usePermission } from '@/features/auth/usePermission'
 import { usePacePlans, computePlanMinutes } from './usePacePlans'
 import { useRunnerCheckins } from './useRunnerCheckins'
+import { useLatestRunnerLocation } from './useRunnerLocation'
 import { calculatePacePlan, ActualCheckin } from './pace-utils'
 import { CrewMap } from './CrewMap'
 import { getDistance, getCoordinateAtDistance } from '@/lib/geo-utils'
@@ -22,7 +23,7 @@ interface CrewViewProps {
 export function CrewView({ raceId, embedded = false }: CrewViewProps) {
     const { profile } = useAuth() as { profile: { clock_24h?: boolean } | null }
     const clock24h = !!profile?.clock_24h
-    const { canView, canEdit } = usePermission(raceId)
+    const { canView, canLogCheckins } = usePermission(raceId)
 
     const [race, setRace] = useState<Race | null>(null)
     const [course, setCourse] = useState<Course | null>(null)
@@ -32,6 +33,7 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
 
     const { plans } = usePacePlans(raceId)
     const { checkins, upsertCheckin } = useRunnerCheckins(raceId)
+    const { location: liveRunnerLocation, isFresh: liveRunnerLocationFresh } = useLatestRunnerLocation(raceId)
 
     const [activePlan, setActivePlan] = useState<PlanKey>('A')
     const [crewLatLon, setCrewLatLon] = useState<[number, number] | null>(null)
@@ -140,11 +142,15 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
         return 0
     }, [pacePlan, elapsedMin])
 
-    const runnerLatLon: [number, number] | null = useMemo(() => {
+    const predictedRunnerLatLon: [number, number] | null = useMemo(() => {
         if (!course?.geometry || predictedMile <= 0) return null
         const meters = predictedMile * 1609.34
         return getCoordinateAtDistance(course.geometry as any, meters) as [number, number] | null
     }, [course, predictedMile])
+
+    const runnerLatLon: [number, number] | null = liveRunnerLocation && liveRunnerLocationFresh
+        ? [liveRunnerLocation.lon, liveRunnerLocation.lat]
+        : predictedRunnerLatLon
 
     const courseCoords: [number, number][] = useMemo(() => {
         const g = course?.geometry as any
@@ -251,6 +257,36 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
             )}
 
             <main className='px-3 py-3 space-y-3 max-w-3xl mx-auto'>
+                {/* Map */}
+                <section className='bg-neutral-900 rounded-lg overflow-hidden'>
+                    <div className='h-[50vh] min-h-[300px] sm:h-[520px]'>
+                        <CrewMap
+                            coordinates={courseCoords}
+                            waypoints={waypoints.map(w => ({
+                                id: w.id, name: w.name, lat: w.lat, lon: w.lon, mile: w.mile, crew_allowed: w.crew_allowed,
+                            }))}
+                            runnerLatLon={runnerLatLon}
+                            crewLatLon={crewLatLon}
+                            nextWaypointId={nextCrewWaypoint?.id ?? nextWaypoint?.id ?? null}
+                        />
+                    </div>
+                    {race.start_datetime && (
+                        <div className='px-3 py-2 text-xs text-neutral-400 border-t border-neutral-800 flex items-center justify-between gap-3'>
+                            <span>
+                                Runner {liveRunnerLocationFresh ? 'live location' : `predicted at mile ${predictedMile.toFixed(1)}`}
+                            </span>
+                            <span className='text-neutral-500'>
+                                {liveRunnerLocationFresh && liveRunnerLocation
+                                    ? new Date(liveRunnerLocation.recorded_at).toLocaleTimeString([], {
+                                        hour: 'numeric', minute: '2-digit',
+                                        timeZone: race.timezone || undefined, hour12: !clock24h,
+                                    })
+                                    : `${course?.total_distance_miles?.toFixed(1) ?? '?'} mi course`}
+                            </span>
+                        </div>
+                    )}
+                </section>
+
                 {/* Plan toggle + status strip */}
                 <section className='bg-neutral-900 rounded-lg p-3'>
                     <div className='flex items-center justify-between mb-2'>
@@ -347,26 +383,6 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
                     )}
                 </section>
 
-                {/* Map */}
-                <section className='bg-neutral-900 rounded-lg overflow-hidden'>
-                    <div className='h-[280px] sm:h-[360px]'>
-                        <CrewMap
-                            coordinates={courseCoords}
-                            waypoints={waypoints.map(w => ({
-                                id: w.id, name: w.name, lat: w.lat, lon: w.lon, mile: w.mile, crew_allowed: w.crew_allowed,
-                            }))}
-                            runnerLatLon={runnerLatLon}
-                            crewLatLon={crewLatLon}
-                            nextWaypointId={nextCrewWaypoint?.id ?? nextWaypoint?.id ?? null}
-                        />
-                    </div>
-                    {race.start_datetime && (
-                        <div className='px-3 py-2 text-xs text-neutral-400 border-t border-neutral-800'>
-                            Runner predicted at mile {predictedMile.toFixed(1)} of {course?.total_distance_miles?.toFixed(1) ?? '?'}
-                        </div>
-                    )}
-                </section>
-
                 {/* Drop bag + crew instructions for next crew AS */}
                 {nextCrewWaypoint && (
                     <section className='bg-neutral-900 rounded-lg p-3'>
@@ -379,6 +395,18 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
                             <div className='mt-3 bg-neutral-800 rounded p-2 text-sm whitespace-pre-wrap'>
                                 <div className='text-xs text-neutral-400 mb-1'>Crew instructions</div>
                                 {nextCrewWaypoint.drop_bag_notes}
+                            </div>
+                        )}
+                        {nextCrewWaypoint.crew_relay_notes && (
+                            <div className='mt-3 bg-blue-950/50 border border-blue-900/60 rounded p-2 text-sm whitespace-pre-wrap'>
+                                <div className='text-xs text-blue-300 mb-1'>Tell runner</div>
+                                {nextCrewWaypoint.crew_relay_notes}
+                            </div>
+                        )}
+                        {nextCrewWaypoint.runner_next_leg_notes && (
+                            <div className='mt-3 bg-amber-950/40 border border-amber-900/60 rounded p-2 text-sm whitespace-pre-wrap'>
+                                <div className='text-xs text-amber-300 mb-1'>Next leg reminder</div>
+                                {nextCrewWaypoint.runner_next_leg_notes}
                             </div>
                         )}
                     </section>
@@ -466,7 +494,7 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
                                         </div>
                                         <div className='text-xs text-neutral-500'>mile {wp.mile.toFixed(1)} · ETA {arrival?.timeOfDay ?? '—'}</div>
                                     </div>
-                                    {canEdit && (
+                                    {canLogCheckins && (
                                         <button
                                             onClick={() => openCheckin(wp)}
                                             className='text-xs px-2 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300'
@@ -482,7 +510,7 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
             </main>
 
             {/* Sticky check-in CTA */}
-            {canEdit && nextWaypoint && !showCheckin && (
+            {canLogCheckins && nextWaypoint && !showCheckin && (
                 <div className='sticky bottom-0 inset-x-0 bg-neutral-950/95 backdrop-blur border-t border-neutral-800 p-3'>
                     <button
                         onClick={() => openCheckin(nextWaypoint)}

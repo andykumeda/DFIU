@@ -11,6 +11,9 @@ interface Member {
   user_id: string
   role: string
   permission: string
+  is_runner: boolean
+  is_pacer: boolean
+  is_crew: boolean
   name: string | null
   avatar_url: string | null
   granted_at: string
@@ -101,7 +104,10 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
         race_id: raceId,
         user_id: input.userId,
         role: input.role,
-        permission: input.permission,
+        permission: 'view',
+        is_crew: input.role === 'crew',
+        is_pacer: input.role === 'pacer',
+        is_runner: false,
         granted_by: user?.id ?? null,
       })
       if (error) throw error
@@ -207,8 +213,9 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
     searchMutation.mutate(trimmed)
   }
 
-  // Non-owners cannot grant edit. UI clamps to view; edge function/RLS also enforce.
-  const permissionOptions: Permission[] = canManage ? ['view', 'edit'] : ['view']
+  // Team members are view/log only in the role-view model. Route/map editing
+  // stays with official race directors and runner-plan owners.
+  const permissionOptions: Permission[] = ['view']
 
   return (
     <div className='max-w-3xl mx-auto px-4 py-6 space-y-6'>
@@ -239,7 +246,7 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
                 <div className='min-w-0'>
                   <div className='text-white text-sm font-medium truncate'>{m.name ?? 'Unnamed user'}</div>
                   <div className='text-neutral-500 text-xs uppercase tracking-wide'>
-                    {m.role} · {m.permission}
+                    {formatRoles(m)} · view/log
                   </div>
                 </div>
               </div>
@@ -506,4 +513,12 @@ function RolePermFields({ role, setRole, permission, setPermission, permissionOp
       </label>
     </div>
   )
+}
+
+function formatRoles(member: Member): string {
+  const roles: string[] = []
+  if (member.is_runner || member.role === 'owner') roles.push('runner')
+  if (member.is_crew || member.role === 'crew') roles.push('crew')
+  if (member.is_pacer || member.role === 'pacer') roles.push('pacer')
+  return roles.length ? roles.join(' + ') : member.role
 }

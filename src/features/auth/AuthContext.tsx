@@ -5,6 +5,9 @@ import { supabase } from '../../lib/supabase'
 export interface MembershipInfo {
   role: 'owner' | 'crew' | 'pacer'
   permission: 'view' | 'edit'
+  isRunner: boolean
+  isPacer: boolean
+  isCrew: boolean
 }
 
 interface AuthContextType {
@@ -80,7 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const [adminRes, memRes] = await Promise.all([
         supabase.from('site_admins').select('user_id').eq('user_id', userId).maybeSingle(),
-        supabase.from('race_memberships').select('race_id, role, permission').eq('user_id', userId),
+        supabase.from('race_memberships').select('race_id, role, permission, is_runner, is_pacer, is_crew').eq('user_id', userId),
       ])
       setIsSiteAdmin(!!adminRes.data)
       const map: Record<string, MembershipInfo> = {}
@@ -88,6 +91,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         map[m.race_id] = {
           role: m.role as MembershipInfo['role'],
           permission: m.permission as MembershipInfo['permission'],
+          isRunner: !!m.is_runner || m.role === 'owner',
+          isPacer: !!m.is_pacer || m.role === 'pacer',
+          isCrew: !!m.is_crew || m.role === 'crew',
         }
       }
       setMemberships(map)

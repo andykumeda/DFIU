@@ -143,6 +143,9 @@ export type Database = {
           capabilities: Json
           granted_at: string
           granted_by: string | null
+          is_crew: boolean
+          is_pacer: boolean
+          is_runner: boolean
           permission: string
           race_id: string
           role: string
@@ -152,6 +155,9 @@ export type Database = {
           capabilities?: Json
           granted_at?: string
           granted_by?: string | null
+          is_crew?: boolean
+          is_pacer?: boolean
+          is_runner?: boolean
           permission?: string
           race_id: string
           role: string
@@ -161,6 +167,9 @@ export type Database = {
           capabilities?: Json
           granted_at?: string
           granted_by?: string | null
+          is_crew?: boolean
+          is_pacer?: boolean
+          is_runner?: boolean
           permission?: string
           race_id?: string
           role?: string
@@ -227,6 +236,7 @@ export type Database = {
           distance_miles: number | null
           entrants_url: string | null
           id: string
+          is_official: boolean
           is_public: boolean | null
           location: string | null
           lodging_info: string | null
@@ -240,6 +250,9 @@ export type Database = {
           past_results_url: string | null
           precip_chance: string | null
           qualifies_for: string | null
+          official_at: string | null
+          official_source_race_id: string | null
+          race_director_user_id: string | null
           racebook_last_updated: string | null
           racebook_url: string | null
           registration_url: string | null
@@ -267,6 +280,7 @@ export type Database = {
           distance_miles?: number | null
           entrants_url?: string | null
           id?: string
+          is_official?: boolean
           is_public?: boolean | null
           location?: string | null
           lodging_info?: string | null
@@ -280,6 +294,9 @@ export type Database = {
           past_results_url?: string | null
           precip_chance?: string | null
           qualifies_for?: string | null
+          official_at?: string | null
+          official_source_race_id?: string | null
+          race_director_user_id?: string | null
           racebook_last_updated?: string | null
           racebook_url?: string | null
           registration_url?: string | null
@@ -307,6 +324,7 @@ export type Database = {
           distance_miles?: number | null
           entrants_url?: string | null
           id?: string
+          is_official?: boolean
           is_public?: boolean | null
           location?: string | null
           lodging_info?: string | null
@@ -320,6 +338,9 @@ export type Database = {
           past_results_url?: string | null
           precip_chance?: string | null
           qualifies_for?: string | null
+          official_at?: string | null
+          official_source_race_id?: string | null
+          race_director_user_id?: string | null
           racebook_last_updated?: string | null
           racebook_url?: string | null
           registration_url?: string | null
@@ -390,6 +411,53 @@ export type Database = {
           },
         ]
       }
+      runner_locations: {
+        Row: {
+          accuracy_m: number | null
+          created_at: string
+          heading_deg: number | null
+          id: string
+          lat: number
+          lon: number
+          race_id: string
+          recorded_at: string
+          runner_user_id: string
+          speed_mps: number | null
+        }
+        Insert: {
+          accuracy_m?: number | null
+          created_at?: string
+          heading_deg?: number | null
+          id?: string
+          lat: number
+          lon: number
+          race_id: string
+          recorded_at?: string
+          runner_user_id: string
+          speed_mps?: number | null
+        }
+        Update: {
+          accuracy_m?: number | null
+          created_at?: string
+          heading_deg?: number | null
+          id?: string
+          lat?: number
+          lon?: number
+          race_id?: string
+          recorded_at?: string
+          runner_user_id?: string
+          speed_mps?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "runner_locations_race_id_fkey"
+            columns: ["race_id"]
+            isOneToOne: false
+            referencedRelation: "races"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       site_admins: {
         Row: {
           granted_at: string
@@ -450,6 +518,7 @@ export type Database = {
         Row: {
           course_id: string
           created_at: string | null
+          crew_relay_notes: string | null
           crew_allowed: boolean | null
           cutoff_time: string | null
           delay: number | null
@@ -466,11 +535,13 @@ export type Database = {
           notes: string | null
           order_index: number
           pacer_allowed: boolean | null
+          runner_next_leg_notes: string | null
           type: string
         }
         Insert: {
           course_id: string
           created_at?: string | null
+          crew_relay_notes?: string | null
           crew_allowed?: boolean | null
           cutoff_time?: string | null
           delay?: number | null
@@ -487,11 +558,13 @@ export type Database = {
           notes?: string | null
           order_index?: number
           pacer_allowed?: boolean | null
+          runner_next_leg_notes?: string | null
           type?: string
         }
         Update: {
           course_id?: string
           created_at?: string | null
+          crew_relay_notes?: string | null
           crew_allowed?: boolean | null
           cutoff_time?: string | null
           delay?: number | null
@@ -508,6 +581,7 @@ export type Database = {
           notes?: string | null
           order_index?: number
           pacer_allowed?: boolean | null
+          runner_next_leg_notes?: string | null
           type?: string
         }
         Relationships: [
@@ -558,8 +632,13 @@ export type Database = {
         }[]
       }
       user_can_edit_race: { Args: { rid: string }; Returns: boolean }
+      user_can_log_race_execution: { Args: { rid: string }; Returns: boolean }
+      user_can_manage_team: { Args: { rid: string }; Returns: boolean }
       user_can_view_race: { Args: { rid: string }; Returns: boolean }
       user_is_race_member: { Args: { rid: string }; Returns: boolean }
+      user_is_race_director: { Args: { rid: string }; Returns: boolean }
+      user_is_runner_for_race: { Args: { rid: string }; Returns: boolean }
+      user_is_site_admin: { Args: Record<PropertyKey, never>; Returns: boolean }
       user_owns_race: { Args: { rid: string }; Returns: boolean }
     }
     Enums: {
@@ -704,3 +783,4 @@ export type RaceMembership = Tables<"race_memberships">
 export type SiteAdmin = Tables<"site_admins">
 export type RacePacePlan = Tables<"race_pace_plans">
 export type RunnerCheckin = Tables<"runner_checkins">
+export type RunnerLocation = Tables<"runner_locations">

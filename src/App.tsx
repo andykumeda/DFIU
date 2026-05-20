@@ -7,6 +7,8 @@ import DashboardPage from './pages/DashboardPage'
 import SettingsPage from './features/settings/SettingsPage'
 import RaceDetailPage from './pages/RaceDetailPage'
 import CrewViewPage from './pages/CrewViewPage'
+import RunnerViewPage from './pages/RunnerViewPage'
+import PacerViewPage from './pages/PacerViewPage'
 import NewRacePage from './pages/NewRacePage'
 import SplashPage from './pages/SplashPage'
 import SetPasswordPage from './pages/SetPasswordPage'
@@ -65,7 +67,9 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
+            <Route path='/race/:id/runner' element={<RunnerViewPage />} />
             <Route path='/race/:id/crew' element={<CrewViewPage />} />
+            <Route path='/race/:id/pacer' element={<PacerViewPage />} />
             <Route path='/race/:id' element={<RaceDetailPage />} />
             <Route path='/auth/strava/callback' element={<StravaCallback />} />
             <Route path='/auth/set-password' element={<SetPasswordPage />} />

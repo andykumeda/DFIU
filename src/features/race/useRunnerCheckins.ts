@@ -4,11 +4,12 @@ import { useAuth } from '@/features/auth/AuthContext'
 import { usePermission } from '@/features/auth/usePermission'
 import type { RunnerCheckin } from '@/types/database'
 
-// DB-backed runner check-ins per race. Read = any viewer, write = canEdit.
+// DB-backed runner check-ins per race. Read = any viewer, write = users who
+// can log race execution events (runner, crew, pacer, manager).
 // Realtime so crew + runner stay in sync as actuals are logged.
 export function useRunnerCheckins(raceId: string) {
     const { user } = useAuth()
-    const { canEdit } = usePermission(raceId)
+    const { canLogCheckins } = usePermission(raceId)
     const [checkins, setCheckins] = React.useState<RunnerCheckin[]>([])
     const [loading, setLoading] = React.useState(true)
 
@@ -57,7 +58,7 @@ export function useRunnerCheckins(raceId: string) {
     }, [raceId])
 
     const upsertCheckin = async (waypointId: string, arrivedAt: Date, notes?: string | null) => {
-        if (!canEdit) throw new Error('No permission to edit')
+        if (!canLogCheckins) throw new Error('No permission to log arrivals')
         const row = {
             race_id: raceId,
             waypoint_id: waypointId,
@@ -71,7 +72,7 @@ export function useRunnerCheckins(raceId: string) {
     }
 
     const deleteCheckin = async (waypointId: string) => {
-        if (!canEdit) throw new Error('No permission to edit')
+        if (!canLogCheckins) throw new Error('No permission to log arrivals')
         const { error } = await supabase
             .from('runner_checkins')
             .delete()
@@ -80,5 +81,5 @@ export function useRunnerCheckins(raceId: string) {
         if (error) throw error
     }
 
-    return { checkins, loading, canEdit, upsertCheckin, deleteCheckin }
+    return { checkins, loading, canEdit: canLogCheckins, canLogCheckins, upsertCheckin, deleteCheckin }
 }

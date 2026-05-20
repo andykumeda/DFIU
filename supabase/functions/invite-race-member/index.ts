@@ -5,7 +5,7 @@
 //
 // Behavior:
 //   1. Validates caller membership (any member) and permission rules
-//      (only owners may grant permission='edit').
+//      (runner/team managers may add crew/pacer view-log members).
 //   2. If email already belongs to an auth.users row → insert
 //      race_memberships directly (no invite email).
 //   3. Otherwise → insert pending_race_memberships and call
@@ -46,6 +46,7 @@ serve(async (req) => {
         if (!['view', 'edit'].includes(permission)) {
             return json({ error: 'permission must be view or edit' }, 400)
         }
+        const normalizedPermission = 'view'
 
         const normalizedEmail = String(email).trim().toLowerCase()
 
@@ -60,19 +61,10 @@ serve(async (req) => {
         const caller = userData.user
 
         // Permission check via RPC (SECURITY DEFINER, reads memberships).
-        const { data: isMember, error: memberErr } = await callerClient
-            .rpc('user_is_race_member', { rid: race_id })
+        const { data: canManageTeam, error: memberErr } = await callerClient
+            .rpc('user_can_manage_team', { rid: race_id })
         if (memberErr) return json({ error: memberErr.message }, 500)
-        if (!isMember) return json({ error: 'Not a member of this race' }, 403)
-
-        if (permission === 'edit') {
-            const { data: isOwner, error: ownerErr } = await callerClient
-                .rpc('user_owns_race', { rid: race_id })
-            if (ownerErr) return json({ error: ownerErr.message }, 500)
-            if (!isOwner) {
-                return json({ error: 'Only owners can grant edit permission' }, 403)
-            }
-        }
+        if (!canManageTeam) return json({ error: 'No permission to manage this race team' }, 403)
 
         // Service-role client for admin operations.
         const admin = createClient(supabaseUrl, serviceKey)
@@ -95,7 +87,10 @@ serve(async (req) => {
                     race_id,
                     user_id: existingProfile.id,
                     role,
-                    permission,
+                    permission: normalizedPermission,
+                    is_crew: role === 'crew',
+                    is_pacer: role === 'pacer',
+                    is_runner: false,
                     granted_by: caller.id,
                 })
             if (insertErr) {
@@ -115,7 +110,7 @@ serve(async (req) => {
                     race_id,
                     email: normalizedEmail,
                     role,
-                    permission,
+                    permission: normalizedPermission,
                     invited_by: caller.id,
                 },
                 { onConflict: 'race_id,email' }
