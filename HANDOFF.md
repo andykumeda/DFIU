@@ -1,9 +1,9 @@
 # Handoff Document
 
 **Date:** 2026-05-20
-**Status:** Cleaning repo after role/official-event production deploy; preserving production repair migration in git.
+**Status:** Clean slate after role/official-event production deploy.
 **Current HEAD before role work:** `67ea768 chore: clean repo docs and generated files`.
-**Active follow-up:** Commit migration repair, push `main`, and redeploy from the clean commit hash.
+**Active follow-up:** Second-account RBAC/invite verification.
 
 ## Current Task
 
@@ -26,7 +26,7 @@ Implementation notes:
 - Production migration `official_events_role_views_runner_gps` applied to Supabase project `nyjgyyuoscgekavheeqi`.
 - Production repair migration `repair_team_membership_policies` applied to remove stale permissive invite policies and enforce team-manager membership control.
 - `invite-race-member` Edge Function deployed as version 2 with JWT verification enabled.
-- Frontend deployed once from the working tree; final step is commit/push and redeploy from the clean commit hash.
+- Migration repair committed and pushed; frontend redeployed from a clean commit hash.
 
 ## Current Application State
 
@@ -41,12 +41,11 @@ DFIU is a React/Vite/Supabase race-planning app for ultrarunners. Current `main`
 
 ## Open Work
 
-1. **Commit/push migration repair** and redeploy from clean commit hash.
-2. **Second-account RBAC/invite verification:** test owner/RD, runner, crew, pacer, pending invite, invite acceptance, and anonymous public access with separate accounts.
-3. **Weather security:** move Visual Crossing calls out of the client bundle and into a Supabase Edge Function.
-4. **Admin UX:** build `/admin` for broader site-admin management beyond the inline official toggle.
-5. **Owner transfer:** add a safe owner-transfer flow.
-6. **Offline Crew View:** add PWA/app-shell cache, IndexedDB race data cache, offline check-in queue, and reconnect replay if still prioritized.
+1. **Second-account RBAC/invite verification:** test owner/RD, runner, crew, pacer, pending invite, invite acceptance, and anonymous public access with separate accounts.
+2. **Weather security:** move Visual Crossing calls out of the client bundle and into a Supabase Edge Function.
+3. **Admin UX:** build `/admin` for broader site-admin management beyond the inline official toggle.
+4. **Owner transfer:** add a safe owner-transfer flow.
+5. **Offline Crew View:** add PWA/app-shell cache, IndexedDB race data cache, offline check-in queue, and reconnect replay if still prioritized.
 
 ## Cleanup Notes
 
