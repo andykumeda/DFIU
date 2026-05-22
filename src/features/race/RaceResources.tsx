@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Race } from '@/types/database'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/features/auth/AuthContext'
 import {
     FileText, Mic, MapPin, Trophy, Camera, Users, Radio, BedDouble,
     Edit2, Save, X, ExternalLink
@@ -13,7 +14,40 @@ interface RaceResourcesProps {
     onUpdate: () => void
 }
 
+type ResourceDateKey = 'briefing_datetime' | 'packet_pickup_datetime'
+type ResourceDateDraft = { date: string; time: string }
+
+function toLocalDateDraft(value: string | null | undefined): ResourceDateDraft {
+    if (!value) return { date: '', time: '' }
+    const d = new Date(value)
+    if (isNaN(d.getTime())) return { date: '', time: '' }
+    const yyyy = d.getFullYear()
+    const mm = (d.getMonth() + 1).toString().padStart(2, '0')
+    const dd = d.getDate().toString().padStart(2, '0')
+    const hh = d.getHours().toString().padStart(2, '0')
+    const mi = d.getMinutes().toString().padStart(2, '0')
+    return { date: `${yyyy}-${mm}-${dd}`, time: `${hh}:${mi}` }
+}
+
+function parseLocalDateDraft(draft: ResourceDateDraft): string | null {
+    if (!draft.date && !draft.time) return null
+    const time = draft.time.trim()
+    const match = time.match(/^([01]?\d|2[0-4]):([0-5]\d)$/)
+    if (!draft.date || !match) return ''
+
+    const hour = Number(match[1])
+    const minute = Number(match[2])
+    if (hour === 24 && minute !== 0) return ''
+
+    const [year, month, day] = draft.date.split('-').map(Number)
+    const parsed = new Date(year, month - 1, day, hour === 24 ? 0 : hour, minute)
+    if (hour === 24) parsed.setDate(parsed.getDate() + 1)
+    return isNaN(parsed.getTime()) ? '' : parsed.toISOString()
+}
+
 export function RaceResources({ race, onUpdate }: RaceResourcesProps) {
+    const { profile } = useAuth() as { profile: { clock_24h?: boolean } | null }
+    const clock24h = !!profile?.clock_24h
     const [isEditing, setIsEditing] = useState(false)
     const [loading, setLoading] = useState(false)
 
@@ -40,8 +74,23 @@ export function RaceResources({ race, onUpdate }: RaceResourcesProps) {
         tracking_url: race.tracking_url || '',
         lodging_info: race.lodging_info || ''
     })
+    const [dateDrafts, setDateDrafts] = useState<Record<ResourceDateKey, ResourceDateDraft>>({
+        briefing_datetime: toLocalDateDraft(race.briefing_datetime),
+        packet_pickup_datetime: toLocalDateDraft(race.packet_pickup_datetime),
+    })
+
+    const updateDateDraft = (key: ResourceDateKey, patch: Partial<ResourceDateDraft>) => {
+        setDateDrafts(prev => ({ ...prev, [key]: { ...prev[key], ...patch } }))
+    }
 
     const handleSave = async () => {
+        const briefingDate = parseLocalDateDraft(dateDrafts.briefing_datetime)
+        const packetPickupDate = parseLocalDateDraft(dateDrafts.packet_pickup_datetime)
+        if (briefingDate === '' || packetPickupDate === '') {
+            alert('Use 24-hour time as HH:MM. Midnight at the end of a day can be entered as 24:00.')
+            return
+        }
+
         setLoading(true)
         try {
             const { error } = await (supabase
@@ -49,9 +98,9 @@ export function RaceResources({ race, onUpdate }: RaceResourcesProps) {
                 .update({
                     racebook_url: formData.racebook_url || null,
                     briefing_url: formData.briefing_url || null,
-                    briefing_datetime: formData.briefing_datetime || null,
+                    briefing_datetime: briefingDate,
                     packet_pickup_url: formData.packet_pickup_url || null,
-                    packet_pickup_datetime: formData.packet_pickup_datetime || null,
+                    packet_pickup_datetime: packetPickupDate,
                     past_results_url: formData.past_results_url || null,
                     media_url: formData.media_url || null,
                     entrants_url: formData.entrants_url || null,
@@ -63,6 +112,11 @@ export function RaceResources({ race, onUpdate }: RaceResourcesProps) {
 
             if (error) throw error
 
+            setFormData(prev => ({
+                ...prev,
+                briefing_datetime: briefingDate || '',
+                packet_pickup_datetime: packetPickupDate || '',
+            }))
             onUpdate()
             setIsEditing(false)
         } catch (e) {
@@ -79,7 +133,7 @@ export function RaceResources({ race, onUpdate }: RaceResourcesProps) {
         icon: React.ElementType
         placeholder: string
     } & (
-            | { hasDate: true; dateKey: keyof typeof formData }
+            | { hasDate: true; dateKey: ResourceDateKey }
             | { hasDate?: false; dateKey?: never }
         )
 
@@ -151,14 +205,25 @@ export function RaceResources({ race, onUpdate }: RaceResourcesProps) {
                                             onChange={(e) => setFormData(prev => ({ ...prev, [res.key]: e.target.value }))}
                                         />
                                         {res.hasDate && (
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-xs text-neutral-500">Date:</span>
+                                            <div className="grid grid-cols-[1fr_96px] gap-2">
                                                 <input
-                                                    type="datetime-local"
+                                                    type="date"
                                                     className="bg-neutral-950 border border-neutral-800 rounded px-2 py-1 text-xs text-white placeholder-neutral-700 focus:ring-1 focus:ring-blue-500 outline-none"
-                                                    value={(formData[res.dateKey] || '').slice(0, 16)}
-                                                    onChange={(e) => setFormData(prev => ({ ...prev, [res.dateKey]: new Date(e.target.value).toISOString() }))}
+                                                    value={dateDrafts[res.dateKey].date}
+                                                    onChange={(e) => updateDateDraft(res.dateKey, { date: e.target.value })}
                                                 />
+                                                <input
+                                                    type="text"
+                                                    inputMode="numeric"
+                                                    pattern="[0-2]?[0-9]:[0-5][0-9]"
+                                                    className="bg-neutral-950 border border-neutral-800 rounded px-2 py-1 text-xs text-white placeholder-neutral-700 focus:ring-1 focus:ring-blue-500 outline-none font-mono"
+                                                    placeholder="HH:MM"
+                                                    value={dateDrafts[res.dateKey].time}
+                                                    onChange={(e) => updateDateDraft(res.dateKey, { time: e.target.value })}
+                                                />
+                                                <div className="col-span-2 text-[10px] text-neutral-500">
+                                                    24-hour time, e.g. 18:30 or 24:00.
+                                                </div>
                                             </div>
                                         )}
                                     </div>
@@ -179,7 +244,7 @@ export function RaceResources({ race, onUpdate }: RaceResourcesProps) {
                                         )}
                                         {res.hasDate && formData[res.dateKey] && (
                                             <div className="text-xs text-neutral-400">
-                                                {new Date(formData[res.dateKey]).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                                                {new Date(formData[res.dateKey]).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short', hour12: !clock24h })}
                                             </div>
                                         )}
                                     </div>

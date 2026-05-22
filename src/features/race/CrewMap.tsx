@@ -16,7 +16,8 @@ interface CrewMapProps {
 //   - waypoint pins (crew-accessible highlighted)
 //   - runner predicted-position marker (animated dot)
 //   - crew current-position marker (blue dot)
-// Auto-fits to show the runner and the next waypoint with a comfortable margin.
+// Auto-fits to the runner and next aid station; crew location is shown without
+// forcing the route to zoom out.
 export function CrewMap({ coordinates, waypoints, runnerLatLon, crewLatLon, nextWaypointId, className }: CrewMapProps) {
     const containerRef = useRef<HTMLDivElement>(null)
     const mapRef = useRef<mapboxgl.Map | null>(null)
@@ -161,14 +162,21 @@ export function CrewMap({ coordinates, waypoints, runnerLatLon, crewLatLon, next
             const pts: [number, number][] = []
             if (runnerLatLon) pts.push(runnerLatLon)
             if (next) pts.push([next.lon, next.lat])
-            if (crewLatLon) pts.push(crewLatLon)
             if (pts.length >= 2) {
                 const lons = pts.map(p => p[0])
                 const lats = pts.map(p => p[1])
                 m.fitBounds([
                     [Math.min(...lons), Math.min(...lats)],
                     [Math.max(...lons), Math.max(...lats)],
-                ], { padding: 60, maxZoom: 14, duration: 600 })
+                ], { padding: 44, maxZoom: 15.5, duration: 600 })
+                return
+            }
+            if (next) {
+                m.easeTo({ center: [next.lon, next.lat], zoom: 13.5, duration: 600 })
+                return
+            }
+            if (runnerLatLon) {
+                m.easeTo({ center: runnerLatLon, zoom: 13.5, duration: 600 })
                 return
             }
             if (coordinates.length > 0) {
@@ -177,12 +185,12 @@ export function CrewMap({ coordinates, waypoints, runnerLatLon, crewLatLon, next
                 m.fitBounds([
                     [Math.min(...lons), Math.min(...lats)],
                     [Math.max(...lons), Math.max(...lats)],
-                ], { padding: 40, duration: 400 })
+                ], { padding: 32, maxZoom: 12, duration: 400 })
             }
         }
         if (styleLoadedRef.current) fit()
         else m.once('style.load', fit)
-    }, [coordinates, waypoints, nextWaypointId, runnerLatLon, crewLatLon])
+    }, [coordinates, waypoints, nextWaypointId, runnerLatLon])
 
     return <div ref={containerRef} className={className} style={{ width: '100%', height: '100%' }} />
 }

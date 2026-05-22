@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { Race } from '../types/database'
 import styles from './SplashPage.module.css'
 import { useAuth } from '../features/auth/AuthContext'
+import { CheckCircle2 } from 'lucide-react'
 
 export default function SplashPage() {
   const { user } = useAuth()
@@ -60,7 +61,10 @@ export default function SplashPage() {
             <div className={styles.raceGrid}>
               {publicRaces.map((race) => (
                 <Link key={race.id} to={`/race/${race.id}`} className={styles.raceCard}>
-                  <h3>{race.name}</h3>
+                  <h3>
+                    {race.name}
+                    {race.is_official && <CheckCircle2 size={16} color="#60a5fa" aria-label="Official event" style={{ display: 'inline-block', marginLeft: 6, verticalAlign: '-2px' }} />}
+                  </h3>
                   <div className={styles.raceMeta}>
                     <span>{race.distance_miles ? `${race.distance_miles}mi` : ''}</span>
                     <span>{race.start_datetime ? new Date(race.start_datetime).toLocaleDateString() : ''}</span>

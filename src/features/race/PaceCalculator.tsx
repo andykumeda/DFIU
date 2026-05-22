@@ -16,8 +16,40 @@ interface PaceCalculatorProps {
     unitsDistance?: 'miles' | 'kilometers'
 }
 
+type StrategyMode = 'planA' | 'planB' | 'planC'
+
+const strategyColors: Record<StrategyMode, {
+    active: string
+    inactive: string
+    focus: string
+    timeText: string
+    button: string
+}> = {
+    planA: {
+        active: 'bg-emerald-600 text-white',
+        inactive: 'text-emerald-200 hover:text-white hover:bg-emerald-950/50',
+        focus: 'focus:ring-emerald-500',
+        timeText: 'text-emerald-300 print:text-emerald-800',
+        button: 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/20',
+    },
+    planB: {
+        active: 'bg-amber-500 text-neutral-950',
+        inactive: 'text-amber-200 hover:text-white hover:bg-amber-950/50',
+        focus: 'focus:ring-amber-500',
+        timeText: 'text-amber-300 print:text-amber-800',
+        button: 'bg-amber-500 hover:bg-amber-400 text-neutral-950 shadow-amber-900/20',
+    },
+    planC: {
+        active: 'bg-red-600 text-white',
+        inactive: 'text-red-200 hover:text-white hover:bg-red-950/50',
+        focus: 'focus:ring-red-500',
+        timeText: 'text-red-300 print:text-red-800',
+        button: 'bg-red-600 hover:bg-red-500 shadow-red-900/20',
+    },
+}
+
 export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h = false, unitsDistance = 'miles' }: PaceCalculatorProps) {
-    const [strategyMode, setStrategyMode] = useState<'planA' | 'planB' | 'planC'>('planA')
+    const [strategyMode, setStrategyMode] = useState<StrategyMode>('planA')
     const [plan, setPlan] = useState<ReturnType<typeof calculatePacePlan> | null>(null)
     const [calcError, setCalcError] = useState<string | null>(null)
 
@@ -85,6 +117,7 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
     const dist = course.total_distance_miles || 0
     const displayDist = isKm ? dist * 1.60934 : dist
     const targetMin = getStrategyValue()
+    const currentStrategy = strategyColors[strategyMode]
 
     let paceStr = ''
     if (targetMin > 0 && displayDist > 0) {
@@ -145,19 +178,19 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                     {/* Mode Selector */}
                     <div className="grid grid-cols-3 gap-2 mb-6 bg-neutral-950 p-1 rounded-lg border border-neutral-800">
                         <button
-                            className={`py-2 text-xs font-medium rounded ${strategyMode === 'planA' ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:text-neutral-200'}`}
+                            className={`py-2 text-xs font-medium rounded transition-colors ${strategyMode === 'planA' ? strategyColors.planA.active : strategyColors.planA.inactive}`}
                             onClick={() => setStrategyMode('planA')}
                         >
                             Plan A (Goal)
                         </button>
                         <button
-                            className={`py-2 text-xs font-medium rounded ${strategyMode === 'planB' ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:text-neutral-200'}`}
+                            className={`py-2 text-xs font-medium rounded transition-colors ${strategyMode === 'planB' ? strategyColors.planB.active : strategyColors.planB.inactive}`}
                             onClick={() => setStrategyMode('planB')}
                         >
                             Plan B (Mid)
                         </button>
                         <button
-                            className={`py-2 text-xs font-medium rounded ${strategyMode === 'planC' ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:text-neutral-200'}`}
+                            className={`py-2 text-xs font-medium rounded transition-colors ${strategyMode === 'planC' ? strategyColors.planC.active : strategyColors.planC.inactive}`}
                             onClick={() => setStrategyMode('planC')}
                         >
                             Plan C (Cutoff)
@@ -176,7 +209,7 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                         )}
                         <input
                             type="text"
-                            className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-3 text-white text-lg font-mono placeholder-neutral-600 focus:ring-2 focus:ring-blue-500 outline-none"
+                            className={`w-full bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-3 text-white text-lg font-mono placeholder-neutral-600 focus:ring-2 ${currentStrategy.focus} outline-none`}
                             placeholder={strategyMode === 'planA' ? "e.g. 24:00" : strategyMode === 'planC' ? "e.g. 00:30" : `${Math.floor(planBMinutes / 60)}:${(Math.floor(planBMinutes % 60)).toString().padStart(2, '0')}`}
                             value={strategyMode === 'planA' ? planATimeStr : strategyMode === 'planC' ? planCBufferStr : (planBTimeStr || `${Math.floor(planBMinutes / 60)}:${(Math.floor(planBMinutes % 60)).toString().padStart(2, '0')}`)}
                             onChange={(e) => {
@@ -208,7 +241,7 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
 
                     <button
                         onClick={handleCalculate}
-                        className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg transition-colors shadow-lg shadow-blue-900/20"
+                        className={`w-full text-white font-bold py-3 rounded-lg transition-colors shadow-lg ${currentStrategy.button}`}
                     >
                         Generate Plan
                     </button>
@@ -325,10 +358,10 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                                                     <td className="px-6 py-4 print:py-2 text-right font-mono text-neutral-400 print:text-neutral-600">
                                                         {arrival.segmentTime}
                                                     </td>
-                                                    <td className="px-6 py-4 print:py-2 text-right font-mono text-neutral-400 print:text-black font-semibold">
+                                                    <td className={`px-6 py-4 print:py-2 text-right font-mono font-semibold ${currentStrategy.timeText}`}>
                                                         {arrival.timeOfDay}
                                                     </td>
-                                                    <td className="px-6 py-4 print:py-2 text-right font-mono text-neutral-400 print:text-neutral-600">
+                                                    <td className={`px-6 py-4 print:py-2 text-right font-mono font-semibold ${currentStrategy.timeText}`}>
                                                         {Math.floor(arrival.arrivalTime / 60)}:{Math.floor(arrival.arrivalTime % 60).toString().padStart(2, '0')}
                                                     </td>
                                                     <td className="px-6 py-4 print:py-2 text-right font-mono text-neutral-400 print:text-neutral-600">

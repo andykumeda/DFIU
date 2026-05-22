@@ -1,15 +1,34 @@
+import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/features/auth/AuthContext'
 import type { Race } from '@/types/database'
 import { formatDate } from '@/lib/utils'
+import { CheckCircle2, Search } from 'lucide-react'
 
-export function RaceList() {
+interface RaceListProps {
+  mode?: 'dashboard' | 'public'
+  showSearch?: boolean
+}
+
+export function RaceList({ mode = 'dashboard', showSearch = mode === 'public' }: RaceListProps) {
   const { user } = useAuth()
+  const [search, setSearch] = useState('')
   const { data: races, isLoading, error } = useQuery({
-    queryKey: ['races', user?.id ?? 'anon'],
+    queryKey: ['races', mode, user?.id ?? 'anon'],
     queryFn: async () => {
+      if (mode === 'public') {
+        const { data, error } = await supabase
+          .from('races')
+          .select('*')
+          .eq('is_public', true)
+          .order('start_datetime', { ascending: true })
+
+        if (error) throw error
+        return data as Race[]
+      }
+
       const filter = user
         ? `user_id.eq.${user.id},is_public.eq.true`
         : `is_public.eq.true`
@@ -23,6 +42,24 @@ export function RaceList() {
       return data as Race[]
     }
   })
+
+  const visibleRaces = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!races || !q) return races ?? []
+
+    return races.filter(race => {
+      const dateText = [
+        formatDate(race.start_datetime, 'PPP'),
+        formatDate(race.start_datetime, 'yyyy-MM-dd'),
+        race.start_datetime ? new Date(race.start_datetime).getFullYear().toString() : '',
+      ].join(' ')
+      return [
+        race.name,
+        race.location,
+        dateText,
+      ].some(value => (value ?? '').toLowerCase().includes(q))
+    })
+  }, [races, search])
 
   if (isLoading) {
     return (
@@ -44,6 +81,16 @@ export function RaceList() {
   }
 
   if (!races || races.length === 0) {
+    if (mode === 'public') {
+      return (
+        <div className='flex flex-col items-center justify-center p-16 bg-neutral-900 rounded-xl border border-neutral-800 border-dashed text-center'>
+          <div className='text-4xl mb-4'>🏁</div>
+          <h3 className='text-xl font-semibold text-white mb-2'>No public events yet</h3>
+          <p className='text-neutral-400'>Public and official events will show up here once owners publish them.</p>
+        </div>
+      )
+    }
+
     return (
       <div className='flex flex-col items-center justify-center p-16 bg-neutral-900 rounded-xl border border-neutral-800 border-dashed text-center'>
         <div className='text-4xl mb-4'>🏃</div>
@@ -60,33 +107,64 @@ export function RaceList() {
   }
 
   return (
-    <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
-      {races.map((race) => (
-        <Link 
-          key={race.id} 
-          to={`/race/${race.id}`} 
-          className='bg-neutral-900 border border-neutral-800 rounded-xl p-6 hover:border-blue-600 transition-colors group block'
-        >
-          <h3 className='text-lg font-semibold text-white mb-2 group-hover:text-blue-500 transition-colors'>
-            {race.name}
-          </h3>
-          {race.location && (
-            <p className='text-neutral-400 text-sm mb-4'>{race.location}</p>
-          )}
-          <div className='flex items-center gap-3'>
-            {race.distance_miles && (
-              <span className='bg-blue-900/20 text-blue-500 px-3 py-1 rounded-full text-xs font-medium'>
-                {race.distance_miles} miles
-              </span>
-            )}
-            {race.start_datetime && (
-              <span className='text-neutral-500 text-xs'>
-                {formatDate(race.start_datetime, 'PPP')}
-              </span>
-            )}
-          </div>
-        </Link>
-      ))}
+    <div className='space-y-4'>
+      {showSearch && (
+        <div className='relative max-w-2xl'>
+          <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500' />
+          <input
+            type='search'
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder='Search by event, location, or date'
+            className='w-full bg-neutral-900 border border-neutral-800 rounded-lg pl-10 pr-3 py-3 text-sm text-white placeholder-neutral-500 focus:ring-2 focus:ring-blue-500 outline-none'
+          />
+        </div>
+      )}
+
+      {visibleRaces.length === 0 ? (
+        <div className='p-10 bg-neutral-900 rounded-xl border border-neutral-800 border-dashed text-center text-neutral-400'>
+          No events match your search.
+        </div>
+      ) : (
+        <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
+          {visibleRaces.map((race) => (
+            <Link
+              key={race.id}
+              to={`/race/${race.id}`}
+              className='bg-neutral-900 border border-neutral-800 rounded-xl p-6 hover:border-blue-600 transition-colors group block'
+            >
+              <div className='flex items-start gap-2 mb-2'>
+                <h3 className='text-lg font-semibold text-white group-hover:text-blue-500 transition-colors min-w-0 flex-1'>
+                  {race.name}
+                </h3>
+                {race.is_official && (
+                  <CheckCircle2 className='w-5 h-5 text-blue-400 shrink-0' aria-label='Official event' />
+                )}
+              </div>
+              {race.location && (
+                <p className='text-neutral-400 text-sm mb-4'>{race.location}</p>
+              )}
+              <div className='flex items-center gap-3 flex-wrap'>
+                {race.distance_miles && (
+                  <span className='bg-blue-900/20 text-blue-500 px-3 py-1 rounded-full text-xs font-medium'>
+                    {race.distance_miles} miles
+                  </span>
+                )}
+                {race.start_datetime && (
+                  <span className='text-neutral-500 text-xs'>
+                    {formatDate(race.start_datetime, 'PPP')}
+                  </span>
+                )}
+                {race.is_public && (
+                  <span className='text-neutral-500 text-xs'>
+                    Public
+                  </span>
+                )}
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

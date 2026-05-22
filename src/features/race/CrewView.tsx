@@ -15,6 +15,32 @@ import type { Race, Course, Waypoint, TerrainNode } from '@/types/database'
 
 type PlanKey = 'A' | 'B' | 'C'
 
+const planColors: Record<PlanKey, {
+    active: string
+    inactive: string
+    text: string
+    dot: string
+}> = {
+    A: {
+        active: 'bg-emerald-600 text-white shadow-emerald-950/40',
+        inactive: 'bg-emerald-950/40 text-emerald-100 hover:bg-emerald-900/60 border border-emerald-800/60',
+        text: 'text-emerald-300',
+        dot: 'bg-emerald-400',
+    },
+    B: {
+        active: 'bg-amber-500 text-neutral-950 shadow-amber-950/40',
+        inactive: 'bg-amber-950/40 text-amber-100 hover:bg-amber-900/60 border border-amber-800/60',
+        text: 'text-amber-300',
+        dot: 'bg-amber-400',
+    },
+    C: {
+        active: 'bg-red-600 text-white shadow-red-950/40',
+        inactive: 'bg-red-950/40 text-red-100 hover:bg-red-900/60 border border-red-800/60',
+        text: 'text-red-300',
+        dot: 'bg-red-400',
+    },
+}
+
 interface CrewViewProps {
     raceId: string
     embedded?: boolean   // when rendered inside RaceDetail tab (skip top header)
@@ -300,17 +326,18 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
                             const m = planMinutes[k]
                             const disabled = !m || m <= 0
                             const active = activePlan === k
+                            const colors = planColors[k]
                             return (
                                 <button
                                     key={k}
                                     disabled={disabled}
                                     onClick={() => setActivePlan(k)}
-                                    className={`flex-1 py-2 rounded text-sm font-medium transition ${
+                                    className={`flex-1 py-2 rounded text-sm font-medium transition shadow-lg ${
                                         active
-                                            ? 'bg-blue-600 text-white'
+                                            ? colors.active
                                             : disabled
                                                 ? 'bg-neutral-800 text-neutral-600'
-                                                : 'bg-neutral-800 text-neutral-200 hover:bg-neutral-700'
+                                                : colors.inactive
                                     }`}
                                 >
                                     <div className='text-xs opacity-80'>Plan {k}</div>
@@ -484,7 +511,7 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
                             return (
                                 <div key={wp.id} className='py-2 flex items-center gap-2'>
                                     <div className={`w-2 h-2 rounded-full ${
-                                        checked ? 'bg-emerald-400' : past ? 'bg-amber-400' : wp.crew_allowed ? 'bg-blue-400' : 'bg-neutral-600'
+                                        checked ? 'bg-emerald-400' : past ? 'bg-neutral-500' : wp.crew_allowed ? planColors[activePlan].dot : 'bg-neutral-600'
                                     }`} />
                                     <div className='min-w-0 flex-1'>
                                         <div className='text-sm font-medium truncate'>
@@ -492,7 +519,10 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
                                             {wp.crew_allowed && <span className='ml-1 text-[10px] text-emerald-400'>crew</span>}
                                             {checked && <span className='ml-1 text-[10px] text-emerald-400'>✓</span>}
                                         </div>
-                                        <div className='text-xs text-neutral-500'>mile {wp.mile.toFixed(1)} · ETA {arrival?.timeOfDay ?? '—'}</div>
+                                        <div className='text-xs text-neutral-500'>
+                                            mile {wp.mile.toFixed(1)} · ETA{' '}
+                                            <span className={arrival ? planColors[activePlan].text : ''}>{arrival?.timeOfDay ?? '—'}</span>
+                                        </div>
                                     </div>
                                     {canLogCheckins && (
                                         <button
@@ -512,12 +542,14 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
             {/* Sticky check-in CTA */}
             {canLogCheckins && nextWaypoint && !showCheckin && (
                 <div className='sticky bottom-0 inset-x-0 bg-neutral-950/95 backdrop-blur border-t border-neutral-800 p-3'>
-                    <button
-                        onClick={() => openCheckin(nextWaypoint)}
-                        className='w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 rounded py-3 font-semibold'
-                    >
-                        Log arrival at {nextWaypoint.name}
-                    </button>
+                    <div className='max-w-3xl mx-auto'>
+                        <button
+                            onClick={() => openCheckin(nextWaypoint)}
+                            className='w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 rounded py-3 font-semibold'
+                        >
+                            Log arrival at {nextWaypoint.name}
+                        </button>
+                    </div>
                 </div>
             )}
 

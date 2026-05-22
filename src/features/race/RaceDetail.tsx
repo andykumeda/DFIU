@@ -1030,7 +1030,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       <header ref={setHeaderEl} className='print:hidden border-b border-neutral-800 bg-neutral-950/50 backdrop-blur-sm sticky top-0 z-[100]'>
         <div className='max-w-7xl mx-auto px-3 sm:px-4 py-1.5 sm:py-2 flex justify-between items-center gap-2'>
           <div className='flex items-center gap-1 sm:gap-8 min-w-0 flex-1'>
-            <Link to='/dashboard' className='flex items-center hover:opacity-80 transition-opacity cursor-pointer pointer-events-auto relative z-[999] -space-x-3 shrink-0'>
+            <Link to='/events' className='flex items-center hover:opacity-80 transition-opacity cursor-pointer pointer-events-auto relative z-[999] -space-x-3 shrink-0'>
               <img src="/logo.png" alt="DFIU Logo" className="h-10 sm:h-14 w-auto object-contain drop-shadow-md relative z-10" />
               <div className="hidden sm:flex flex-col justify-center items-start">
                 <span className="font-black italic tracking-tighter text-4xl uppercase bg-gradient-to-br from-orange-400 to-orange-600 bg-clip-text text-transparent pr-1 relative z-0 leading-[0.8]">DFIU</span>

@@ -115,32 +115,52 @@ export default function SettingsPage() {
         setSaving(true)
 
         try {
-            // If regular user (not dummy strava email), try to update auth email
-            if (user.email && !user.email.endsWith('@strava.dfiu.app') && formData.email !== user.email) {
-                const { error: emailError } = await supabase.auth.updateUser({ email: formData.email })
-                if (emailError) throw emailError
-                toast.success('Check your new email for a confirmation link')
+            const profilePayload = {
+                id: user.id,
+                name: formData.display_name?.trim() || null,
+                email: formData.email.trim() || null,
+                avatar_url: formData.avatar_url,
+                units_distance: formData.units_distance,
+                units_elevation: formData.units_elevation,
+                clock_24h: formData.clock_24h,
+                updated_at: new Date().toISOString()
             }
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const { error } = await (supabase.from('profiles') as any)
-                .upsert({
-                    id: user.id,
-                    name: formData.display_name,
-                    email: formData.email, // Save email to profile for everyone
-                    avatar_url: formData.avatar_url,
-                    units_distance: formData.units_distance,
-                    units_elevation: formData.units_elevation,
-                    clock_24h: formData.clock_24h,
-                    updated_at: new Date().toISOString()
-                })
-                .select()
-
-
+            const { data: savedProfile, error } = await (supabase.from('profiles') as any)
+                .upsert(profilePayload, { onConflict: 'id' })
+                .select('*')
+                .single()
 
             if (error) throw error
+
+            if (savedProfile) {
+                setFormData(prev => ({
+                    ...prev,
+                    id: savedProfile.id,
+                    email: savedProfile.email || prev.email,
+                    display_name: savedProfile.name || '',
+                    avatar_url: savedProfile.avatar_url || null,
+                    units_distance: savedProfile.units_distance || 'miles',
+                    units_elevation: savedProfile.units_elevation || 'feet',
+                    clock_24h: savedProfile.clock_24h || false
+                }))
+            }
+
             toast.success('Settings saved')
-            refreshProfile?.()
+            await refreshProfile?.()
+
+            // If regular user (not dummy strava email), try to update auth email
+            // after profile data is persisted so display settings are not lost if
+            // auth email confirmation fails.
+            if (user.email && !user.email.endsWith('@strava.dfiu.app') && formData.email !== user.email) {
+                const { error: emailError } = await supabase.auth.updateUser({ email: formData.email })
+                if (emailError) {
+                    toast.error(`Settings saved, but auth email update failed: ${emailError.message}`)
+                    return
+                }
+                toast.success('Check your new email for a confirmation link')
+            }
         } catch (error) {
             console.error('Error saving settings:', error)
             toast.error(`Failed to save settings: ${(error as any).message || 'Unknown error'}`)
