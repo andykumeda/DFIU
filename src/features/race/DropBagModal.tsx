@@ -13,6 +13,7 @@ import {
     seedDropBagItems,
 } from './drop-bag-shared'
 import { DropBagNotes } from './DropBagNotes'
+import { DropBagSummary } from './DropBagSummary'
 
 interface DropBagModalProps {
     waypoint: Waypoint
@@ -20,10 +21,13 @@ interface DropBagModalProps {
     arrivalTime?: { arrivalTime: number, timeOfDay: string }
     isNight: boolean
     canEdit?: boolean
+    /** Show only what's packed in the bag (no editor/template), like Crew View.
+     *  Used everywhere except the dedicated Drop Bag section. */
+    contentsOnly?: boolean
     onClose: () => void
 }
 
-export function DropBagModal({ waypoint, race, arrivalTime, isNight, canEdit = true, onClose }: DropBagModalProps) {
+export function DropBagModal({ waypoint, race, arrivalTime, isNight, canEdit = true, contentsOnly = false, onClose }: DropBagModalProps) {
     const queryClient = useQueryClient()
     const [items, setItems] = useState<DropBagItem[]>([])
     const [newItemText, setNewItemText] = useState('')
@@ -138,6 +142,26 @@ export function DropBagModal({ waypoint, race, arrivalTime, isNight, canEdit = t
 
                 <div className="p-6 overflow-y-auto space-y-8 flex-1">
 
+                    {contentsOnly ? (
+                    <div className="space-y-5">
+                        {bagName && (
+                            <div className="bg-neutral-950/50 border border-neutral-800 rounded-xl p-4">
+                                <div className="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-0.5">
+                                    {isStartBag ? 'Start Gear' : 'Bag Name'}
+                                </div>
+                                <div className="text-sm text-white font-medium">{bagName}</div>
+                            </div>
+                        )}
+                        <div>
+                            <h3 className="text-sm font-bold uppercase tracking-wider text-neutral-500 mb-2">
+                                {isStartBag ? "What's at the start" : "What's inside"}
+                            </h3>
+                            <DropBagSummary waypoint={waypoint} />
+                        </div>
+                        <DropBagNotes waypoint={waypoint} showEmpty />
+                    </div>
+                    ) : (
+                    <>
                     {(isNight || isHot || isCold) && (
                         <div className="bg-blue-900/20 border border-blue-900/50 rounded-xl p-4 flex gap-3 text-sm">
                             <Info className="w-5 h-5 text-blue-400 shrink-0" />
@@ -260,6 +284,8 @@ export function DropBagModal({ waypoint, race, arrivalTime, isNight, canEdit = t
                         </div>
                         <DropBagNotes waypoint={waypoint} showDropBagNotes={false} />
                     </div>
+                    </>
+                    )}
 
                 </div>
 
@@ -269,9 +295,9 @@ export function DropBagModal({ waypoint, race, arrivalTime, isNight, canEdit = t
                         className="px-6 py-2.5 rounded-lg font-medium text-neutral-400 hover:text-white transition-colors"
                         disabled={saving}
                     >
-                        {canEdit ? 'Cancel' : 'Close'}
+                        {canEdit && !contentsOnly ? 'Cancel' : 'Close'}
                     </button>
-                    {canEdit && (
+                    {canEdit && !contentsOnly && (
                         <button
                             onClick={handleSave}
                             disabled={saving}

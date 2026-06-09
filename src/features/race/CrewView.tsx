@@ -12,6 +12,7 @@ import { useLatestRunnerLocation } from './useRunnerLocation'
 import { calculatePacePlan, ActualCheckin } from './pace-utils'
 import { CrewMap } from './CrewMap'
 import { DropBagNotes } from './DropBagNotes'
+import { DropBagSummary } from './DropBagSummary'
 import { getDistance, getCoordinateAtDistance } from '@/lib/geo-utils'
 import type { Race, Course, Waypoint, TerrainNode } from '@/types/database'
 
@@ -665,31 +666,6 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
                 </div>
             )}
         </div>
-    )
-}
-
-function DropBagSummary({ waypoint }: { waypoint: Waypoint }) {
-    const allItems = (waypoint.drop_bag_items as Array<{ text?: string; label?: string; name?: string; qty?: number; quantity?: number | string; checked?: boolean }> | null) ?? []
-    // Items use a `checked` flag to mean "packed". Show packed items; if the
-    // runner hasn't checked anything yet, fall back to the full planned list.
-    const packed = allItems.filter(it => it.checked)
-    const items = packed.length ? packed : allItems
-    if (!items.length) return <div className='text-sm text-neutral-400'>No drop bag items recorded.</div>
-    return (
-        <ul className='space-y-1'>
-            {items.map((it, i) => {
-                const label = it.text || it.label || it.name || 'Item'
-                const qty = it.quantity ?? it.qty
-                const hasQty = qty != null && String(qty).trim() !== ''
-                return (
-                    <li key={i} className='flex items-center gap-2 text-sm'>
-                        <span className='w-1.5 h-1.5 rounded-full bg-emerald-400' />
-                        <span className='flex-1'>{label}</span>
-                        {hasQty && <span className='text-neutral-400 text-xs'>×{qty}</span>}
-                    </li>
-                )
-            })}
-        </ul>
     )
 }
 

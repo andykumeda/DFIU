@@ -192,8 +192,11 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
 
     const visibleColumns = getVisiblePaceChartColumns(plans.paceChartColumns, isKm)
 
+    // Anyone (including public viewers) can reorder/hide columns. For editors
+    // the change is persisted to the race; for viewers it stays local to their
+    // session (usePacePlans.persist is a no-op without edit permission).
     const updateColumnConfig = (next: PaceChartColumnsConfig) => {
-        if (canEdit) setPaceChartColumns(next)
+        setPaceChartColumns(next)
     }
 
     const toggleColumnVisibility = (id: PaceChartColumnId) => {
@@ -411,24 +414,18 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                                         : def.label
                                 return (
                                     <div key={colId} className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${hidden ? 'border-neutral-800/50 opacity-60' : 'border-neutral-800'}`}>
-                                        {canEdit ? (
-                                            <div className="flex flex-col">
-                                                <button onClick={() => moveColumn(colId, -1)} disabled={index === 0} className="text-neutral-500 hover:text-white disabled:opacity-30">
-                                                    <ChevronUp className="w-3.5 h-3.5" />
-                                                </button>
-                                                <button onClick={() => moveColumn(colId, 1)} disabled={index === plans.paceChartColumns.order.length - 1} className="text-neutral-500 hover:text-white disabled:opacity-30">
-                                                    <ChevronDown className="w-3.5 h-3.5" />
-                                                </button>
-                                            </div>
-                                        ) : null}
-                                        <span className="flex-1 text-sm text-neutral-300">{label}</span>
-                                        {canEdit ? (
-                                            <button onClick={() => toggleColumnVisibility(colId)} className="text-neutral-500 hover:text-white">
-                                                {hidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                        <div className="flex flex-col">
+                                            <button onClick={() => moveColumn(colId, -1)} disabled={index === 0} className="text-neutral-500 hover:text-white disabled:opacity-30">
+                                                <ChevronUp className="w-3.5 h-3.5" />
                                             </button>
-                                        ) : (
-                                            <span className="text-xs text-neutral-600">{hidden ? 'Hidden' : 'Visible'}</span>
-                                        )}
+                                            <button onClick={() => moveColumn(colId, 1)} disabled={index === plans.paceChartColumns.order.length - 1} className="text-neutral-500 hover:text-white disabled:opacity-30">
+                                                <ChevronDown className="w-3.5 h-3.5" />
+                                            </button>
+                                        </div>
+                                        <span className="flex-1 text-sm text-neutral-300">{label}</span>
+                                        <button onClick={() => toggleColumnVisibility(colId)} className="text-neutral-500 hover:text-white">
+                                            {hidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                        </button>
                                     </div>
                                 )
                             })}
@@ -549,6 +546,7 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                     waypoint={selectedDropBagWaypoint}
                     race={race}
                     canEdit={canEdit}
+                    contentsOnly
                     arrivalTime={plan?.waypointArrivals.find(a => a.waypointId === selectedDropBagWaypoint.id)}
                     isNight={
                         !!plan?.waypointArrivals.find(a => a.waypointId === selectedDropBagWaypoint.id) &&

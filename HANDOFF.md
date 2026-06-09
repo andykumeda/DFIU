@@ -13,6 +13,8 @@
   - Migration `supabase/migrations/20260610_profile_runner_profile.sql` — **already applied to production** via the Management API (column verified `jsonb`). The legacy `race_pace_plans.runner_profile` column is left in place but unused.
   - **Known limitation:** `CrewView` reads the *viewing user's* runner profile (correct for the owner-runner). For a separate crew member viewing a runner's plan it falls back to defaults rather than the runner's saved profile. Follow-up if multi-user crew accuracy is needed: resolve the race's `is_runner` member and read their `profiles.runner_profile`.
 - **Drop-bag note contrast fix.** Aid-station cards rendered note text with no explicit color (dark-on-dark, unreadable). `DropBagNotes` now sets readable colors: `text-neutral-100` (drop bag notes), `text-blue-50` (tell runner), `text-amber-50` (next leg).
+- **Public pace-chart column controls.** Column visibility toggles and reorder arrows are now available to everyone (including public viewers), not just editors. Editors' changes persist to the race; viewers' changes stay local to their session (`usePacePlans.persist` is a no-op without edit permission).
+- **Contents-only drop bag popup outside the Drop Bag section.** The `DropBagModal` gained a `contentsOnly` prop. The pace plan's 🎒 popup now shows only what's packed (shared `DropBagSummary`, extracted from Crew View) plus notes — no template/unchecked options, no editor — matching Crew View. The dedicated Drop Bag section keeps the full editor.
 
 ## 2026-06-09 Reconciliation
 
