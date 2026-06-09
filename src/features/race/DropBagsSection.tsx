@@ -32,8 +32,9 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
     }
 
     const isStartBag = (wp: Waypoint) => wp.type === 'start' || wp.mile <= 0.01
+    const isDropBag = (wp: Waypoint) => !!wp.has_drop_bag || wp.type === 'drop_bag'
     const dropBagWaypoints = waypoints
-        .filter(wp => wp.has_drop_bag || isStartBag(wp))
+        .filter(wp => isDropBag(wp) || isStartBag(wp))
         .sort((a, b) => a.mile - b.mile)
 
     const { plans } = usePacePlans(race.id)

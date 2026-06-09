@@ -3,6 +3,7 @@
 import { Waypoint } from '@/types/database'
 import styles from '../race/EditRaceModal.module.css' // Reuse consistent styles
 import { format } from 'date-fns'
+import { getDropBagNotes } from '@/features/race/drop-bag-shared'
 
 interface ViewWaypointModalProps {
     waypoint: Waypoint
@@ -53,6 +54,8 @@ function formatCutoffTime(utcString: string, timeZone?: string) {
 
 export function ViewWaypointModal({ waypoint, isOwner, timeZone, onClose, onEdit }: ViewWaypointModalProps) {
     const formattedCutoff = waypoint.cutoff_time ? formatCutoffTime(waypoint.cutoff_time, timeZone) : null
+    const showsDropBagNotes = waypoint.has_drop_bag || waypoint.type === 'drop_bag' || waypoint.type === 'start'
+    const dropBagNotes = getDropBagNotes(waypoint)
 
     return (
         <div className={styles.overlay} onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
@@ -123,12 +126,12 @@ export function ViewWaypointModal({ waypoint, isOwner, timeZone, onClose, onEdit
                         </div>
                     )}
 
-                    {(waypoint.has_drop_bag || waypoint.type === 'start') ? (
-                        (waypoint.drop_bag_notes || waypoint.notes) && (
+                    {showsDropBagNotes ? (
+                        dropBagNotes && (
                             <div>
                                 <div className="text-neutral-500 text-xs uppercase tracking-wider mb-2">Drop Bag Notes</div>
                                 <div className="bg-neutral-900/50 p-4 rounded-lg border border-neutral-800 text-neutral-300 whitespace-pre-wrap text-sm">
-                                    {waypoint.drop_bag_notes || waypoint.notes}
+                                    {dropBagNotes}
                                 </div>
                             </div>
                         )

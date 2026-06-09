@@ -17,7 +17,12 @@ interface EditWaypointModalProps {
     onDelete?: (id: string) => void
 }
 
+const showsDropBagNotes = (type: string, hasDropBag: boolean | null | undefined) =>
+    !!hasDropBag || type === 'drop_bag' || type === 'start'
+
 export function EditWaypointModal({ waypoint, lat, lon, mile, raceDate, timeZone, onClose, onSave, onDelete }: EditWaypointModalProps) {
+    const initialType = waypoint?.type || 'aid_station'
+    const initialShowsDropBagNotes = showsDropBagNotes(initialType, waypoint?.has_drop_bag)
     const [formData, setFormData] = useState<{
         name: string
         type: string
@@ -175,7 +180,15 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, raceDate, timeZone
                         <label>Type</label>
                         <select
                             value={formData.type}
-                            onChange={e => setFormData({ ...formData, type: e.target.value })}
+                            onChange={e => {
+                                const type = e.target.value
+                                setFormData(prev => ({
+                                    ...prev,
+                                    type,
+                                    has_drop_bag: type === 'drop_bag' ? true : prev.has_drop_bag,
+                                    drop_bag_notes: (type === 'drop_bag' || type === 'start') && !prev.drop_bag_notes ? prev.notes : prev.drop_bag_notes,
+                                }))
+                            }}
                             className={styles.select}
                             style={{ padding: '0.75rem', borderRadius: '6px', border: '1px solid #ddd' }}
                         >
@@ -267,7 +280,7 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, raceDate, timeZone
                         </label>
                     </div>
 
-                    {(formData.has_drop_bag || formData.type === 'start') ? (
+                    {(formData.has_drop_bag || formData.type === 'drop_bag' || formData.type === 'start') ? (
                         <div className={styles.field}>
                             <label>Drop Bag Notes</label>
                             <textarea
