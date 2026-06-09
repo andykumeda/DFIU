@@ -1,8 +1,8 @@
 # Handoff Document
 
 **Date:** 2026-06-09
-**Status:** Signup Strava option and `clone_race` waypoint `updated_at` fix are built and ready to deploy/commit.
-**Active task:** Final deploy/commit of auth + clone fixes, then verify signup and clone flows in production.
+**Status:** Signup Strava option and `clone_race` waypoint `updated_at` fix are committed, pushed, and deployed (`5d5ec08` before this handoff-only update).
+**Active task:** Verify `/signup` Strava button and public-race clone flow in production.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change in this repo. Commit, branch, and document discipline is required to prevent the lost-work confusion that motivated this reconciliation.
 
