@@ -3,7 +3,7 @@ import { useAuth } from '@/features/auth/AuthContext'
 import { usePermission } from '@/features/auth/usePermission'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Calendar, MapPin, Globe, ArrowUpRight, CloudSun, Trophy, RefreshCw, Settings, Download, Save, CheckCircle2 } from 'lucide-react'
+import { Calendar, MapPin, Globe, ArrowUpRight, CloudSun, Trophy, RefreshCw, Settings, Download, Save, CheckCircle2, Trash2 } from 'lucide-react'
 
 import { supabase } from '@/lib/supabase'
 import { Race, Course, Waypoint, TerrainNode } from '@/types/database'
@@ -51,6 +51,39 @@ function getWaypointIcon(type: string): string {
   }
 }
 
+// Identify redundant terrain nodes that can be merged away so consecutive
+// same-type segments collapse into one. A short (<=0.1 mi) "other" gap between
+// two matching terrain types is also collapsed.
+function getCompactableTerrainNodeIds(nodes: TerrainNode[]) {
+  const GAP_TOL = 0.1 + 1e-6
+  const sorted = [...nodes].sort((a, b) => a.mile - b.mile)
+  const ids = new Set<string>()
+  const isKnownTerrain = (node: TerrainNode) => node.type !== 'other' && node.type !== 'default'
+
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = sorted[i - 1]
+    const node = sorted[i]
+    if (isKnownTerrain(prev) && node.type === prev.type) ids.add(node.id)
+  }
+
+  for (let i = 1; i < sorted.length - 1; i++) {
+    const prev = sorted[i - 1]
+    const gap = sorted[i]
+    const next = sorted[i + 1]
+    if (
+      isKnownTerrain(prev) &&
+      gap.type === 'other' &&
+      next.type === prev.type &&
+      next.mile - gap.mile <= GAP_TOL
+    ) {
+      ids.add(gap.id)
+      ids.add(next.id)
+    }
+  }
+
+  return Array.from(ids)
+}
+
 function RoleSwitcher({ raceId, views }: { raceId: string; views: Array<'full' | 'runner' | 'crew' | 'pacer'> }) {
   const uniqueViews = Array.from(new Set(views.length ? views : ['full']))
   if (uniqueViews.length <= 1) return null
@@ -87,7 +120,8 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   const [hoveredWaypointId, setHoveredWaypointId] = useState<string | null>(null)
   const [hoveredTerrainId, setHoveredTerrainId] = useState<string | null>(null)
   // Pending segment: set by map 2-click or profile drag → triggers classification popup.
-  const [pendingSegment, setPendingSegment] = useState<{ startMile: number; endMile: number } | null>(null)
+  // nodeId is set when editing an existing segment (vs defining a new range).
+  const [pendingSegment, setPendingSegment] = useState<{ startMile: number; endMile: number; nodeId?: string } | null>(null)
   const [pendingType, setPendingType] = useState<TerrainTypeValue>('single_track')
 
   const [showMileMarkers, setShowMileMarkers] = useState(true)
@@ -253,6 +287,27 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     }
     fetchTerrain()
   }, [course?.id])
+
+  // Merge redundant adjacent same-type terrain nodes in the DB so the course
+  // shows single combined segments instead of many short adjacent ones.
+  useEffect(() => {
+    if (!course?.id || !canEdit || terrainNodes.length === 0) return
+    const compactableIds = getCompactableTerrainNodeIds(terrainNodes)
+    if (compactableIds.length === 0) return
+
+    let cancelled = false
+    const compactTerrain = async () => {
+      const { error } = await supabase.from('terrain_nodes').delete().in('id', compactableIds)
+      if (error) {
+        console.error('Failed to compact terrain nodes:', error)
+        return
+      }
+      const { data } = await supabase.from('terrain_nodes').select('*').eq('course_id', course.id).order('mile')
+      if (!cancelled && data) setTerrainNodes(data)
+    }
+    compactTerrain()
+    return () => { cancelled = true }
+  }, [course?.id, canEdit, terrainNodes])
 
   const handleGpxUpload = async (result: GpxParseResult, rawGpx: string) => {
     try {
@@ -611,8 +666,14 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   }
 
 
+  const clearPendingTerrainSegment = () => {
+    setPendingSegment(null)
+    setHoveredTerrainId(null)
+  }
+
   const handleDeleteTerrainNode = async (id: string) => {
     // Optimistic update to remove it immediately for responsiveness
+    if (pendingSegment?.nodeId === id) clearPendingTerrainSegment()
     setTerrainNodes(prev => prev.filter(n => n.id !== id))
 
     const { error } = await supabase.from('terrain_nodes').delete().eq('id', id)
@@ -665,6 +726,30 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       if (coord) { lon = coord[0]; lat = coord[1] }
     }
     await handleTerrainNodeMove(id, lat, lon, mile)
+  }
+
+  // Select an existing terrain segment for editing (from sidebar pencil or map click).
+  const handleEditTerrainSegment = (id: string, segmentEndMile?: number) => {
+    const sorted = [...terrainNodes].sort((a, b) => a.mile - b.mile)
+    const index = sorted.findIndex(n => n.id === id)
+    const node = sorted[index]
+    if (!node) return
+
+    const endMile = segmentEndMile ?? sorted[index + 1]?.mile ?? course?.total_distance_miles ?? node.mile
+    if (endMile <= node.mile) return
+
+    setPendingType((node.type === 'other' ? 'single_track' : node.type) as TerrainTypeValue)
+    setPendingSegment({ startMile: node.mile, endMile, nodeId: node.id })
+    setHoveredTerrainId(node.id)
+  }
+
+  const handleDeleteTerrainSegment = async (id: string) => {
+    const node = terrainNodes.find(n => n.id === id)
+    if (!node) return
+
+    if (!confirm(`Delete terrain segment starting at mi ${node.mile.toFixed(2)}?`)) return
+    clearPendingTerrainSegment()
+    await handleDeleteTerrainNode(id)
   }
 
   // Handle saving a range/segment of terrain
@@ -761,7 +846,16 @@ export function RaceDetail({ raceId }: { raceId: string }) {
         await supabase.from('terrain_nodes').delete().in('id', nodesToDelete.map(n => n.id))
       }
 
-      // Refresh
+      // Refresh and compact redundant same-type boundaries so adjacent matching
+      // segments collapse into one. Unknown gaps only collapse when they are
+      // 0.1 mi or shorter between matching terrain types.
+      const { data: savedNodes } = await supabase.from('terrain_nodes').select('*').eq('course_id', course.id).order('mile')
+      const compactableIds = savedNodes ? getCompactableTerrainNodeIds(savedNodes as TerrainNode[]) : []
+      if (compactableIds.length > 0) {
+        const { error } = await supabase.from('terrain_nodes').delete().in('id', compactableIds)
+        if (error) throw error
+      }
+
       const { data: tNodes } = await supabase.from('terrain_nodes').select('*').eq('course_id', course.id).order('mile')
       if (tNodes) setTerrainNodes(tNodes)
 
@@ -837,7 +931,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     const { startMile, endMile } = pendingSegment
     const t = pendingType
     const diff = getTerrainDefaultDifficulty(t)
-    setPendingSegment(null)
+    clearPendingTerrainSegment()
 
     await handleSaveTerrainSegment(startMile, endMile, t, diff)
 
@@ -1250,10 +1344,14 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                         })() : null}
 
 
-                        highlightedTerrainId={hoveredTerrainId}
+                        highlightedTerrainId={pendingSegment?.nodeId ?? hoveredTerrainId}
                         terrainNodes={isOwner ? terrainNodes : []}
+                        onTerrainNodeClick={isOwner && isEditMode ? handleEditTerrainSegment : undefined}
                         onTerrainNodeMove={isOwner && isEditMode ? handleTerrainNodeMove : undefined}
-                        onSegmentDefined={isOwner && isEditMode ? (lo, hi) => setPendingSegment({ startMile: lo, endMile: hi }) : undefined}
+                        onSegmentDefined={isOwner && isEditMode ? (lo, hi) => {
+                          setHoveredTerrainId(null)
+                          setPendingSegment({ startMile: lo, endMile: hi })
+                        } : undefined}
                       />
                     </Suspense>
 
@@ -1289,8 +1387,17 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                         </div>
 
                         <div className="flex gap-2">
+                          {pendingSegment.nodeId && (
+                            <button
+                              onClick={() => handleDeleteTerrainSegment(pendingSegment.nodeId!)}
+                              className="py-1.5 px-2 text-xs text-red-700 hover:bg-red-50 rounded border border-red-200 flex items-center justify-center"
+                              title="Delete selected terrain segment"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                           <button
-                            onClick={() => setPendingSegment(null)}
+                            onClick={clearPendingTerrainSegment}
                             className="flex-1 py-1.5 text-xs text-neutral-600 hover:bg-neutral-100 rounded border border-neutral-200"
                           >
                             Cancel
@@ -1315,7 +1422,10 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                       showMileMarkers={showMileMarkers}
                       waypoints={waypoints.map(wp => ({ id: wp.id, mile: wp.mile, name: wp.name, type: wp.type }))}
                       terrainNodes={isOwner ? terrainNodes : []}
-                      onRangeDefined={isOwner && isEditMode ? (lo, hi) => setPendingSegment({ startMile: lo, endMile: hi }) : undefined}
+                      onRangeDefined={isOwner && isEditMode ? (lo, hi) => {
+                        setHoveredTerrainId(null)
+                        setPendingSegment({ startMile: lo, endMile: hi })
+                      } : undefined}
                     />
                   </div>
                 </div>
@@ -1327,7 +1437,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                       <h3 className='text-sm font-semibold text-neutral-400 uppercase tracking-wider'>Route Stats</h3>
                       {isOwner && (
                         <button
-                          onClick={() => { setIsEditMode(!isEditMode); setPendingSegment(null) }}
+                          onClick={() => { setIsEditMode(!isEditMode); clearPendingTerrainSegment() }}
                           className={`text-xs px-2 py-1 rounded border transition-colors flex items-center gap-1 ${isEditMode ? 'bg-blue-600 text-white border-blue-500' : 'bg-neutral-800 text-neutral-500 border-neutral-700 hover:bg-neutral-700 hover:text-neutral-300'}`}
                         >
                           <Settings className='w-3 h-3' />
@@ -1465,11 +1575,14 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                       terrainNodes={terrainNodes}
                       totalDistance={course?.total_distance_miles ?? 0}
                       canEdit={!!isOwner && isEditMode}
-                      highlightedTerrainId={hoveredTerrainId}
+                      canEnterEdit={!!isOwner}
+                      onEditModeChange={editing => { setIsEditMode(editing); clearPendingTerrainSegment() }}
+                      highlightedTerrainId={pendingSegment?.nodeId ?? hoveredTerrainId}
                       onHoverNode={setHoveredTerrainId}
                       onSaveSegment={handleSaveTerrainSegment}
                       onDeleteNode={handleDeleteTerrainNode}
                       onUpdateNodeMile={handleUpdateTerrainNodeMile}
+                      onEditSegment={handleEditTerrainSegment}
                     />
                   )}
                 </div>

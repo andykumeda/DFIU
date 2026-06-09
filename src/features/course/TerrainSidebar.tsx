@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { Pencil, Trash2 } from 'lucide-react'
 import { TerrainNode } from '@/types/database'
 import {
   TERRAIN_TYPES,
@@ -12,6 +13,7 @@ import {
 
 interface Segment {
   startNodeId: string
+  nodeIds: string[]
   startMile: number
   endMile: number
   type: TerrainTypeValue
@@ -27,6 +29,9 @@ interface TerrainSidebarProps {
   onSaveSegment: (startMile: number, endMile: number, type: string, difficulty: number) => Promise<void> | void
   onDeleteNode: (id: string) => Promise<void> | void
   onUpdateNodeMile?: (id: string, mile: number) => Promise<void> | void
+  canEnterEdit?: boolean
+  onEditModeChange?: (editing: boolean) => void
+  onEditSegment?: (id: string, endMile?: number) => void
 }
 
 export function TerrainSidebar({
@@ -38,6 +43,9 @@ export function TerrainSidebar({
   onSaveSegment,
   onDeleteNode,
   onUpdateNodeMile,
+  canEnterEdit = false,
+  onEditModeChange,
+  onEditSegment,
 }: TerrainSidebarProps) {
   const [isOpen, setIsOpen] = useState(true)
   const [adding, setAdding] = useState(false)
@@ -51,13 +59,49 @@ export function TerrainSidebar({
 
   const segments = useMemo<Segment[]>(() => {
     const sorted = [...terrainNodes].sort((a, b) => a.mile - b.mile)
-    return sorted.map((n, i) => ({
-      startNodeId: n.id,
-      startMile: n.mile,
-      endMile: sorted[i + 1]?.mile ?? totalDistance,
-      type: n.type as TerrainTypeValue,
-      difficulty: n.difficulty ?? 100,
-    }))
+    const result: Segment[] = []
+    const isKnownTerrain = (node: TerrainNode) => node.type !== 'other' && node.type !== 'default'
+    const gapTol = 0.1 + 1e-6
+
+    for (let i = 0; i < sorted.length; i++) {
+      const node = sorted[i]
+      const startNode = node
+      const mergedIds = [node.id]
+      let endIndex = i + 1
+
+      while (endIndex < sorted.length) {
+        const next = sorted[endIndex]
+        const nextAfterGap = sorted[endIndex + 1]
+        if (isKnownTerrain(node) && next.type === node.type) {
+          mergedIds.push(next.id)
+          endIndex += 1
+          continue
+        }
+        if (
+          isKnownTerrain(node) &&
+          next.type === 'other' &&
+          nextAfterGap?.type === node.type &&
+          nextAfterGap.mile - next.mile <= gapTol
+        ) {
+          mergedIds.push(next.id, nextAfterGap.id)
+          endIndex += 2
+          continue
+        }
+        break
+      }
+
+      result.push({
+        startNodeId: startNode.id,
+        nodeIds: mergedIds,
+        startMile: startNode.mile,
+        endMile: sorted[endIndex]?.mile ?? totalDistance,
+        type: startNode.type as TerrainTypeValue,
+        difficulty: startNode.difficulty ?? 100,
+      })
+      i = endIndex - 1
+    }
+
+    return result
   }, [terrainNodes, totalDistance])
 
   const resetForm = () => {
@@ -113,7 +157,7 @@ export function TerrainSidebar({
     if (!confirm(`Delete terrain at mi ${seg.startMile.toFixed(2)}?`)) return
     setBusy(true)
     try {
-      await onDeleteNode(seg.startNodeId)
+      for (const id of seg.nodeIds) await onDeleteNode(id)
     } finally {
       setBusy(false)
     }
@@ -152,13 +196,27 @@ export function TerrainSidebar({
         <h3 className="text-sm font-semibold text-neutral-400 flex-1 uppercase tracking-wider flex items-center gap-2">
           {isOpen ? '▼' : '▶'} Terrain
         </h3>
-        {canEdit && isOpen && !adding && (
-          <button
-            onClick={(e) => { e.stopPropagation(); setAdding(true) }}
-            className="text-xs bg-neutral-800 hover:bg-neutral-700 text-white px-2 py-1 rounded border border-neutral-700 transition-colors ml-2"
-          >
-            + Add
-          </button>
+        {canEnterEdit && isOpen && (
+          <div className="flex items-center gap-1.5 ml-2">
+            <button
+              onClick={(e) => { e.stopPropagation(); onEditModeChange?.(!canEdit) }}
+              className={`text-xs px-2 py-1 rounded border transition-colors ${
+                canEdit
+                  ? 'bg-blue-600 text-white border-blue-500 hover:bg-blue-500'
+                  : 'bg-neutral-800 hover:bg-neutral-700 text-white border-neutral-700'
+              }`}
+            >
+              {canEdit ? 'Done' : 'Edit'}
+            </button>
+            {canEdit && !adding && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setAdding(true) }}
+                className="text-xs bg-neutral-800 hover:bg-neutral-700 text-white px-2 py-1 rounded border border-neutral-700 transition-colors"
+              >
+                + Add
+              </button>
+            )}
+          </div>
         )}
       </div>
 
@@ -232,7 +290,7 @@ export function TerrainSidebar({
               return (
                 <div
                   key={seg.startNodeId}
-                  className={`flex items-center gap-2 px-2 py-1.5 rounded border transition-colors ${
+                  className={`flex items-center gap-1 px-1.5 py-1.5 rounded border transition-colors ${
                     isHighlighted
                       ? 'bg-neutral-800 border-neutral-600'
                       : 'border-transparent hover:bg-neutral-800/60'
@@ -279,7 +337,7 @@ export function TerrainSidebar({
                     </span>
                   ) : (
                     <span
-                      className={`text-xs text-neutral-300 font-mono shrink-0 w-[88px] ${canEdit && onUpdateNodeMile ? 'cursor-pointer hover:text-orange-300' : ''}`}
+                      className={`text-xs text-neutral-300 font-mono shrink-0 w-[76px] ${canEdit && onUpdateNodeMile ? 'cursor-pointer hover:text-orange-300' : ''}`}
                       onClick={() => canEdit && onUpdateNodeMile && startEditMile(seg)}
                       title={canEdit && onUpdateNodeMile ? 'Click to edit start mile' : undefined}
                     >
@@ -291,7 +349,7 @@ export function TerrainSidebar({
                       value={seg.type}
                       onChange={e => handleTypeChange(seg, e.target.value as TerrainTypeValue)}
                       disabled={busy}
-                      className="flex-1 bg-neutral-900 border border-neutral-800 rounded px-1.5 py-0.5 text-xs text-white focus:outline-none focus:border-orange-500"
+                      className="min-w-0 flex-1 bg-neutral-900 border border-neutral-800 rounded px-1 py-0.5 text-xs text-white focus:outline-none focus:border-orange-500"
                     >
                       {TERRAIN_TYPES.map(t => (
                         <option key={t.value} value={t.value}>{t.label}</option>
@@ -302,17 +360,29 @@ export function TerrainSidebar({
                       {getTerrainLabel(seg.type)}
                     </span>
                   )}
-                  <span className="text-[10px] text-neutral-500 shrink-0 w-9 text-right">
+                  <span className="text-[10px] text-neutral-500 shrink-0 w-6 text-right">
                     {pct === 0 ? '' : `${pct > 0 ? '+' : ''}${pct}%`}
                   </span>
+                  {canEdit && onEditSegment && (
+                    <button
+                      onClick={() => onEditSegment(seg.startNodeId, seg.endMile)}
+                      disabled={busy}
+                      className="w-5 h-5 inline-flex items-center justify-center text-neutral-500 hover:text-blue-300 disabled:opacity-50 shrink-0"
+                      title="Edit segment on map"
+                      aria-label={`Edit terrain segment ${seg.startMile.toFixed(2)} to ${seg.endMile.toFixed(2)}`}
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                   {canEdit && (
                     <button
                       onClick={() => handleDelete(seg)}
                       disabled={busy}
-                      className="text-neutral-600 hover:text-red-400 text-xs disabled:opacity-50 shrink-0"
-                      title="Delete"
+                      className="w-5 h-5 inline-flex items-center justify-center text-neutral-500 hover:text-red-400 disabled:opacity-50 shrink-0"
+                      title="Delete segment"
+                      aria-label={`Delete terrain segment ${seg.startMile.toFixed(2)} to ${seg.endMile.toFixed(2)}`}
                     >
-                      ×
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   )}
                 </div>

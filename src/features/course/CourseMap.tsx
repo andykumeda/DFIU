@@ -448,6 +448,34 @@ export function CourseMap({
         lastHighlightedTerrainRef.current = highlightedTerrainId || null
     }, [highlightedTerrainId, mapLoaded, terrainNodes]) // terrainNodes dep ensures we re-apply if layer rebuilds
 
+    // Click a terrain segment line on the map to select it for editing.
+    useEffect(() => {
+        if (!map.current || !mapLoaded || !map.current.getLayer('terrain-segments')) return
+        const m = map.current
+
+        const handleClick = (e: mapboxgl.MapLayerMouseEvent) => {
+            e.preventDefault()
+            const nodeId = e.features?.[0]?.properties?.nodeId
+            if (typeof nodeId === 'string') onTerrainNodeClickRef.current?.(nodeId)
+        }
+        const handleMouseEnter = () => {
+            m.getCanvas().style.cursor = onTerrainNodeClickRef.current ? 'pointer' : ''
+        }
+        const handleMouseLeave = () => {
+            m.getCanvas().style.cursor = ''
+        }
+
+        m.on('click', 'terrain-segments', handleClick)
+        m.on('mouseenter', 'terrain-segments', handleMouseEnter)
+        m.on('mouseleave', 'terrain-segments', handleMouseLeave)
+
+        return () => {
+            m.off('click', 'terrain-segments', handleClick)
+            m.off('mouseenter', 'terrain-segments', handleMouseEnter)
+            m.off('mouseleave', 'terrain-segments', handleMouseLeave)
+        }
+    }, [mapLoaded, terrainNodes, styleLoaded])
+
 
     // ... (rest of file)
 
@@ -1082,6 +1110,8 @@ export function CourseMap({
         if (!map.current) return
 
         const clickHandler = (e: mapboxgl.MapMouseEvent) => {
+            if (e.defaultPrevented) return
+
             // Prevent if clicking on marker (handled by marker element)
             const target = e.originalEvent.target as HTMLElement
             if (target.closest('.mapboxgl-marker')) return
