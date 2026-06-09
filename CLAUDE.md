@@ -1,5 +1,9 @@
 # CLAUDE.md
 
+> **Repo-specific rules take precedence:** read [`AGENTS.md`](AGENTS.md) and follow
+> its **"Mandatory Agent Workflow"** (branch / commit / document discipline) before
+> making any change here.
+
 Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
 
 **Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.

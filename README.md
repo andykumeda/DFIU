@@ -1,5 +1,10 @@
 # Don't F* It Up (DFIU)
 
+> **AI agents:** before making any change in this repo, read **[`AGENTS.md`](AGENTS.md)**
+> — specifically the **"Mandatory Agent Workflow"** (branch, commit, and document
+> rules). It applies to every agent (Cursor, Codex, Claude, etc.) and exists to
+> prevent lost-work confusion.
+
 **Race planning for 100-mile+ trail runners who obsess over the details.**
 
 DFIU helps you centralize your course, pace plan, logistics, and crew info in one place. It provides insights to ensure you don't "F* It Up" on race day.
