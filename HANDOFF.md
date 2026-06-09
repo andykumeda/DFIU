@@ -16,8 +16,10 @@
 - **Public pace-chart column controls.** Column visibility toggles and reorder arrows are now available to everyone (including public viewers), not just editors. Editors' changes persist to the race; viewers' changes stay local to their session (`usePacePlans.persist` is a no-op without edit permission).
 - **Contents-only drop bag popup outside the Drop Bag section.** The `DropBagModal` gained a `contentsOnly` prop. The pace plan's 🎒 popup now shows only what's packed (shared `DropBagSummary`, extracted from Crew View) plus notes — no template/unchecked options, no editor — matching Crew View. The dedicated Drop Bag section keeps the full editor.
 - **Runner profile: added Altitude** (weak/avg/strong). Wired into `getRunnerProfileFactor` — above ~5,000 ft it scales the runner's altitude tolerance by elevation, capped ±6%. No migration (profile is jsonb).
-- **Configurable aid-station stop time.** New `race_pace_plans.aid_station_default_delay` (migration `20260610_pace_plan_aid_station_default_delay.sql`, applied to prod, default 2 min). Pace Plan section has an "Aid Station Stops" panel (editor only): a race default plus per-aid-station +/- overrides that write `waypoints.delay` (null = use default). `calculatePacePlan` takes the default as a param; all three call sites (pace, drop bags, crew) pass it. Chart updates on re-generate / sticky reload; drop bag ETAs and Crew View update live.
+- **Configurable aid-station stop time.** New `race_pace_plans.aid_station_default_delay` (migration `20260610_pace_plan_aid_station_default_delay.sql`, applied to prod, default 2 min) feeds `calculatePacePlan` as the fallback for aid stations without an explicit `waypoints.delay`. All three call sites (pace, drop bags, crew) pass it.
+  - Surfaced as a **"Stop" column in the pace chart** (editor: inline +/- per row writing `waypoints.delay`; viewer/print: read-only "Nm"). The earlier standalone "Aid Station Stops" side panel was removed in favor of the column. PaceCalculator auto-recomputes the displayed plan when stop times change. `RaceDetail.handleUpdateWaypointDelay` persists optimistically.
 - **README** now has a concise "How Pace Is Calculated" section.
+- **Pace algorithm roadmap:** distributor-vs-predictor decision recorded in `docs/handoff/next-phase-history-based-pacing.md` for a future phase.
 
 ## 2026-06-09 Reconciliation
 

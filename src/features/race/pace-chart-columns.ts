@@ -3,6 +3,7 @@ export type PaceChartColumnId =
     | 'mile'
     | 'segMile'
     | 'segmentTime'
+    | 'stopTime'
     | 'clockTime'
     | 'elapsedTime'
     | 'segmentPace'
@@ -21,6 +22,7 @@ export const PACE_CHART_COLUMNS: PaceChartColumnDef[] = [
     { id: 'mile', label: 'Mile', shortLabel: 'Mi', align: 'left' },
     { id: 'segMile', label: 'Seg Mile', shortLabel: 'Seg Mi', align: 'left' },
     { id: 'segmentTime', label: 'Segment Time', shortLabel: 'Seg Time', align: 'right' },
+    { id: 'stopTime', label: 'Stop', shortLabel: 'Stop', align: 'right' },
     { id: 'clockTime', label: 'Clock Time', shortLabel: 'Clock', align: 'right' },
     { id: 'elapsedTime', label: 'Elapsed Time', shortLabel: 'Elapsed', align: 'right' },
     { id: 'segmentPace', label: 'Segment Pace', shortLabel: 'Seg Pace', align: 'right' },

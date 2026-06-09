@@ -2,6 +2,37 @@
 
 **Status:** Planned. No implementation has started.
 
+## Distributor vs. Predictor (architecture decision to revisit)
+
+The current pace engine is a **target-time distributor**: you give it a goal finish
+time (Plan A/B/C) and it solves (via bisection) for the steady baseline pace that, after
+grade/terrain/fatigue/night/heat/cold/altitude/runner-profile/aid-station factors, hits
+that goal — then distributes the time across the course so each split reflects real
+section difficulty. It answers *"what pace plan gets me to my goal on this course?"*
+
+A **finish-time predictor** would instead answer *"given this runner, what finish time
+results?"* That is a meaningfully bigger lift, and the gating cost is **data, not math**:
+
+- It needs a calibrated ability anchor the app doesn't store today — e.g. a flat-ground
+  threshold/baseline pace, or a known recent result — plus, ideally, per-runner
+  coefficients (climbing, heat, altitude) learned from past data.
+- Without that anchor, a predictor just compounds guesses into a confident-looking
+  number that can be hours off on a 100-miler — worse UX than an honest goal-based plan.
+
+**Recommendation (revisit in this phase):**
+1. Keep the distributor as the core model.
+2. Get predictive value *cheaply* first by leaning on the existing check-in
+   re-extrapolation (`applyActualCheckins` in `pace-utils.ts`): once a runner logs a few
+   real splits, the remaining plan re-anchors to observed pace — a grounded "live
+   predicted finish" with no new ability model.
+3. Only build a true pre-race predictor once `runner_history` (below) exists to supply
+   the baseline. Lowest-risk path: add a single "baseline flat pace" input, treat the
+   current factor stack as the multiplier, and **validate against 2–3 known finishes**
+   before trusting it.
+
+Effort: moderate code, high data/validation cost. Defer the standalone predictor; invest
+first in tuning the current factor magnitudes and in check-in-based live prediction.
+
 ## Goal
 
 Use a runner's prior race results to seed or adjust the existing pace-plan model. Current pacing is based on course distance, terrain, grade, night, temperature, weather, and aid-station delays. This phase would add personal history as another input.
