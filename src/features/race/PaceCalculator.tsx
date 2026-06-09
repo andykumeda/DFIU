@@ -362,8 +362,8 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6 max-w-7xl mx-auto print:block print:p-0">
-            {/* Left Col: Configuration */}
-            <div className="lg:col-span-1 space-y-6 print:hidden">
+            {/* Left Col: Configuration (drops below the chart on mobile) */}
+            <div className="lg:col-span-1 space-y-6 print:hidden order-last lg:order-none">
                 <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6">
                     <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
                         <Calculator className="w-5 h-5 text-blue-500" /> Goal Setting
@@ -481,8 +481,8 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                 )}
             </div>
 
-            {/* Right Col: Results */}
-            <div className="lg:col-span-2 space-y-6 print:block">
+            {/* Right Col: Results (shown first on mobile) */}
+            <div className="lg:col-span-2 space-y-6 print:block order-first lg:order-none">
                 {plan ? (
                     <>
                         {/* Summary Cards */}

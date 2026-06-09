@@ -1,10 +1,15 @@
 # Handoff Document
 
 **Date:** 2026-06-09
-**Status:** Aid-station default delay moved to the per-user Runner Profile; pace-chart sticky-header gap fixed. Built + deployed.
-**Active task:** Verify in production: Settings → Runner Profile "Default aid-station stop" stepper drives the pace-chart Stop column, and the blank strip above the splits table is gone.
+**Status:** Pace-plan mobile reorder (chart first) + Stop-column default-delay bug fixed (waypoints.delay made nullable). Built + deployed + migration applied to prod.
+**Active task:** Verify in production: mobile pace plan shows chart first / Print Columns last, and the Stop column shows the 2-min profile default on aid stations.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change in this repo. Commit, branch, and document discipline is required to prevent the lost-work confusion that motivated this reconciliation.
+
+## 2026-06-09 Pace-plan mobile order + Stop-column default fix
+
+- **Stop column ignored the per-user default (root cause: `waypoints.delay` was `integer DEFAULT 0`).** Every waypoint had `delay = 0`, so `0 !== null` made it look like a real override and the profile default (2 min) was never used — the column showed `0m` everywhere and the pace algorithm skipped the default too. Migration `supabase/migrations/20260610_waypoint_delay_nullable.sql` drops the default (NULL = unset) and converts existing `0`s to NULL. **Applied to production via Management API** — all 105 waypoints now NULL, 0 real overrides. No code change needed (cell + `pace-utils` already treat null/undefined as "use default"); a deliberate 0-min stop is now stored as an explicit `0`.
+- **Pace plan mobile layout: chart first, config last.** The left config column (Goal Setting + Print Columns) now uses `order-last lg:order-none` and the results column `order-first lg:order-none`, so on mobile the chart appears on top and the Print Columns panel drops to the bottom. Desktop (lg) layout unchanged.
 
 ## 2026-06-09 Aid-station default delay (per-user) + pace-chart gap
 
