@@ -118,7 +118,7 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                 clock24h,
                 [],
                 runnerProfile,
-                plans.aidStationDefaultDelay
+                runnerProfile.aidStationDefaultDelay
             )
             setPlan(result)
             if (!silent) markCalculated()
@@ -145,7 +145,7 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
         if (!plan) return
         runCalculation({ silent: true })
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [waypoints, plans.aidStationDefaultDelay])
+    }, [waypoints, runnerProfile.aidStationDefaultDelay])
 
     const isKm = unitsDistance === 'kilometers'
     const dist = course.total_distance_miles || 0
@@ -294,7 +294,7 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                 if (!wp || (!isAid && !hasOverride)) {
                     return <td key={colId} className={`${base} text-neutral-600`}>—</td>
                 }
-                const effective = hasOverride ? (wp.delay as number) : plans.aidStationDefaultDelay
+                const effective = hasOverride ? (wp.delay as number) : runnerProfile.aidStationDefaultDelay
                 const editable = canEdit && !!onUpdateWaypointDelay
                 return (
                     <td key={colId} className={`${base} text-neutral-300 print:text-neutral-600`}>
@@ -541,8 +541,7 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                             >
                                 <table className="w-full text-sm text-left print:text-xs">
                                     <thead
-                                        className="bg-neutral-950 text-neutral-400 print:bg-neutral-100 print:text-black uppercase text-xs font-semibold sticky z-10 print:static shadow-sm shadow-neutral-950"
-                                        style={{ top: 'var(--page-header-h, 112px)' }}
+                                        className="bg-neutral-950 text-neutral-400 print:bg-neutral-100 print:text-black uppercase text-xs font-semibold sticky top-0 z-10 print:static shadow-sm shadow-neutral-950"
                                     >
                                         <tr>
                                             {visibleColumns.map(col => (

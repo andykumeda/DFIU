@@ -59,7 +59,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
             const totalDist = course.total_distance_miles || 0
             const build = (minutes: number): Plan =>
                 minutes > 0
-                    ? calculatePacePlan(samples, totalDist, waypoints, terrainNodes, { mode: 'time', value: minutes }, race, clock24h, [], runnerProfile, plans.aidStationDefaultDelay)
+                    ? calculatePacePlan(samples, totalDist, waypoints, terrainNodes, { mode: 'time', value: minutes }, race, clock24h, [], runnerProfile, runnerProfile.aidStationDefaultDelay)
                     : null
             setComputed({
                 A: build(planAMinutes),
@@ -68,7 +68,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
             })
         }, 0)
         return () => clearTimeout(handle)
-    }, [plans.hasCalculated, plans.aidStationDefaultDelay, runnerProfile, planAMinutes, planBMinutes, planCMinutes, course, waypoints, terrainNodes, race, clock24h])
+    }, [plans.hasCalculated, runnerProfile, planAMinutes, planBMinutes, planCMinutes, course, waypoints, terrainNodes, race, clock24h])
 
     const planA = computed?.A ?? null
     const planB = computed?.B ?? null

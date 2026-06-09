@@ -1,5 +1,6 @@
-import { SlidersHorizontal } from 'lucide-react'
+import { SlidersHorizontal, Minus, Plus } from 'lucide-react'
 import type { RunnerPacingProfile, RunnerProfileLevel, RunnerPacingStyle } from './runner-profile'
+import { AID_STATION_DELAY_MAX, AID_STATION_DELAY_MIN } from './runner-profile'
 
 export function RunnerProfilePanel({
     profile,
@@ -13,6 +14,12 @@ export function RunnerProfilePanel({
     const setLevel = (key: keyof RunnerPacingProfile, value: RunnerProfileLevel | RunnerPacingStyle) => {
         if (!canEdit) return
         onChange({ ...profile, [key]: value })
+    }
+
+    const setDelay = (next: number) => {
+        if (!canEdit) return
+        const clamped = Math.min(AID_STATION_DELAY_MAX, Math.max(AID_STATION_DELAY_MIN, next))
+        onChange({ ...profile, aidStationDefaultDelay: clamped })
     }
 
     const levelOptions: { value: RunnerProfileLevel; label: string }[] = [
@@ -58,6 +65,34 @@ export function RunnerProfilePanel({
                     <option value="strong_finish">Slower start, stronger finish</option>
                 </select>
             </label>
+
+            <div className="grid grid-cols-[1fr_auto] gap-3 items-center bg-neutral-950/50 border border-neutral-800 rounded-lg px-3 py-2 mb-4">
+                <div>
+                    <div className="text-sm text-neutral-200">Default aid-station stop</div>
+                    <div className="text-[11px] text-neutral-600">Minutes spent at each aid station (per-station overrides live in the pace chart)</div>
+                </div>
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={() => setDelay(profile.aidStationDefaultDelay - 1)}
+                        disabled={!canEdit || profile.aidStationDefaultDelay <= AID_STATION_DELAY_MIN}
+                        className="w-7 h-7 flex items-center justify-center rounded bg-neutral-900 border border-neutral-800 text-white hover:bg-neutral-800 disabled:opacity-40"
+                        aria-label="Decrease default aid-station stop"
+                    >
+                        <Minus className="w-3.5 h-3.5" />
+                    </button>
+                    <span className="w-12 text-center text-sm text-white font-mono tabular-nums">{profile.aidStationDefaultDelay}m</span>
+                    <button
+                        type="button"
+                        onClick={() => setDelay(profile.aidStationDefaultDelay + 1)}
+                        disabled={!canEdit || profile.aidStationDefaultDelay >= AID_STATION_DELAY_MAX}
+                        className="w-7 h-7 flex items-center justify-center rounded bg-neutral-900 border border-neutral-800 text-white hover:bg-neutral-800 disabled:opacity-40"
+                        aria-label="Increase default aid-station stop"
+                    >
+                        <Plus className="w-3.5 h-3.5" />
+                    </button>
+                </div>
+            </div>
 
             <div className="space-y-2">
                 {rows.map(row => (

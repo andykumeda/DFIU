@@ -1,10 +1,16 @@
 # Handoff Document
 
 **Date:** 2026-06-09
-**Status:** Signup Strava option and `clone_race` waypoint `updated_at` fix are committed, pushed, and deployed (`5d5ec08` before this handoff-only update).
-**Active task:** Verify `/signup` Strava button and public-race clone flow in production.
+**Status:** Aid-station default delay moved to the per-user Runner Profile; pace-chart sticky-header gap fixed. Built + deployed.
+**Active task:** Verify in production: Settings → Runner Profile "Default aid-station stop" stepper drives the pace-chart Stop column, and the blank strip above the splits table is gone.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change in this repo. Commit, branch, and document discipline is required to prevent the lost-work confusion that motivated this reconciliation.
+
+## 2026-06-09 Aid-station default delay (per-user) + pace-chart gap
+
+- **Aid-station default stop is now a per-user Runner Profile setting.** When the side panel was removed the global default lost its only control (value still defaulted to 2). It now lives in **Settings → Runner Profile** as a `+/- minutes` stepper (`aidStationDefaultDelay`, stored in `profiles.runner_profile` jsonb — no migration needed). Per-station overrides still live inline in the pace-chart **Stop** column (`waypoints.delay`); the chart uses `waypoint.delay ?? runnerProfile.aidStationDefaultDelay`.
+  - `PaceCalculator`, `DropBagsSection`, and `CrewView` now read the default from `runnerProfile` instead of `plans`. `usePacePlans` no longer carries `aidStationDefaultDelay`; the `race_pace_plans.aid_station_default_delay` column is left in place but unused.
+- **Pace-chart sticky-header gap fixed.** The splits `<thead>` was `sticky` with `top: var(--page-header-h, 112px)`, but its scroll ancestor is the `overflow-x-auto` wrapper (not the page), so the 112px offset pushed the header down inside the wrapper, leaving a ~header-height blank strip (page-relative sticky never actually worked there). Changed to `sticky top-0`; gap removed. Tradeoff: the header no longer pins under the global page header while scrolling a long chart (that behavior was already broken).
 
 ## 2026-06-09 Auth + Clone Fixes
 
