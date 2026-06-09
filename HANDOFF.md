@@ -1,10 +1,18 @@
 # Handoff Document
 
 **Date:** 2026-06-09
-**Status:** Repo reconciled. Drop-bag notes sync, terrain segment editing, and the deploy/owner-access fixes are now all on `main`, built, and deployed.
+**Status:** Repo reconciled. Sticky pace plan, per-user runner profile, and drop-bag note contrast fix are now on `main`, built, and deployed.
 **Active task:** Verify terrain editing on production (Bay Area 100), then continue product QA.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change in this repo. Commit, branch, and document discipline is required to prevent the lost-work confusion that motivated this reconciliation.
+
+## 2026-06-09 Pace/profile/drop-bag batch
+
+- **Sticky pace plan.** The pace chart used to go blank on refresh/revisit until you re-clicked "Generate Plan". `PaceCalculator` now re-renders the plan automatically on load when `race_pace_plans.has_calculated` is set (silent recompute; no toast). The chart is derived, not stored — `has_calculated` is the persisted sticky flag.
+- **Runner profile is now per-user (follows the runner across events).** Moved out of the pace plan section entirely. The editor lives in **Settings → Runner Profile** (`RunnerProfilePanel`, extracted to its own file) and saves to a new `profiles.runner_profile jsonb` column. `PaceCalculator` and `DropBagsSection` read it via a `runnerProfile` prop threaded from `RaceDetail`'s profile query; `usePacePlans` no longer carries `runnerProfile`.
+  - Migration `supabase/migrations/20260610_profile_runner_profile.sql` — **already applied to production** via the Management API (column verified `jsonb`). The legacy `race_pace_plans.runner_profile` column is left in place but unused.
+  - **Known limitation:** `CrewView` reads the *viewing user's* runner profile (correct for the owner-runner). For a separate crew member viewing a runner's plan it falls back to defaults rather than the runner's saved profile. Follow-up if multi-user crew accuracy is needed: resolve the race's `is_runner` member and read their `profiles.runner_profile`.
+- **Drop-bag note contrast fix.** Aid-station cards rendered note text with no explicit color (dark-on-dark, unreadable). `DropBagNotes` now sets readable colors: `text-neutral-100` (drop bag notes), `text-blue-50` (tell runner), `text-amber-50` (next leg).
 
 ## 2026-06-09 Reconciliation
 

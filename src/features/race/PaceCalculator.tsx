@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'react-hot-toast'
 import { Course, Race, TerrainNode, Waypoint } from '@/types/database'
 import { calculatePacePlan, type PacePlanResult } from './pace-utils'
@@ -12,8 +12,8 @@ import {
     type PaceChartColumnsConfig,
 } from './pace-chart-columns'
 import { DropBagModal } from './DropBagModal'
-import type { RunnerPacingProfile, RunnerProfileLevel, RunnerPacingStyle } from './runner-profile'
-import { Calculator, Clock, TrendingUp, Activity, Users, Footprints, Moon, Sun, ArrowRight, Printer, AlertTriangle, Columns3, ChevronUp, ChevronDown, Eye, EyeOff, SlidersHorizontal } from 'lucide-react'
+import type { RunnerPacingProfile } from './runner-profile'
+import { Calculator, Clock, TrendingUp, Activity, Users, Footprints, Moon, Sun, ArrowRight, Printer, AlertTriangle, Columns3, ChevronUp, ChevronDown, Eye, EyeOff } from 'lucide-react'
 
 interface PaceCalculatorProps {
     race: Race
@@ -22,6 +22,7 @@ interface PaceCalculatorProps {
     terrainNodes: TerrainNode[]
     clock24h?: boolean
     unitsDistance?: 'miles' | 'kilometers'
+    runnerProfile: RunnerPacingProfile
 }
 
 type StrategyMode = 'planA' | 'planB' | 'planC'
@@ -56,13 +57,13 @@ const strategyColors: Record<StrategyMode, {
     },
 }
 
-export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h = false, unitsDistance = 'miles' }: PaceCalculatorProps) {
+export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h = false, unitsDistance = 'miles', runnerProfile }: PaceCalculatorProps) {
     const [strategyMode, setStrategyMode] = useState<StrategyMode>('planA')
     const [plan, setPlan] = useState<ReturnType<typeof calculatePacePlan> | null>(null)
     const [calcError, setCalcError] = useState<string | null>(null)
     const [selectedDropBagWaypoint, setSelectedDropBagWaypoint] = useState<Waypoint | null>(null)
 
-    const { plans, canEdit, setPlanA, setPlanB, setPlanCBuffer, markCalculated, setPaceChartColumns, setRunnerProfile } = usePacePlans(race.id)
+    const { plans, loading: plansLoading, canEdit, setPlanA, setPlanB, setPlanCBuffer, markCalculated, setPaceChartColumns } = usePacePlans(race.id)
     const { planATimeStr, planBTimeStr, planCBufferStr } = plans
 
     const { a: planAMinutes, b: planBMinutes, c: planCMinutes } = computePlanMinutes(plans, race.overall_cutoff)
@@ -73,14 +74,17 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
         return planBMinutes
     }
 
-    const handleCalculate = () => {
+    // silent=true is used to re-render a previously-generated plan on load
+    // (after refresh/revisit) without surfacing toasts or marking calculated again.
+    const runCalculation = (opts?: { silent?: boolean }) => {
+        const silent = opts?.silent ?? false
         setCalcError(null)
 
         const profile = course.elevation_samples as { distance: number; elevation: number }[] | null
         if (!profile || !Array.isArray(profile) || profile.length < 2) {
             const msg = 'No elevation data on this course. Re-upload the GPX from the Map tab.'
             setCalcError(msg)
-            toast.error(msg)
+            if (!silent) toast.error(msg)
             return
         }
 
@@ -88,7 +92,7 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
         if (totalDist <= 0) {
             const msg = 'Course total distance is 0. Re-upload the GPX from the Map tab.'
             setCalcError(msg)
-            toast.error(msg)
+            if (!silent) toast.error(msg)
             return
         }
 
@@ -98,7 +102,7 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                 ? 'Race has no overall cutoff set, so Plan C cannot be computed.'
                 : 'Enter a valid total time (HH:MM), e.g. 12:30 for 12 hours 30 minutes.'
             setCalcError(msg)
-            toast.error(msg)
+            if (!silent) toast.error(msg)
             return
         }
 
@@ -112,17 +116,26 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                 race,
                 clock24h,
                 [],
-                plans.runnerProfile
+                runnerProfile
             )
             setPlan(result)
-            markCalculated()
+            if (!silent) markCalculated()
         } catch (err) {
             console.error('calculatePacePlan failed:', err)
             const msg = `Pace plan failed: ${err instanceof Error ? err.message : String(err)}`
             setCalcError(msg)
-            toast.error(msg)
+            if (!silent) toast.error(msg)
         }
     }
+
+    // Sticky plan: once a plan has been generated (persisted via has_calculated),
+    // re-render it automatically on refresh/revisit so the chart is not blank
+    // until the user clicks Generate again.
+    useEffect(() => {
+        if (plansLoading || !plans.hasCalculated || plan || calcError) return
+        runCalculation({ silent: true })
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [plansLoading, plans.hasCalculated])
 
     const isKm = unitsDistance === 'kilometers'
     const dist = course.total_distance_miles || 0
@@ -371,18 +384,12 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
 
 
                     <button
-                        onClick={handleCalculate}
+                        onClick={() => runCalculation()}
                         className={`w-full text-white font-bold py-3 rounded-lg transition-colors shadow-lg ${currentStrategy.button}`}
                     >
                         Generate Plan
                     </button>
                 </div>
-
-                <RunnerProfilePanel
-                    profile={plans.runnerProfile}
-                    canEdit={canEdit}
-                    onChange={setRunnerProfile}
-                />
 
                 {plan && (
                     <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6">
@@ -551,84 +558,5 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                 />
             )}
         </div >
-    )
-}
-
-function RunnerProfilePanel({
-    profile,
-    canEdit,
-    onChange,
-}: {
-    profile: RunnerPacingProfile
-    canEdit: boolean
-    onChange: (profile: RunnerPacingProfile) => void
-}) {
-    const setLevel = (key: keyof RunnerPacingProfile, value: RunnerProfileLevel | RunnerPacingStyle) => {
-        if (!canEdit) return
-        onChange({ ...profile, [key]: value })
-    }
-
-    const levelOptions: { value: RunnerProfileLevel; label: string }[] = [
-        { value: 'weak', label: 'Weak' },
-        { value: 'average', label: 'Average' },
-        { value: 'strong', label: 'Strong' },
-    ]
-
-    const rows: { key: keyof RunnerPacingProfile; label: string; help: string }[] = [
-        { key: 'climbing', label: 'Climbs', help: 'Uphill grades' },
-        { key: 'descending', label: 'Descents', help: 'Downhill running' },
-        { key: 'technical', label: 'Technical terrain', help: 'Rough or slow trail' },
-        { key: 'flats', label: 'Flats', help: 'Smooth flatter sections' },
-        { key: 'night', label: 'Night running', help: 'Dark sections' },
-        { key: 'heat', label: 'Heat', help: 'Hot race hours' },
-        { key: 'cold', label: 'Cold', help: 'Cold/night conditions' },
-        { key: 'mud', label: 'Mud', help: 'Muddy conditions' },
-        { key: 'snow', label: 'Snow', help: 'Snow/ice conditions' },
-        { key: 'sand', label: 'Sand', help: 'Sandy surfaces' },
-        { key: 'rocky', label: 'Rocky', help: 'Rocky surfaces' },
-    ]
-
-    return (
-        <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6">
-            <h2 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
-                <SlidersHorizontal className="w-5 h-5 text-orange-500" /> Runner Profile
-            </h2>
-            <p className="text-xs text-neutral-500 mb-4">
-                These strengths adjust the pace model along with grade, terrain, daylight, weather, altitude, and fatigue.
-            </p>
-
-            <label className="block mb-4">
-                <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500">General pacing</span>
-                <select
-                    value={profile.pacingStyle}
-                    disabled={!canEdit}
-                    onChange={(e) => setLevel('pacingStyle', e.target.value as RunnerPacingStyle)}
-                    className="mt-1 w-full bg-neutral-950 border border-neutral-800 rounded-lg px-3 py-2 text-sm text-white disabled:opacity-60"
-                >
-                    <option value="fast_start">Fast starter, slower finish</option>
-                    <option value="even">Even-paced runner</option>
-                    <option value="strong_finish">Slower start, stronger finish</option>
-                </select>
-            </label>
-
-            <div className="space-y-2">
-                {rows.map(row => (
-                    <div key={row.key} className="grid grid-cols-[1fr_auto] gap-3 items-center bg-neutral-950/50 border border-neutral-800 rounded-lg px-3 py-2">
-                        <div>
-                            <div className="text-sm text-neutral-200">{row.label}</div>
-                            <div className="text-[11px] text-neutral-600">{row.help}</div>
-                        </div>
-                        <select
-                            value={profile[row.key] as RunnerProfileLevel}
-                            disabled={!canEdit}
-                            onChange={(e) => setLevel(row.key, e.target.value as RunnerProfileLevel)}
-                            className="bg-neutral-900 border border-neutral-800 rounded px-2 py-1 text-xs text-white disabled:opacity-60"
-                        >
-                            {levelOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                        </select>
-                    </div>
-                ))}
-            </div>
-        </div>
     )
 }

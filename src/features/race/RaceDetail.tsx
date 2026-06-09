@@ -25,6 +25,7 @@ import { ViewWaypointModal } from '@/features/course/ViewWaypointModal'
 import { TerrainSidebar } from '@/features/course/TerrainSidebar'
 import { TerrainTypeValue, TERRAIN_TYPES, getTerrainColor, getTerrainDefaultDifficulty } from '@/features/course/terrain-constants'
 import { PaceCalculator } from '@/features/race/PaceCalculator'
+import { parseRunnerProfile } from '@/features/race/runner-profile'
 import { RaceResources } from '@/features/race/RaceResources'
 import { WeatherLocations } from '@/features/race/WeatherLocations'
 import { DropBagsSection } from '@/features/race/DropBagsSection'
@@ -201,6 +202,8 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     }
   })
   const clock24h = profile?.clock_24h ?? false
+  // Runner pacing profile is per-user (follows the runner across events).
+  const userRunnerProfile = parseRunnerProfile(profile?.runner_profile)
 
   const { data: course } = useQuery({
     queryKey: ['course', raceId],
@@ -1608,6 +1611,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                 terrainNodes={terrainNodes}
                 clock24h={clock24h}
                 unitsDistance={profile?.units_distance || 'miles'}
+                runnerProfile={userRunnerProfile}
               />
             ) : (
               <div className="p-12 text-center text-neutral-500">
@@ -1625,6 +1629,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
               waypoints={waypoints}
               terrainNodes={terrainNodes}
               clock24h={clock24h}
+              runnerProfile={userRunnerProfile}
               onGoToPacePlan={() => setActiveTab('plan')}
             />
           </div>

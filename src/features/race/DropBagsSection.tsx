@@ -7,6 +7,7 @@ import { DropBagModal } from './DropBagModal'
 import { DropBagNotes } from './DropBagNotes'
 import { DropBagTemplateEditor } from './DropBagTemplateEditor'
 import { usePermission } from '@/features/auth/usePermission'
+import type { RunnerPacingProfile } from './runner-profile'
 import SunCalc from 'suncalc'
 
 interface DropBagsSectionProps {
@@ -15,10 +16,11 @@ interface DropBagsSectionProps {
     waypoints: Waypoint[]
     terrainNodes: TerrainNode[]
     clock24h?: boolean
+    runnerProfile: RunnerPacingProfile
     onGoToPacePlan: () => void
 }
 
-export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24h = false, onGoToPacePlan }: DropBagsSectionProps) {
+export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24h = false, runnerProfile, onGoToPacePlan }: DropBagsSectionProps) {
     const { canEdit, canEditRaceSettings } = usePermission(race.id, race.race_director_user_id)
     const [selectedWaypoint, setSelectedWaypoint] = useState<Waypoint | null>(null)
     const [isSidePanelOpen, setIsSidePanelOpen] = useState(true)
@@ -57,7 +59,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
             const totalDist = course.total_distance_miles || 0
             const build = (minutes: number): Plan =>
                 minutes > 0
-                    ? calculatePacePlan(samples, totalDist, waypoints, terrainNodes, { mode: 'time', value: minutes }, race, clock24h, [], plans.runnerProfile)
+                    ? calculatePacePlan(samples, totalDist, waypoints, terrainNodes, { mode: 'time', value: minutes }, race, clock24h, [], runnerProfile)
                     : null
             setComputed({
                 A: build(planAMinutes),
@@ -66,7 +68,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
             })
         }, 0)
         return () => clearTimeout(handle)
-    }, [plans.hasCalculated, plans.runnerProfile, planAMinutes, planBMinutes, planCMinutes, course, waypoints, terrainNodes, race, clock24h])
+    }, [plans.hasCalculated, runnerProfile, planAMinutes, planBMinutes, planCMinutes, course, waypoints, terrainNodes, race, clock24h])
 
     const planA = computed?.A ?? null
     const planB = computed?.B ?? null

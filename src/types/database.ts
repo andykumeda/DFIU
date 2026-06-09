@@ -72,6 +72,7 @@ export type Database = {
           email: string | null
           id: string
           name: string | null
+          runner_profile: Json | null
           units_distance: string
           units_elevation: string
           updated_at: string | null
@@ -83,6 +84,7 @@ export type Database = {
           email?: string | null
           id: string
           name?: string | null
+          runner_profile?: Json | null
           units_distance?: string
           units_elevation?: string
           updated_at?: string | null
@@ -94,6 +96,7 @@ export type Database = {
           email?: string | null
           id?: string
           name?: string | null
+          runner_profile?: Json | null
           units_distance?: string
           units_elevation?: string
           updated_at?: string | null

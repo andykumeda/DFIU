@@ -5,6 +5,8 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/features/auth/AuthContext'
 import { Link } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
+import { RunnerProfilePanel } from '@/features/race/RunnerProfilePanel'
+import { DEFAULT_RUNNER_PROFILE, parseRunnerProfile, type RunnerPacingProfile } from '@/features/race/runner-profile'
 
 interface UserProfile {
     id: string
@@ -14,6 +16,7 @@ interface UserProfile {
     units_distance: 'miles' | 'kilometers'
     units_elevation: 'feet' | 'meters'
     clock_24h: boolean
+    runner_profile: RunnerPacingProfile
 }
 
 export default function SettingsPage() {
@@ -28,7 +31,8 @@ export default function SettingsPage() {
         avatar_url: null,
         units_distance: 'miles',
         units_elevation: 'feet',
-        clock_24h: false
+        clock_24h: false,
+        runner_profile: { ...DEFAULT_RUNNER_PROFILE }
     })
 
     useEffect(() => {
@@ -62,7 +66,8 @@ export default function SettingsPage() {
                     avatar_url: profile.avatar_url || null,
                     units_distance: profile.units_distance || 'miles',
                     units_elevation: profile.units_elevation || 'feet',
-                    clock_24h: profile.clock_24h || false
+                    clock_24h: profile.clock_24h || false,
+                    runner_profile: parseRunnerProfile(profile.runner_profile)
                 })
             } else {
                 setFormData(prev => ({
@@ -123,6 +128,7 @@ export default function SettingsPage() {
                 units_distance: formData.units_distance,
                 units_elevation: formData.units_elevation,
                 clock_24h: formData.clock_24h,
+                runner_profile: formData.runner_profile,
                 updated_at: new Date().toISOString()
             }
 
@@ -143,7 +149,8 @@ export default function SettingsPage() {
                     avatar_url: savedProfile.avatar_url || null,
                     units_distance: savedProfile.units_distance || 'miles',
                     units_elevation: savedProfile.units_elevation || 'feet',
-                    clock_24h: savedProfile.clock_24h || false
+                    clock_24h: savedProfile.clock_24h || false,
+                    runner_profile: parseRunnerProfile(savedProfile.runner_profile)
                 }))
             }
 
@@ -298,6 +305,13 @@ export default function SettingsPage() {
                             </div>
                         </div>
                     </section>
+
+                    {/* Runner Profile Section — follows the runner across every event */}
+                    <RunnerProfilePanel
+                        profile={formData.runner_profile}
+                        canEdit={true}
+                        onChange={runner_profile => setFormData(prev => ({ ...prev, runner_profile }))}
+                    />
 
                     <div className="flex justify-end">
                         <button

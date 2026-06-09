@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/features/auth/AuthContext'
 import { usePermission } from '@/features/auth/usePermission'
 import { usePacePlans, computePlanMinutes } from './usePacePlans'
+import { parseRunnerProfile } from './runner-profile'
 import { useRunnerCheckins } from './useRunnerCheckins'
 import { useLatestRunnerLocation } from './useRunnerLocation'
 import { calculatePacePlan, ActualCheckin } from './pace-utils'
@@ -48,8 +49,9 @@ interface CrewViewProps {
 }
 
 export function CrewView({ raceId, embedded = false }: CrewViewProps) {
-    const { profile } = useAuth() as { profile: { clock_24h?: boolean } | null }
+    const { profile } = useAuth() as { profile: { clock_24h?: boolean; runner_profile?: unknown } | null }
     const clock24h = !!profile?.clock_24h
+    const runnerProfile = useMemo(() => parseRunnerProfile(profile?.runner_profile), [profile?.runner_profile])
     const { canLogCheckins } = usePermission(raceId)
 
     const [race, setRace] = useState<Race | null>(null)
@@ -139,12 +141,12 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
         const actuals: ActualCheckin[] = checkins.map(c => ({ waypointId: c.waypoint_id, arrivedAt: new Date(c.arrived_at) }))
         try {
             return calculatePacePlan(samples, total, waypoints, terrainNodes,
-                { mode: 'time', value: target }, race, clock24h, actuals, plans.runnerProfile)
+                { mode: 'time', value: target }, race, clock24h, actuals, runnerProfile)
         } catch (err) {
             console.error('CrewView pace plan failed', err)
             return null
         }
-    }, [course, race, waypoints, terrainNodes, planMinutes, activePlan, checkins, clock24h, plans.runnerProfile])
+    }, [course, race, waypoints, terrainNodes, planMinutes, activePlan, checkins, clock24h, runnerProfile])
 
     const elapsedMin = useMemo(() => {
         if (!race?.start_datetime) return 0
