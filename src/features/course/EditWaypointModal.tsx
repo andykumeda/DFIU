@@ -27,6 +27,7 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, raceDate, timeZone
         crew_allowed: boolean
         pacer_allowed: boolean
         notes: string
+        drop_bag_notes: string
         crew_relay_notes: string
         runner_next_leg_notes: string
         mile: string | number
@@ -40,6 +41,7 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, raceDate, timeZone
         crew_allowed: waypoint?.crew_allowed || false,
         pacer_allowed: waypoint?.pacer_allowed || false,
         notes: waypoint?.notes || '',
+        drop_bag_notes: waypoint?.drop_bag_notes || waypoint?.notes || '',
         crew_relay_notes: waypoint?.crew_relay_notes || '',
         runner_next_leg_notes: waypoint?.runner_next_leg_notes || '',
         mile: (mile ?? waypoint?.mile ?? 0).toFixed(2),
@@ -97,6 +99,7 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, raceDate, timeZone
                 crew_allowed: waypoint?.crew_allowed || false,
                 pacer_allowed: waypoint?.pacer_allowed || false,
                 notes: waypoint?.notes || '',
+                drop_bag_notes: waypoint?.drop_bag_notes || waypoint?.notes || '',
                 crew_relay_notes: waypoint?.crew_relay_notes || '',
                 runner_next_leg_notes: waypoint?.runner_next_leg_notes || '',
                 mile: (waypoint?.mile ?? mile ?? 0).toFixed(2),
@@ -235,7 +238,14 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, raceDate, timeZone
                             <input
                                 type="checkbox"
                                 checked={formData.has_drop_bag}
-                                onChange={e => setFormData({ ...formData, has_drop_bag: e.target.checked })}
+                                onChange={e => {
+                                    const has_drop_bag = e.target.checked
+                                    setFormData(prev => ({
+                                        ...prev,
+                                        has_drop_bag,
+                                        drop_bag_notes: has_drop_bag && !prev.drop_bag_notes ? prev.notes : prev.drop_bag_notes,
+                                    }))
+                                }}
                             />
                             Drop Bag
                         </label>
@@ -257,15 +267,28 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, raceDate, timeZone
                         </label>
                     </div>
 
-                    <div className={styles.field}>
-                        <label>Notes</label>
-                        <textarea
-                            value={formData.notes}
-                            onChange={e => setFormData({ ...formData, notes: e.target.value })}
-                            rows={3}
-                            style={{ padding: '0.75rem', borderRadius: '6px', border: '1px solid #ddd', fontFamily: 'inherit' }}
-                        />
-                    </div>
+                    {(formData.has_drop_bag || formData.type === 'start') ? (
+                        <div className={styles.field}>
+                            <label>Drop Bag Notes</label>
+                            <textarea
+                                value={formData.drop_bag_notes}
+                                onChange={e => setFormData({ ...formData, drop_bag_notes: e.target.value })}
+                                rows={3}
+                                placeholder="e.g. Change shoes here, grab headlamp for next section..."
+                                style={{ padding: '0.75rem', borderRadius: '6px', border: '1px solid #ddd', fontFamily: 'inherit' }}
+                            />
+                        </div>
+                    ) : (
+                        <div className={styles.field}>
+                            <label>Notes</label>
+                            <textarea
+                                value={formData.notes}
+                                onChange={e => setFormData({ ...formData, notes: e.target.value })}
+                                rows={3}
+                                style={{ padding: '0.75rem', borderRadius: '6px', border: '1px solid #ddd', fontFamily: 'inherit' }}
+                            />
+                        </div>
+                    )}
 
                     <div className={styles.field}>
                         <label>Crew Relay Notes</label>

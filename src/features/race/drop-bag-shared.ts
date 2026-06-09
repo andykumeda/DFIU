@@ -1,3 +1,10 @@
+import type { Waypoint } from '@/types/database'
+
+/** Map view stores general waypoint notes in `notes`; drop bag UI uses `drop_bag_notes`. */
+export function getDropBagNotes(waypoint: Pick<Waypoint, 'drop_bag_notes' | 'notes'>): string {
+    return waypoint.drop_bag_notes || waypoint.notes || ''
+}
+
 export interface DropBagTemplateItem {
     text: string
     category: string

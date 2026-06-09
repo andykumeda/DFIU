@@ -10,6 +10,7 @@ import { useRunnerCheckins } from './useRunnerCheckins'
 import { useLatestRunnerLocation } from './useRunnerLocation'
 import { calculatePacePlan, ActualCheckin } from './pace-utils'
 import { CrewMap } from './CrewMap'
+import { DropBagNotes } from './DropBagNotes'
 import { getDistance, getCoordinateAtDistance } from '@/lib/geo-utils'
 import type { Race, Course, Waypoint, TerrainNode } from '@/types/database'
 
@@ -687,39 +688,6 @@ function DropBagSummary({ waypoint }: { waypoint: Waypoint }) {
                 )
             })}
         </ul>
-    )
-}
-
-function DropBagNotes({ waypoint, className = '', showEmpty = false }: { waypoint: Waypoint; className?: string; showEmpty?: boolean }) {
-    const hasNotes = !!(waypoint.drop_bag_notes || waypoint.crew_relay_notes || waypoint.runner_next_leg_notes)
-    if (!hasNotes && !showEmpty) return null
-
-    return (
-        <div className={`space-y-2 ${className}`}>
-            {waypoint.drop_bag_notes ? (
-                <div className='bg-neutral-800 rounded p-2 text-sm whitespace-pre-wrap'>
-                    <div className='text-xs text-neutral-400 mb-1'>Drop bag notes</div>
-                    {waypoint.drop_bag_notes}
-                </div>
-            ) : showEmpty ? (
-                <div className='bg-neutral-800 rounded p-2 text-sm text-neutral-500'>
-                    <div className='text-xs text-neutral-400 mb-1'>Drop bag notes</div>
-                    No notes recorded.
-                </div>
-            ) : null}
-            {waypoint.crew_relay_notes && (
-                <div className='bg-blue-950/50 border border-blue-900/60 rounded p-2 text-sm whitespace-pre-wrap'>
-                    <div className='text-xs text-blue-300 mb-1'>Tell runner</div>
-                    {waypoint.crew_relay_notes}
-                </div>
-            )}
-            {waypoint.runner_next_leg_notes && (
-                <div className='bg-amber-950/40 border border-amber-900/60 rounded p-2 text-sm whitespace-pre-wrap'>
-                    <div className='text-xs text-amber-300 mb-1'>Next leg reminder</div>
-                    {waypoint.runner_next_leg_notes}
-                </div>
-            )}
-        </div>
     )
 }
 

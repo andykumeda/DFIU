@@ -4,6 +4,7 @@ import { calculatePacePlan } from './pace-utils'
 import { usePacePlans, computePlanMinutes } from './usePacePlans'
 import { Backpack, Clock, Sun, Moon, Info, Printer, List, ChevronDown, ChevronUp, Target } from 'lucide-react'
 import { DropBagModal } from './DropBagModal'
+import { DropBagNotes } from './DropBagNotes'
 import { DropBagTemplateEditor } from './DropBagTemplateEditor'
 import { usePermission } from '@/features/auth/usePermission'
 import SunCalc from 'suncalc'
@@ -206,6 +207,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                                             </div>
                                         </div>
                                     )}
+                                    <DropBagNotes waypoint={wp} className="mt-2" />
                                 </div>
                             </div>
                         )

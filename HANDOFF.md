@@ -1,8 +1,8 @@
 # Handoff Document
 
 **Date:** 2026-06-08
-**Status:** Drop-bag visibility fixes, Start gear defaults, and runner-aware pacing controls implemented, verified, deployed, and committed.
-**Current HEAD:** `4ed4c85 feat(race): add runner-aware pacing controls`.
+**Status:** Drop-bag map notes now surface in Drop Bags tab (notes + crew relay / next-leg fields).
+**Current HEAD:** (pending commit on `cursor/drop-bag-map-notes-706c`).
 **Active task:** Continue product QA on Bay Area 100 flows.
 
 ## Recovery (2026-06-08)

@@ -7,10 +7,12 @@ import {
     DROP_BAG_CATEGORIES,
     DropBagItem,
     DEFAULT_START_BAG_TEMPLATE,
+    getDropBagNotes,
     mergeTemplateIntoItems,
     parseDropBagTemplate,
     seedDropBagItems,
 } from './drop-bag-shared'
+import { DropBagNotes } from './DropBagNotes'
 
 interface DropBagModalProps {
     waypoint: Waypoint
@@ -27,7 +29,7 @@ export function DropBagModal({ waypoint, race, arrivalTime, isNight, canEdit = t
     const [newItemText, setNewItemText] = useState('')
     const [saving, setSaving] = useState(false)
     const [bagName, setBagName] = useState(waypoint.drop_bag_name || '')
-    const [bagNotes, setBagNotes] = useState(waypoint.drop_bag_notes || '')
+    const [bagNotes, setBagNotes] = useState(() => getDropBagNotes(waypoint))
 
     const isHot = parseInt(race.avg_temp_high || '0') >= 80
     const isCold = parseInt(race.avg_temp_low || '100') <= 40
@@ -42,6 +44,11 @@ export function DropBagModal({ waypoint, race, arrivalTime, isNight, canEdit = t
             setItems(seedDropBagItems(template, { isNight, isHot, isCold }))
         }
     }, [waypoint.drop_bag_items, isNight, isHot, isCold, race.drop_bag_template])
+
+    useEffect(() => {
+        setBagName(waypoint.drop_bag_name || '')
+        setBagNotes(getDropBagNotes(waypoint))
+    }, [waypoint.id, waypoint.drop_bag_name, waypoint.drop_bag_notes, waypoint.notes])
 
     const handleSave = async () => {
         if (!canEdit) return
@@ -237,18 +244,21 @@ export function DropBagModal({ waypoint, race, arrivalTime, isNight, canEdit = t
                         </div>
                     )}
 
-                    <div className="pt-4 border-t border-neutral-800">
-                        <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1.5">
-                            {isStartBag ? 'Start Notes & Instructions' : 'Drop Bag Notes & Instructions'}
-                        </label>
-                        <textarea
-                            value={bagNotes}
-                            onChange={e => setBagNotes(e.target.value)}
-                            readOnly={!canEdit}
-                            placeholder={isStartBag ? 'e.g. Final checklist before leaving the start...' : 'e.g. Change shoes here, grab headlamp for next section...'}
-                            rows={2}
-                            className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-white placeholder-neutral-600 focus:outline-none focus:border-orange-500 transition-colors resize-y"
-                        />
+                    <div className="pt-4 border-t border-neutral-800 space-y-4">
+                        <div>
+                            <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1.5">
+                                {isStartBag ? 'Start Notes & Instructions' : 'Drop Bag Notes & Instructions'}
+                            </label>
+                            <textarea
+                                value={bagNotes}
+                                onChange={e => setBagNotes(e.target.value)}
+                                readOnly={!canEdit}
+                                placeholder={isStartBag ? 'e.g. Final checklist before leaving the start...' : 'e.g. Change shoes here, grab headlamp for next section...'}
+                                rows={2}
+                                className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-white placeholder-neutral-600 focus:outline-none focus:border-orange-500 transition-colors resize-y"
+                            />
+                        </div>
+                        <DropBagNotes waypoint={waypoint} showDropBagNotes={false} />
                     </div>
 
                 </div>

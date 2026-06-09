@@ -482,6 +482,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
           crew_allowed: data.crew_allowed,
           pacer_allowed: data.pacer_allowed,
           notes: data.notes,
+          drop_bag_notes: data.drop_bag_notes || null,
           crew_relay_notes: data.crew_relay_notes || null,
           runner_next_leg_notes: data.runner_next_leg_notes || null
         }).eq('id', data.id)
@@ -530,6 +531,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
           crew_allowed: data.crew_allowed,
           pacer_allowed: data.pacer_allowed,
           notes: data.notes,
+          drop_bag_notes: data.drop_bag_notes || null,
           crew_relay_notes: data.crew_relay_notes || null,
           runner_next_leg_notes: data.runner_next_leg_notes || null
         })

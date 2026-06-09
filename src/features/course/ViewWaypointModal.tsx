@@ -123,14 +123,23 @@ export function ViewWaypointModal({ waypoint, isOwner, timeZone, onClose, onEdit
                         </div>
                     )}
 
-                    {waypoint.notes && (
+                    {(waypoint.has_drop_bag || waypoint.type === 'start') ? (
+                        (waypoint.drop_bag_notes || waypoint.notes) && (
+                            <div>
+                                <div className="text-neutral-500 text-xs uppercase tracking-wider mb-2">Drop Bag Notes</div>
+                                <div className="bg-neutral-900/50 p-4 rounded-lg border border-neutral-800 text-neutral-300 whitespace-pre-wrap text-sm">
+                                    {waypoint.drop_bag_notes || waypoint.notes}
+                                </div>
+                            </div>
+                        )
+                    ) : waypoint.notes ? (
                         <div>
                             <div className="text-neutral-500 text-xs uppercase tracking-wider mb-2">Notes</div>
                             <div className="bg-neutral-900/50 p-4 rounded-lg border border-neutral-800 text-neutral-300 whitespace-pre-wrap text-sm">
                                 {waypoint.notes}
                             </div>
                         </div>
-                    )}
+                    ) : null}
 
                     <div className="flex justify-end gap-3 pt-4 border-t border-neutral-800">
                         <button type="button" onClick={onClose} className={styles.cancelBtn}>Close</button>
