@@ -1,10 +1,15 @@
 # Handoff Document
 
 **Date:** 2026-06-09
-**Status:** Repo reconciled. Sticky pace plan, per-user runner profile, and drop-bag note contrast fix are now on `main`, built, and deployed.
-**Active task:** Verify terrain editing on production (Bay Area 100), then continue product QA.
+**Status:** Signup Strava option and `clone_race` waypoint `updated_at` fix are built and ready to deploy/commit.
+**Active task:** Final deploy/commit of auth + clone fixes, then verify signup and clone flows in production.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change in this repo. Commit, branch, and document discipline is required to prevent the lost-work confusion that motivated this reconciliation.
+
+## 2026-06-09 Auth + Clone Fixes
+
+- **Signup now offers Strava.** `SignupForm` includes the same `strava-auth` OAuth entry point as login, labeled "Create account with Strava", before the email/password signup fields.
+- **Race clone RPC fixed.** Added migration `supabase/migrations/20260610_fix_clone_race_waypoints_updated_at.sql` replacing `clone_race` so its waypoint insert no longer references nonexistent `waypoints.updated_at`. Applied to production via Supabase Management API and verified the old waypoint insert pattern is absent.
 
 ## 2026-06-09 Pace/profile/drop-bag batch
 
