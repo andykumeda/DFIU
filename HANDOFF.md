@@ -1,9 +1,9 @@
 # Handoff Document
 
 **Date:** 2026-06-08
-**Status:** Recovered from accidental working-tree deletion; production parity verified; safeguards added; deployed.
-**Current HEAD:** `6721526` (pre-recovery) → commit pending with full Bay Area 100 batch.
-**Deploy hash target:** `index-D2ndC-tb.js` / `CrewView-BBkYao9B.js` (matches pre-loss production bundle).
+**Status:** Implementing drop-bag visibility fixes and runner profile pacing inputs after recovery commit/deploy.
+**Current HEAD:** `c8dab1d feat(race): restore Bay Area 100 batch after tree loss`.
+**Active task:** Crew/drop-bag notes, pace chart drop-bag access, Start bag defaults, and runner strengths/weather profile for pace calculation.
 
 ## Recovery (2026-06-08)
 
@@ -25,7 +25,7 @@ Tracked source files were deleted from the working tree while uncommitted featur
 - Weather: additional course locations (`weather_locations` JSONB) with midway default.
 - Supabase migrations applied: `20260608_race_templates_and_pace_columns`, `20260609_weather_locations`.
 
-## Open Work (user request, not yet implemented)
+## Active Work (2026-06-08)
 
 - Crew View drop bag modal: show notes.
 - Pace chart aid station: option to open drop bag info.

@@ -193,6 +193,7 @@ export type Database = {
           plan_b_time: string | null
           plan_c_buffer: string
           race_id: string
+          runner_profile: Json | null
           updated_at: string
           updated_by: string | null
         }
@@ -203,6 +204,7 @@ export type Database = {
           plan_b_time?: string | null
           plan_c_buffer?: string
           race_id: string
+          runner_profile?: Json | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -213,6 +215,7 @@ export type Database = {
           plan_b_time?: string | null
           plan_c_buffer?: string
           race_id?: string
+          runner_profile?: Json | null
           updated_at?: string
           updated_by?: string | null
         }

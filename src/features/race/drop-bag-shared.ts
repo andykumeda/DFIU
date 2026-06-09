@@ -33,6 +33,15 @@ export const DEFAULT_DROP_BAG_TEMPLATE: DropBagTemplateItem[] = [
     { text: 'Tissues / Wipes', category: 'medical' },
 ]
 
+export const DEFAULT_START_BAG_TEMPLATE: DropBagTemplateItem[] = [
+    { text: 'Race bib / timing chip', category: 'gear' },
+    { text: 'Start bottles / bladder filled', category: 'hydration' },
+    { text: 'Start calories / gels', category: 'hydration' },
+    { text: 'Phone / watch charged', category: 'gear' },
+    { text: 'Sunscreen / anti-chafe applied', category: 'medical' },
+    { text: 'Headlamp if starting in the dark', category: 'conditions' },
+]
+
 export function parseDropBagTemplate(raw: unknown): DropBagTemplateItem[] {
     if (!Array.isArray(raw)) return [...DEFAULT_DROP_BAG_TEMPLATE]
     const items = raw

@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import {
     DROP_BAG_CATEGORIES,
     DropBagItem,
+    DEFAULT_START_BAG_TEMPLATE,
     mergeTemplateIntoItems,
     parseDropBagTemplate,
     seedDropBagItems,
@@ -30,7 +31,8 @@ export function DropBagModal({ waypoint, race, arrivalTime, isNight, canEdit = t
 
     const isHot = parseInt(race.avg_temp_high || '0') >= 80
     const isCold = parseInt(race.avg_temp_low || '100') <= 40
-    const template = parseDropBagTemplate(race.drop_bag_template)
+    const isStartBag = waypoint.type === 'start' || waypoint.mile <= 0.01
+    const template = isStartBag ? DEFAULT_START_BAG_TEMPLATE : parseDropBagTemplate(race.drop_bag_template)
 
     useEffect(() => {
         const existingData = waypoint.drop_bag_items as unknown as DropBagItem[]
@@ -108,7 +110,7 @@ export function DropBagModal({ waypoint, race, arrivalTime, isNight, canEdit = t
                 <div className="flex justify-between items-center p-6 border-b border-neutral-800 shrink-0">
                     <div>
                         <h2 className="text-xl font-bold text-white mb-1 flex items-center gap-2">
-                            {bagName || `Drop Bag: ${waypoint.name}`}
+                            {bagName || (isStartBag ? `Start: ${waypoint.name}` : `Drop Bag: ${waypoint.name}`)}
                             {!canEdit && <span className="text-xs font-normal text-neutral-500">(view only)</span>}
                         </h2>
                         <div className="flex items-center gap-3 text-sm text-neutral-400">
@@ -142,13 +144,15 @@ export function DropBagModal({ waypoint, race, arrivalTime, isNight, canEdit = t
                     )}
 
                     <div className="bg-neutral-950/50 border border-neutral-800 rounded-xl p-4">
-                        <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1.5">Bag Name / Identifying Info</label>
+                        <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1.5">
+                            {isStartBag ? 'Start Gear / Identifying Info' : 'Bag Name / Identifying Info'}
+                        </label>
                         <input
                             type="text"
                             value={bagName}
                             onChange={e => setBagName(e.target.value)}
                             readOnly={!canEdit}
-                            placeholder="e.g. Red Salomon Bag"
+                            placeholder={isStartBag ? 'e.g. Start line checklist' : 'e.g. Red Salomon Bag'}
                             className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-white placeholder-neutral-600 focus:outline-none focus:border-orange-500 transition-colors disabled:opacity-70"
                         />
                     </div>
@@ -234,12 +238,14 @@ export function DropBagModal({ waypoint, race, arrivalTime, isNight, canEdit = t
                     )}
 
                     <div className="pt-4 border-t border-neutral-800">
-                        <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1.5">Drop Bag Notes & Instructions</label>
+                        <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1.5">
+                            {isStartBag ? 'Start Notes & Instructions' : 'Drop Bag Notes & Instructions'}
+                        </label>
                         <textarea
                             value={bagNotes}
                             onChange={e => setBagNotes(e.target.value)}
                             readOnly={!canEdit}
-                            placeholder="e.g. Change shoes here, grab headlamp for next section..."
+                            placeholder={isStartBag ? 'e.g. Final checklist before leaving the start...' : 'e.g. Change shoes here, grab headlamp for next section...'}
                             rows={2}
                             className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-white placeholder-neutral-600 focus:outline-none focus:border-orange-500 transition-colors resize-y"
                         />

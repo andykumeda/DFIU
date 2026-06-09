@@ -11,7 +11,9 @@ import {
     type PaceChartColumnId,
     type PaceChartColumnsConfig,
 } from './pace-chart-columns'
-import { Calculator, Clock, TrendingUp, Activity, Users, Footprints, Moon, Sun, ArrowRight, Printer, AlertTriangle, Columns3, ChevronUp, ChevronDown, Eye, EyeOff } from 'lucide-react'
+import { DropBagModal } from './DropBagModal'
+import type { RunnerPacingProfile, RunnerProfileLevel, RunnerPacingStyle } from './runner-profile'
+import { Calculator, Clock, TrendingUp, Activity, Users, Footprints, Moon, Sun, ArrowRight, Printer, AlertTriangle, Columns3, ChevronUp, ChevronDown, Eye, EyeOff, SlidersHorizontal } from 'lucide-react'
 
 interface PaceCalculatorProps {
     race: Race
@@ -58,8 +60,9 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
     const [strategyMode, setStrategyMode] = useState<StrategyMode>('planA')
     const [plan, setPlan] = useState<ReturnType<typeof calculatePacePlan> | null>(null)
     const [calcError, setCalcError] = useState<string | null>(null)
+    const [selectedDropBagWaypoint, setSelectedDropBagWaypoint] = useState<Waypoint | null>(null)
 
-    const { plans, canEdit, setPlanA, setPlanB, setPlanCBuffer, markCalculated, setPaceChartColumns } = usePacePlans(race.id)
+    const { plans, canEdit, setPlanA, setPlanB, setPlanCBuffer, markCalculated, setPaceChartColumns, setRunnerProfile } = usePacePlans(race.id)
     const { planATimeStr, planBTimeStr, planCBufferStr } = plans
 
     const { a: planAMinutes, b: planBMinutes, c: planCMinutes } = computePlanMinutes(plans, race.overall_cutoff)
@@ -107,7 +110,9 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                 terrainNodes,
                 { mode: 'time', value: targetMinutes },
                 race,
-                clock24h
+                clock24h,
+                [],
+                plans.runnerProfile
             )
             setPlan(result)
             markCalculated()
@@ -194,6 +199,9 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
         updateColumnConfig({ ...plans.paceChartColumns, order })
     }
 
+    const isStartBag = (wp: Waypoint | undefined, arrivalName?: string) =>
+        !!wp && (wp.type === 'start' || wp.mile <= 0.01 || arrivalName?.toLowerCase() === 'start')
+
     const renderColumnCell = (
         colId: PaceChartColumnId,
         arrival: PacePlanResult['waypointArrivals'][number],
@@ -205,7 +213,8 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
         const base = `px-6 py-4 print:py-2 font-mono ${align}`
 
         switch (colId) {
-            case 'location':
+            case 'location': {
+                const showBagInfo = !!wp && (wp.has_drop_bag || isStartBag(wp, arrival.name))
                 return (
                     <td key={colId} className="px-6 py-4 print:py-2">
                         <div className="font-medium text-white print:text-black flex items-center gap-2">
@@ -220,11 +229,21 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                             <div className="flex gap-1 ml-1 print:hidden">
                                 {wp?.crew_allowed && <span title="Crew Allowed"><Users className="w-4 h-4 text-green-400" /></span>}
                                 {wp?.pacer_allowed && <span title="Pacer Allowed"><Footprints className="w-4 h-4 text-blue-400" /></span>}
-                                {wp?.has_drop_bag && <span title="Drop Bag" className="text-[12px] opacity-90 leading-none flex items-center justify-center pt-0.5">🎒</span>}
+                                {showBagInfo && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedDropBagWaypoint(wp)}
+                                        title={isStartBag(wp, arrival.name) ? 'Start gear' : 'Drop bag info'}
+                                        className="text-[12px] opacity-90 leading-none flex items-center justify-center pt-0.5 hover:opacity-100"
+                                    >
+                                        🎒
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </td>
                 )
+            }
             case 'mile':
                 return (
                     <td key={colId} className={`${base} text-neutral-300 print:text-neutral-800`}>
@@ -358,6 +377,12 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                         Generate Plan
                     </button>
                 </div>
+
+                <RunnerProfilePanel
+                    profile={plans.runnerProfile}
+                    canEdit={canEdit}
+                    onChange={setRunnerProfile}
+                />
 
                 {plan && (
                     <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6">
@@ -511,6 +536,99 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                     </div>
                 )}
             </div>
+
+            {selectedDropBagWaypoint && (
+                <DropBagModal
+                    waypoint={selectedDropBagWaypoint}
+                    race={race}
+                    canEdit={canEdit}
+                    arrivalTime={plan?.waypointArrivals.find(a => a.waypointId === selectedDropBagWaypoint.id)}
+                    isNight={
+                        !!plan?.waypointArrivals.find(a => a.waypointId === selectedDropBagWaypoint.id) &&
+                        isNight(plan.waypointArrivals.find(a => a.waypointId === selectedDropBagWaypoint.id)!.arrivalTime)
+                    }
+                    onClose={() => setSelectedDropBagWaypoint(null)}
+                />
+            )}
         </div >
+    )
+}
+
+function RunnerProfilePanel({
+    profile,
+    canEdit,
+    onChange,
+}: {
+    profile: RunnerPacingProfile
+    canEdit: boolean
+    onChange: (profile: RunnerPacingProfile) => void
+}) {
+    const setLevel = (key: keyof RunnerPacingProfile, value: RunnerProfileLevel | RunnerPacingStyle) => {
+        if (!canEdit) return
+        onChange({ ...profile, [key]: value })
+    }
+
+    const levelOptions: { value: RunnerProfileLevel; label: string }[] = [
+        { value: 'weak', label: 'Weak' },
+        { value: 'average', label: 'Average' },
+        { value: 'strong', label: 'Strong' },
+    ]
+
+    const rows: { key: keyof RunnerPacingProfile; label: string; help: string }[] = [
+        { key: 'climbing', label: 'Climbs', help: 'Uphill grades' },
+        { key: 'descending', label: 'Descents', help: 'Downhill running' },
+        { key: 'technical', label: 'Technical terrain', help: 'Rough or slow trail' },
+        { key: 'flats', label: 'Flats', help: 'Smooth flatter sections' },
+        { key: 'night', label: 'Night running', help: 'Dark sections' },
+        { key: 'heat', label: 'Heat', help: 'Hot race hours' },
+        { key: 'cold', label: 'Cold', help: 'Cold/night conditions' },
+        { key: 'mud', label: 'Mud', help: 'Muddy conditions' },
+        { key: 'snow', label: 'Snow', help: 'Snow/ice conditions' },
+        { key: 'sand', label: 'Sand', help: 'Sandy surfaces' },
+        { key: 'rocky', label: 'Rocky', help: 'Rocky surfaces' },
+    ]
+
+    return (
+        <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6">
+            <h2 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                <SlidersHorizontal className="w-5 h-5 text-orange-500" /> Runner Profile
+            </h2>
+            <p className="text-xs text-neutral-500 mb-4">
+                These strengths adjust the pace model along with grade, terrain, daylight, weather, altitude, and fatigue.
+            </p>
+
+            <label className="block mb-4">
+                <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500">General pacing</span>
+                <select
+                    value={profile.pacingStyle}
+                    disabled={!canEdit}
+                    onChange={(e) => setLevel('pacingStyle', e.target.value as RunnerPacingStyle)}
+                    className="mt-1 w-full bg-neutral-950 border border-neutral-800 rounded-lg px-3 py-2 text-sm text-white disabled:opacity-60"
+                >
+                    <option value="fast_start">Fast starter, slower finish</option>
+                    <option value="even">Even-paced runner</option>
+                    <option value="strong_finish">Slower start, stronger finish</option>
+                </select>
+            </label>
+
+            <div className="space-y-2">
+                {rows.map(row => (
+                    <div key={row.key} className="grid grid-cols-[1fr_auto] gap-3 items-center bg-neutral-950/50 border border-neutral-800 rounded-lg px-3 py-2">
+                        <div>
+                            <div className="text-sm text-neutral-200">{row.label}</div>
+                            <div className="text-[11px] text-neutral-600">{row.help}</div>
+                        </div>
+                        <select
+                            value={profile[row.key] as RunnerProfileLevel}
+                            disabled={!canEdit}
+                            onChange={(e) => setLevel(row.key, e.target.value as RunnerProfileLevel)}
+                            className="bg-neutral-900 border border-neutral-800 rounded px-2 py-1 text-xs text-white disabled:opacity-60"
+                        >
+                            {levelOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                        </select>
+                    </div>
+                ))}
+            </div>
+        </div>
     )
 }

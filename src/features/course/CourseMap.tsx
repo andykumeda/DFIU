@@ -684,7 +684,7 @@ export function CourseMap({
                     badge.style.pointerEvents = 'none'
                     container.appendChild(badge)
                 }
-                if (primaryWp.has_drop_bag) {
+                if (primaryWp.has_drop_bag || primaryWp.type === 'start' || primaryWp.mile <= 0.01) {
                     const badge = document.createElement('div')
                     badge.className = `${styles.badge} ${styles.badgeBag}`
                     badge.innerHTML = '🎒'

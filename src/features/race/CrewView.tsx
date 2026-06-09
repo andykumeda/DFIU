@@ -138,12 +138,12 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
         const actuals: ActualCheckin[] = checkins.map(c => ({ waypointId: c.waypoint_id, arrivedAt: new Date(c.arrived_at) }))
         try {
             return calculatePacePlan(samples, total, waypoints, terrainNodes,
-                { mode: 'time', value: target }, race, clock24h, actuals)
+                { mode: 'time', value: target }, race, clock24h, actuals, plans.runnerProfile)
         } catch (err) {
             console.error('CrewView pace plan failed', err)
             return null
         }
-    }, [course, race, waypoints, terrainNodes, planMinutes, activePlan, checkins, clock24h])
+    }, [course, race, waypoints, terrainNodes, planMinutes, activePlan, checkins, clock24h, plans.runnerProfile])
 
     const elapsedMin = useMemo(() => {
         if (!race?.start_datetime) return 0
@@ -426,24 +426,7 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
                             <div className='text-sm font-semibold'>Drop bag · {nextCrewWaypoint.name}</div>
                         </div>
                         <DropBagSummary waypoint={nextCrewWaypoint} />
-                        {nextCrewWaypoint.drop_bag_notes && (
-                            <div className='mt-3 bg-neutral-800 rounded p-2 text-sm whitespace-pre-wrap'>
-                                <div className='text-xs text-neutral-400 mb-1'>Crew instructions</div>
-                                {nextCrewWaypoint.drop_bag_notes}
-                            </div>
-                        )}
-                        {nextCrewWaypoint.crew_relay_notes && (
-                            <div className='mt-3 bg-blue-950/50 border border-blue-900/60 rounded p-2 text-sm whitespace-pre-wrap'>
-                                <div className='text-xs text-blue-300 mb-1'>Tell runner</div>
-                                {nextCrewWaypoint.crew_relay_notes}
-                            </div>
-                        )}
-                        {nextCrewWaypoint.runner_next_leg_notes && (
-                            <div className='mt-3 bg-amber-950/40 border border-amber-900/60 rounded p-2 text-sm whitespace-pre-wrap'>
-                                <div className='text-xs text-amber-300 mb-1'>Next leg reminder</div>
-                                {nextCrewWaypoint.runner_next_leg_notes}
-                            </div>
-                        )}
+                        <DropBagNotes waypoint={nextCrewWaypoint} className='mt-3' />
                     </section>
                 )}
 
@@ -674,25 +657,7 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
                         </div>
 
                         <DropBagSummary waypoint={dropBagWaypoint} />
-
-                        {dropBagWaypoint.drop_bag_notes && (
-                            <div className='bg-neutral-800 rounded p-2 text-sm whitespace-pre-wrap'>
-                                <div className='text-xs text-neutral-400 mb-1'>Crew instructions</div>
-                                {dropBagWaypoint.drop_bag_notes}
-                            </div>
-                        )}
-                        {dropBagWaypoint.crew_relay_notes && (
-                            <div className='bg-blue-950/50 border border-blue-900/60 rounded p-2 text-sm whitespace-pre-wrap'>
-                                <div className='text-xs text-blue-300 mb-1'>Tell runner</div>
-                                {dropBagWaypoint.crew_relay_notes}
-                            </div>
-                        )}
-                        {dropBagWaypoint.runner_next_leg_notes && (
-                            <div className='bg-amber-950/40 border border-amber-900/60 rounded p-2 text-sm whitespace-pre-wrap'>
-                                <div className='text-xs text-amber-300 mb-1'>Next leg reminder</div>
-                                {dropBagWaypoint.runner_next_leg_notes}
-                            </div>
-                        )}
+                        <DropBagNotes waypoint={dropBagWaypoint} showEmpty />
                     </div>
                 </div>
             )}
@@ -722,6 +687,39 @@ function DropBagSummary({ waypoint }: { waypoint: Waypoint }) {
                 )
             })}
         </ul>
+    )
+}
+
+function DropBagNotes({ waypoint, className = '', showEmpty = false }: { waypoint: Waypoint; className?: string; showEmpty?: boolean }) {
+    const hasNotes = !!(waypoint.drop_bag_notes || waypoint.crew_relay_notes || waypoint.runner_next_leg_notes)
+    if (!hasNotes && !showEmpty) return null
+
+    return (
+        <div className={`space-y-2 ${className}`}>
+            {waypoint.drop_bag_notes ? (
+                <div className='bg-neutral-800 rounded p-2 text-sm whitespace-pre-wrap'>
+                    <div className='text-xs text-neutral-400 mb-1'>Drop bag notes</div>
+                    {waypoint.drop_bag_notes}
+                </div>
+            ) : showEmpty ? (
+                <div className='bg-neutral-800 rounded p-2 text-sm text-neutral-500'>
+                    <div className='text-xs text-neutral-400 mb-1'>Drop bag notes</div>
+                    No notes recorded.
+                </div>
+            ) : null}
+            {waypoint.crew_relay_notes && (
+                <div className='bg-blue-950/50 border border-blue-900/60 rounded p-2 text-sm whitespace-pre-wrap'>
+                    <div className='text-xs text-blue-300 mb-1'>Tell runner</div>
+                    {waypoint.crew_relay_notes}
+                </div>
+            )}
+            {waypoint.runner_next_leg_notes && (
+                <div className='bg-amber-950/40 border border-amber-900/60 rounded p-2 text-sm whitespace-pre-wrap'>
+                    <div className='text-xs text-amber-300 mb-1'>Next leg reminder</div>
+                    {waypoint.runner_next_leg_notes}
+                </div>
+            )}
+        </div>
     )
 }
 

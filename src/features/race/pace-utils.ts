@@ -1,5 +1,6 @@
 import { TerrainNode, Waypoint, Race } from '@/types/database'
 import SunCalc from 'suncalc'
+import { levelAdjustment, type RunnerPacingProfile } from './runner-profile'
 
 export interface PacingStrategy {
     mode: 'time' | 'pace' | 'gap' | 'cutoff'
@@ -93,6 +94,61 @@ function getTerrainFactor(mile: number, terrainNodes: TerrainNode[]): number {
     return (activeNode.difficulty || 100) / 100
 }
 
+function getActiveTerrainType(mile: number, terrainNodes: TerrainNode[]): string {
+    let activeNode: TerrainNode | null = null
+    for (const node of terrainNodes) {
+        if (node.mile <= mile) activeNode = node
+        else break
+    }
+    return (activeNode?.type || '').toLowerCase()
+}
+
+function getRunnerProfileFactor(
+    mile: number,
+    totalDistance: number,
+    gradient: number,
+    terrainType: string,
+    terrainFactor: number,
+    race: Partial<Race>,
+    dynamic: { isNight: boolean; isHotHours: boolean; isCold: boolean },
+    profile?: RunnerPacingProfile
+): number {
+    if (!profile) return 1.0
+    let factor = 1.0
+
+    if (gradient > 0.035) factor += levelAdjustment(profile.climbing, Math.min(0.08, gradient * 0.9))
+    if (gradient < -0.035) factor += levelAdjustment(profile.descending, Math.min(0.07, Math.abs(gradient) * 0.8))
+    if (Math.abs(gradient) <= 0.015) factor += levelAdjustment(profile.flats, 0.025)
+
+    const technicalMagnitude = Math.min(0.08, Math.max(0, terrainFactor - 1.0) * 0.16)
+    if (technicalMagnitude > 0) factor += levelAdjustment(profile.technical, technicalMagnitude)
+
+    const terrainNotes = `${terrainType} ${race.terrain_type || ''} ${race.weather_notes || ''}`.toLowerCase()
+    if (terrainNotes.includes('mud')) factor += levelAdjustment(profile.mud, 0.045)
+    if (terrainNotes.includes('snow')) factor += levelAdjustment(profile.snow, 0.055)
+    if (terrainNotes.includes('sand')) factor += levelAdjustment(profile.sand, 0.045)
+    if (terrainNotes.includes('rock')) factor += levelAdjustment(profile.rocky, 0.04)
+
+    if (dynamic.isNight) factor += levelAdjustment(profile.night, 0.05)
+    if (dynamic.isHotHours && race.avg_temp_high && parseFloat(String(race.avg_temp_high)) > 75) {
+        factor += levelAdjustment(profile.heat, 0.05)
+    }
+    if (dynamic.isCold) factor += levelAdjustment(profile.cold, 0.04)
+
+    if (totalDistance > 0) {
+        const pct = Math.min(1.0, mile / totalDistance)
+        if (profile.pacingStyle === 'fast_start') {
+            // Faster early, fades late; neutral around halfway.
+            factor += (pct - 0.45) * 0.12
+        } else if (profile.pacingStyle === 'strong_finish') {
+            // More conservative early, stronger late; neutral around halfway.
+            factor += (0.55 - pct) * 0.10
+        }
+    }
+
+    return Math.max(0.75, Math.min(1.35, factor))
+}
+
 function getDynamicFactors(
     mile: number,
     totalDistance: number,
@@ -102,9 +158,15 @@ function getDynamicFactors(
     lon?: number,
     elevationFt?: number,
     terrainFactor?: number,
-    sunCache?: SunCache
+    sunCache?: SunCache,
+    gradient?: number,
+    terrainType?: string,
+    runnerProfile?: RunnerPacingProfile
 ): number {
     let factor = 1.0
+    let isNight = false
+    let isHotHours = false
+    let isCold = false
 
     // Fatigue: quadratic ramp, +25% at the finish. The back half hurts more than the front.
     // pct^1.8 gives ~7% at halfway, ~15% at 75%, ~25% at 100%.
@@ -128,7 +190,7 @@ function getDynamicFactors(
             : current.getHours()
 
         // Fallback night (8 PM to 6 AM, race-local)
-        let isNight = hour >= 20 || hour < 6
+        isNight = hour >= 20 || hour < 6
 
         // Use precise twilight if we have coordinates. SunCalc output is stable per
         // calendar day, so cache by day index — a race spans at most ~2 days.
@@ -153,7 +215,7 @@ function getDynamicFactors(
         }
 
         // Heat: continuous ramp 75°F→0% up to 95°F→+10%. Active 11am–6pm local.
-        const isHotHours = hour >= 11 && hour <= 18
+        isHotHours = hour >= 11 && hour <= 18
         if (isHotHours && race.avg_temp_high) {
             const highTemp = parseFloat(race.avg_temp_high.toString())
             if (!isNaN(highTemp) && highTemp > 75) {
@@ -165,10 +227,22 @@ function getDynamicFactors(
         if (isNight && race.avg_temp_low) {
             const lowTemp = parseFloat(race.avg_temp_low.toString())
             if (!isNaN(lowTemp) && lowTemp < 40) {
+                isCold = true
                 factor += Math.min(0.08, ((40 - lowTemp) / 20) * 0.08)
             }
         }
     }
+
+    factor *= getRunnerProfileFactor(
+        mile,
+        totalDistance,
+        gradient ?? 0,
+        terrainType ?? '',
+        terrainFactor ?? 1,
+        race,
+        { isNight, isHotHours, isCold },
+        runnerProfile
+    )
 
     return factor
 }
@@ -181,7 +255,8 @@ export function calculatePacePlan(
     strategy: PacingStrategy,
     race: Partial<Race>,
     clock24h: boolean = false,
-    actualCheckins: ActualCheckin[] = []
+    actualCheckins: ActualCheckin[] = [],
+    runnerProfile?: RunnerPacingProfile
 ): PacePlanResult {
     // 1. Determine Target GAP (Moving Baseline)
 
@@ -190,6 +265,8 @@ export function calculatePacePlan(
         dist: number;
         gradeFactor: number;
         terrainFactor: number
+        gradient: number
+        terrainType: string
     }[] = []
 
     // Drop duplicate/non-advancing samples so segmentDetails stays in lockstep with samples.
@@ -215,11 +292,14 @@ export function calculatePacePlan(
         const gradient = eleChangeMeters / distMeters
         const gradeFactor = getGradeFactor(gradient)
         const terrainFactor = getTerrainFactor(p1.distance, terrainNodes)
+        const terrainType = getActiveTerrainType(p1.distance, terrainNodes)
 
         segmentDetails.push({
             dist,
             gradeFactor,
-            terrainFactor
+            terrainFactor,
+            gradient,
+            terrainType
         })
     }
 
@@ -274,7 +354,10 @@ export function calculatePacePlan(
                 lon,
                 samples[i].elevation,
                 detail.terrainFactor,
-                sunCache
+                sunCache,
+                detail.gradient,
+                detail.terrainType,
+                runnerProfile
             )
             const segmentGap = testBaseGap
             const segmentPace = segmentGap * detail.gradeFactor * detail.terrainFactor * dynamicFactor
