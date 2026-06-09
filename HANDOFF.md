@@ -15,6 +15,9 @@
 - **Drop-bag note contrast fix.** Aid-station cards rendered note text with no explicit color (dark-on-dark, unreadable). `DropBagNotes` now sets readable colors: `text-neutral-100` (drop bag notes), `text-blue-50` (tell runner), `text-amber-50` (next leg).
 - **Public pace-chart column controls.** Column visibility toggles and reorder arrows are now available to everyone (including public viewers), not just editors. Editors' changes persist to the race; viewers' changes stay local to their session (`usePacePlans.persist` is a no-op without edit permission).
 - **Contents-only drop bag popup outside the Drop Bag section.** The `DropBagModal` gained a `contentsOnly` prop. The pace plan's 🎒 popup now shows only what's packed (shared `DropBagSummary`, extracted from Crew View) plus notes — no template/unchecked options, no editor — matching Crew View. The dedicated Drop Bag section keeps the full editor.
+- **Runner profile: added Altitude** (weak/avg/strong). Wired into `getRunnerProfileFactor` — above ~5,000 ft it scales the runner's altitude tolerance by elevation, capped ±6%. No migration (profile is jsonb).
+- **Configurable aid-station stop time.** New `race_pace_plans.aid_station_default_delay` (migration `20260610_pace_plan_aid_station_default_delay.sql`, applied to prod, default 2 min). Pace Plan section has an "Aid Station Stops" panel (editor only): a race default plus per-aid-station +/- overrides that write `waypoints.delay` (null = use default). `calculatePacePlan` takes the default as a param; all three call sites (pace, drop bags, crew) pass it. Chart updates on re-generate / sticky reload; drop bag ETAs and Crew View update live.
+- **README** now has a concise "How Pace Is Calculated" section.
 
 ## 2026-06-09 Reconciliation
 

@@ -190,6 +190,7 @@ export type Database = {
       }
       race_pace_plans: {
         Row: {
+          aid_station_default_delay: number
           has_calculated: boolean
           pace_chart_columns: Json | null
           plan_a_time: string
@@ -201,6 +202,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          aid_station_default_delay?: number
           has_calculated?: boolean
           pace_chart_columns?: Json | null
           plan_a_time?: string
@@ -212,6 +214,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          aid_station_default_delay?: number
           has_calculated?: boolean
           pace_chart_columns?: Json | null
           plan_a_time?: string

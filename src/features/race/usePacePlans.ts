@@ -14,6 +14,7 @@ export interface PacePlans {
     planCBufferStr: string // HH:MM, default '00:30'
     hasCalculated: boolean
     paceChartColumns: PaceChartColumnsConfig
+    aidStationDefaultDelay: number // minutes, default 2
 }
 
 const DEFAULTS: PacePlans = {
@@ -22,6 +23,7 @@ const DEFAULTS: PacePlans = {
     planCBufferStr: '00:30',
     hasCalculated: false,
     paceChartColumns: { ...DEFAULT_PACE_CHART_COLUMNS, order: [...DEFAULT_PACE_CHART_COLUMNS.order], hidden: [] },
+    aidStationDefaultDelay: 2,
 }
 
 const legacyKey = (raceId: string) => `pace_plans_${raceId}`
@@ -53,6 +55,7 @@ type Row = {
     plan_c_buffer: string
     has_calculated: boolean
     pace_chart_columns: unknown
+    aid_station_default_delay: number | null
 }
 
 function rowToPlans(row: Row): PacePlans {
@@ -62,6 +65,7 @@ function rowToPlans(row: Row): PacePlans {
         planCBufferStr: row.plan_c_buffer || DEFAULTS.planCBufferStr,
         hasCalculated: !!row.has_calculated,
         paceChartColumns: parsePaceChartColumns(row.pace_chart_columns),
+        aidStationDefaultDelay: typeof row.aid_station_default_delay === 'number' ? row.aid_station_default_delay : DEFAULTS.aidStationDefaultDelay,
     }
 }
 
@@ -73,6 +77,7 @@ function plansToRow(p: PacePlans, raceId: string, userId: string | null) {
         plan_c_buffer: p.planCBufferStr,
         has_calculated: p.hasCalculated,
         pace_chart_columns: p.paceChartColumns,
+        aid_station_default_delay: p.aidStationDefaultDelay,
         updated_by: userId,
         updated_at: new Date().toISOString(),
     }
@@ -91,7 +96,7 @@ export function usePacePlans(raceId: string) {
         ;(async () => {
             const { data, error } = await supabase
                 .from('race_pace_plans')
-                .select('plan_a_time, plan_b_time, plan_c_buffer, has_calculated, pace_chart_columns')
+                .select('plan_a_time, plan_b_time, plan_c_buffer, has_calculated, pace_chart_columns, aid_station_default_delay')
                 .eq('race_id', raceId)
                 .maybeSingle()
 
@@ -160,6 +165,7 @@ export function usePacePlans(raceId: string) {
         setPlanCBuffer: (v: string) => update({ planCBufferStr: v, planBTimeStr: '' }),
         markCalculated: () => update({ hasCalculated: true }),
         setPaceChartColumns: (v: PaceChartColumnsConfig) => update({ paceChartColumns: v }),
+        setAidStationDefaultDelay: (v: number) => update({ aidStationDefaultDelay: v }),
     }
 }
 

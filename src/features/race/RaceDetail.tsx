@@ -668,6 +668,24 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     }
   }
 
+  // Update only a waypoint's aid-station stop duration (minutes). Passing null
+  // clears the override so the race default applies. Used by the Pace Plan
+  // aid-station stops panel.
+  const handleUpdateWaypointDelay = async (id: string, delay: number | null) => {
+    queryClient.setQueryData(['waypoints', course?.id], (old: Waypoint[] | undefined) =>
+      old ? old.map(wp => wp.id === id ? { ...wp, delay } : wp) : old
+    )
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase.from('waypoints') as any).update({ delay }).eq('id', id)
+      if (error) throw error
+      queryClient.invalidateQueries({ queryKey: ['waypoints', course?.id] })
+    } catch {
+      queryClient.invalidateQueries({ queryKey: ['waypoints', course?.id] })
+      alert('Failed to update aid station time')
+    }
+  }
+
 
   const clearPendingTerrainSegment = () => {
     setPendingSegment(null)
@@ -1612,6 +1630,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                 clock24h={clock24h}
                 unitsDistance={profile?.units_distance || 'miles'}
                 runnerProfile={userRunnerProfile}
+                onUpdateWaypointDelay={handleUpdateWaypointDelay}
               />
             ) : (
               <div className="p-12 text-center text-neutral-500">

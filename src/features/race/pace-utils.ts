@@ -266,7 +266,8 @@ export function calculatePacePlan(
     race: Partial<Race>,
     clock24h: boolean = false,
     actualCheckins: ActualCheckin[] = [],
-    runnerProfile?: RunnerPacingProfile
+    runnerProfile?: RunnerPacingProfile,
+    aidStationDefaultDelay: number = 2
 ): PacePlanResult {
     // 1. Determine Target GAP (Moving Baseline)
 
@@ -320,8 +321,8 @@ export function calculatePacePlan(
     waypoints.forEach(wp => {
         let d = wp.delay
         if (d === null || d === undefined) {
-            // Default 2 minutes for aid stations if not specified
-            if (wp.type === 'aid_station') d = 2
+            // No explicit per-waypoint override → use the race's default for aid stations.
+            if (wp.type === 'aid_station') d = aidStationDefaultDelay
             else d = 0
         }
 

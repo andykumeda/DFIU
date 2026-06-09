@@ -13,7 +13,7 @@ import {
 } from './pace-chart-columns'
 import { DropBagModal } from './DropBagModal'
 import type { RunnerPacingProfile } from './runner-profile'
-import { Calculator, Clock, TrendingUp, Activity, Users, Footprints, Moon, Sun, ArrowRight, Printer, AlertTriangle, Columns3, ChevronUp, ChevronDown, Eye, EyeOff } from 'lucide-react'
+import { Calculator, Clock, TrendingUp, Activity, Users, Footprints, Moon, Sun, ArrowRight, Printer, AlertTriangle, Columns3, ChevronUp, ChevronDown, Eye, EyeOff, Timer, Plus, Minus } from 'lucide-react'
 
 interface PaceCalculatorProps {
     race: Race
@@ -23,6 +23,7 @@ interface PaceCalculatorProps {
     clock24h?: boolean
     unitsDistance?: 'miles' | 'kilometers'
     runnerProfile: RunnerPacingProfile
+    onUpdateWaypointDelay?: (id: string, delay: number | null) => void
 }
 
 type StrategyMode = 'planA' | 'planB' | 'planC'
@@ -57,13 +58,13 @@ const strategyColors: Record<StrategyMode, {
     },
 }
 
-export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h = false, unitsDistance = 'miles', runnerProfile }: PaceCalculatorProps) {
+export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h = false, unitsDistance = 'miles', runnerProfile, onUpdateWaypointDelay }: PaceCalculatorProps) {
     const [strategyMode, setStrategyMode] = useState<StrategyMode>('planA')
     const [plan, setPlan] = useState<ReturnType<typeof calculatePacePlan> | null>(null)
     const [calcError, setCalcError] = useState<string | null>(null)
     const [selectedDropBagWaypoint, setSelectedDropBagWaypoint] = useState<Waypoint | null>(null)
 
-    const { plans, loading: plansLoading, canEdit, setPlanA, setPlanB, setPlanCBuffer, markCalculated, setPaceChartColumns } = usePacePlans(race.id)
+    const { plans, loading: plansLoading, canEdit, setPlanA, setPlanB, setPlanCBuffer, markCalculated, setPaceChartColumns, setAidStationDefaultDelay } = usePacePlans(race.id)
     const { planATimeStr, planBTimeStr, planCBufferStr } = plans
 
     const { a: planAMinutes, b: planBMinutes, c: planCMinutes } = computePlanMinutes(plans, race.overall_cutoff)
@@ -116,7 +117,8 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                 race,
                 clock24h,
                 [],
-                runnerProfile
+                runnerProfile,
+                plans.aidStationDefaultDelay
             )
             setPlan(result)
             if (!silent) markCalculated()
@@ -394,6 +396,15 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                     </button>
                 </div>
 
+                {canEdit && onUpdateWaypointDelay && (
+                    <AidStationStopsPanel
+                        waypoints={waypoints}
+                        defaultDelay={plans.aidStationDefaultDelay}
+                        onChangeDefault={setAidStationDefaultDelay}
+                        onChangeWaypointDelay={onUpdateWaypointDelay}
+                    />
+                )}
+
                 {plan && (
                     <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6">
                         <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
@@ -556,5 +567,101 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                 />
             )}
         </div >
+    )
+}
+
+function Stepper({ value, suffix, onDec, onInc }: { value: number; suffix?: string; onDec: () => void; onInc: () => void }) {
+    return (
+        <div className="flex items-center gap-1.5">
+            <button
+                type="button"
+                onClick={onDec}
+                className="w-7 h-7 flex items-center justify-center rounded-md bg-neutral-800 hover:bg-neutral-700 text-white disabled:opacity-30"
+                disabled={value <= 0}
+                aria-label="Decrease"
+            >
+                <Minus className="w-3.5 h-3.5" />
+            </button>
+            <span className="w-12 text-center text-sm font-mono text-white tabular-nums">{value}{suffix}</span>
+            <button
+                type="button"
+                onClick={onInc}
+                className="w-7 h-7 flex items-center justify-center rounded-md bg-neutral-800 hover:bg-neutral-700 text-white"
+                aria-label="Increase"
+            >
+                <Plus className="w-3.5 h-3.5" />
+            </button>
+        </div>
+    )
+}
+
+function AidStationStopsPanel({
+    waypoints,
+    defaultDelay,
+    onChangeDefault,
+    onChangeWaypointDelay,
+}: {
+    waypoints: Waypoint[]
+    defaultDelay: number
+    onChangeDefault: (v: number) => void
+    onChangeWaypointDelay: (id: string, delay: number | null) => void
+}) {
+    const aidStations = waypoints
+        .filter(wp => wp.type === 'aid_station')
+        .sort((a, b) => a.mile - b.mile)
+
+    return (
+        <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6">
+            <h2 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                <Timer className="w-5 h-5 text-blue-500" /> Aid Station Stops
+            </h2>
+            <p className="text-xs text-neutral-500 mb-4">
+                Time spent at each aid station is added to your splits. Set a default and override individual stations. Re-generate the plan to see the chart update.
+            </p>
+
+            <div className="flex items-center justify-between bg-neutral-950/50 border border-neutral-800 rounded-lg px-3 py-2 mb-3">
+                <div>
+                    <div className="text-sm text-neutral-200">Default per aid station</div>
+                    <div className="text-[11px] text-neutral-600">Applies to stations without an override</div>
+                </div>
+                <Stepper
+                    value={defaultDelay}
+                    suffix="m"
+                    onDec={() => onChangeDefault(Math.max(0, defaultDelay - 1))}
+                    onInc={() => onChangeDefault(defaultDelay + 1)}
+                />
+            </div>
+
+            {aidStations.length === 0 ? (
+                <div className="text-xs text-neutral-600">No aid stations on this course yet.</div>
+            ) : (
+                <div className="space-y-2">
+                    {aidStations.map(wp => {
+                        const isOverride = wp.delay !== null && wp.delay !== undefined
+                        const effective = isOverride ? (wp.delay as number) : defaultDelay
+                        return (
+                            <div key={wp.id} className="grid grid-cols-[1fr_auto] gap-3 items-center bg-neutral-950/50 border border-neutral-800 rounded-lg px-3 py-2">
+                                <div className="min-w-0">
+                                    <div className="text-sm text-neutral-200 truncate">{wp.name}</div>
+                                    <div className="text-[11px] text-neutral-600">
+                                        Mile {wp.mile.toFixed(1)} · {isOverride ? (
+                                            <button type="button" onClick={() => onChangeWaypointDelay(wp.id, null)} className="text-blue-400 hover:text-blue-300">
+                                                use default
+                                            </button>
+                                        ) : 'default'}
+                                    </div>
+                                </div>
+                                <Stepper
+                                    value={effective}
+                                    suffix="m"
+                                    onDec={() => onChangeWaypointDelay(wp.id, Math.max(0, effective - 1))}
+                                    onInc={() => onChangeWaypointDelay(wp.id, effective + 1)}
+                                />
+                            </div>
+                        )
+                    })}
+                </div>
+            )}
+        </div>
     )
 }

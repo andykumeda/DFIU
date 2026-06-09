@@ -142,12 +142,12 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
         const actuals: ActualCheckin[] = checkins.map(c => ({ waypointId: c.waypoint_id, arrivedAt: new Date(c.arrived_at) }))
         try {
             return calculatePacePlan(samples, total, waypoints, terrainNodes,
-                { mode: 'time', value: target }, race, clock24h, actuals, runnerProfile)
+                { mode: 'time', value: target }, race, clock24h, actuals, runnerProfile, plans.aidStationDefaultDelay)
         } catch (err) {
             console.error('CrewView pace plan failed', err)
             return null
         }
-    }, [course, race, waypoints, terrainNodes, planMinutes, activePlan, checkins, clock24h, runnerProfile])
+    }, [course, race, waypoints, terrainNodes, planMinutes, activePlan, checkins, clock24h, runnerProfile, plans.aidStationDefaultDelay])
 
     const elapsedMin = useMemo(() => {
         if (!race?.start_datetime) return 0
