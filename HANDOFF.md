@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-08
 **Status:** Drop-bag map notes now surface in Drop Bags tab (notes + crew relay / next-leg fields).
-**Current HEAD:** (pending commit on `cursor/drop-bag-map-notes-706c`).
+**Current HEAD:** `c56a9be fix(race): sync map waypoint notes into drop bag view`.
 **Active task:** Continue product QA on Bay Area 100 flows.
 
 ## Recovery (2026-06-08)
