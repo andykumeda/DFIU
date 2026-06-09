@@ -398,8 +398,12 @@ export function calculatePacePlan(
                 synthetic: true,
             })
         }
-        const hasFinish = waypointArrivals.some(a => courseEndMile - a.mile <= EDGE_TOL)
-        if (!hasFinish && courseEndMile > 0) {
+        const finishWaypointIds = new Set(
+            sortedWaypoints.filter(wp => wp.type === 'finish').map(wp => wp.id)
+        )
+        const hasFinishAtEnd = waypointArrivals.some(a => courseEndMile - a.mile <= EDGE_TOL)
+        const hasRealFinish = waypointArrivals.some(a => finishWaypointIds.has(a.waypointId))
+        if (!hasFinishAtEnd && !hasRealFinish && courseEndMile > 0) {
             const prevMile = waypointArrivals.length > 0 ? waypointArrivals[waypointArrivals.length - 1].mile : 0
             const segDist = courseEndMile - prevMile
             const segTimeMin = currentElapsedTime - prevDepartureTime
@@ -416,6 +420,32 @@ export function calculatePacePlan(
                 mile: courseEndMile,
                 synthetic: true,
             })
+        }
+
+        // Drop synthetic finish when a real Finish waypoint exists (common when
+        // finish mile is snapped off the GPX end, e.g. loop courses like BA100).
+        if (hasRealFinish) {
+            const synthIdx = waypointArrivals.findIndex(a => a.waypointId === '__synthetic_finish__')
+            if (synthIdx !== -1) waypointArrivals.splice(synthIdx, 1)
+        }
+
+        // Collapse duplicate Finish rows — keep the real finish waypoint, or the
+        // row closest to the course end if only unnamed finishes remain.
+        const finishIndices = waypointArrivals
+            .map((a, i) => ({ i, a }))
+            .filter(({ a }) =>
+                finishWaypointIds.has(a.waypointId) ||
+                a.waypointId === '__synthetic_finish__' ||
+                a.name.toLowerCase() === 'finish'
+            )
+        if (finishIndices.length > 1) {
+            const keepIdx = finishIndices.find(({ a }) => finishWaypointIds.has(a.waypointId))?.i
+                ?? finishIndices.reduce((best, cur) =>
+                    courseEndMile - cur.a.mile < courseEndMile - best.a.mile ? cur : best
+                ).i
+            for (const idx of finishIndices.map(f => f.i).filter(i => i !== keepIdx).sort((a, b) => b - a)) {
+                waypointArrivals.splice(idx, 1)
+            }
         }
 
         return {

@@ -9,6 +9,8 @@ Use `HANDOFF.md` as the source of truth for current status and open work. Files 
 ## Workflow
 
 - Before starting product/code work, update `HANDOFF.md` with the current task and status so a broken session can resume cleanly.
+- **Commit every feature batch before ending a session.** Never leave multi-file product work uncommitted — uncommitted changes are not recoverable if the working tree is damaged.
+- `scripts/verify-critical-files.sh` runs on pre-commit and post-checkout; do not remove it.
 - Do not use GPG signing for commits.
 - Do not revert unrelated user changes.
 - Prefer `rg` for repository search.
@@ -19,6 +21,10 @@ Use `HANDOFF.md` as the source of truth for current status and open work. Files 
 
 ## Current Open Work
 
+See `HANDOFF.md` for the active queue. Highlights:
+
+- Crew View drop bag notes; pace chart drop bag access; start-line bag defaults.
+- Runner profile (strengths, pacing style, weather prefs) feeding pace algorithm.
 - Verify RBAC and invite flows end-to-end with a second account.
 - Move Visual Crossing weather calls out of the client bundle and into a Supabase Edge Function.
 - Build `/admin` and owner-transfer UI.

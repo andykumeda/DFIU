@@ -3,9 +3,15 @@
 import { useState } from 'react'
 import { toast } from 'react-hot-toast'
 import { Course, Race, TerrainNode, Waypoint } from '@/types/database'
-import { calculatePacePlan } from './pace-utils'
+import { calculatePacePlan, type PacePlanResult } from './pace-utils'
 import { usePacePlans, computePlanMinutes } from './usePacePlans'
-import { Calculator, Clock, TrendingUp, Activity, Users, Footprints, Moon, Sun, ArrowRight, Printer, AlertTriangle } from 'lucide-react'
+import {
+    getVisiblePaceChartColumns,
+    PACE_CHART_COLUMNS,
+    type PaceChartColumnId,
+    type PaceChartColumnsConfig,
+} from './pace-chart-columns'
+import { Calculator, Clock, TrendingUp, Activity, Users, Footprints, Moon, Sun, ArrowRight, Printer, AlertTriangle, Columns3, ChevronUp, ChevronDown, Eye, EyeOff } from 'lucide-react'
 
 interface PaceCalculatorProps {
     race: Race
@@ -53,7 +59,7 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
     const [plan, setPlan] = useState<ReturnType<typeof calculatePacePlan> | null>(null)
     const [calcError, setCalcError] = useState<string | null>(null)
 
-    const { plans, setPlanA, setPlanB, setPlanCBuffer, markCalculated } = usePacePlans(race.id)
+    const { plans, canEdit, setPlanA, setPlanB, setPlanCBuffer, markCalculated, setPaceChartColumns } = usePacePlans(race.id)
     const { planATimeStr, planBTimeStr, planCBufferStr } = plans
 
     const { a: planAMinutes, b: planBMinutes, c: planCMinutes } = computePlanMinutes(plans, race.overall_cutoff)
@@ -166,6 +172,112 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
         return hour >= 20 || hour < 6
     }
 
+    const visibleColumns = getVisiblePaceChartColumns(plans.paceChartColumns, isKm)
+
+    const updateColumnConfig = (next: PaceChartColumnsConfig) => {
+        if (canEdit) setPaceChartColumns(next)
+    }
+
+    const toggleColumnVisibility = (id: PaceChartColumnId) => {
+        const hidden = new Set(plans.paceChartColumns.hidden)
+        if (hidden.has(id)) hidden.delete(id)
+        else hidden.add(id)
+        updateColumnConfig({ ...plans.paceChartColumns, hidden: [...hidden] })
+    }
+
+    const moveColumn = (id: PaceChartColumnId, direction: -1 | 1) => {
+        const order = [...plans.paceChartColumns.order]
+        const idx = order.indexOf(id)
+        const target = idx + direction
+        if (idx === -1 || target < 0 || target >= order.length) return
+        ;[order[idx], order[target]] = [order[target], order[idx]]
+        updateColumnConfig({ ...plans.paceChartColumns, order })
+    }
+
+    const renderColumnCell = (
+        colId: PaceChartColumnId,
+        arrival: PacePlanResult['waypointArrivals'][number],
+        wp: Waypoint | undefined,
+        displayName: string,
+        displayMile: number,
+    ) => {
+        const align = colId === 'location' ? '' : 'text-right'
+        const base = `px-6 py-4 print:py-2 font-mono ${align}`
+
+        switch (colId) {
+            case 'location':
+                return (
+                    <td key={colId} className="px-6 py-4 print:py-2">
+                        <div className="font-medium text-white print:text-black flex items-center gap-2">
+                            <span>
+                                {displayName}
+                                {race.start_datetime && (
+                                    isNight(arrival.arrivalTime)
+                                        ? <span title="Nighttime Arrival" className="inline-flex items-center"><Moon className="w-3.5 h-3.5 text-blue-300 print:text-neutral-500 ml-1.5 print:hidden" /><span className="hidden print:inline text-neutral-500 ml-1 border px-1 rounded text-[10px]">NIGHT</span></span>
+                                        : <span title="Daytime Arrival" className="inline-flex items-center print:hidden"><Sun className="w-3.5 h-3.5 text-yellow-500 ml-1.5" /></span>
+                                )}
+                            </span>
+                            <div className="flex gap-1 ml-1 print:hidden">
+                                {wp?.crew_allowed && <span title="Crew Allowed"><Users className="w-4 h-4 text-green-400" /></span>}
+                                {wp?.pacer_allowed && <span title="Pacer Allowed"><Footprints className="w-4 h-4 text-blue-400" /></span>}
+                                {wp?.has_drop_bag && <span title="Drop Bag" className="text-[12px] opacity-90 leading-none flex items-center justify-center pt-0.5">🎒</span>}
+                            </div>
+                        </div>
+                    </td>
+                )
+            case 'mile':
+                return (
+                    <td key={colId} className={`${base} text-neutral-300 print:text-neutral-800`}>
+                        {(isKm ? displayMile * 1.60934 : displayMile).toFixed(2)}
+                    </td>
+                )
+            case 'segMile':
+                return (
+                    <td key={colId} className={`${base} text-neutral-400 print:text-neutral-600`}>
+                        {(isKm ? arrival.segmentMile * 1.60934 : arrival.segmentMile).toFixed(2)}
+                    </td>
+                )
+            case 'segmentTime':
+                return (
+                    <td key={colId} className={`${base} text-neutral-400 print:text-neutral-600`}>
+                        {arrival.segmentTime}
+                    </td>
+                )
+            case 'clockTime':
+                return (
+                    <td key={colId} className={`${base} font-semibold ${currentStrategy.timeText}`}>
+                        {arrival.timeOfDay}
+                    </td>
+                )
+            case 'elapsedTime':
+                return (
+                    <td key={colId} className={`${base} font-semibold ${currentStrategy.timeText}`}>
+                        {Math.floor(arrival.arrivalTime / 60)}:{Math.floor(arrival.arrivalTime % 60).toString().padStart(2, '0')}
+                    </td>
+                )
+            case 'segmentPace':
+                return (
+                    <td key={colId} className={`${base} text-neutral-400 print:text-neutral-600`}>
+                        {formatPace(arrival.segmentPace)}
+                    </td>
+                )
+            case 'overallPace':
+                return (
+                    <td key={colId} className={`${base} text-neutral-400 print:text-neutral-600`}>
+                        {formatPace(arrival.overallPace)}
+                    </td>
+                )
+            case 'cutoffTime':
+                return (
+                    <td key={colId} className={`${base} text-red-400 print:text-red-700 font-semibold max-w-[120px] truncate`} title={arrival.cutoffTime}>
+                        {arrival.cutoffTime || '--'}
+                    </td>
+                )
+            default:
+                return null
+        }
+    }
+
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6 max-w-7xl mx-auto print:block print:p-0">
             {/* Left Col: Configuration */}
@@ -246,6 +358,51 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                         Generate Plan
                     </button>
                 </div>
+
+                {plan && (
+                    <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6">
+                        <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                            <Columns3 className="w-5 h-5 text-blue-500" /> Print Columns
+                        </h2>
+                        <p className="text-xs text-neutral-500 mb-4">
+                            Choose which columns appear in the table and printout. Drag order with arrows.
+                        </p>
+                        <div className="space-y-2">
+                            {plans.paceChartColumns.order.map((colId, index) => {
+                                const def = PACE_CHART_COLUMNS.find(c => c.id === colId)
+                                if (!def) return null
+                                const hidden = plans.paceChartColumns.hidden.includes(colId)
+                                const label = colId === 'mile'
+                                    ? (isKm ? 'Km' : 'Mile')
+                                    : colId === 'segMile'
+                                        ? `Seg ${isKm ? 'Km' : 'Mile'}`
+                                        : def.label
+                                return (
+                                    <div key={colId} className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${hidden ? 'border-neutral-800/50 opacity-60' : 'border-neutral-800'}`}>
+                                        {canEdit ? (
+                                            <div className="flex flex-col">
+                                                <button onClick={() => moveColumn(colId, -1)} disabled={index === 0} className="text-neutral-500 hover:text-white disabled:opacity-30">
+                                                    <ChevronUp className="w-3.5 h-3.5" />
+                                                </button>
+                                                <button onClick={() => moveColumn(colId, 1)} disabled={index === plans.paceChartColumns.order.length - 1} className="text-neutral-500 hover:text-white disabled:opacity-30">
+                                                    <ChevronDown className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+                                        ) : null}
+                                        <span className="flex-1 text-sm text-neutral-300">{label}</span>
+                                        {canEdit ? (
+                                            <button onClick={() => toggleColumnVisibility(colId)} className="text-neutral-500 hover:text-white">
+                                                {hidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                            </button>
+                                        ) : (
+                                            <span className="text-xs text-neutral-600">{hidden ? 'Hidden' : 'Visible'}</span>
+                                        )}
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Right Col: Results */}
@@ -312,15 +469,14 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                                         style={{ top: 'var(--page-header-h, 112px)' }}
                                     >
                                         <tr>
-                                            <th className="px-6 py-3">Location</th>
-                                            <th className="px-6 py-3">{isKm ? 'Km' : 'Mile'}</th>
-                                            <th className="px-6 py-3">Seg {isKm ? 'Km' : 'Mile'}</th>
-                                            <th className="px-6 py-3 text-right">Segment Time</th>
-                                            <th className="px-6 py-3 text-right">Clock Time</th>
-                                            <th className="px-6 py-3 text-right">Elapsed Time</th>
-                                            <th className="px-6 py-3 text-right">Segment Pace</th>
-                                            <th className="px-6 py-3 text-right">Overall Pace</th>
-                                            <th className="px-6 py-3 text-right">Cutoff Time</th>
+                                            {visibleColumns.map(col => (
+                                                <th
+                                                    key={col.id}
+                                                    className={`px-6 py-3 ${col.align === 'right' ? 'text-right' : ''}`}
+                                                >
+                                                    {col.label}
+                                                </th>
+                                            ))}
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-neutral-800">
@@ -332,47 +488,9 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
 
                                             return (
                                                 <tr key={arrival.waypointId} className="hover:bg-neutral-800/50 transition-colors print:border-b print:border-neutral-200">
-                                                    <td className="px-6 py-4 print:py-2">
-                                                        <div className="font-medium text-white print:text-black flex items-center gap-2">
-                                                            <span>
-                                                                {displayName}
-                                                                {race.start_datetime && (
-                                                                    isNight(arrival.arrivalTime)
-                                                                        ? <span title="Nighttime Arrival" className="inline-flex items-center"><Moon className="w-3.5 h-3.5 text-blue-300 print:text-neutral-500 ml-1.5 print:hidden" /><span className="hidden print:inline text-neutral-500 ml-1 border px-1 rounded text-[10px]">NIGHT</span></span>
-                                                                        : <span title="Daytime Arrival" className="inline-flex items-center print:hidden"><Sun className="w-3.5 h-3.5 text-yellow-500 ml-1.5" /></span>
-                                                                )}
-                                                            </span>
-                                                            <div className="flex gap-1 ml-1 print:hidden">
-                                                                {wp?.crew_allowed && <span title="Crew Allowed"><Users className="w-4 h-4 text-green-400" /></span>}
-                                                                {wp?.pacer_allowed && <span title="Pacer Allowed"><Footprints className="w-4 h-4 text-blue-400" /></span>}
-                                                                {wp?.has_drop_bag && <span title="Drop Bag" className="text-[12px] opacity-90 leading-none flex items-center justify-center pt-0.5">🎒</span>}
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-6 py-4 print:py-2 font-mono text-neutral-300 print:text-neutral-800">
-                                                        {(isKm ? displayMile * 1.60934 : displayMile).toFixed(2)}
-                                                    </td>
-                                                    <td className="px-6 py-4 print:py-2 font-mono text-neutral-400 print:text-neutral-600">
-                                                        {(isKm ? arrival.segmentMile * 1.60934 : arrival.segmentMile).toFixed(2)}
-                                                    </td>
-                                                    <td className="px-6 py-4 print:py-2 text-right font-mono text-neutral-400 print:text-neutral-600">
-                                                        {arrival.segmentTime}
-                                                    </td>
-                                                    <td className={`px-6 py-4 print:py-2 text-right font-mono font-semibold ${currentStrategy.timeText}`}>
-                                                        {arrival.timeOfDay}
-                                                    </td>
-                                                    <td className={`px-6 py-4 print:py-2 text-right font-mono font-semibold ${currentStrategy.timeText}`}>
-                                                        {Math.floor(arrival.arrivalTime / 60)}:{Math.floor(arrival.arrivalTime % 60).toString().padStart(2, '0')}
-                                                    </td>
-                                                    <td className="px-6 py-4 print:py-2 text-right font-mono text-neutral-400 print:text-neutral-600">
-                                                        {formatPace(arrival.segmentPace)}
-                                                    </td>
-                                                    <td className="px-6 py-4 print:py-2 text-right font-mono text-neutral-400 print:text-neutral-600">
-                                                        {formatPace(arrival.overallPace)}
-                                                    </td>
-                                                    <td className="px-6 py-4 print:py-2 text-right font-mono text-red-400 print:text-red-700 font-semibold max-w-[120px] truncate" title={arrival.cutoffTime}>
-                                                        {arrival.cutoffTime || '--'}
-                                                    </td>
+                                                    {visibleColumns.map(col =>
+                                                        renderColumnCell(col.id, arrival, wp, displayName, displayMile)
+                                                    )}
                                                 </tr>
                                             )
                                         })}

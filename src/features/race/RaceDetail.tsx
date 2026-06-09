@@ -26,6 +26,7 @@ import { TerrainSidebar } from '@/features/course/TerrainSidebar'
 import { TerrainTypeValue, TERRAIN_TYPES, getTerrainColor, getTerrainDefaultDifficulty } from '@/features/course/terrain-constants'
 import { PaceCalculator } from '@/features/race/PaceCalculator'
 import { RaceResources } from '@/features/race/RaceResources'
+import { WeatherLocations } from '@/features/race/WeatherLocations'
 import { DropBagsSection } from '@/features/race/DropBagsSection'
 
 const CrewView = lazy(() =>
@@ -72,13 +73,6 @@ function RoleSwitcher({ raceId, views }: { raceId: string; views: Array<'full' |
 
 export function RaceDetail({ raceId }: { raceId: string }) {
   const { user } = useAuth()
-  const {
-    canEdit,
-    canView,
-    isAdmin,
-    canManageTeam,
-    availableRoleViews,
-  } = usePermission(raceId)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState<Tab>('overview')
@@ -125,6 +119,14 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       return data as Race
     }
   })
+
+  const {
+    canEdit,
+    canEditRaceSettings,
+    isAdmin,
+    canManageTeam,
+    availableRoleViews,
+  } = usePermission(raceId, race?.race_director_user_id)
 
   // Auto-fetch weather if missing — edit-perm only to avoid races and unauthorized writes
   useEffect(() => {
@@ -992,7 +994,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     { id: 'plan', label: 'Pace Plan' },
     { id: 'drop_bags', label: 'Drop Bags' },
     { id: 'resources', label: 'Resources' },
-    ...(canView ? [{ id: 'crew' as Tab, label: 'Crew' }] : []),
+    { id: 'crew', label: 'Crew' },
     ...(canManageTeam ? [{ id: 'members' as Tab, label: 'Members' }] : []),
   ]
 
@@ -1517,12 +1519,13 @@ export function RaceDetail({ raceId }: { raceId: string }) {
           <div className="animate-in fade-in duration-500">
             <RaceResources
               race={race}
+              canEdit={canEditRaceSettings}
               onUpdate={() => queryClient.invalidateQueries({ queryKey: ['race', raceId] })}
             />
           </div>
         )}
 
-        {activeTab === 'crew' && canView && (
+        {activeTab === 'crew' && (
           <div className="animate-in fade-in duration-500 max-w-5xl mx-auto">
             <Suspense fallback={<div className='p-6 text-white text-center'>Loading crew view…</div>}>
               <CrewView raceId={raceId} embedded />
@@ -1696,6 +1699,8 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                     </div>
                   )
                 })()}
+
+                {race && <WeatherLocations race={race} course={course ?? null} canEdit={canEdit} />}
               </div>
 
               <div className="bg-neutral-900/30 rounded-xl p-6 border border-neutral-800/50">

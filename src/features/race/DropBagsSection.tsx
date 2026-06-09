@@ -4,6 +4,8 @@ import { calculatePacePlan } from './pace-utils'
 import { usePacePlans, computePlanMinutes } from './usePacePlans'
 import { Backpack, Clock, Sun, Moon, Info, Printer, List, ChevronDown, ChevronUp, Target } from 'lucide-react'
 import { DropBagModal } from './DropBagModal'
+import { DropBagTemplateEditor } from './DropBagTemplateEditor'
+import { usePermission } from '@/features/auth/usePermission'
 import SunCalc from 'suncalc'
 
 interface DropBagsSectionProps {
@@ -16,6 +18,7 @@ interface DropBagsSectionProps {
 }
 
 export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24h = false, onGoToPacePlan }: DropBagsSectionProps) {
+    const { canEdit, canEditRaceSettings } = usePermission(race.id, race.race_director_user_id)
     const [selectedWaypoint, setSelectedWaypoint] = useState<Waypoint | null>(null)
     const [isSidePanelOpen, setIsSidePanelOpen] = useState(true)
     const [collapsedStations, setCollapsedStations] = useState<Record<string, boolean>>({})
@@ -108,13 +111,16 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                         <span className="print:hidden">Drop Bag Planner</span>
                         <span className="hidden print:inline-block">Drop Bags - {race.name}</span>
                     </h2>
-                    <button
-                        onClick={() => window.print()}
-                        className="print:hidden flex items-center gap-2 bg-neutral-800 hover:bg-neutral-700 text-white px-4 py-2 rounded-lg transition-colors text-sm font-medium"
-                    >
-                        <Printer className="w-4 h-4" />
-                        Print List
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <DropBagTemplateEditor race={race} canEdit={canEditRaceSettings} />
+                        <button
+                            onClick={() => window.print()}
+                            className="print:hidden flex items-center gap-2 bg-neutral-800 hover:bg-neutral-700 text-white px-4 py-2 rounded-lg transition-colors text-sm font-medium"
+                        >
+                            <Printer className="w-4 h-4" />
+                            Print List
+                        </button>
+                    </div>
                 </div>
 
                 {hasConditions && (
@@ -201,6 +207,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                     <DropBagModal
                         waypoint={selectedWaypoint}
                         race={race}
+                        canEdit={canEdit}
                         arrivalTime={planA?.waypointArrivals.find(a => a.waypointId === selectedWaypoint.id)}
                         isNight={
                             planA?.waypointArrivals.find(a => a.waypointId === selectedWaypoint.id)

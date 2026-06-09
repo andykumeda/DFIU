@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+# After branch checkout only ($3=1), ensure core sources were not left deleted.
+if [ "$3" = "1" ]; then
+  ./scripts/verify-critical-files.sh || {
+    echo "post-checkout: run 'git restore --source=HEAD -- .' if files were accidentally removed" >&2
+    exit 1
+  }
+fi

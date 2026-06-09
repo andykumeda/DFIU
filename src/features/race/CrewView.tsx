@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, MapPin, Navigation2, Clock, Package, CheckCircle2, AlertCircle } from 'lucide-react'
+import { ArrowLeft, MapPin, Navigation2, Clock, CheckCircle2, AlertCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/features/auth/AuthContext'
@@ -49,7 +49,7 @@ interface CrewViewProps {
 export function CrewView({ raceId, embedded = false }: CrewViewProps) {
     const { profile } = useAuth() as { profile: { clock_24h?: boolean } | null }
     const clock24h = !!profile?.clock_24h
-    const { canView, canLogCheckins } = usePermission(raceId)
+    const { canLogCheckins } = usePermission(raceId)
 
     const [race, setRace] = useState<Race | null>(null)
     const [course, setCourse] = useState<Course | null>(null)
@@ -220,6 +220,13 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
     const [checkinTime, setCheckinTime] = useState<string>('')   // HH:MM local 24h or 12h
     const [checkinDate, setCheckinDate] = useState<string>('')   // YYYY-MM-DD
     const [showCheckin, setShowCheckin] = useState(false)
+    const [dropBagWaypoint, setDropBagWaypoint] = useState<Waypoint | null>(null)
+
+    // Next crew-accessible aid station after a given station (for leg directions).
+    const nextCrewAfter = (wp: Waypoint): Waypoint | null => {
+        const sorted = [...waypoints].sort((a, b) => a.mile - b.mile)
+        return sorted.find(w => w.mile > wp.mile + 0.001 && !!w.crew_allowed) ?? null
+    }
 
     const openCheckin = (wp: Waypoint) => {
         const d = new Date()
@@ -250,15 +257,16 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
         }
     }
 
-    if (!canView && !loading) {
+    if (loading) return <div className='p-6 text-white text-center'>Loading...</div>
+    if (!race) {
         return (
             <div className='p-6 text-white text-center'>
                 <AlertCircle className='w-8 h-8 mx-auto mb-2 text-amber-400' />
-                <div className='font-semibold'>You don't have access to this race.</div>
+                <div className='font-semibold'>This race isn't available.</div>
+                <div className='text-sm text-neutral-400 mt-1'>It may be private. Ask the owner for access.</div>
             </div>
         )
     }
-    if (loading || !race) return <div className='p-6 text-white text-center'>Loading...</div>
 
     const lastCheckin = checkins.length > 0 ? checkins[checkins.length - 1] : null
     const lastCheckinWp = lastCheckin ? waypoints.find(w => w.id === lastCheckin.waypoint_id) : null
@@ -414,7 +422,7 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
                 {nextCrewWaypoint && (
                     <section className='bg-neutral-900 rounded-lg p-3'>
                         <div className='flex items-center gap-2 mb-2'>
-                            <Package className='w-4 h-4 text-emerald-400' />
+                            <span className='text-base leading-none' aria-hidden>🎒</span>
                             <div className='text-sm font-semibold'>Drop bag · {nextCrewWaypoint.name}</div>
                         </div>
                         <DropBagSummary waypoint={nextCrewWaypoint} />
@@ -524,14 +532,42 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
                                             <span className={arrival ? planColors[activePlan].text : ''}>{arrival?.timeOfDay ?? '—'}</span>
                                         </div>
                                     </div>
-                                    {canLogCheckins && (
-                                        <button
-                                            onClick={() => openCheckin(wp)}
-                                            className='text-xs px-2 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300'
-                                        >
-                                            Log
-                                        </button>
-                                    )}
+                                    <div className='flex items-center gap-1 shrink-0'>
+                                        {wp.crew_allowed && wp.has_drop_bag && (
+                                            <button
+                                                onClick={() => setDropBagWaypoint(wp)}
+                                                title={`Drop bag · ${wp.name}`}
+                                                aria-label={`Drop bag for ${wp.name}`}
+                                                className='p-1.5 rounded bg-neutral-800 hover:bg-neutral-700 text-emerald-300 text-sm leading-none'
+                                            >
+                                                <span aria-hidden>🎒</span>
+                                            </button>
+                                        )}
+                                        {wp.crew_allowed && (() => {
+                                            const dest = nextCrewAfter(wp)
+                                            if (!dest) return null
+                                            return (
+                                                <a
+                                                    href={`https://www.google.com/maps/dir/?api=1&origin=${wp.lat},${wp.lon}&destination=${dest.lat},${dest.lon}&travelmode=driving`}
+                                                    target='_blank'
+                                                    rel='noopener noreferrer'
+                                                    title={`Directions to ${dest.name}`}
+                                                    aria-label={`Directions from ${wp.name} to ${dest.name}`}
+                                                    className='p-1.5 rounded bg-neutral-800 hover:bg-neutral-700 text-blue-300'
+                                                >
+                                                    <Navigation2 className='w-4 h-4' />
+                                                </a>
+                                            )
+                                        })()}
+                                        {canLogCheckins && (
+                                            <button
+                                                onClick={() => openCheckin(wp)}
+                                                className='text-xs px-2 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300'
+                                            >
+                                                Log
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             )
                         })}
@@ -607,23 +643,81 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
                     </div>
                 </div>
             )}
+
+            {/* Drop bag detail modal */}
+            {dropBagWaypoint && (
+                <div
+                    className='fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-3'
+                    onClick={() => setDropBagWaypoint(null)}
+                >
+                    <div
+                        className='bg-neutral-900 rounded-lg w-full max-w-md p-4 space-y-3 max-h-[85vh] overflow-y-auto'
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className='flex items-start justify-between gap-3'>
+                            <div className='min-w-0'>
+                                <div className='font-semibold flex items-center gap-2'>
+                                    <span className='text-base leading-none shrink-0' aria-hidden>🎒</span>
+                                    <span className='truncate'>Drop bag · {dropBagWaypoint.name}</span>
+                                </div>
+                                <div className='text-xs text-neutral-400 mt-0.5'>
+                                    Mile {dropBagWaypoint.mile.toFixed(1)}
+                                    {dropBagWaypoint.drop_bag_name ? ` · ${dropBagWaypoint.drop_bag_name}` : ''}
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setDropBagWaypoint(null)}
+                                className='text-neutral-400 hover:text-white shrink-0'
+                            >
+                                Close
+                            </button>
+                        </div>
+
+                        <DropBagSummary waypoint={dropBagWaypoint} />
+
+                        {dropBagWaypoint.drop_bag_notes && (
+                            <div className='bg-neutral-800 rounded p-2 text-sm whitespace-pre-wrap'>
+                                <div className='text-xs text-neutral-400 mb-1'>Crew instructions</div>
+                                {dropBagWaypoint.drop_bag_notes}
+                            </div>
+                        )}
+                        {dropBagWaypoint.crew_relay_notes && (
+                            <div className='bg-blue-950/50 border border-blue-900/60 rounded p-2 text-sm whitespace-pre-wrap'>
+                                <div className='text-xs text-blue-300 mb-1'>Tell runner</div>
+                                {dropBagWaypoint.crew_relay_notes}
+                            </div>
+                        )}
+                        {dropBagWaypoint.runner_next_leg_notes && (
+                            <div className='bg-amber-950/40 border border-amber-900/60 rounded p-2 text-sm whitespace-pre-wrap'>
+                                <div className='text-xs text-amber-300 mb-1'>Next leg reminder</div>
+                                {dropBagWaypoint.runner_next_leg_notes}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
 
 function DropBagSummary({ waypoint }: { waypoint: Waypoint }) {
-    const items = (waypoint.drop_bag_items as Array<{ label?: string; name?: string; qty?: number; quantity?: number; checked?: boolean }> | null) ?? []
+    const allItems = (waypoint.drop_bag_items as Array<{ text?: string; label?: string; name?: string; qty?: number; quantity?: number | string; checked?: boolean }> | null) ?? []
+    // Items use a `checked` flag to mean "packed". Show packed items; if the
+    // runner hasn't checked anything yet, fall back to the full planned list.
+    const packed = allItems.filter(it => it.checked)
+    const items = packed.length ? packed : allItems
     if (!items.length) return <div className='text-sm text-neutral-400'>No drop bag items recorded.</div>
     return (
         <ul className='space-y-1'>
             {items.map((it, i) => {
-                const label = it.label || it.name || 'Item'
-                const qty = it.qty ?? it.quantity
+                const label = it.text || it.label || it.name || 'Item'
+                const qty = it.quantity ?? it.qty
+                const hasQty = qty != null && String(qty).trim() !== ''
                 return (
                     <li key={i} className='flex items-center gap-2 text-sm'>
                         <span className='w-1.5 h-1.5 rounded-full bg-emerald-400' />
                         <span className='flex-1'>{label}</span>
-                        {qty != null && <span className='text-neutral-400 text-xs'>×{qty}</span>}
+                        {hasQty && <span className='text-neutral-400 text-xs'>×{qty}</span>}
                     </li>
                 )
             })}

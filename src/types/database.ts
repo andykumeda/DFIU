@@ -188,6 +188,7 @@ export type Database = {
       race_pace_plans: {
         Row: {
           has_calculated: boolean
+          pace_chart_columns: Json | null
           plan_a_time: string
           plan_b_time: string | null
           plan_c_buffer: string
@@ -197,6 +198,7 @@ export type Database = {
         }
         Insert: {
           has_calculated?: boolean
+          pace_chart_columns?: Json | null
           plan_a_time?: string
           plan_b_time?: string | null
           plan_c_buffer?: string
@@ -206,6 +208,7 @@ export type Database = {
         }
         Update: {
           has_calculated?: boolean
+          pace_chart_columns?: Json | null
           plan_a_time?: string
           plan_b_time?: string | null
           plan_c_buffer?: string
@@ -234,6 +237,7 @@ export type Database = {
           course_type: string | null
           created_at: string | null
           distance_miles: number | null
+          drop_bag_template: Json | null
           entrants_url: string | null
           id: string
           is_official: boolean
@@ -256,6 +260,7 @@ export type Database = {
           racebook_last_updated: string | null
           racebook_url: string | null
           registration_url: string | null
+          resources_config: Json | null
           start_datetime: string | null
           sunrise_time: string | null
           sunset_time: string | null
@@ -265,6 +270,7 @@ export type Database = {
           updated_at: string | null
           user_id: string
           weather_history: Json | null
+          weather_locations: Json | null
           weather_notes: string | null
           website_url: string | null
         }
@@ -278,6 +284,7 @@ export type Database = {
           course_type?: string | null
           created_at?: string | null
           distance_miles?: number | null
+          drop_bag_template?: Json | null
           entrants_url?: string | null
           id?: string
           is_official?: boolean
@@ -300,6 +307,7 @@ export type Database = {
           racebook_last_updated?: string | null
           racebook_url?: string | null
           registration_url?: string | null
+          resources_config?: Json | null
           start_datetime?: string | null
           sunrise_time?: string | null
           sunset_time?: string | null
@@ -309,6 +317,7 @@ export type Database = {
           updated_at?: string | null
           user_id: string
           weather_history?: Json | null
+          weather_locations?: Json | null
           weather_notes?: string | null
           website_url?: string | null
         }
@@ -322,6 +331,7 @@ export type Database = {
           course_type?: string | null
           created_at?: string | null
           distance_miles?: number | null
+          drop_bag_template?: Json | null
           entrants_url?: string | null
           id?: string
           is_official?: boolean
@@ -344,6 +354,7 @@ export type Database = {
           racebook_last_updated?: string | null
           racebook_url?: string | null
           registration_url?: string | null
+          resources_config?: Json | null
           start_datetime?: string | null
           sunrise_time?: string | null
           sunset_time?: string | null
@@ -353,6 +364,7 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
           weather_history?: Json | null
+          weather_locations?: Json | null
           weather_notes?: string | null
           website_url?: string | null
         }

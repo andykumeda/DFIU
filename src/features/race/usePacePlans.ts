@@ -2,12 +2,18 @@ import React from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/features/auth/AuthContext'
 import { usePermission } from '@/features/auth/usePermission'
+import {
+    DEFAULT_PACE_CHART_COLUMNS,
+    parsePaceChartColumns,
+    type PaceChartColumnsConfig,
+} from './pace-chart-columns'
 
 export interface PacePlans {
     planATimeStr: string   // HH:MM, default '24:00'
     planBTimeStr: string   // HH:MM or '' (auto-compute midpoint)
     planCBufferStr: string // HH:MM, default '00:30'
     hasCalculated: boolean
+    paceChartColumns: PaceChartColumnsConfig
 }
 
 const DEFAULTS: PacePlans = {
@@ -15,6 +21,7 @@ const DEFAULTS: PacePlans = {
     planBTimeStr: '',
     planCBufferStr: '00:30',
     hasCalculated: false,
+    paceChartColumns: { ...DEFAULT_PACE_CHART_COLUMNS, order: [...DEFAULT_PACE_CHART_COLUMNS.order], hidden: [] },
 }
 
 const legacyKey = (raceId: string) => `pace_plans_${raceId}`
@@ -45,6 +52,7 @@ type Row = {
     plan_b_time: string | null
     plan_c_buffer: string
     has_calculated: boolean
+    pace_chart_columns: unknown
 }
 
 function rowToPlans(row: Row): PacePlans {
@@ -53,6 +61,7 @@ function rowToPlans(row: Row): PacePlans {
         planBTimeStr: row.plan_b_time ?? '',
         planCBufferStr: row.plan_c_buffer || DEFAULTS.planCBufferStr,
         hasCalculated: !!row.has_calculated,
+        paceChartColumns: parsePaceChartColumns(row.pace_chart_columns),
     }
 }
 
@@ -63,6 +72,7 @@ function plansToRow(p: PacePlans, raceId: string, userId: string | null) {
         plan_b_time: p.planBTimeStr === '' ? null : p.planBTimeStr,
         plan_c_buffer: p.planCBufferStr,
         has_calculated: p.hasCalculated,
+        pace_chart_columns: p.paceChartColumns,
         updated_by: userId,
         updated_at: new Date().toISOString(),
     }
@@ -81,7 +91,7 @@ export function usePacePlans(raceId: string) {
         ;(async () => {
             const { data, error } = await supabase
                 .from('race_pace_plans')
-                .select('plan_a_time, plan_b_time, plan_c_buffer, has_calculated')
+                .select('plan_a_time, plan_b_time, plan_c_buffer, has_calculated, pace_chart_columns')
                 .eq('race_id', raceId)
                 .maybeSingle()
 
@@ -149,6 +159,7 @@ export function usePacePlans(raceId: string) {
         setPlanB: (v: string) => update({ planBTimeStr: v }),
         setPlanCBuffer: (v: string) => update({ planCBufferStr: v, planBTimeStr: '' }),
         markCalculated: () => update({ hasCalculated: true }),
+        setPaceChartColumns: (v: PaceChartColumnsConfig) => update({ paceChartColumns: v }),
     }
 }
 

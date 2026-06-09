@@ -1,2 +1,2 @@
-npm run build
+./scripts/verify-critical-files.sh
 npx lint-staged

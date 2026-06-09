@@ -3,46 +3,24 @@ import { Race, Waypoint } from '@/types/database'
 import { X, Save, Plus, Trash2, Clock, Sun, Moon, Info, CheckCircle2, Circle } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-
-interface DropBagItem {
-    id: string
-    text: string
-    category: string
-    checked: boolean
-    quantity?: string
-}
+import {
+    DROP_BAG_CATEGORIES,
+    DropBagItem,
+    mergeTemplateIntoItems,
+    parseDropBagTemplate,
+    seedDropBagItems,
+} from './drop-bag-shared'
 
 interface DropBagModalProps {
     waypoint: Waypoint
     race: Race
     arrivalTime?: { arrivalTime: number, timeOfDay: string }
     isNight: boolean
+    canEdit?: boolean
     onClose: () => void
 }
 
-const CATEGORIES = [
-    { id: 'hydration', label: 'Hydration & Nutrition' },
-    { id: 'gear', label: 'Gear & Clothing' },
-    { id: 'medical', label: 'Medical & Care' },
-    { id: 'conditions', label: 'Condition Specific (Smart)' },
-    { id: 'custom', label: 'Custom' }
-]
-
-const STANDARD_ITEMS = [
-    { text: 'Flasks / Bladder refilled', category: 'hydration' },
-    { text: 'Gels / Chews', category: 'hydration' },
-    { text: 'Drink Mix / Electrolytes', category: 'hydration' },
-    { text: 'Solid Food (Bars, Waffles)', category: 'hydration' },
-    { text: 'Fresh Socks', category: 'gear' },
-    { text: 'Extra Shoes', category: 'gear' },
-    { text: 'Clean Shirt', category: 'gear' },
-    { text: 'Chafe Cream', category: 'medical' },
-    { text: 'Blister Kit / Tape', category: 'medical' },
-    { text: 'Sunscreen', category: 'medical' },
-    { text: 'Tissues / Wipes', category: 'medical' },
-]
-
-export function DropBagModal({ waypoint, race, arrivalTime, isNight, onClose }: DropBagModalProps) {
+export function DropBagModal({ waypoint, race, arrivalTime, isNight, canEdit = true, onClose }: DropBagModalProps) {
     const queryClient = useQueryClient()
     const [items, setItems] = useState<DropBagItem[]>([])
     const [newItemText, setNewItemText] = useState('')
@@ -50,44 +28,21 @@ export function DropBagModal({ waypoint, race, arrivalTime, isNight, onClose }: 
     const [bagName, setBagName] = useState(waypoint.drop_bag_name || '')
     const [bagNotes, setBagNotes] = useState(waypoint.drop_bag_notes || '')
 
-    // Build smart suggestions based on conditions
     const isHot = parseInt(race.avg_temp_high || '0') >= 80
     const isCold = parseInt(race.avg_temp_low || '100') <= 40
+    const template = parseDropBagTemplate(race.drop_bag_template)
 
     useEffect(() => {
         const existingData = waypoint.drop_bag_items as unknown as DropBagItem[]
         if (existingData && Array.isArray(existingData) && existingData.length > 0) {
-            setItems(existingData)
+            setItems(mergeTemplateIntoItems(existingData, template, { isNight, isHot, isCold }))
         } else {
-            // Seed with sensible defaults if empty
-            const seedItems: DropBagItem[] = STANDARD_ITEMS.map((item, i) => ({
-                id: `std_${i}`,
-                text: item.text,
-                category: item.category,
-                checked: false
-            }))
-
-            // Add smart suggestions
-            if (isNight) {
-                seedItems.push({ id: 'smart_night_1', text: 'Headlamp', category: 'conditions', checked: false })
-                seedItems.push({ id: 'smart_night_2', text: 'Backup Batteries/Light', category: 'conditions', checked: false })
-                seedItems.push({ id: 'smart_night_3', text: 'Reflective Gear', category: 'conditions', checked: false })
-            }
-            if (isHot) {
-                seedItems.push({ id: 'smart_hot_1', text: 'Ice Bandana', category: 'conditions', checked: false })
-                seedItems.push({ id: 'smart_hot_2', text: 'Arm Coolers', category: 'conditions', checked: false })
-            }
-            if (isCold) {
-                seedItems.push({ id: 'smart_cold_1', text: 'Warm Gloves', category: 'conditions', checked: false })
-                seedItems.push({ id: 'smart_cold_2', text: 'Jacket / Windbreaker', category: 'conditions', checked: false })
-                seedItems.push({ id: 'smart_cold_3', text: 'Beanie / Buff', category: 'conditions', checked: false })
-            }
-
-            setItems(seedItems)
+            setItems(seedDropBagItems(template, { isNight, isHot, isCold }))
         }
-    }, [waypoint.drop_bag_items, isNight, isHot, isCold])
+    }, [waypoint.drop_bag_items, isNight, isHot, isCold, race.drop_bag_template])
 
     const handleSave = async () => {
+        if (!canEdit) return
         setSaving(true)
         try {
             const { error } = await (supabase
@@ -111,33 +66,35 @@ export function DropBagModal({ waypoint, race, arrivalTime, isNight, onClose }: 
     }
 
     const toggleItem = (id: string) => {
+        if (!canEdit) return
         setItems(prev => prev.map(item => item.id === id ? { ...item, checked: !item.checked } : item))
     }
 
     const deleteItem = (id: string) => {
+        if (!canEdit) return
         setItems(prev => prev.filter(item => item.id !== id))
     }
 
     const updateQuantity = (id: string, quantity: string) => {
+        if (!canEdit) return
         setItems(prev => prev.map(item => item.id === id ? { ...item, quantity } : item))
     }
 
     const addItem = (e: React.FormEvent) => {
         e.preventDefault()
-        if (!newItemText.trim()) return
+        if (!canEdit || !newItemText.trim()) return
 
         const newItem: DropBagItem = {
             id: `custom_${Date.now()}`,
             text: newItemText.trim(),
             category: 'custom',
-            checked: true // auto-check custom items
+            checked: true
         }
         setItems(prev => [...prev, newItem])
         setNewItemText('')
     }
 
-    // Group items for display
-    const itemsByCategory = CATEGORIES.reduce((acc, cat) => {
+    const itemsByCategory = DROP_BAG_CATEGORIES.reduce((acc, cat) => {
         const catItems = items.filter(i => i.category === cat.id)
         if (catItems.length > 0) acc[cat.id] = catItems
         return acc
@@ -148,11 +105,11 @@ export function DropBagModal({ waypoint, race, arrivalTime, isNight, onClose }: 
             <div className="flex min-h-full items-center justify-center p-4">
                 <div className="bg-neutral-900 w-full max-w-2xl rounded-2xl border border-neutral-800 shadow-2xl flex flex-col max-h-[calc(100dvh-2rem)] animate-in zoom-in-95 duration-200">
 
-                {/* Header */}
                 <div className="flex justify-between items-center p-6 border-b border-neutral-800 shrink-0">
                     <div>
                         <h2 className="text-xl font-bold text-white mb-1 flex items-center gap-2">
                             {bagName || `Drop Bag: ${waypoint.name}`}
+                            {!canEdit && <span className="text-xs font-normal text-neutral-500">(view only)</span>}
                         </h2>
                         <div className="flex items-center gap-3 text-sm text-neutral-400">
                             <span>Mile {waypoint.mile.toFixed(1)}</span>
@@ -170,37 +127,34 @@ export function DropBagModal({ waypoint, race, arrivalTime, isNight, onClose }: 
                     </button>
                 </div>
 
-                {/* Body */}
                 <div className="p-6 overflow-y-auto space-y-8 flex-1">
 
-                    {/* Smart Notice */}
                     {(isNight || isHot || isCold) && (
                         <div className="bg-blue-900/20 border border-blue-900/50 rounded-xl p-4 flex gap-3 text-sm">
                             <Info className="w-5 h-5 text-blue-400 shrink-0" />
                             <div>
                                 <strong className="text-white block mb-0.5">Smart Suggestions Active</strong>
                                 <span className="text-blue-200">
-                                    We've added some suggestions to the "Condition Specific" category below based on your estimated arrival time and race weather data.
+                                    Condition-specific items are added based on estimated arrival time and race weather.
                                 </span>
                             </div>
                         </div>
                     )}
 
-                    {/* Bag Name */}
                     <div className="bg-neutral-950/50 border border-neutral-800 rounded-xl p-4">
                         <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1.5">Bag Name / Identifying Info</label>
                         <input
                             type="text"
                             value={bagName}
                             onChange={e => setBagName(e.target.value)}
+                            readOnly={!canEdit}
                             placeholder="e.g. Red Salomon Bag"
-                            className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-white placeholder-neutral-600 focus:outline-none focus:border-orange-500 transition-colors"
+                            className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-white placeholder-neutral-600 focus:outline-none focus:border-orange-500 transition-colors disabled:opacity-70"
                         />
                     </div>
 
-                    {/* Checklists */}
                     <div className="space-y-6">
-                        {CATEGORIES.map(category => {
+                        {DROP_BAG_CATEGORIES.map(category => {
                             const catItems = itemsByCategory[category.id]
                             if (!catItems) return null
 
@@ -215,10 +169,10 @@ export function DropBagModal({ waypoint, race, arrivalTime, isNight, onClose }: 
                                         {catItems.map(item => (
                                             <div
                                                 key={item.id}
-                                                className={`flex items-center justify-between p-3 rounded-lg border transition-colors cursor-pointer group ${item.checked
+                                                className={`flex items-center justify-between p-3 rounded-lg border transition-colors group ${item.checked
                                                     ? 'bg-neutral-800/80 border-neutral-700 text-white'
                                                     : 'bg-neutral-950/50 border-neutral-800 text-neutral-400 hover:bg-neutral-900'
-                                                    }`}
+                                                    } ${canEdit ? 'cursor-pointer' : ''}`}
                                             >
                                                 <div className="flex items-center gap-3 flex-1" onClick={() => toggleItem(item.id)}>
                                                     {item.checked ? (
@@ -236,16 +190,19 @@ export function DropBagModal({ waypoint, race, arrivalTime, isNight, onClose }: 
                                                         value={item.quantity || ''}
                                                         onChange={(e) => updateQuantity(item.id, e.target.value)}
                                                         onClick={(e) => e.stopPropagation()}
+                                                        readOnly={!canEdit}
                                                         className="w-16 bg-neutral-950 border border-neutral-700 rounded px-2 py-1 text-sm text-center focus:outline-none focus:border-orange-500 mx-2 text-white"
                                                     />
                                                 )}
 
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); deleteItem(item.id) }}
-                                                    className="opacity-0 group-hover:opacity-100 text-neutral-600 hover:text-red-400 p-1 rounded transition-all shrink-0"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
+                                                {canEdit && (
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); deleteItem(item.id) }}
+                                                        className="opacity-0 group-hover:opacity-100 text-neutral-600 hover:text-red-400 p-1 rounded transition-all shrink-0"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                )}
                                             </div>
                                         ))}
                                     </div>
@@ -254,33 +211,34 @@ export function DropBagModal({ waypoint, race, arrivalTime, isNight, onClose }: 
                         })}
                     </div>
 
-                    {/* Add Custom Item (Moved to bottom) */}
-                    <div className="pt-4 border-t border-neutral-800">
-                        <h3 className="text-sm font-bold uppercase tracking-wider text-neutral-500 mb-3">Add Custom Item</h3>
-                        <form onSubmit={addItem} className="flex gap-2">
-                            <input
-                                type="text"
-                                value={newItemText}
-                                onChange={e => setNewItemText(e.target.value)}
-                                placeholder="Add custom item (e.g. Magic Noodle Soup)"
-                                className="flex-1 bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-2.5 text-white placeholder-neutral-600 focus:outline-none focus:border-orange-500 transition-colors"
-                            />
-                            <button
-                                type="submit"
-                                disabled={!newItemText.trim()}
-                                className="bg-neutral-800 hover:bg-neutral-700 disabled:opacity-50 text-white px-4 py-2.5 rounded-lg font-medium transition-colors flex items-center gap-2"
-                            >
-                                <Plus className="w-4 h-4" /> Add
-                            </button>
-                        </form>
-                    </div>
+                    {canEdit && (
+                        <div className="pt-4 border-t border-neutral-800">
+                            <h3 className="text-sm font-bold uppercase tracking-wider text-neutral-500 mb-3">Add Custom Item</h3>
+                            <form onSubmit={addItem} className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={newItemText}
+                                    onChange={e => setNewItemText(e.target.value)}
+                                    placeholder="Add custom item (e.g. Magic Noodle Soup)"
+                                    className="flex-1 bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-2.5 text-white placeholder-neutral-600 focus:outline-none focus:border-orange-500 transition-colors"
+                                />
+                                <button
+                                    type="submit"
+                                    disabled={!newItemText.trim()}
+                                    className="bg-neutral-800 hover:bg-neutral-700 disabled:opacity-50 text-white px-4 py-2.5 rounded-lg font-medium transition-colors flex items-center gap-2"
+                                >
+                                    <Plus className="w-4 h-4" /> Add
+                                </button>
+                            </form>
+                        </div>
+                    )}
 
-                    {/* Bag Notes */}
                     <div className="pt-4 border-t border-neutral-800">
                         <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1.5">Drop Bag Notes & Instructions</label>
                         <textarea
                             value={bagNotes}
                             onChange={e => setBagNotes(e.target.value)}
+                            readOnly={!canEdit}
                             placeholder="e.g. Change shoes here, grab headlamp for next section..."
                             rows={2}
                             className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-white placeholder-neutral-600 focus:outline-none focus:border-orange-500 transition-colors resize-y"
@@ -289,26 +247,27 @@ export function DropBagModal({ waypoint, race, arrivalTime, isNight, onClose }: 
 
                 </div>
 
-                {/* Footer */}
                 <div className="p-6 border-t border-neutral-800 flex justify-end gap-3 shrink-0 bg-neutral-900/80 rounded-b-2xl">
                     <button
                         onClick={onClose}
                         className="px-6 py-2.5 rounded-lg font-medium text-neutral-400 hover:text-white transition-colors"
                         disabled={saving}
                     >
-                        Cancel
+                        {canEdit ? 'Cancel' : 'Close'}
                     </button>
-                    <button
-                        onClick={handleSave}
-                        disabled={saving}
-                        className="bg-orange-600 hover:bg-orange-500 text-white px-8 py-2.5 rounded-lg font-bold transition-all shadow-lg shadow-orange-900/20 flex items-center gap-2"
-                    >
-                        {saving ? (
-                            <><Clock className="w-4 h-4 animate-spin" /> Saving...</>
-                        ) : (
-                            <><Save className="w-4 h-4" /> Save Checklist</>
-                        )}
-                    </button>
+                    {canEdit && (
+                        <button
+                            onClick={handleSave}
+                            disabled={saving}
+                            className="bg-orange-600 hover:bg-orange-500 text-white px-8 py-2.5 rounded-lg font-bold transition-all shadow-lg shadow-orange-900/20 flex items-center gap-2"
+                        >
+                            {saving ? (
+                                <><Clock className="w-4 h-4 animate-spin" /> Saving...</>
+                            ) : (
+                                <><Save className="w-4 h-4" /> Save Checklist</>
+                            )}
+                        </button>
+                    )}
                 </div>
 
                 </div>

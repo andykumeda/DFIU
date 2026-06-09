@@ -3,6 +3,8 @@ import { useAuth } from './AuthContext'
 export interface Permission {
   canView: boolean
   canEdit: boolean
+  /** Owner, race director, or any member with edit permission (matches RLS for race-level settings). */
+  canEditRaceSettings: boolean
   isOwner: boolean
   isAdmin: boolean
   isRunner: boolean
@@ -16,6 +18,7 @@ export interface Permission {
 const emptyPermission: Permission = {
   canView: false,
   canEdit: false,
+  canEditRaceSettings: false,
   isOwner: false,
   isAdmin: false,
   isRunner: false,
@@ -30,7 +33,7 @@ const emptyPermission: Permission = {
 // loaded by AuthContext. Public-race read access is handled at the data
 // layer (RLS); this hook only governs UI gating, so unknown raceId returns
 // no-perm for non-admins.
-export function usePermission(raceId: string | undefined): Permission {
+export function usePermission(raceId: string | undefined, raceDirectorUserId?: string | null): Permission {
   const { user, isSiteAdmin, memberships } = useAuth()
 
   if (!user || !raceId) {
@@ -41,6 +44,7 @@ export function usePermission(raceId: string | undefined): Permission {
     return {
       canView: true,
       canEdit: true,
+      canEditRaceSettings: true,
       isOwner: true,
       isAdmin: true,
       isRunner: false,
@@ -62,9 +66,12 @@ export function usePermission(raceId: string | undefined): Permission {
   if (m.isCrew) views.push('crew')
   if (m.isPacer) views.push('pacer')
 
+  const isRaceDirector = !!raceDirectorUserId && raceDirectorUserId === user.id
+
   return {
     canView: true,
     canEdit: m.permission === 'edit' && (m.role === 'owner' || m.isRunner),
+    canEditRaceSettings: m.role === 'owner' || m.permission === 'edit' || isRaceDirector,
     isOwner: m.role === 'owner',
     isAdmin: false,
     isRunner: m.isRunner,
