@@ -42,5 +42,10 @@ echo "📤 Syncing files to remote server..."
 # --delete: remove files on remote that no longer exist locally
 rsync -avz --delete dist/ "$USER@$HOST:$DIR/"
 
+# rsync -a preserves local permissions, which can leave files unreadable by the
+# web server (caused a production 500 on a prior deploy). Normalize on every run.
+echo "🔐 Normalizing remote file permissions..."
+ssh "$USER@$HOST" "find '$DIR' -type d -exec chmod 755 {} + && find '$DIR' -type f -exec chmod 644 {} +"
+
 echo "✅ Deployment Complete!"
 echo "   App should be live at http://$HOST (assuming default Nginx setup)"
