@@ -1195,12 +1195,12 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
       {/* Tabs */}
       <nav className='print:hidden border-b border-neutral-800 bg-neutral-900'>
-        <div className='max-w-7xl mx-auto px-4 flex gap-6'>
+        <div className='max-w-7xl mx-auto px-4 flex gap-6 overflow-x-auto whitespace-nowrap [-webkit-overflow-scrolling:touch]'>
           {tabs.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === tab.id ? 'border-blue-500 text-blue-500' : 'border-transparent text-neutral-400 hover:text-neutral-200'}`}
+              className={`shrink-0 py-3 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === tab.id ? 'border-blue-500 text-blue-500' : 'border-transparent text-neutral-400 hover:text-neutral-200'}`}
             >
               {tab.label}
             </button>
