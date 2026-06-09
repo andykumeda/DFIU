@@ -1,8 +1,8 @@
 # Handoff Document
 
 **Date:** 2026-06-08
-**Status:** Drop-bag map notes now surface in Drop Bags tab (notes + crew relay / next-leg fields).
-**Current HEAD:** `c56a9be fix(race): sync map waypoint notes into drop bag view`.
+**Status:** Drop-bag map notes fix implemented, verified, deployed, and committed.
+**Current HEAD:** `32fd5eb fix(race): tighten drop bag notes field on map waypoint editor`.
 **Active task:** Continue product QA on Bay Area 100 flows.
 
 ## Recovery (2026-06-08)
