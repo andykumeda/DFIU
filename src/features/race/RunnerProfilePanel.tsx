@@ -29,6 +29,7 @@ export function RunnerProfilePanel({
         { key: 'night', label: 'Night running', help: 'Dark sections' },
         { key: 'heat', label: 'Heat', help: 'Hot race hours' },
         { key: 'cold', label: 'Cold', help: 'Cold/night conditions' },
+        { key: 'altitude', label: 'Altitude', help: 'High elevation / thin air (above ~5,000 ft)' },
         { key: 'mud', label: 'Mud', help: 'Muddy conditions' },
         { key: 'snow', label: 'Snow', help: 'Snow/ice conditions' },
         { key: 'sand', label: 'Sand', help: 'Sandy surfaces' },

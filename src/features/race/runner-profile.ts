@@ -10,6 +10,7 @@ export interface RunnerPacingProfile {
     heat: RunnerProfileLevel
     cold: RunnerProfileLevel
     night: RunnerProfileLevel
+    altitude: RunnerProfileLevel
     mud: RunnerProfileLevel
     snow: RunnerProfileLevel
     sand: RunnerProfileLevel
@@ -25,6 +26,7 @@ export const DEFAULT_RUNNER_PROFILE: RunnerPacingProfile = {
     heat: 'average',
     cold: 'average',
     night: 'average',
+    altitude: 'average',
     mud: 'average',
     snow: 'average',
     sand: 'average',
@@ -54,6 +56,7 @@ export function parseRunnerProfile(value: unknown): RunnerPacingProfile {
         heat: parseLevel(raw.heat),
         cold: parseLevel(raw.cold),
         night: parseLevel(raw.night),
+        altitude: parseLevel(raw.altitude),
         mud: parseLevel(raw.mud),
         snow: parseLevel(raw.snow),
         sand: parseLevel(raw.sand),

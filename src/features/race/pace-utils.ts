@@ -111,6 +111,7 @@ function getRunnerProfileFactor(
     terrainFactor: number,
     race: Partial<Race>,
     dynamic: { isNight: boolean; isHotHours: boolean; isCold: boolean },
+    elevationFt: number | undefined,
     profile?: RunnerPacingProfile
 ): number {
     if (!profile) return 1.0
@@ -134,6 +135,14 @@ function getRunnerProfileFactor(
         factor += levelAdjustment(profile.heat, 0.05)
     }
     if (dynamic.isCold) factor += levelAdjustment(profile.cold, 0.04)
+
+    // Altitude tolerance: only meaningful above ~5000ft (matches the base altitude
+    // penalty in getDynamicFactors). Strong runners give back time, weak runners
+    // lose more, scaled by how high the segment is. Capped at ±6%.
+    if (elevationFt !== undefined && elevationFt > 5000) {
+        const altitudeMagnitude = Math.min(0.06, ((elevationFt - 5000) / 1000) * 0.01)
+        if (altitudeMagnitude > 0) factor += levelAdjustment(profile.altitude, altitudeMagnitude)
+    }
 
     if (totalDistance > 0) {
         const pct = Math.min(1.0, mile / totalDistance)
@@ -241,6 +250,7 @@ function getDynamicFactors(
         terrainFactor ?? 1,
         race,
         { isNight, isHotHours, isCold },
+        elevationFt,
         runnerProfile
     )
 

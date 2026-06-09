@@ -17,8 +17,8 @@ export function DropBagSummary({ waypoint }: { waypoint: Waypoint }) {
                 const qty = it.quantity ?? it.qty
                 const hasQty = qty != null && String(qty).trim() !== ''
                 return (
-                    <li key={i} className='flex items-center gap-2 text-sm'>
-                        <span className='w-1.5 h-1.5 rounded-full bg-emerald-400' />
+                    <li key={i} className='flex items-center gap-2 text-sm text-neutral-100'>
+                        <span className='w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0' />
                         <span className='flex-1'>{label}</span>
                         {hasQty && <span className='text-neutral-400 text-xs'>×{qty}</span>}
                     </li>
