@@ -42,11 +42,11 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, raceDate, timeZone
         type: waypoint?.type || 'aid_station',
         cutoffDate: '',
         cutoffTime: '',
-        has_drop_bag: waypoint?.has_drop_bag || false,
+        has_drop_bag: waypoint?.has_drop_bag || waypoint?.type === 'drop_bag' || false,
         crew_allowed: waypoint?.crew_allowed || false,
         pacer_allowed: waypoint?.pacer_allowed || false,
         notes: waypoint?.notes || '',
-        drop_bag_notes: waypoint?.drop_bag_notes || waypoint?.notes || '',
+        drop_bag_notes: waypoint?.drop_bag_notes || (initialShowsDropBagNotes ? waypoint?.notes : '') || '',
         crew_relay_notes: waypoint?.crew_relay_notes || '',
         runner_next_leg_notes: waypoint?.runner_next_leg_notes || '',
         mile: (mile ?? waypoint?.mile ?? 0).toFixed(2),
@@ -100,11 +100,11 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, raceDate, timeZone
                 type: waypoint?.type || 'aid_station',
                 cutoffDate: cDate,
                 cutoffTime: cTime,
-                has_drop_bag: waypoint?.has_drop_bag || false,
+                has_drop_bag: waypoint?.has_drop_bag || waypoint?.type === 'drop_bag' || false,
                 crew_allowed: waypoint?.crew_allowed || false,
                 pacer_allowed: waypoint?.pacer_allowed || false,
                 notes: waypoint?.notes || '',
-                drop_bag_notes: waypoint?.drop_bag_notes || waypoint?.notes || '',
+                drop_bag_notes: waypoint?.drop_bag_notes || (showsDropBagNotes(waypoint?.type || 'aid_station', waypoint?.has_drop_bag) ? waypoint?.notes : '') || '',
                 crew_relay_notes: waypoint?.crew_relay_notes || '',
                 runner_next_leg_notes: waypoint?.runner_next_leg_notes || '',
                 mile: (waypoint?.mile ?? mile ?? 0).toFixed(2),
@@ -153,6 +153,7 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, raceDate, timeZone
             lon: lon ?? waypoint?.lon,
             mile: roundedMile,
             cutoff_time: finalCutoffTime,
+            drop_bag_notes: showsDropBagNotes(formData.type, formData.has_drop_bag) ? formData.drop_bag_notes : null,
             delay: Number(formData.delay) || 0
         })
     }
@@ -280,7 +281,7 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, raceDate, timeZone
                         </label>
                     </div>
 
-                    {(formData.has_drop_bag || formData.type === 'drop_bag' || formData.type === 'start') ? (
+                    {showsDropBagNotes(formData.type, formData.has_drop_bag) ? (
                         <div className={styles.field}>
                             <label>Drop Bag Notes</label>
                             <textarea
