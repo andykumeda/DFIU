@@ -34,7 +34,41 @@ DFIU helps you centralize your course, pace plan, logistics, and crew info in on
 -   **Crew View:** Mobile-first `/race/:id/crew` view with predicted runner location, next crew aid station, Google Maps destination links, drop bag details, and runner arrival check-ins.
 -   **Roles & Invites:** Race owners can manage crew/pacer memberships, grant view/edit permissions, invite existing users, and send email invites to new users.
 -   **Weather Integration:** Fetch weather data for race locations.
--   **Settings:** User preferences and Strava integration.
+-   **Settings:** User preferences, runner profile, and Strava integration.
+
+## How Pace Is Calculated
+
+The pace plan is **target-time driven**: you pick a goal finish time (Plan A/B/C) and
+the model finds the steady baseline pace that, after all the adjustments below, lands
+you at that finish time. It then distributes that pace across the course so each split
+reflects the real difficulty of that section.
+
+For every short segment of the course, the predicted pace is:
+
+```
+segment pace = base pace × grade × terrain × conditions × runner profile
+```
+
+- **Grade (% incline):** Uses a Minetti energy-cost curve — climbs cost more, gentle
+  descents help, steep descents stop being "free." Derived from the GPX elevation.
+- **Terrain:** Each segment's type carries a difficulty multiplier (paved ≈ 1.00 up to
+  technical ≈ 1.30) that slows every runner on rougher ground.
+- **Conditions (time-of-day & weather):**
+  - *Fatigue* ramps up across the race (up to ~+25% by the finish).
+  - *Altitude* adds a penalty above ~5,000 ft.
+  - *Night* is detected from race-local sunrise/sunset and slows pace more on technical
+    terrain.
+  - *Heat* applies during midday hours scaled to the forecast high; *cold* applies at
+    night scaled to the forecast low.
+- **Runner profile (per-runner, in Settings):** Your strengths/weaknesses (climbing,
+  descending, flats, technical, night, heat, cold, altitude, surfaces, and overall
+  pacing style) nudge each segment — strong gives time back, weak costs more. The
+  combined profile effect is capped so it can't dominate the physics.
+- **Aid-station time:** Each aid station adds a stop duration (default 2 minutes) to your
+  elapsed time.
+
+Because it solves backward from your goal time, the chart answers *"what pace plan gets
+me to my goal on this course?"* rather than predicting a finish time from your ability.
 
 ## Getting Started
 
