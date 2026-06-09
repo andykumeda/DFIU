@@ -1,9 +1,9 @@
 # Handoff Document
 
 **Date:** 2026-06-08
-**Status:** Implementing drop-bag visibility fixes and runner profile pacing inputs after recovery commit/deploy.
-**Current HEAD:** `c8dab1d feat(race): restore Bay Area 100 batch after tree loss`.
-**Active task:** Crew/drop-bag notes, pace chart drop-bag access, Start bag defaults, and runner strengths/weather profile for pace calculation.
+**Status:** Drop-bag visibility fixes, Start gear defaults, and runner-aware pacing controls implemented, verified, deployed, and committed.
+**Current HEAD:** `4ed4c85 feat(race): add runner-aware pacing controls`.
+**Active task:** Continue product QA on Bay Area 100 flows.
 
 ## Recovery (2026-06-08)
 
@@ -25,7 +25,7 @@ Tracked source files were deleted from the working tree while uncommitted featur
 - Weather: additional course locations (`weather_locations` JSONB) with midway default.
 - Supabase migrations applied: `20260608_race_templates_and_pace_columns`, `20260609_weather_locations`.
 
-## Active Work (2026-06-08)
+## Completed Work (2026-06-08)
 
 - Crew View drop bag modal: show notes.
 - Pace chart aid station: option to open drop bag info.
