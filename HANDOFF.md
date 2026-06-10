@@ -1,7 +1,7 @@
 # Handoff Document
 
 **Date:** 2026-06-09
-**Status:** Pace-plan mobile reorder (chart first) + Stop-column default-delay bug fixed (waypoints.delay made nullable). Built + deployed + migration applied to prod.
+**Status:** Pace-plan mobile reorder (chart first) + Stop-column default-delay bug fixed (waypoints.delay made nullable). Built + deployed + migration applied to prod. Handoff reconciled for the current per-user default-delay model.
 **Active task:** Verify in production: mobile pace plan shows chart first / Print Columns last, and the Stop column shows the 2-min profile default on aid stations.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change in this repo. Commit, branch, and document discipline is required to prevent the lost-work confusion that motivated this reconciliation.
@@ -32,8 +32,8 @@
 - **Public pace-chart column controls.** Column visibility toggles and reorder arrows are now available to everyone (including public viewers), not just editors. Editors' changes persist to the race; viewers' changes stay local to their session (`usePacePlans.persist` is a no-op without edit permission).
 - **Contents-only drop bag popup outside the Drop Bag section.** The `DropBagModal` gained a `contentsOnly` prop. The pace plan's 🎒 popup now shows only what's packed (shared `DropBagSummary`, extracted from Crew View) plus notes — no template/unchecked options, no editor — matching Crew View. The dedicated Drop Bag section keeps the full editor.
 - **Runner profile: added Altitude** (weak/avg/strong). Wired into `getRunnerProfileFactor` — above ~5,000 ft it scales the runner's altitude tolerance by elevation, capped ±6%. No migration (profile is jsonb).
-- **Configurable aid-station stop time.** New `race_pace_plans.aid_station_default_delay` (migration `20260610_pace_plan_aid_station_default_delay.sql`, applied to prod, default 2 min) feeds `calculatePacePlan` as the fallback for aid stations without an explicit `waypoints.delay`. All three call sites (pace, drop bags, crew) pass it.
-  - Surfaced as a **"Stop" column in the pace chart** (editor: inline +/- per row writing `waypoints.delay`; viewer/print: read-only "Nm"). The earlier standalone "Aid Station Stops" side panel was removed in favor of the column. PaceCalculator auto-recomputes the displayed plan when stop times change. `RaceDetail.handleUpdateWaypointDelay` persists optimistically.
+- **Configurable aid-station stop time (historical implementation, superseded above).** This batch first introduced `race_pace_plans.aid_station_default_delay` (migration `20260610_pace_plan_aid_station_default_delay.sql`, applied to prod, default 2 min) as the fallback. That race-level default is now unused; the active model is the per-user `runner_profile.aidStationDefaultDelay` described above, with `waypoints.delay` as nullable per-station overrides.
+  - The **"Stop" column in the pace chart** remains the active UI for per-station overrides (editor: inline +/- per row writing `waypoints.delay`; viewer/print: read-only "Nm"). The earlier standalone "Aid Station Stops" side panel was removed in favor of the column. PaceCalculator auto-recomputes the displayed plan when stop times change. `RaceDetail.handleUpdateWaypointDelay` persists optimistically.
 - **README** now has a concise "How Pace Is Calculated" section.
 - **Pace algorithm roadmap:** distributor-vs-predictor decision recorded in `docs/handoff/next-phase-history-based-pacing.md` for a future phase.
 
