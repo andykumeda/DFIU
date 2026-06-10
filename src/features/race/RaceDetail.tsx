@@ -1479,7 +1479,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                     </Suspense>
 
                     {/* Terrain classification popup — appears once a segment is defined
-                        via 2 map clicks or a profile drag. */}
+                        via double-click map endpoints or a profile drag. */}
                     {pendingSegment && (
                       <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 bg-white p-4 rounded-lg shadow-xl w-80 border border-neutral-200">
                         <div className="flex items-center justify-between mb-3 border-b pb-2">

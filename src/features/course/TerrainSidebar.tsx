@@ -256,7 +256,7 @@ export function TerrainSidebar({
 
       {isOpen && canEdit && (
         <p className="mb-3 text-[10px] text-neutral-500 italic">
-          Click and drag across the route or elevation profile to define a segment.
+          Double-click the route to set start, then double-click the end. You can still drag the elevation profile.
         </p>
       )}
 
