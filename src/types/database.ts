@@ -22,6 +22,7 @@ export type Database = {
           id: string
           max_elevation_ft: number | null
           min_elevation_ft: number | null
+          official_source_course_id: string | null
           race_id: string
           raw_gpx: string | null
           total_distance_miles: number | null
@@ -35,6 +36,7 @@ export type Database = {
           id?: string
           max_elevation_ft?: number | null
           min_elevation_ft?: number | null
+          official_source_course_id?: string | null
           race_id: string
           raw_gpx?: string | null
           total_distance_miles?: number | null
@@ -48,6 +50,7 @@ export type Database = {
           id?: string
           max_elevation_ft?: number | null
           min_elevation_ft?: number | null
+          official_source_course_id?: string | null
           race_id?: string
           raw_gpx?: string | null
           total_distance_miles?: number | null
@@ -110,6 +113,8 @@ export type Database = {
           email: string
           role: string
           permission: string
+          is_crew: boolean
+          is_pacer: boolean
           invited_by: string | null
           created_at: string
         }
@@ -119,6 +124,8 @@ export type Database = {
           email: string
           role: string
           permission?: string
+          is_crew?: boolean
+          is_pacer?: boolean
           invited_by?: string | null
           created_at?: string
         }
@@ -128,6 +135,8 @@ export type Database = {
           email?: string
           role?: string
           permission?: string
+          is_crew?: boolean
+          is_pacer?: boolean
           invited_by?: string | null
           created_at?: string
         }
@@ -503,6 +512,7 @@ export type Database = {
           lat: number
           lon: number
           mile: number
+          official_source_terrain_node_id: string | null
           type: string
         }
         Insert: {
@@ -513,6 +523,7 @@ export type Database = {
           lat: number
           lon: number
           mile: number
+          official_source_terrain_node_id?: string | null
           type?: string
         }
         Update: {
@@ -523,6 +534,7 @@ export type Database = {
           lat?: number
           lon?: number
           mile?: number
+          official_source_terrain_node_id?: string | null
           type?: string
         }
         Relationships: [
@@ -554,6 +566,7 @@ export type Database = {
           mile: number
           name: string
           notes: string | null
+          official_source_waypoint_id: string | null
           order_index: number
           pacer_allowed: boolean | null
           runner_next_leg_notes: string | null
@@ -577,6 +590,7 @@ export type Database = {
           mile: number
           name: string
           notes?: string | null
+          official_source_waypoint_id?: string | null
           order_index?: number
           pacer_allowed?: boolean | null
           runner_next_leg_notes?: string | null
@@ -600,6 +614,7 @@ export type Database = {
           mile?: number
           name?: string
           notes?: string | null
+          official_source_waypoint_id?: string | null
           order_index?: number
           pacer_allowed?: boolean | null
           runner_next_leg_notes?: string | null
@@ -647,11 +662,14 @@ export type Database = {
           email: string
           role: string
           permission: string
+          is_crew: boolean
+          is_pacer: boolean
           invited_by: string | null
           invited_by_name: string | null
           created_at: string
         }[]
       }
+      sync_official_race_to_clones: { Args: { p_source_race_id: string }; Returns: number }
       user_can_edit_race: { Args: { rid: string }; Returns: boolean }
       user_can_log_race_execution: { Args: { rid: string }; Returns: boolean }
       user_can_manage_team: { Args: { rid: string }; Returns: boolean }

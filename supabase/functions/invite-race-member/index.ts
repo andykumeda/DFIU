@@ -1,7 +1,7 @@
 // Edge function: invite-race-member
 //
 // Auth: caller must send Authorization: Bearer <user-JWT>.
-// Body: { race_id, email, role, permission }
+// Body: { race_id, email, role, roles, is_crew, is_pacer, permission }
 //
 // Behavior:
 //   1. Validates caller membership (any member) and permission rules
@@ -36,17 +36,20 @@ serve(async (req) => {
             return json({ error: 'Missing Authorization' }, 401)
         }
 
-        const { race_id, email, role, permission } = await req.json()
-        if (!race_id || !email || !role || !permission) {
-            return json({ error: 'race_id, email, role, permission required' }, 400)
-        }
-        if (!['crew', 'pacer'].includes(role)) {
-            return json({ error: 'role must be crew or pacer' }, 400)
+        const body = await req.json()
+        const { race_id, email, permission } = body
+        if (!race_id || !email || !permission) {
+            return json({ error: 'race_id, email, permission required' }, 400)
         }
         if (!['view', 'edit'].includes(permission)) {
             return json({ error: 'permission must be view or edit' }, 400)
         }
-        const normalizedPermission = 'view'
+        const roleFlags = resolveRoleFlags(body)
+        if (!roleFlags.is_crew && !roleFlags.is_pacer) {
+            return json({ error: 'Select at least one role: crew or pacer' }, 400)
+        }
+        const role = roleFlags.is_crew ? 'crew' : 'pacer'
+        const normalizedPermission = permission
 
         const normalizedEmail = String(email).trim().toLowerCase()
 
@@ -77,29 +80,44 @@ serve(async (req) => {
             .maybeSingle()
 
         if (existingProfile) {
-            // User exists — insert race_memberships directly. Self-invite is a no-op.
+            // User exists — insert or update race_memberships directly. Self-invite is a no-op.
             if (existingProfile.id === caller.id) {
                 return json({ error: 'You are already a member' }, 400)
             }
-            const { error: insertErr } = await admin
+            const { data: existingMembership, error: existingMembershipErr } = await admin
                 .from('race_memberships')
-                .insert({
-                    race_id,
-                    user_id: existingProfile.id,
-                    role,
-                    permission: normalizedPermission,
-                    is_crew: role === 'crew',
-                    is_pacer: role === 'pacer',
-                    is_runner: false,
-                    granted_by: caller.id,
-                })
-            if (insertErr) {
-                if (insertErr.code === '23505') {
-                    return json({ status: 'already_member' })
-                }
-                return json({ error: insertErr.message }, 500)
+                .select('role, is_runner')
+                .eq('race_id', race_id)
+                .eq('user_id', existingProfile.id)
+                .maybeSingle()
+
+            if (existingMembershipErr) return json({ error: existingMembershipErr.message }, 500)
+            if (existingMembership?.role === 'owner') return json({ status: 'already_member' })
+
+            const membershipPayload = {
+                race_id,
+                user_id: existingProfile.id,
+                role,
+                permission: normalizedPermission,
+                is_crew: roleFlags.is_crew,
+                is_pacer: roleFlags.is_pacer,
+                is_runner: existingMembership?.is_runner ?? false,
+                granted_by: caller.id,
             }
-            return json({ status: 'added_existing_user' })
+
+            const { error: writeErr } = existingMembership
+                ? await admin
+                    .from('race_memberships')
+                    .update(membershipPayload)
+                    .eq('race_id', race_id)
+                    .eq('user_id', existingProfile.id)
+                : await admin
+                    .from('race_memberships')
+                    .insert(membershipPayload)
+            if (writeErr) {
+                return json({ error: writeErr.message }, 500)
+            }
+            return json({ status: existingMembership ? 'updated_existing_user' : 'added_existing_user' })
         }
 
         // No existing user — insert pending row + send invite email.
@@ -111,6 +129,8 @@ serve(async (req) => {
                     email: normalizedEmail,
                     role,
                     permission: normalizedPermission,
+                    is_crew: roleFlags.is_crew,
+                    is_pacer: roleFlags.is_pacer,
                     invited_by: caller.id,
                 },
                 { onConflict: 'race_id,email' }
@@ -124,7 +144,7 @@ serve(async (req) => {
         if (inviteErr) {
             // "Email rate limit exceeded" or similar — keep pending row so
             // signup via other means still claims membership.
-            return json({ status: 'invite_email_failed', message: inviteErr.message }, 502)
+            return json({ status: 'invite_email_failed', message: inviteErr.message })
         }
 
         return json({ status: 'invited' })
@@ -138,4 +158,21 @@ function json(body: unknown, status = 200) {
         status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
+}
+
+function resolveRoleFlags(body: Record<string, unknown>): { is_crew: boolean; is_pacer: boolean } {
+    let isCrew = body.is_crew === true
+    let isPacer = body.is_pacer === true
+
+    if (typeof body.role === 'string') {
+        isCrew ||= body.role === 'crew'
+        isPacer ||= body.role === 'pacer'
+    }
+
+    if (Array.isArray(body.roles)) {
+        isCrew ||= body.roles.includes('crew')
+        isPacer ||= body.roles.includes('pacer')
+    }
+
+    return { is_crew: isCrew, is_pacer: isPacer }
 }

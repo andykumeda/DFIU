@@ -6,6 +6,10 @@ import { useAuth } from '@/features/auth/AuthContext'
 
 type Role = 'crew' | 'pacer'
 type Permission = 'view' | 'edit'
+interface RoleSelection {
+  crew: boolean
+  pacer: boolean
+}
 
 interface Member {
   user_id: string
@@ -24,6 +28,8 @@ interface PendingInvite {
   email: string
   role: string
   permission: string
+  is_crew?: boolean | null
+  is_pacer?: boolean | null
   invited_by: string | null
   invited_by_name: string | null
   created_at: string
@@ -49,7 +55,7 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
   const [foundUser, setFoundUser] = useState<FoundUser | null>(null)
   const [searchedEmail, setSearchedEmail] = useState<string | null>(null)
   const [noUserFound, setNoUserFound] = useState(false)
-  const [pendingRole, setPendingRole] = useState<Role>('crew')
+  const [pendingRoles, setPendingRoles] = useState<RoleSelection>({ crew: true, pacer: false })
   const [pendingPermission, setPendingPermission] = useState<Permission>('view')
   const [inviteStatus, setInviteStatus] = useState<string | null>(null)
 
@@ -99,17 +105,29 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
   })
 
   const addMutation = useMutation({
-    mutationFn: async (input: { userId: string; role: Role; permission: Permission }) => {
-      const { error } = await supabase.from('race_memberships').insert({
+    mutationFn: async (input: { userId: string; roles: RoleSelection; permission: Permission }) => {
+      if (!hasAnyRole(input.roles)) throw new Error('Select at least one role.')
+      const existing = members.find(member => member.user_id === input.userId)
+      if (existing?.role === 'owner') throw new Error('Owners already have full access.')
+
+      const payload = {
         race_id: raceId,
         user_id: input.userId,
-        role: input.role,
-        permission: 'view',
-        is_crew: input.role === 'crew',
-        is_pacer: input.role === 'pacer',
-        is_runner: false,
+        role: primaryRole(input.roles),
+        permission: input.permission,
+        is_crew: input.roles.crew,
+        is_pacer: input.roles.pacer,
+        is_runner: existing?.is_runner ?? false,
         granted_by: user?.id ?? null,
-      })
+      }
+
+      const { error } = existing
+        ? await supabase
+          .from('race_memberships')
+          .update(payload)
+          .eq('race_id', raceId)
+          .eq('user_id', input.userId)
+        : await supabase.from('race_memberships').insert(payload)
       if (error) throw error
     },
     onSuccess: async () => {
@@ -120,16 +138,20 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
   })
 
   const inviteMutation = useMutation({
-    mutationFn: async (input: { email: string; role: Role; permission: Permission }) => {
+    mutationFn: async (input: { email: string; roles: RoleSelection; permission: Permission }) => {
+      if (!hasAnyRole(input.roles)) throw new Error('Select at least one role.')
       const { data, error } = await supabase.functions.invoke('invite-race-member', {
         body: {
           race_id: raceId,
           email: input.email,
-          role: input.role,
+          role: primaryRole(input.roles),
+          roles: selectedRoleList(input.roles),
+          is_crew: input.roles.crew,
+          is_pacer: input.roles.pacer,
           permission: input.permission,
         },
       })
-      if (error) throw error
+      if (error) throw new Error(await getFunctionErrorMessage(error))
       if (data?.error) throw new Error(data.error)
       return data
     },
@@ -137,6 +159,9 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
       const status = data?.status as string | undefined
       if (status === 'added_existing_user') {
         setInviteStatus('User already had an account — added directly.')
+        await queryClient.invalidateQueries({ queryKey: ['race_members', raceId] })
+      } else if (status === 'updated_existing_user') {
+        setInviteStatus('Existing member updated.')
         await queryClient.invalidateQueries({ queryKey: ['race_members', raceId] })
       } else if (status === 'already_member') {
         setInviteStatus('Already a member of this race.')
@@ -199,7 +224,7 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
     setFoundUser(null)
     setNoUserFound(false)
     setSearchedEmail(null)
-    setPendingRole('crew')
+    setPendingRoles({ crew: true, pacer: false })
     setPendingPermission('view')
     if (!opts?.keepStatus) setInviteStatus(null)
   }
@@ -213,9 +238,10 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
     searchMutation.mutate(trimmed)
   }
 
-  // Team members are view/log only in the role-view model. Route/map editing
-  // stays with official race directors and runner-plan owners.
-  const permissionOptions: Permission[] = ['view']
+  // The database still validates who may grant edit access; expose the full
+  // choice here for managers so the permission control is usable.
+  const permissionOptions: Permission[] = canManage ? ['view', 'edit'] : ['view']
+  const inviteStatusIsError = inviteStatus?.startsWith('Error:')
 
   return (
     <div className='max-w-3xl mx-auto px-4 py-6 space-y-6'>
@@ -301,7 +327,7 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
                   <div className='min-w-0'>
                     <div className='text-white text-sm truncate'>{p.email}</div>
                     <div className='text-neutral-500 text-xs uppercase tracking-wide'>
-                      {p.role} · {p.permission}
+                      {formatPendingRoles(p)} · {p.permission}
                       {p.invited_by_name ? ` · invited by ${p.invited_by_name}` : ''}
                     </div>
                   </div>
@@ -347,20 +373,20 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
           </form>
 
           {searchError && <p className='text-sm text-red-400'>{searchError}</p>}
-          {inviteStatus && <p className='text-sm text-emerald-400'>{inviteStatus}</p>}
+          {inviteStatus && <p className={`text-sm ${inviteStatusIsError ? 'text-red-400' : 'text-emerald-400'}`}>{inviteStatus}</p>}
 
           {foundUser && (
             <AddCard
               foundUser={foundUser}
-              role={pendingRole}
-              setRole={setPendingRole}
+              roles={pendingRoles}
+              setRoles={setPendingRoles}
               permission={pendingPermission}
               setPermission={setPendingPermission}
               permissionOptions={permissionOptions}
               onAdd={() =>
                 addMutation.mutate({
                   userId: foundUser.id,
-                  role: pendingRole,
+                  roles: pendingRoles,
                   permission: pendingPermission,
                 })
               }
@@ -372,15 +398,15 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
           {noUserFound && searchedEmail && (
             <InviteCard
               email={searchedEmail}
-              role={pendingRole}
-              setRole={setPendingRole}
+              roles={pendingRoles}
+              setRoles={setPendingRoles}
               permission={pendingPermission}
               setPermission={setPendingPermission}
               permissionOptions={permissionOptions}
               onInvite={() =>
                 inviteMutation.mutate({
                   email: searchedEmail,
-                  role: pendingRole,
+                  roles: pendingRoles,
                   permission: pendingPermission,
                 })
               }
@@ -395,8 +421,8 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
 
 interface AddCardProps {
   foundUser: FoundUser
-  role: Role
-  setRole: (r: Role) => void
+  roles: RoleSelection
+  setRoles: (roles: RoleSelection) => void
   permission: Permission
   setPermission: (p: Permission) => void
   permissionOptions: Permission[]
@@ -406,7 +432,7 @@ interface AddCardProps {
 }
 
 function AddCard({
-  foundUser, role, setRole, permission, setPermission, permissionOptions, onAdd, isPending, error,
+  foundUser, roles, setRoles, permission, setPermission, permissionOptions, onAdd, isPending, error,
 }: AddCardProps) {
   return (
     <div className='border border-neutral-700 rounded p-3 bg-neutral-950 space-y-3'>
@@ -421,14 +447,14 @@ function AddCard({
         <div className='text-white text-sm'>{foundUser.name ?? 'Unnamed user'}</div>
       </div>
       <RolePermFields
-        role={role} setRole={setRole}
+        roles={roles} setRoles={setRoles}
         permission={permission} setPermission={setPermission}
         permissionOptions={permissionOptions}
       />
       <div className='flex justify-end'>
         <button
           onClick={onAdd}
-          disabled={isPending}
+          disabled={isPending || !hasAnyRole(roles)}
           className='bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white px-3 py-1.5 rounded text-sm font-medium'
         >
           {isPending ? 'Adding…' : 'Add'}
@@ -441,8 +467,8 @@ function AddCard({
 
 interface InviteCardProps {
   email: string
-  role: Role
-  setRole: (r: Role) => void
+  roles: RoleSelection
+  setRoles: (roles: RoleSelection) => void
   permission: Permission
   setPermission: (p: Permission) => void
   permissionOptions: Permission[]
@@ -451,7 +477,7 @@ interface InviteCardProps {
 }
 
 function InviteCard({
-  email, role, setRole, permission, setPermission, permissionOptions, onInvite, isPending,
+  email, roles, setRoles, permission, setPermission, permissionOptions, onInvite, isPending,
 }: InviteCardProps) {
   return (
     <div className='border border-neutral-700 rounded p-3 bg-neutral-950 space-y-3'>
@@ -459,14 +485,14 @@ function InviteCard({
         No DFIU account for <span className='text-white font-medium'>{email}</span>. Send an invite email — they'll set a password and join automatically.
       </div>
       <RolePermFields
-        role={role} setRole={setRole}
+        roles={roles} setRoles={setRoles}
         permission={permission} setPermission={setPermission}
         permissionOptions={permissionOptions}
       />
       <div className='flex justify-end'>
         <button
           onClick={onInvite}
-          disabled={isPending}
+          disabled={isPending || !hasAnyRole(roles)}
           className='flex items-center gap-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white px-3 py-1.5 rounded text-sm font-medium'
         >
           <Mail className='w-4 h-4' />
@@ -478,27 +504,44 @@ function InviteCard({
 }
 
 interface RolePermFieldsProps {
-  role: Role
-  setRole: (r: Role) => void
+  roles: RoleSelection
+  setRoles: (roles: RoleSelection) => void
   permission: Permission
   setPermission: (p: Permission) => void
   permissionOptions: Permission[]
 }
 
-function RolePermFields({ role, setRole, permission, setPermission, permissionOptions }: RolePermFieldsProps) {
+function RolePermFields({ roles, setRoles, permission, setPermission, permissionOptions }: RolePermFieldsProps) {
+  const toggleRole = (role: Role, checked: boolean) => {
+    const next = { ...roles, [role]: checked }
+    if (!hasAnyRole(next)) return
+    setRoles(next)
+  }
+
   return (
     <div className='flex flex-wrap gap-3 items-center'>
-      <label className='text-sm text-neutral-300 flex items-center gap-2'>
-        Role
-        <select
-          value={role}
-          onChange={(e) => setRole(e.target.value as Role)}
-          className='bg-neutral-800 border border-neutral-700 rounded text-sm text-white px-2 py-1'
-        >
-          <option value='crew'>Crew</option>
-          <option value='pacer'>Pacer</option>
-        </select>
-      </label>
+      <fieldset className='text-sm text-neutral-300 flex flex-wrap items-center gap-2'>
+        <legend className='sr-only'>Roles</legend>
+        <span>Roles</span>
+        <label className='inline-flex items-center gap-1.5 rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-white'>
+          <input
+            type='checkbox'
+            checked={roles.crew}
+            onChange={(e) => toggleRole('crew', e.target.checked)}
+            className='accent-emerald-500'
+          />
+          Crew
+        </label>
+        <label className='inline-flex items-center gap-1.5 rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-white'>
+          <input
+            type='checkbox'
+            checked={roles.pacer}
+            onChange={(e) => toggleRole('pacer', e.target.checked)}
+            className='accent-blue-500'
+          />
+          Pacer
+        </label>
+      </fieldset>
       <label className='text-sm text-neutral-300 flex items-center gap-2'>
         Permission
         <select
@@ -515,10 +558,49 @@ function RolePermFields({ role, setRole, permission, setPermission, permissionOp
   )
 }
 
+function hasAnyRole(roles: RoleSelection): boolean {
+  return roles.crew || roles.pacer
+}
+
+function primaryRole(roles: RoleSelection): Role {
+  return roles.crew ? 'crew' : 'pacer'
+}
+
+function selectedRoleList(roles: RoleSelection): Role[] {
+  return (['crew', 'pacer'] as Role[]).filter(role => roles[role])
+}
+
 function formatRoles(member: Member): string {
   const roles: string[] = []
   if (member.is_runner || member.role === 'owner') roles.push('runner')
   if (member.is_crew || member.role === 'crew') roles.push('crew')
   if (member.is_pacer || member.role === 'pacer') roles.push('pacer')
   return roles.length ? roles.join(' + ') : member.role
+}
+
+function formatPendingRoles(invite: PendingInvite): string {
+  const roles: string[] = []
+  if (invite.is_crew || (!invite.is_crew && !invite.is_pacer && invite.role === 'crew')) roles.push('crew')
+  if (invite.is_pacer || (!invite.is_crew && !invite.is_pacer && invite.role === 'pacer')) roles.push('pacer')
+  return roles.length ? roles.join(' + ') : invite.role
+}
+
+async function getFunctionErrorMessage(error: unknown): Promise<string> {
+  const context = (error as { context?: Response }).context
+  if (context) {
+    try {
+      const body = await context.clone().json() as { error?: string; message?: string; status?: string }
+      if (body.error) return body.error
+      if (body.message) return body.message
+      if (body.status) return body.status
+    } catch {
+      try {
+        const text = await context.clone().text()
+        if (text) return text
+      } catch {
+        // Fall through to the generic error below.
+      }
+    }
+  }
+  return error instanceof Error ? error.message : 'Invite failed'
 }

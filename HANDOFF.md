@@ -1,14 +1,20 @@
 # Handoff Document
 
 **Date:** 2026-06-10
-**Status:** Crew View map crew-bag icon added; built, linted, clean-deployed, and committed.
-**Active task:** Push `main`; production deploy hash is `34a62d4`.
+**Status:** Team invite/member fixes and official clone-source sync implemented; dirty production deploy completed and feature commit in progress.
+**Active task:** Commit the team/invite/clone sync batch, then run a clean deploy and push `main`.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change in this repo. Commit, branch, and document discipline is required to prevent the lost-work confusion that motivated this reconciliation.
 
 ## 2026-06-10 Drop-bag modal/template follow-up
 
 - **Branch/worktree check before edits:** working on `/Users/andy/Dev/DFIU` branch `main`, tracking `origin/main`, with a clean working tree. Additional worktree remains at `/Users/andy/.codex/worktrees/9dfe/DFIU` on `codex/fix-vite-chunk-deploy`.
+- **Team/invite/clone follow-up started:** investigating an Edge Function non-2xx error during add/invite member, the crew-vs-pacer mutually exclusive UI, a non-expanding permission dropdown, and a requested way for cloned races to receive official source updates for non-runner-specific race/course information.
+- **Team role UI fix:** add/invite member cards now use independent Crew and Pacer checkboxes, so a person can be both. The permission select exposes View/Edit for users who can manage the race team, and the direct-add path updates existing non-owner members instead of failing on duplicate membership.
+- **Invite Edge Function fix:** `invite-race-member` now accepts multi-role flags, stores them on pending invites, preserves runner membership flags when updating existing users, and returns HTTP 200 with `invite_email_failed` when the auth invite email fails after the pending membership is saved. The client now unwraps Edge Function error bodies instead of only showing "non-2xx status code".
+- **Official clone sync:** migration `20260610_zz_team_roles_clone_sync.sql` adds source mapping columns for courses, waypoints, and terrain nodes, updates `clone_race` to populate those mappings, and adds triggers that push official race overview, resources, weather, course geometry, aid-station, and terrain updates into cloned plans. User-specific clone state such as memberships, pace plans, check-ins, packed drop-bag contents/name/notes, and per-station stop overrides is preserved.
+- **Production DB/Edge deployment for team/clone fix:** Supabase project `nyjgyyuoscgekavheeqi` has migration `team_roles_clone_sync` applied. Verified production now has pending invite role columns, source mapping columns, clone sync triggers, and `sync_official_race_to_clones`. Edge Function `invite-race-member` deployed as version 3 with `verify_jwt: true`.
+- **Validation/deploy before commit for team/clone fix:** `deno check supabase/functions/invite-race-member/index.ts`, targeted ESLint for `RaceMembersSection.tsx`, `git diff --check`, `npm run build`, and `npm run lint` passed; lint still reports the existing 39 warnings and no errors. `npm run deploy` passed from dirty hash `c701124-dirty`; remote bundle is `/var/www/dfiu/assets/index-DGXAJwua.js`. Authenticated invite UI smoke verification was not run in-browser because it needs a signed-in team-manager session and target race account.
 - **Crew View crew-bag icon follow-up:** Crew View now passes bag kind metadata into its map markers. Saved crew bags render a package badge on the map, while official/start bag points render the existing backpack badge treatment; unsaved crew-bag candidates remain unbadged.
 - **Validation/deploy for Crew View crew-bag icon:** targeted ESLint passed for touched files with existing CrewView warnings; `npm run build` passed; `npm run lint` passed with 39 warnings and no errors; `npm run deploy` passed from dirty hash `fd26f89-dirty`; clean post-commit deploy passed from `34a62d4`. Deployed bundle `/var/www/dfiu/assets/index-BPnYTRWx.js` contains `34a62d4`. Interactive Browser smoke verification was not run because no specific crew-view race URL/test data was available in this thread.
 - **Side-panel item filtering follow-up:** writable desktop All Bags side panel no longer falls back to rendering all merged editor/template items when a station has zero checked items. It now lists only checked/packed items and shows an editor-only "No items packed yet." empty state for empty bag points; print output still hides empty sections.
