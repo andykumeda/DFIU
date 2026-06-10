@@ -369,13 +369,11 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                             const items = getWaypointItems(wp)
                             const packedItems = items.filter(i => i.checked)
                             if (!canWriteDropBags && packedItems.length === 0) return null
-                            const displayItems = packedItems.length > 0 ? packedItems : items
-                            const showingTemplate = packedItems.length === 0
 
                             const isCollapsed = collapsedStations[wp.id]
 
                             return (
-                                <div key={wp.id} className={`print:break-inside-avoid ${showingTemplate ? 'print:hidden' : ''}`}>
+                                <div key={wp.id} className={`print:break-inside-avoid ${packedItems.length === 0 ? 'print:hidden' : ''}`}>
                                     <div className="mb-2 flex items-start justify-between gap-2">
                                         <button
                                             type="button"
@@ -409,22 +407,23 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                                     </div>
                                     {!isCollapsed && (
                                         <div className="space-y-2">
-                                            {showingTemplate && (
-                                                <div className="pl-5 text-xs uppercase tracking-wide text-neutral-600">
-                                                    Template loaded
+                                            {packedItems.length > 0 ? (
+                                                <ul className="space-y-1 pl-5">
+                                                    {packedItems.map((item, idx) => (
+                                                        <li key={idx} className="text-sm text-neutral-400 print:text-neutral-700 flex items-start gap-2">
+                                                            <span className={`${isCrewBag ? 'text-emerald-500/60' : 'text-orange-500/50'} print:text-neutral-400 mt-1`}>&bull;</span>
+                                                            <span className="leading-snug">
+                                                                {item.quantity && <span className="text-neutral-300 print:text-neutral-900 font-medium mr-1">{item.quantity}x</span>}
+                                                                {item.text}
+                                                            </span>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            ) : (
+                                                <div className="pl-5 text-sm italic text-neutral-600 print:hidden">
+                                                    No items packed yet.
                                                 </div>
                                             )}
-                                            <ul className="space-y-1 pl-5">
-                                            {displayItems.map((item, idx) => (
-                                                <li key={idx} className="text-sm text-neutral-400 print:text-neutral-700 flex items-start gap-2">
-                                                    <span className={`${isCrewBag ? 'text-emerald-500/60' : 'text-orange-500/50'} print:text-neutral-400 mt-1`}>&bull;</span>
-                                                    <span className={`leading-snug ${showingTemplate ? 'text-neutral-500' : ''}`}>
-                                                        {item.quantity && <span className="text-neutral-300 print:text-neutral-900 font-medium mr-1">{item.quantity}x</span>}
-                                                        {item.text}
-                                                    </span>
-                                                </li>
-                                            ))}
-                                            </ul>
                                         </div>
                                     )}
                                 </div>
