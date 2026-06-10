@@ -28,7 +28,7 @@ interface TerrainSidebarProps {
   highlightedTerrainId?: string | null
   onHoverNode?: (id: string | null) => void
   onSaveSegment: (startMile: number, endMile: number, type: string, difficulty: number) => Promise<void> | void
-  onDeleteNode: (id: string) => Promise<void> | void
+  onDeleteSegment: (segment: Segment) => Promise<void> | void
   onUpdateSegment?: (segment: Segment, startMile: number, endMile: number, type: TerrainTypeValue, difficulty: number) => Promise<void> | void
   canEnterEdit?: boolean
   onEditModeChange?: (editing: boolean) => void
@@ -41,7 +41,7 @@ export function TerrainSidebar({
   highlightedTerrainId,
   onHoverNode,
   onSaveSegment,
-  onDeleteNode,
+  onDeleteSegment,
   onUpdateSegment,
   canEnterEdit = false,
   onEditModeChange,
@@ -91,15 +91,17 @@ export function TerrainSidebar({
         break
       }
 
-      result.push({
-        startNodeId: startNode.id,
-        endNodeId: sorted[endIndex]?.id,
-        nodeIds: mergedIds,
-        startMile: startNode.mile,
-        endMile: sorted[endIndex]?.mile ?? totalDistance,
-        type: startNode.type as TerrainTypeValue,
-        difficulty: startNode.difficulty ?? 100,
-      })
+      if (startNode.type !== 'other' && startNode.type !== 'default') {
+        result.push({
+          startNodeId: startNode.id,
+          endNodeId: sorted[endIndex]?.id,
+          nodeIds: mergedIds,
+          startMile: startNode.mile,
+          endMile: sorted[endIndex]?.mile ?? totalDistance,
+          type: startNode.type as TerrainTypeValue,
+          difficulty: startNode.difficulty ?? 100,
+        })
+      }
       i = endIndex - 1
     }
 
@@ -156,10 +158,14 @@ export function TerrainSidebar({
   }
 
   const handleDelete = async (seg: Segment) => {
-    if (!confirm(`Delete terrain at mi ${seg.startMile.toFixed(2)}?`)) return
+    if (!confirm(`Delete terrain from mi ${seg.startMile.toFixed(2)} to ${seg.endMile.toFixed(2)}?`)) return
     setBusy(true)
+    setError(null)
     try {
-      for (const id of seg.nodeIds) await onDeleteNode(id)
+      await onDeleteSegment(seg)
+      if (editingSegmentId === seg.startNodeId) cancelEditSegment()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to delete segment')
     } finally {
       setBusy(false)
     }

@@ -715,28 +715,6 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     setHoveredTerrainId(null)
   }
 
-  const handleDeleteTerrainNode = async (id: string) => {
-    // Optimistic update to remove it immediately for responsiveness
-    if (pendingSegment?.nodeId === id) clearPendingTerrainSegment()
-    setTerrainNodes(prev => prev.filter(n => n.id !== id))
-
-    const { error } = await supabase.from('terrain_nodes').delete().eq('id', id)
-    if (error) {
-      alert('Failed to delete')
-      // Revert if failed
-      if (course?.id) {
-        const { data: tNodes } = await supabase.from('terrain_nodes').select('*').eq('course_id', course.id).order('mile')
-        if (tNodes) setTerrainNodes(tNodes)
-      }
-    } else {
-      // Success. The optimistic update already handled it, but let's ensure consistency.
-      if (course?.id) {
-        const { data: tNodes } = await supabase.from('terrain_nodes').select('*').eq('course_id', course.id).order('mile')
-        if (tNodes) setTerrainNodes(tNodes)
-      }
-    }
-  }
-
   const getRoutePointForMile = (mile: number) => {
     let lat = 0
     let lon = 0
@@ -865,13 +843,28 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     clearPendingTerrainSegment()
   }
 
-  const handleDeleteTerrainSegment = async (id: string) => {
-    const node = terrainNodes.find(n => n.id === id)
-    if (!node) return
+  const handleDeleteTerrainSegmentRange = async (
+    segment: { startNodeId: string; endNodeId?: string; nodeIds: string[]; startMile: number; endMile: number }
+  ) => {
+    await handleUpdateTerrainSegment(segment, segment.startMile, segment.endMile, 'other', 100)
+  }
 
-    if (!confirm(`Delete terrain segment starting at mi ${node.mile.toFixed(2)}?`)) return
+  const handleDeleteTerrainSegment = async (id: string) => {
+    const sorted = [...terrainNodes].sort((a, b) => a.mile - b.mile)
+    const index = sorted.findIndex(n => n.id === id)
+    const node = sorted[index]
+    if (!node) return
+    const endMile = sorted[index + 1]?.mile ?? course?.total_distance_miles ?? node.mile
+    if (endMile <= node.mile) return
+
+    if (!confirm(`Delete terrain from mi ${node.mile.toFixed(2)} to ${endMile.toFixed(2)}?`)) return
     clearPendingTerrainSegment()
-    await handleDeleteTerrainNode(id)
+    await handleDeleteTerrainSegmentRange({
+      startNodeId: id,
+      nodeIds: [id],
+      startMile: node.mile,
+      endMile,
+    })
   }
 
   // Handle saving a range/segment of terrain
@@ -1717,7 +1710,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                       highlightedTerrainId={pendingSegment?.nodeId ?? hoveredTerrainId}
                       onHoverNode={setHoveredTerrainId}
                       onSaveSegment={handleSaveTerrainSegment}
-                      onDeleteNode={handleDeleteTerrainNode}
+                      onDeleteSegment={handleDeleteTerrainSegmentRange}
                       onUpdateSegment={handleUpdateTerrainSegment}
                     />
                   )}

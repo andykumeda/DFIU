@@ -12,7 +12,7 @@ import styles from './CourseMap.module.css'
 import { getTerrainColor } from './terrain-constants'
 
 type TerrainPoint = { lat: number, lon: number, mile: number }
-const TERRAIN_START_PICK_DISTANCE_MILES = 0.25
+const TERRAIN_START_PICK_DISTANCE_MILES = 0.5
 
 interface CourseMapProps {
     coordinates: [number, number][] // [lon, lat] pairs
@@ -1021,17 +1021,18 @@ export function CourseMap({
             return true
         }
 
-        const handleDoubleClick = (e: mapboxgl.MapMouseEvent) => {
+        const handleDoubleClick = (event: MouseEvent) => {
             if (!isTerrainModeRef.current || selectedPOITypeRef.current) return
-            const target = e.originalEvent.target
+            const target = event.target
             if (target instanceof Element && target.closest('.mapboxgl-marker, .mapboxgl-ctrl, button, input, select, textarea')) return
 
-            const point = getTerrainPointFromLngLat(e.lngLat, undefined, TERRAIN_START_PICK_DISTANCE_MILES)
+            const rect = m.getCanvas().getBoundingClientRect()
+            const lngLat = m.unproject([event.clientX - rect.left, event.clientY - rect.top])
+            const point = getTerrainPointFromLngLat(lngLat, undefined, TERRAIN_START_PICK_DISTANCE_MILES)
             if (!point) return
 
-            e.preventDefault()
-            e.originalEvent.preventDefault()
-            e.originalEvent.stopPropagation()
+            event.preventDefault()
+            event.stopPropagation()
             m.getCanvas().style.cursor = 'crosshair'
 
             const start = terrainSelectionRef.current.start
@@ -1047,10 +1048,11 @@ export function CourseMap({
             }
         }
 
-        m.on('dblclick', handleDoubleClick)
+        const canvas = m.getCanvas()
+        canvas.addEventListener('dblclick', handleDoubleClick)
 
         return () => {
-            m.off('dblclick', handleDoubleClick)
+            canvas.removeEventListener('dblclick', handleDoubleClick)
         }
     }, [mapLoaded, styleLoaded, coordinates, getTerrainPointFromLngLat])
 

@@ -1,13 +1,14 @@
 # Handoff Document
 
 **Date:** 2026-06-10
-**Status:** Terrain map selection replaced with double-click start/end selection, built, linted, deployed, and committed.
-**Active task:** Push `main` after this handoff update; production deploy hash is `a9d0fe1`.
+**Status:** Terrain segment delete and double-click selection regression fixes implemented. `npm run build` and `npm run lint` passed; deploy/commit/push still in progress.
+**Active task:** Commit and deploy range-level terrain delete plus canvas-level double-click selection, record `git describe`, then push `main`.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change in this repo. Commit, branch, and document discipline is required to prevent the lost-work confusion that motivated this reconciliation.
 
 ## 2026-06-10 Terrain editing UX improvement
 
+- **Delete/selection regression fix:** side-panel segment deletion now operates on the displayed terrain range, paints it back to undefined terrain, and hides undefined/default ranges from the list. Double-click map selection now listens directly on the map canvas DOM event and uses a wider route snap tolerance. `npm run build` passed; `npm run lint` passed with 41 warnings and no errors. Deploy pending from the clean regression-fix commit.
 - **Interaction replacement:** route drag selection has been removed from the map. Terrain map selection now uses double-click for start and double-click for end, while normal map drag-pan remains available in terrain edit mode. Double-click zoom is disabled only while terrain edit mode is active. `npm run build`, `npm run lint`, and `npm run deploy` passed from clean commit `a9d0fe1`.
 - **Regression fix:** route drag selection now starts from the map canvas, snaps to nearby route points, and no longer depends on receiving `mousedown` from the route hit-area layer. `npm run build`, `npm run lint`, and `npm run deploy` passed from clean commit `9b6b83f`.
 - **Correction:** terrain edit mode no longer shows every terrain boundary node as route dots. The intended interaction is click the route to set the segment start, drag either direction to the segment end, and use only the highlighted route span plus the active start/end handles as feedback. Drag snapping now uses the current mileage as a hint so it is less likely to jump on nearby repeated route sections.
