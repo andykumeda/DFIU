@@ -1,16 +1,17 @@
 # Handoff Document
 
 **Date:** 2026-06-10
-**Status:** Terrain editing UX improvements implemented, built, linted, deployed, and committed.
-**Active task:** Push `main` after this handoff update; production deploy hash is `bf9b063`.
+**Status:** Terrain edit-mode correction implemented. `npm run build` and `npm run lint` passed; deploy/commit/push still in progress.
+**Active task:** Commit and deploy the terrain edit-mode correction, record `git describe`, then push `main`.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change in this repo. Commit, branch, and document discipline is required to prevent the lost-work confusion that motivated this reconciliation.
 
 ## 2026-06-10 Terrain editing UX improvement
 
+- **Correction:** terrain edit mode no longer shows every terrain boundary node as route dots. The intended interaction is click the route to set the segment start, drag either direction to the segment end, and use only the highlighted route span plus the active start/end handles as feedback. Drag snapping now uses the current mileage as a hint so it is less likely to jump on nearby repeated route sections.
 - **Map terrain definition now supports drag-select.** In terrain edit mode, owners can drag across the route to define a segment; the selected route span is highlighted in amber during the drag and remains highlighted while the terrain type picker is open. Click-start/click-end still works as a fallback, and elevation-profile drag selection remains available.
 - **Side panel terrain rows now support full segment editing.** The pencil/range control opens inline start-mile, end-mile, and terrain-type fields. Saving rewrites the segment boundaries, preserves terrain outside the edited range, and compacts redundant nodes after save.
-- **Validation/deploy:** `npm run build` passed; `npm run lint` passed with 42 warnings and no errors; `npm run deploy` passed from clean commit `bf9b063`.
+- **Validation/deploy:** `npm run build` passed; `npm run lint` passed with 42 warnings and no errors; `npm run deploy` passed from clean commit `bf9b063`. Correction validation: `npm run build` passed; `npm run lint` passed with 41 warnings and no errors; deploy pending from the clean correction commit.
 
 ## 2026-06-10 Map edit controls and clock preference fix
 

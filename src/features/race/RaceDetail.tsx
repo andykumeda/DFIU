@@ -737,27 +737,6 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     }
   }
 
-  const handleTerrainNodeMove = async (id: string, lat: number, lon: number, mile: number) => {
-    // Optimistic Update
-    setTerrainNodes(prev => prev.map(n => n.id === id ? { ...n, lat, lon, mile } : n).sort((a, b) => a.mile - b.mile))
-
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase.from('terrain_nodes') as any).update({
-        lat, lon, mile
-      }).eq('id', id)
-
-      if (error) throw error
-    } catch (err) {
-      console.error('Failed to move terrain node:', err)
-      // Revert/Refresh on error
-      if (course?.id) {
-        const { data: tNodes } = await supabase.from('terrain_nodes').select('*').eq('course_id', course.id).order('mile')
-        if (tNodes) setTerrainNodes(tNodes)
-      }
-    }
-  }
-
   const getRoutePointForMile = (mile: number) => {
     let lat = 0
     let lon = 0
@@ -1492,7 +1471,6 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                         activeTerrainRange={pendingSegment ? { startMile: pendingSegment.startMile, endMile: pendingSegment.endMile } : null}
                         terrainNodes={isOwner ? terrainNodes : []}
                         onTerrainNodeClick={isOwner && isTerrainEditMode ? handleEditTerrainSegment : undefined}
-                        onTerrainNodeMove={isOwner && isTerrainEditMode ? handleTerrainNodeMove : undefined}
                         onSegmentDefined={isOwner && isTerrainEditMode ? (lo, hi) => {
                           setHoveredTerrainId(null)
                           setPendingSegment({ startMile: lo, endMile: hi })
