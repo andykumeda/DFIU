@@ -1,13 +1,14 @@
 # Handoff Document
 
 **Date:** 2026-06-10
-**Status:** Terrain segment delete and double-click selection regression fixes implemented, built, linted, deployed, and committed.
-**Active task:** Push `main` after this handoff update; production deploy hash is `c2b1724`.
+**Status:** Terrain segment delete and route endpoint selection follow-up fix implemented, built, linted, deployed, and committed.
+**Active task:** Push `main`; production deploy hash for the product fix is `404ba01`.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change in this repo. Commit, branch, and document discipline is required to prevent the lost-work confusion that motivated this reconciliation.
 
 ## 2026-06-10 Terrain editing UX improvement
 
+- **Follow-up regression fix:** terrain map selection now uses ordinary route clicks: click once for the start, click again for the end, and drag the map normally to pan. The side-panel and floating-picker trash actions now invoke the delete/save path immediately instead of depending on a browser confirm dialog. `npm run build`, `npm run lint`, and clean `npm run deploy` passed from product commit `404ba01`.
 - **Delete/selection regression fix:** side-panel segment deletion now operates on the displayed terrain range, paints it back to undefined terrain, and hides undefined/default ranges from the list. Double-click map selection now listens directly on the map canvas DOM event and uses a wider route snap tolerance. `npm run build`, `npm run lint`, and `npm run deploy` passed from clean commit `c2b1724`.
 - **Interaction replacement:** route drag selection has been removed from the map. Terrain map selection now uses double-click for start and double-click for end, while normal map drag-pan remains available in terrain edit mode. Double-click zoom is disabled only while terrain edit mode is active. `npm run build`, `npm run lint`, and `npm run deploy` passed from clean commit `a9d0fe1`.
 - **Regression fix:** route drag selection now starts from the map canvas, snaps to nearby route points, and no longer depends on receiving `mousedown` from the route hit-area layer. `npm run build`, `npm run lint`, and `npm run deploy` passed from clean commit `9b6b83f`.
