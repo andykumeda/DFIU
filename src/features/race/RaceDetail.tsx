@@ -651,20 +651,21 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase.from('waypoints') as any).update({
-        lat,
-        lon,
-        mile
-      }).eq('id', id)
+      const { error } = await (supabase.from('waypoints') as any)
+        .update({ lat, lon, mile })
+        .eq('id', id)
+        .select('id')
+        .single()
 
       if (error) throw error
 
       // Revalidate to ensure server state matches
       queryClient.invalidateQueries({ queryKey: ['waypoints', course?.id] })
-    } catch {
+    } catch (err) {
       // Rollback on error
+      console.error('Failed to move waypoint:', err)
       queryClient.invalidateQueries({ queryKey: ['waypoints', course?.id] })
-      alert('Failed to move waypoint')
+      alert(`Failed to move waypoint: ${err instanceof Error ? err.message : 'Unknown error'}`)
     }
   }
 

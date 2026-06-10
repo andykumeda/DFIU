@@ -109,6 +109,7 @@ export function CourseMap({
     const isTerrainModeRef = useRef(isTerrainMode)
     const terrainSelectionRef = useRef(terrainSelection)
     const onSegmentDefinedRef = useRef(onSegmentDefined)
+    const canMoveWaypoints = !!onWaypointMove
 
     // Sync refs for event listeners
     useEffect(() => { selectedPOITypeRef.current = selectedPOIType }, [selectedPOIType])
@@ -609,7 +610,7 @@ export function CourseMap({
             container.style.display = 'flex'
             container.style.justifyContent = 'center'
             container.style.alignItems = 'center'
-            container.style.cursor = 'grab'
+            container.style.cursor = canMoveWaypoints ? 'grab' : 'pointer'
 
             // Highlight Logic
             const isHighlighted = highlightedWaypointId && group.some(w => w.id === highlightedWaypointId)
@@ -723,7 +724,7 @@ export function CourseMap({
 
             const marker = new mapboxgl.Marker({
                 element: container,
-                draggable: true,
+                draggable: canMoveWaypoints,
                 anchor: 'center',
                 offset: [0, 0]
             })
@@ -737,6 +738,7 @@ export function CourseMap({
 
             marker.on('dragend', () => {
                 el.classList.remove(styles.dragging)
+                if (!onWaypointMoveRef.current) return
                 const newLngLat = marker.getLngLat()
 
                 // Geo utils needed for drag snap
@@ -828,7 +830,7 @@ export function CourseMap({
             markersRef.current.forEach(m => m.remove())
             markersRef.current = []
         }
-    }, [waypoints, mapLoaded, coordinates, terrainNodes, isTerrainMode, highlightedWaypointId])
+    }, [waypoints, mapLoaded, coordinates, terrainNodes, isTerrainMode, highlightedWaypointId, canMoveWaypoints])
 
     // Terrain Selection Visuals (Markers & Line)
     useEffect(() => {
@@ -1257,4 +1259,3 @@ function getWaypointIcon(type: string): string {
         default: return '📍'
     }
 }
-

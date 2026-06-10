@@ -1,10 +1,17 @@
 # Handoff Document
 
 **Date:** 2026-06-09
-**Status:** Crew-accessible non-drop aid station bag planning implemented, built, deployed, and committed. Prior pace-plan mobile reorder + Stop-column default-delay fix was built/deployed/migrated; production verification still needed.
-**Active task:** Verify in production: crew-accessible non-drop aid stations appear as green Crew Bag cards for editors, saved crew bags show distinct package/crew labels in Pace Chart and Crew View, and official drop bags remain orange/backpack-labeled.
+**Status:** Map waypoint drag persistence fix implemented and locally validated; clean deploy pending. Crew-accessible non-drop aid station bag planning is implemented, built, deployed, and committed.
+**Active task:** Commit waypoint drag fix, deploy from the clean commit, record the deployed `git describe` hash, and push `main`.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change in this repo. Commit, branch, and document discipline is required to prevent the lost-work confusion that motivated this reconciliation.
+
+## 2026-06-10 Waypoint drag persistence fix
+
+- **Root cause:** `CourseMap` always created waypoint markers with `draggable: true`, but `RaceDetail` only passes `onWaypointMove` while map edit mode is active. Outside edit mode, users could drag a marker visually even though there was no save callback, so the marker appeared to move but the server value stayed unchanged.
+- **Fix:** waypoint markers are now draggable only when `onWaypointMove` is wired, and the marker-render effect rebuilds when that edit/save capability toggles. Non-edit markers use a pointer cursor and cannot be dragged.
+- **Save verification:** `handleWaypointMove` now asks Supabase to return the updated waypoint id with `.select('id').single()`, so RLS/no-row failures no longer look successful; failed saves log the error and show the actual failure message before refetching server state.
+- **Local validation:** `npm run build` passed; `npm run lint` passed with the existing 44 warnings. Clean deploy is pending after commit.
 
 ## 2026-06-10 Crew bag planning for crew-accessible aid stations
 
