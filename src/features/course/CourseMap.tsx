@@ -12,6 +12,7 @@ import styles from './CourseMap.module.css'
 import { getTerrainColor } from './terrain-constants'
 
 type TerrainPoint = { lat: number, lon: number, mile: number }
+const TERRAIN_START_PICK_DISTANCE_MILES = 0.25
 
 interface CourseMapProps {
     coordinates: [number, number][] // [lon, lat] pairs
@@ -141,9 +142,10 @@ export function CourseMap({
         }]
     }), [coordinates])
 
-    const getTerrainPointFromLngLat = useCallback((lngLat: mapboxgl.LngLat, mileHint?: number): TerrainPoint | null => {
+    const getTerrainPointFromLngLat = useCallback((lngLat: mapboxgl.LngLat, mileHint?: number, maxDistanceMiles?: number): TerrainPoint | null => {
         const snap = getNearestPointOnLine({ lat: lngLat.lat, lon: lngLat.lng }, coordinates, mileHint)
         if (!snap) return null
+        if (maxDistanceMiles !== undefined && snap.distance > maxDistanceMiles) return null
 
         return {
             lat: snap.lat,
@@ -1010,9 +1012,12 @@ export function CourseMap({
             return true
         }
 
-        const handleMouseDown = (e: mapboxgl.MapLayerMouseEvent) => {
+        const handleMouseDown = (e: mapboxgl.MapMouseEvent) => {
             if (!isTerrainModeRef.current || selectedPOITypeRef.current) return
-            const point = getTerrainPointFromLngLat(e.lngLat)
+            const target = e.originalEvent.target
+            if (target instanceof Element && target.closest('.mapboxgl-marker, .mapboxgl-ctrl, button, input, select, textarea')) return
+
+            const point = getTerrainPointFromLngLat(e.lngLat, undefined, TERRAIN_START_PICK_DISTANCE_MILES)
             if (!point) return
 
             e.preventDefault()
@@ -1022,19 +1027,15 @@ export function CourseMap({
             m.getCanvas().style.cursor = 'crosshair'
         }
 
-        const handleMouseEnterRoute = () => {
-            if (isTerrainModeRef.current && !selectedPOITypeRef.current) {
-                m.getCanvas().style.cursor = 'crosshair'
-            }
-        }
-
-        const handleMouseLeaveRoute = () => {
-            if (!terrainDragRef.current) m.getCanvas().style.cursor = ''
-        }
-
         const handleMouseMove = (e: mapboxgl.MapMouseEvent) => {
             const drag = terrainDragRef.current
-            if (!drag) return
+            if (!drag) {
+                if (isTerrainModeRef.current && !selectedPOITypeRef.current) {
+                    const point = getTerrainPointFromLngLat(e.lngLat, undefined, TERRAIN_START_PICK_DISTANCE_MILES)
+                    m.getCanvas().style.cursor = point ? 'crosshair' : ''
+                }
+                return
+            }
 
             const point = getTerrainPointFromLngLat(e.lngLat, drag.end?.mile ?? drag.start.mile)
             if (!point) return
@@ -1056,17 +1057,13 @@ export function CourseMap({
 
         const handleWindowMouseUp = () => handleMouseUp()
 
-        m.on('mousedown', 'route-hit-area', handleMouseDown)
-        m.on('mouseenter', 'route-hit-area', handleMouseEnterRoute)
-        m.on('mouseleave', 'route-hit-area', handleMouseLeaveRoute)
+        m.on('mousedown', handleMouseDown)
         m.on('mousemove', handleMouseMove)
         m.on('mouseup', handleMouseUp)
         window.addEventListener('mouseup', handleWindowMouseUp)
 
         return () => {
-            m.off('mousedown', 'route-hit-area', handleMouseDown)
-            m.off('mouseenter', 'route-hit-area', handleMouseEnterRoute)
-            m.off('mouseleave', 'route-hit-area', handleMouseLeaveRoute)
+            m.off('mousedown', handleMouseDown)
             m.off('mousemove', handleMouseMove)
             m.off('mouseup', handleMouseUp)
             window.removeEventListener('mouseup', handleWindowMouseUp)
