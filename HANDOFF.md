@@ -1,14 +1,18 @@
 # Handoff Document
 
 **Date:** 2026-06-10
-**Status:** Team invite/member fixes and official clone-source sync built, linted, deployed, and committed.
-**Active task:** Push `main`; production deploy hash is `e81fcb4`.
+**Status:** Invite resend and accepted-invite redirect follow-up implemented; dirty deploy completed and feature commit in progress.
+**Active task:** Commit the invite resend/redirect batch, then run a clean deploy and push `main`.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change in this repo. Commit, branch, and document discipline is required to prevent the lost-work confusion that motivated this reconciliation.
 
 ## 2026-06-10 Drop-bag modal/template follow-up
 
 - **Branch/worktree check before edits:** working on `/Users/andy/Dev/DFIU` branch `main`, tracking `origin/main`, with a clean working tree. Additional worktree remains at `/Users/andy/.codex/worktrees/9dfe/DFIU` on `codex/fix-vite-chunk-deploy`.
+- **Invite redirect/resend follow-up started:** checking how existing-account invites are reported, how pending invites can be resent, how accepted invites land after `/auth/set-password`, and whether the current Pacer View still has a dedicated surface beyond the shared role switcher.
+- **Invite resend and landing fix:** pending invites now show a resend action that reuses the saved role/permission values. Existing-account search results now offer **Add & send link**, which updates/adds membership and sends a magic sign-in link to the event. New-user invite emails now redirect to `/auth/set-password?race_id=...`; after setting a password, the user is routed directly into that race instead of the dashboard.
+- **Pacer View check:** `/race/:id/pacer` still exists and the role switcher can expose it, but the current component is only a placeholder that points pacers back to the full race view or Crew View for ETAs, aid-station details, and arrival logging.
+- **Validation/deploy before commit for invite resend/redirect:** `deno check supabase/functions/invite-race-member/index.ts`, targeted ESLint for `RaceMembersSection.tsx` and `SetPasswordPage.tsx`, `git diff --check`, `npm run build`, and `npm run lint` passed; lint still reports the existing 39 warnings and no errors. Edge Function `invite-race-member` deployed to Supabase project `nyjgyyuoscgekavheeqi` as version 4 with `verify_jwt: true`. `npm run deploy` passed from dirty hash `dc22e43-dirty`; remote bundle is `/var/www/dfiu/assets/index-BTRy81X9.js`. Authenticated invite acceptance/resend smoke verification was not run in-browser because it needs deliverable email links and separate invitee accounts.
 - **Team/invite/clone follow-up started:** investigating an Edge Function non-2xx error during add/invite member, the crew-vs-pacer mutually exclusive UI, a non-expanding permission dropdown, and a requested way for cloned races to receive official source updates for non-runner-specific race/course information.
 - **Team role UI fix:** add/invite member cards now use independent Crew and Pacer checkboxes, so a person can be both. The permission select exposes View/Edit for users who can manage the race team, and the direct-add path updates existing non-owner members instead of failing on duplicate membership.
 - **Invite Edge Function fix:** `invite-race-member` now accepts multi-role flags, stores them on pending invites, preserves runner membership flags when updating existing users, and returns HTTP 200 with `invite_email_failed` when the auth invite email fails after the pending membership is saved. The client now unwraps Edge Function error bodies instead of only showing "non-2xx status code".

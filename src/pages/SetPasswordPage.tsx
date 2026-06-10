@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/features/auth/AuthContext'
 
@@ -8,12 +8,15 @@ import { useAuth } from '@/features/auth/AuthContext'
 // time AuthContext sees a user we can let them set a password.
 export default function SetPasswordPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { user, loading, refreshMemberships } = useAuth()
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
+  const invitedRaceId = normalizeRaceId(searchParams.get('race_id'))
+  const destination = invitedRaceId ? `/race/${invitedRaceId}` : '/dashboard'
 
   // Pull newly-claimed memberships (inserted by handle_new_user trigger)
   // into client state on first arrival from invite link.
@@ -44,8 +47,9 @@ export default function SetPasswordPage() {
       setError(updateErr.message)
       return
     }
+    await refreshMemberships?.()
     setSuccess(true)
-    setTimeout(() => navigate('/dashboard'), 800)
+    setTimeout(() => navigate(destination), 800)
   }
 
   if (loading) {
@@ -130,4 +134,11 @@ export default function SetPasswordPage() {
       </form>
     </div>
   )
+}
+
+function normalizeRaceId(value: string | null): string | null {
+  if (!value) return null
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+    ? value
+    : null
 }

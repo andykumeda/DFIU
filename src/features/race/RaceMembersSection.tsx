@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Trash2, Search, UserPlus, Mail, X } from 'lucide-react'
+import { Trash2, Search, UserPlus, Mail, X, RefreshCw } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/features/auth/AuthContext'
 
@@ -138,7 +138,7 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
   })
 
   const inviteMutation = useMutation({
-    mutationFn: async (input: { email: string; roles: RoleSelection; permission: Permission }) => {
+    mutationFn: async (input: { email: string; roles: RoleSelection; permission: Permission; resend?: boolean; sendEmail?: boolean }) => {
       if (!hasAnyRole(input.roles)) throw new Error('Select at least one role.')
       const { data, error } = await supabase.functions.invoke('invite-race-member', {
         body: {
@@ -149,6 +149,8 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
           is_crew: input.roles.crew,
           is_pacer: input.roles.pacer,
           permission: input.permission,
+          resend: input.resend === true,
+          send_email: input.sendEmail === true,
         },
       })
       if (error) throw new Error(await getFunctionErrorMessage(error))
@@ -160,13 +162,26 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
       if (status === 'added_existing_user') {
         setInviteStatus('User already had an account — added directly.')
         await queryClient.invalidateQueries({ queryKey: ['race_members', raceId] })
+      } else if (status === 'added_existing_user_email_sent') {
+        setInviteStatus('User already had an account — added directly and sent a sign-in link.')
+        await queryClient.invalidateQueries({ queryKey: ['race_members', raceId] })
       } else if (status === 'updated_existing_user') {
         setInviteStatus('Existing member updated.')
         await queryClient.invalidateQueries({ queryKey: ['race_members', raceId] })
+      } else if (status === 'updated_existing_user_email_sent') {
+        setInviteStatus('Existing member updated and sent a sign-in link.')
+        await queryClient.invalidateQueries({ queryKey: ['race_members', raceId] })
       } else if (status === 'already_member') {
         setInviteStatus('Already a member of this race.')
+      } else if (status === 'existing_user_email_failed') {
+        setInviteStatus(`Member access was saved, but the sign-in link failed: ${data.message}`)
+        await queryClient.invalidateQueries({ queryKey: ['race_members', raceId] })
       } else if (status === 'invite_email_failed') {
         setInviteStatus(`Pending invite saved, but email failed: ${data.message}`)
+      } else if (status === 'resend_email_failed') {
+        setInviteStatus(`Pending invite still saved, but resend failed: ${data.message}`)
+      } else if (status === 'resent') {
+        setInviteStatus('Invite email resent.')
       } else {
         setInviteStatus('Invite email sent.')
       }
@@ -219,6 +234,15 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
     },
   })
 
+  const resendPendingInvite = (invite: PendingInvite) => {
+    inviteMutation.mutate({
+      email: invite.email,
+      roles: rolesFromPendingInvite(invite),
+      permission: normalizePermission(invite.permission),
+      resend: true,
+    })
+  }
+
   function resetForm(opts?: { keepStatus?: boolean }) {
     setEmailInput('')
     setFoundUser(null)
@@ -241,7 +265,7 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
   // The database still validates who may grant edit access; expose the full
   // choice here for managers so the permission control is usable.
   const permissionOptions: Permission[] = canManage ? ['view', 'edit'] : ['view']
-  const inviteStatusIsError = inviteStatus?.startsWith('Error:')
+  const inviteStatusIsError = inviteStatus?.startsWith('Error:') || inviteStatus?.toLowerCase().includes('failed')
 
   return (
     <div className='max-w-3xl mx-auto px-4 py-6 space-y-6'>
@@ -331,16 +355,26 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
                       {p.invited_by_name ? ` · invited by ${p.invited_by_name}` : ''}
                     </div>
                   </div>
-                  {canCancel && (
+                  <div className='flex items-center gap-1'>
                     <button
-                      onClick={() => cancelPendingMutation.mutate(p.id)}
-                      className='p-1.5 text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded'
-                      disabled={cancelPendingMutation.isPending}
-                      title='Cancel invite'
+                      onClick={() => resendPendingInvite(p)}
+                      className='p-1.5 text-blue-300 hover:text-blue-200 hover:bg-blue-900/20 rounded'
+                      disabled={inviteMutation.isPending}
+                      title='Resend invite email'
                     >
-                      <X className='w-4 h-4' />
+                      <RefreshCw className='w-4 h-4' />
                     </button>
-                  )}
+                    {canCancel && (
+                      <button
+                        onClick={() => cancelPendingMutation.mutate(p.id)}
+                        className='p-1.5 text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded'
+                        disabled={cancelPendingMutation.isPending}
+                        title='Cancel invite'
+                      >
+                        <X className='w-4 h-4' />
+                      </button>
+                    )}
+                  </div>
                 </li>
               )
             })}
@@ -378,6 +412,7 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
           {foundUser && (
             <AddCard
               foundUser={foundUser}
+              email={searchedEmail ?? emailInput.trim()}
               roles={pendingRoles}
               setRoles={setPendingRoles}
               permission={pendingPermission}
@@ -390,7 +425,16 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
                   permission: pendingPermission,
                 })
               }
-              isPending={addMutation.isPending}
+              onAddAndNotify={() =>
+                inviteMutation.mutate({
+                  email: searchedEmail ?? emailInput.trim(),
+                  roles: pendingRoles,
+                  permission: pendingPermission,
+                  sendEmail: true,
+                })
+              }
+              isAdding={addMutation.isPending}
+              isSendingLink={inviteMutation.isPending}
               error={addMutation.isError ? (addMutation.error as Error).message : null}
             />
           )}
@@ -421,19 +465,24 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
 
 interface AddCardProps {
   foundUser: FoundUser
+  email: string
   roles: RoleSelection
   setRoles: (roles: RoleSelection) => void
   permission: Permission
   setPermission: (p: Permission) => void
   permissionOptions: Permission[]
   onAdd: () => void
-  isPending: boolean
+  onAddAndNotify: () => void
+  isAdding: boolean
+  isSendingLink: boolean
   error: string | null
 }
 
 function AddCard({
-  foundUser, roles, setRoles, permission, setPermission, permissionOptions, onAdd, isPending, error,
+  foundUser, email, roles, setRoles, permission, setPermission, permissionOptions, onAdd, onAddAndNotify, isAdding, isSendingLink, error,
 }: AddCardProps) {
+  const isPending = isAdding || isSendingLink
+
   return (
     <div className='border border-neutral-700 rounded p-3 bg-neutral-950 space-y-3'>
       <div className='flex items-center gap-3'>
@@ -444,20 +493,31 @@ function AddCard({
             {(foundUser.name ?? '?').charAt(0).toUpperCase()}
           </div>
         )}
-        <div className='text-white text-sm'>{foundUser.name ?? 'Unnamed user'}</div>
+        <div>
+          <div className='text-white text-sm'>{foundUser.name ?? 'Unnamed user'}</div>
+          <div className='text-xs text-neutral-500'>{email}</div>
+        </div>
       </div>
       <RolePermFields
         roles={roles} setRoles={setRoles}
         permission={permission} setPermission={setPermission}
         permissionOptions={permissionOptions}
       />
-      <div className='flex justify-end'>
+      <div className='flex flex-wrap justify-end gap-2'>
         <button
           onClick={onAdd}
           disabled={isPending || !hasAnyRole(roles)}
           className='bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white px-3 py-1.5 rounded text-sm font-medium'
         >
-          {isPending ? 'Adding…' : 'Add'}
+          {isAdding ? 'Adding…' : 'Add'}
+        </button>
+        <button
+          onClick={onAddAndNotify}
+          disabled={isPending || !email || !hasAnyRole(roles)}
+          className='flex items-center gap-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white px-3 py-1.5 rounded text-sm font-medium'
+        >
+          <Mail className='w-4 h-4' />
+          {isSendingLink ? 'Sending…' : 'Add & send link'}
         </button>
       </div>
       {error && <p className='text-sm text-red-400'>{error}</p>}
@@ -583,6 +643,18 @@ function formatPendingRoles(invite: PendingInvite): string {
   if (invite.is_crew || (!invite.is_crew && !invite.is_pacer && invite.role === 'crew')) roles.push('crew')
   if (invite.is_pacer || (!invite.is_crew && !invite.is_pacer && invite.role === 'pacer')) roles.push('pacer')
   return roles.length ? roles.join(' + ') : invite.role
+}
+
+function rolesFromPendingInvite(invite: PendingInvite): RoleSelection {
+  const roles = {
+    crew: !!invite.is_crew || (!invite.is_crew && !invite.is_pacer && invite.role === 'crew'),
+    pacer: !!invite.is_pacer || (!invite.is_crew && !invite.is_pacer && invite.role === 'pacer'),
+  }
+  return hasAnyRole(roles) ? roles : { crew: true, pacer: false }
+}
+
+function normalizePermission(permission: string): Permission {
+  return permission === 'edit' ? 'edit' : 'view'
 }
 
 async function getFunctionErrorMessage(error: unknown): Promise<string> {

@@ -1,13 +1,13 @@
 // Edge function: invite-race-member
 //
 // Auth: caller must send Authorization: Bearer <user-JWT>.
-// Body: { race_id, email, role, roles, is_crew, is_pacer, permission }
+// Body: { race_id, email, role, roles, is_crew, is_pacer, permission, resend, send_email }
 //
 // Behavior:
 //   1. Validates caller membership (any member) and permission rules
 //      (runner/team managers may add crew/pacer view-log members).
-//   2. If email already belongs to an auth.users row → insert
-//      race_memberships directly (no invite email).
+//   2. If email already belongs to an auth.users row → insert/update
+//      race_memberships directly; optionally send a magic link to the event.
 //   3. Otherwise → insert pending_race_memberships and call
 //      auth.admin.inviteUserByEmail with redirect to /auth/set-password.
 //      handle_new_user trigger claims pending row on signup.
@@ -50,8 +50,12 @@ serve(async (req) => {
         }
         const role = roleFlags.is_crew ? 'crew' : 'pacer'
         const normalizedPermission = permission
+        const shouldSendExistingUserEmail = body.send_email === true || body.resend === true
+        const isResend = body.resend === true
 
         const normalizedEmail = String(email).trim().toLowerCase()
+        const setPasswordRedirectTo = buildUrl(siteUrl, '/auth/set-password', { race_id: String(race_id) })
+        const eventRedirectTo = buildUrl(siteUrl, `/race/${encodeURIComponent(String(race_id))}`)
 
         // Caller-bound client — enforces RLS as the inviting user.
         const callerClient = createClient(supabaseUrl, anonKey, {
@@ -117,7 +121,27 @@ serve(async (req) => {
             if (writeErr) {
                 return json({ error: writeErr.message }, 500)
             }
-            return json({ status: existingMembership ? 'updated_existing_user' : 'added_existing_user' })
+
+            const baseStatus = existingMembership ? 'updated_existing_user' : 'added_existing_user'
+            if (shouldSendExistingUserEmail) {
+                const { error: linkErr } = await admin.auth.signInWithOtp({
+                    email: normalizedEmail,
+                    options: {
+                        emailRedirectTo: eventRedirectTo,
+                        shouldCreateUser: false,
+                    },
+                })
+                if (linkErr) {
+                    return json({
+                        status: 'existing_user_email_failed',
+                        membership_status: baseStatus,
+                        message: linkErr.message,
+                    })
+                }
+                return json({ status: `${baseStatus}_email_sent` })
+            }
+
+            return json({ status: baseStatus })
         }
 
         // No existing user — insert pending row + send invite email.
@@ -139,15 +163,15 @@ serve(async (req) => {
 
         const { error: inviteErr } = await admin.auth.admin.inviteUserByEmail(
             normalizedEmail,
-            { redirectTo: `${siteUrl}/auth/set-password` }
+            { redirectTo: setPasswordRedirectTo }
         )
         if (inviteErr) {
             // "Email rate limit exceeded" or similar — keep pending row so
             // signup via other means still claims membership.
-            return json({ status: 'invite_email_failed', message: inviteErr.message })
+            return json({ status: isResend ? 'resend_email_failed' : 'invite_email_failed', message: inviteErr.message })
         }
 
-        return json({ status: 'invited' })
+        return json({ status: isResend ? 'resent' : 'invited' })
     } catch (err) {
         return json({ error: (err as Error).message }, 500)
     }
@@ -175,4 +199,13 @@ function resolveRoleFlags(body: Record<string, unknown>): { is_crew: boolean; is
     }
 
     return { is_crew: isCrew, is_pacer: isPacer }
+}
+
+function buildUrl(siteUrl: string, path: string, params?: Record<string, string>): string {
+    const base = siteUrl.endsWith('/') ? siteUrl : `${siteUrl}/`
+    const url = new URL(path.replace(/^\//, ''), base)
+    for (const [key, value] of Object.entries(params ?? {})) {
+        url.searchParams.set(key, value)
+    }
+    return url.toString()
 }
