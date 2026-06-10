@@ -1,8 +1,8 @@
 # Handoff Document
 
-**Date:** 2026-06-09
-**Status:** Map waypoint drag persistence fix implemented and locally validated; clean deploy pending. Crew-accessible non-drop aid station bag planning is implemented, built, deployed, and committed.
-**Active task:** Commit waypoint drag fix, deploy from the clean commit, record the deployed `git describe` hash, and push `main`.
+**Date:** 2026-06-10
+**Status:** Map waypoint drag persistence fix implemented, built, deployed, and committed. Crew-accessible non-drop aid station bag planning is implemented, built, deployed, and committed.
+**Active task:** Verify in production: outside map edit mode waypoint markers should not drag; inside map edit mode dragging an aid station should persist after refresh/revisit.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change in this repo. Commit, branch, and document discipline is required to prevent the lost-work confusion that motivated this reconciliation.
 
@@ -11,7 +11,7 @@
 - **Root cause:** `CourseMap` always created waypoint markers with `draggable: true`, but `RaceDetail` only passes `onWaypointMove` while map edit mode is active. Outside edit mode, users could drag a marker visually even though there was no save callback, so the marker appeared to move but the server value stayed unchanged.
 - **Fix:** waypoint markers are now draggable only when `onWaypointMove` is wired, and the marker-render effect rebuilds when that edit/save capability toggles. Non-edit markers use a pointer cursor and cannot be dragged.
 - **Save verification:** `handleWaypointMove` now asks Supabase to return the updated waypoint id with `.select('id').single()`, so RLS/no-row failures no longer look successful; failed saves log the error and show the actual failure message before refetching server state.
-- **Local validation:** `npm run build` passed; `npm run lint` passed with the existing 44 warnings. Clean deploy is pending after commit.
+- **Validation/deploy:** `npm run build` passed; `npm run lint` passed with the existing 44 warnings; `npm run deploy` passed from clean commit `6b2b4cd`.
 
 ## 2026-06-10 Crew bag planning for crew-accessible aid stations
 
