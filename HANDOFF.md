@@ -1,10 +1,17 @@
 # Handoff Document
 
 **Date:** 2026-06-10
-**Status:** Waypoint drag regression correction implemented, built, deployed, and committed. Crew-accessible non-drop aid station bag planning is implemented, built, deployed, and committed.
-**Active task:** Verify in production: editable users can drag visible waypoint markers again, the new location persists after refresh/revisit, and non-edit viewers cannot drag markers.
+**Status:** Map & Aid Stations edit-control placement plus 12/24-hour time-format consistency implemented. `npm run build` and `npm run lint` passed; deploy/commit/push still in progress.
+**Active task:** Deploy the map/aid-station edit-control and clock-format fixes from a clean commit, record `git describe`, then push `main`.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change in this repo. Commit, branch, and document discipline is required to prevent the lost-work confusion that motivated this reconciliation.
+
+## 2026-06-10 Map edit controls and clock preference fix
+
+- **Aid-station editing controls moved to the Aid Stations header.** Owners now see the waypoint **Edit/Done** toggle beside the Aid Stations title, with **+ Add** appearing there while waypoint edit mode is active. The old Route Stats edit button was removed.
+- **Waypoint and terrain edit modes are independent.** Entering waypoint edit mode disables terrain edit mode, and entering terrain edit mode disables waypoint edit mode, so adding/editing aid stations no longer depends on the terrain-edit controls.
+- **Clock preference gaps fixed in the map flow.** Race overview start time, waypoint cutoff details, and Runner View's last-upload time now honor the user's 12/24-hour preference.
+- **Validation:** `npm run build` passed; `npm run lint` passed with the existing 44 warnings and no errors. Deploy is pending from the clean feature commit.
 
 ## 2026-06-10 Waypoint drag persistence fix
 

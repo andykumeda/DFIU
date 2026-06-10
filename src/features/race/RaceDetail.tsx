@@ -52,6 +52,27 @@ function getWaypointIcon(type: string): string {
   }
 }
 
+function formatClockTime(value: string | null | undefined, timeZone: string | null | undefined, clock24h: boolean) {
+  if (!value) return ''
+  const date = new Date(value)
+  if (isNaN(date.getTime())) return ''
+  return date.toLocaleTimeString([], {
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: timeZone || undefined,
+    hour12: !clock24h,
+  })
+}
+
+function formatTimeZoneName(value: string | null | undefined, timeZone: string | null | undefined) {
+  if (!value || !timeZone) return ''
+  const date = new Date(value)
+  if (isNaN(date.getTime())) return ''
+  return new Intl.DateTimeFormat([], { timeZone, timeZoneName: 'short' })
+    .formatToParts(date)
+    .find(part => part.type === 'timeZoneName')?.value ?? ''
+}
+
 // Identify redundant terrain nodes that can be merged away so consecutive
 // same-type segments collapse into one. A short (<=0.1 mi) "other" gap between
 // two matching terrain types is also collapsed.
@@ -615,7 +636,8 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     }
   }
 
-  const [isEditMode, setIsEditMode] = useState(false)
+  const [isWaypointEditMode, setIsWaypointEditMode] = useState(false)
+  const [isTerrainEditMode, setIsTerrainEditMode] = useState(false)
 
   // Map Interactions
   const handleMapClick = (lat: number, lon: number, type?: string) => {
@@ -1303,6 +1325,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
           waypoint={viewingWaypoint}
           isOwner={isOwner}
           timeZone={race.timezone || undefined}
+          clock24h={clock24h}
           onClose={() => setViewingWaypoint(null)}
           onEdit={() => {
             setViewingWaypoint(null)
@@ -1344,7 +1367,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                         highlightedWaypointId={hoveredWaypointId}
                         coordinates={coordinates}
                         waypoints={courseMapWaypoints}
-                        onMapClick={isOwner && isEditMode ? handleMapClick : undefined}
+                        onMapClick={isOwner && isWaypointEditMode ? handleMapClick : undefined}
                         onWaypointClick={(id: string) => {
                           const wp = waypoints.find(w => w.id === id)
                           if (wp) setViewingWaypoint(wp)
@@ -1368,9 +1391,9 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
                         highlightedTerrainId={pendingSegment?.nodeId ?? hoveredTerrainId}
                         terrainNodes={isOwner ? terrainNodes : []}
-                        onTerrainNodeClick={isOwner && isEditMode ? handleEditTerrainSegment : undefined}
-                        onTerrainNodeMove={isOwner && isEditMode ? handleTerrainNodeMove : undefined}
-                        onSegmentDefined={isOwner && isEditMode ? (lo, hi) => {
+                        onTerrainNodeClick={isOwner && isTerrainEditMode ? handleEditTerrainSegment : undefined}
+                        onTerrainNodeMove={isOwner && isTerrainEditMode ? handleTerrainNodeMove : undefined}
+                        onSegmentDefined={isOwner && isTerrainEditMode ? (lo, hi) => {
                           setHoveredTerrainId(null)
                           setPendingSegment({ startMile: lo, endMile: hi })
                         } : undefined}
@@ -1444,7 +1467,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                       showMileMarkers={showMileMarkers}
                       waypoints={waypoints.map(wp => ({ id: wp.id, mile: wp.mile, name: wp.name, type: wp.type }))}
                       terrainNodes={isOwner ? terrainNodes : []}
-                      onRangeDefined={isOwner && isEditMode ? (lo, hi) => {
+                      onRangeDefined={isOwner && isTerrainEditMode ? (lo, hi) => {
                         setHoveredTerrainId(null)
                         setPendingSegment({ startMile: lo, endMile: hi })
                       } : undefined}
@@ -1457,15 +1480,6 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                   <div className='p-4 border-b border-neutral-800'>
                     <div className='flex items-center justify-between mb-4'>
                       <h3 className='text-sm font-semibold text-neutral-400 uppercase tracking-wider'>Route Stats</h3>
-                      {isOwner && (
-                        <button
-                          onClick={() => { setIsEditMode(!isEditMode); clearPendingTerrainSegment() }}
-                          className={`text-xs px-2 py-1 rounded border transition-colors flex items-center gap-1 ${isEditMode ? 'bg-blue-600 text-white border-blue-500' : 'bg-neutral-800 text-neutral-500 border-neutral-700 hover:bg-neutral-700 hover:text-neutral-300'}`}
-                        >
-                          <Settings className='w-3 h-3' />
-                          {isEditMode ? 'Done' : 'Edit'}
-                        </button>
-                      )}
                     </div>
                     {course && (
                       <div className='space-y-4'>
@@ -1546,13 +1560,32 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                       <h3 className='text-sm font-semibold text-neutral-400 flex-1 uppercase tracking-wider flex items-center gap-2'>
                         {isAidListOpen ? '▼' : '▶'} Aid Stations
                       </h3>
-                      {isOwner && isEditMode && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setEditingWaypoint({ mile: 0 }) }}
-                          className="text-xs bg-neutral-800 hover:bg-neutral-700 text-white px-2 py-1 rounded border border-neutral-700 transition-colors ml-2"
-                        >
-                          + Add
-                        </button>
+                      {isOwner && (
+                        <div className="flex items-center gap-1.5 ml-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              const next = !isWaypointEditMode
+                              setIsWaypointEditMode(next)
+                              if (next) {
+                                setIsTerrainEditMode(false)
+                                clearPendingTerrainSegment()
+                              }
+                            }}
+                            className={`text-xs px-2 py-1 rounded border transition-colors flex items-center gap-1 ${isWaypointEditMode ? 'bg-blue-600 text-white border-blue-500 hover:bg-blue-500' : 'bg-neutral-800 hover:bg-neutral-700 text-white border-neutral-700'}`}
+                          >
+                            <Settings className='w-3 h-3' />
+                            {isWaypointEditMode ? 'Done' : 'Edit'}
+                          </button>
+                          {isWaypointEditMode && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setEditingWaypoint({ mile: 0 }) }}
+                              className="text-xs bg-neutral-800 hover:bg-neutral-700 text-white px-2 py-1 rounded border border-neutral-700 transition-colors"
+                            >
+                              + Add
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
 
@@ -1596,9 +1629,13 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                     <TerrainSidebar
                       terrainNodes={terrainNodes}
                       totalDistance={course?.total_distance_miles ?? 0}
-                      canEdit={!!isOwner && isEditMode}
+                      canEdit={!!isOwner && isTerrainEditMode}
                       canEnterEdit={!!isOwner}
-                      onEditModeChange={editing => { setIsEditMode(editing); clearPendingTerrainSegment() }}
+                      onEditModeChange={editing => {
+                        setIsTerrainEditMode(editing)
+                        if (editing) setIsWaypointEditMode(false)
+                        clearPendingTerrainSegment()
+                      }}
                       highlightedTerrainId={pendingSegment?.nodeId ?? hoveredTerrainId}
                       onHoverNode={setHoveredTerrainId}
                       onSaveSegment={handleSaveTerrainSegment}
@@ -1702,8 +1739,8 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                     <Calendar className="w-5 h-5 text-orange-500" />
                     <span>
                       {race?.start_datetime ? formatDate(race.start_datetime, 'EEEE, MMMM do, yyyy') : 'Date TBD'}
-                      {race?.start_datetime && ` at ${formatDate(race.start_datetime, 'h:mm a')}`}
-                      {race?.timezone && <span className="ml-2 font-normal text-neutral-500">({new Date(race.start_datetime || Date.now()).toLocaleTimeString([], { timeZone: race.timezone || undefined, timeZoneName: 'short' }).split(' ')[2]})</span>}
+                      {race?.start_datetime && ` at ${formatClockTime(race.start_datetime, race.timezone, clock24h)}`}
+                      {race?.timezone && race?.start_datetime && <span className="ml-2 font-normal text-neutral-500">({formatTimeZoneName(race.start_datetime, race.timezone)})</span>}
                     </span>
                   </div>
                   {race?.location && (

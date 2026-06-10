@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowLeft, MapPin, Radio, AlertCircle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/features/auth/AuthContext'
 import { usePermission } from '@/features/auth/usePermission'
 import { useRunnerLocationUploader } from './useRunnerLocation'
 import type { Race } from '@/types/database'
@@ -11,6 +12,8 @@ interface RunnerViewProps {
 }
 
 export function RunnerView({ raceId }: RunnerViewProps) {
+  const { profile } = useAuth() as { profile: { clock_24h?: boolean } | null }
+  const clock24h = !!profile?.clock_24h
   const { canView, isRunner } = usePermission(raceId)
   const [race, setRace] = useState<Race | null>(null)
   const [loading, setLoading] = useState(true)
@@ -71,7 +74,7 @@ export function RunnerView({ raceId }: RunnerViewProps) {
             <div className='bg-neutral-800 rounded p-3'>
               <div className='text-xs text-neutral-400'>Last upload</div>
               <div className='font-semibold text-neutral-300'>
-                {uploader.lastUploadAt ? uploader.lastUploadAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '—'}
+                {uploader.lastUploadAt ? uploader.lastUploadAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: !clock24h }) : '—'}
               </div>
             </div>
           </div>

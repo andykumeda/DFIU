@@ -2,13 +2,13 @@
 
 import { Waypoint } from '@/types/database'
 import styles from '../race/EditRaceModal.module.css' // Reuse consistent styles
-import { format } from 'date-fns'
 import { getDropBagNotes } from '@/features/race/drop-bag-shared'
 
 interface ViewWaypointModalProps {
     waypoint: Waypoint
     isOwner: boolean
     timeZone?: string
+    clock24h?: boolean
     onClose: () => void
     onEdit?: () => void
 }
@@ -28,32 +28,28 @@ function getWaypointIcon(type: string): string {
     }
 }
 
-function formatCutoffTime(utcString: string, timeZone?: string) {
+function formatCutoffTime(utcString: string, timeZone?: string, clock24h: boolean = false) {
     if (!utcString) return null
     try {
         const date = new Date(utcString)
         if (isNaN(date.getTime())) return null
 
-        // If timeZone is provided, we can use format with tz. But simpler is native Intl
-        if (timeZone) {
-            return new Intl.DateTimeFormat('en-US', {
-                timeZone,
-                weekday: 'short',
-                month: 'short',
-                day: 'numeric',
-                hour: 'numeric',
-                minute: '2-digit'
-            }).format(date)
-        }
-
-        return format(date, 'MMM d, h:mm a')
+        return new Intl.DateTimeFormat('en-US', {
+            ...(timeZone ? { timeZone } : {}),
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: !clock24h,
+        }).format(date)
     } catch {
         return null
     }
 }
 
-export function ViewWaypointModal({ waypoint, isOwner, timeZone, onClose, onEdit }: ViewWaypointModalProps) {
-    const formattedCutoff = waypoint.cutoff_time ? formatCutoffTime(waypoint.cutoff_time, timeZone) : null
+export function ViewWaypointModal({ waypoint, isOwner, timeZone, clock24h = false, onClose, onEdit }: ViewWaypointModalProps) {
+    const formattedCutoff = waypoint.cutoff_time ? formatCutoffTime(waypoint.cutoff_time, timeZone, clock24h) : null
     const showsDropBagNotes = waypoint.has_drop_bag || waypoint.type === 'drop_bag' || waypoint.type === 'start'
     const dropBagNotes = getDropBagNotes(waypoint)
 
