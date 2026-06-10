@@ -1,8 +1,8 @@
 # Handoff Document
 
 **Date:** 2026-06-10
-**Status:** Drop-bag section modal/template fix implemented, built, linted, and deployed from dirty pre-commit state.
-**Active task:** Commit, perform a clean post-commit deploy, and push `main`.
+**Status:** Drop-bag section modal/template fix implemented, built, linted, clean-deployed, and committed.
+**Active task:** Push `main`; production deploy hash is `d64cdbc`.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change in this repo. Commit, branch, and document discipline is required to prevent the lost-work confusion that motivated this reconciliation.
 
@@ -12,7 +12,7 @@
 - **Modal write access:** the dedicated Drop Bags tab now passes the broader write/settings permission into `DropBagModal`, so race directors and other write-enabled users are not forced into view-only bag contents there.
 - **All Bags popup access:** the All Bags side list now shows an Edit/View action per bag point and opens the same popup modal from that list. Write-enabled users can open stations that only have template suggestions and pack/edit items from the modal.
 - **Template population fix:** drop-bag template parsing now accepts array templates plus common wrapped shapes (`items`, `template`, `drop_bag_template`) and normalizes legacy item labels (`text`, `label`, `name`, `qty`). The modal and All Bags list both use the same template merge/seed helper, so template edits appear before a bag has been saved.
-- **Validation/deploy:** `npm run build` passed; `npm run lint` passed with 39 warnings and no errors; `npm run deploy` passed. First deploy was from dirty hash `284c5f0-dirty`; perform a clean deploy after the product commit so the footer hash is comparable. Local production preview responded at `http://127.0.0.1:4173`; interactive in-app Browser verification was unavailable because no browser target was exposed in this thread.
+- **Validation/deploy:** `npm run build` passed; `npm run lint` passed with 39 warnings and no errors; `npm run deploy` passed. First deploy was from dirty hash `284c5f0-dirty`; clean post-commit deploy passed from `d64cdbc`. Local production preview responded at `http://127.0.0.1:4173`; interactive in-app Browser verification was unavailable because no browser target was exposed in this thread.
 
 ## 2026-06-10 Terrain editing UX improvement
 
