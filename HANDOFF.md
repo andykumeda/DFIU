@@ -1,8 +1,8 @@
 # Handoff Document
 
 **Date:** 2026-06-10
-**Status:** Drop Bags desktop side-panel item filtering fixed; built, linted, and deployed from dirty pre-commit state.
-**Active task:** Commit the side-panel filtering fix, perform a clean post-commit deploy, and push `main`.
+**Status:** Drop Bags desktop side-panel item filtering fixed; built, linted, clean-deployed, and committed.
+**Active task:** Push `main`; production deploy hash is `d6eba48`.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change in this repo. Commit, branch, and document discipline is required to prevent the lost-work confusion that motivated this reconciliation.
 
@@ -10,7 +10,7 @@
 
 - **Branch/worktree check before edits:** working on `/Users/andy/Dev/DFIU` branch `main`, tracking `origin/main`, with a clean working tree. Additional worktree remains at `/Users/andy/.codex/worktrees/9dfe/DFIU` on `codex/fix-vite-chunk-deploy`.
 - **Side-panel item filtering follow-up:** writable desktop All Bags side panel no longer falls back to rendering all merged editor/template items when a station has zero checked items. It now lists only checked/packed items and shows an editor-only "No items packed yet." empty state for empty bag points; print output still hides empty sections.
-- **Validation/deploy for side-panel filtering:** targeted ESLint passed for touched files; `npm run build` passed; `npm run lint` passed with 39 warnings and no errors; `npm run deploy` passed from dirty hash `c1efe65-dirty`. Perform a clean deploy after commit so the footer hash is comparable.
+- **Validation/deploy for side-panel filtering:** targeted ESLint passed for touched files; `npm run build` passed; `npm run lint` passed with 39 warnings and no errors; `npm run deploy` passed from dirty hash `c1efe65-dirty`; clean post-commit deploy passed from `d6eba48`. Deployed bundle `/var/www/dfiu/assets/index-3-eg3ZgI.js` contains `d6eba48`. Interactive Browser smoke verification was unavailable because no ready in-app browser target was exposed in this thread.
 - **Plan A-only card ETA cleanup:** Drop Bags tab cards now show only Plan A ETA data; Plan B/C display and extra computations were removed from the current bag, next-aid, and next-bag timing rows.
 - **Validation/deploy for Plan A-only cleanup:** targeted ESLint passed for touched files; `npm run build` passed; `npm run lint` passed with 39 warnings and no errors; `npm run deploy` passed from dirty hash `607eb86-dirty`; clean post-commit deploy passed from `b75ff00`. Deployed bundle `/var/www/dfiu/assets/index-C-Fo8FwR.js` contains `b75ff00`.
 - **Next waypoint ETA follow-up:** each Drop Bags tab card now shows compact next-aid and next-bag rows with Plan A ETA times. The two rows can point at the same waypoint when the next aid station is also a bag point. Next aid includes aid/drop-bag/water/medical/crew/pacer support stops and any waypoint marked crew/pacer/drop-bag accessible.
