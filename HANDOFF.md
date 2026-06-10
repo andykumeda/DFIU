@@ -1,14 +1,16 @@
 # Handoff Document
 
 **Date:** 2026-06-10
-**Status:** Redundant edit/create labels removed from Drop Bags tab cards; built, linted, clean-deployed, and committed.
-**Active task:** Push `main`; production deploy hash is `f27f3c8`.
+**Status:** Next aid-station and next drop-bag ETA context added to Drop Bags tab cards; built, linted, and deployed from dirty pre-commit state.
+**Active task:** Commit, perform a clean post-commit deploy, and push `main`.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change in this repo. Commit, branch, and document discipline is required to prevent the lost-work confusion that motivated this reconciliation.
 
 ## 2026-06-10 Drop-bag modal/template follow-up
 
 - **Branch/worktree check before edits:** working on `/Users/andy/Dev/DFIU` branch `main`, tracking `origin/main`, with a clean working tree. Additional worktree remains at `/Users/andy/.codex/worktrees/9dfe/DFIU` on `codex/fix-vite-chunk-deploy`.
+- **Next waypoint ETA follow-up:** each Drop Bags tab card now shows compact next-aid and next-bag rows with Plan A/B/C ETA times. The two rows can point at the same waypoint when the next aid station is also a bag point. Next aid includes aid/drop-bag/water/medical/crew/pacer support stops and any waypoint marked crew/pacer/drop-bag accessible.
+- **Validation/deploy for next waypoint ETA follow-up:** targeted ESLint passed for touched files; `npm run build` passed; `npm run lint` passed with 39 warnings and no errors; `npm run deploy` passed from dirty hash `61de25f-dirty`. Perform a clean deploy after commit so the footer hash is comparable.
 - **Card action label cleanup:** removed the redundant edit/create drop-bag action label from the Drop Bags tab cards; the cards remain clickable and the All Bags side list still exposes explicit Edit/View controls.
 - **Validation/deploy for card label cleanup:** targeted ESLint passed for touched files; `npm run build` passed; `npm run lint` passed with 39 warnings and no errors; `npm run deploy` passed from dirty hash `3cb8e3a-dirty`; clean post-commit deploy passed from `f27f3c8`. Deployed bundle `/var/www/dfiu/assets/index-im6LuBp0.js` contains `f27f3c8`.
 - **Inline item editing follow-up:** individual item labels in the drop-bag popup modal are now editable text fields for write-enabled users, so users can rename template items like "Sport drink" to a specific brand without a separate edit flow. The pack/unpack toggle remains on the checkbox icon, quantity remains inline, and saved item labels are trimmed.

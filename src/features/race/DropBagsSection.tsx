@@ -28,6 +28,22 @@ interface DropBagsSectionProps {
     onGoToPacePlan: () => void
 }
 
+const COURSE_ORDER_EPSILON = 1e-6
+const AID_STATION_TYPES = new Set(['aid_station', 'drop_bag', 'water_only', 'medical', 'crew', 'pacer'])
+
+const compareCourseOrder = (a: Waypoint, b: Waypoint) =>
+    (a.mile - b.mile) || (a.order_index - b.order_index) || a.name.localeCompare(b.name)
+
+const isAfterWaypoint = (candidate: Waypoint, current: Waypoint) =>
+    candidate.mile > current.mile + COURSE_ORDER_EPSILON ||
+    (Math.abs(candidate.mile - current.mile) <= COURSE_ORDER_EPSILON && candidate.order_index > current.order_index)
+
+const isAidStationWaypoint = (waypoint: Waypoint) =>
+    AID_STATION_TYPES.has(waypoint.type) ||
+    !!waypoint.has_drop_bag ||
+    !!waypoint.crew_allowed ||
+    !!waypoint.pacer_allowed
+
 export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24h = false, runnerProfile, onGoToPacePlan }: DropBagsSectionProps) {
     const { canEditRaceSettings } = usePermission(race.id, race.race_director_user_id)
     const canWriteDropBags = canEditRaceSettings
@@ -42,13 +58,14 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
         }))
     }
 
-    const bagWaypoints = waypoints
+    const sortedWaypoints = [...waypoints].sort(compareCourseOrder)
+    const bagWaypoints = sortedWaypoints
         .filter(wp => {
             const kind = getBagKind(wp)
             if (!kind) return false
             return kind !== 'crew' || canWriteDropBags || hasSavedBagPlan(wp)
         })
-        .sort((a, b) => a.mile - b.mile)
+    const aidStationWaypoints = sortedWaypoints.filter(isAidStationWaypoint)
 
     const { plans } = usePacePlans(race.id)
     const { a: planAMinutes, b: planBMinutes, c: planCMinutes } = computePlanMinutes(plans, race.overall_cutoff)
@@ -84,6 +101,11 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
     const planA = computed?.A ?? null
     const planB = computed?.B ?? null
     const planC = computed?.C ?? null
+    const planOptions = [
+        { label: 'A', plan: planA, color: 'text-emerald-400' },
+        { label: 'B', plan: planB, color: 'text-blue-400' },
+        ...(planCMinutes !== null ? [{ label: 'C', plan: planC, color: 'text-orange-400' }] : []),
+    ]
 
     const isNight = (arrivalMinutes: number, wpLat: number, wpLon: number) => {
         if (!race.start_datetime) return false
@@ -112,6 +134,9 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
     const getWaypointArrival = (wp: Waypoint) =>
         planA?.waypointArrivals.find(a => a.waypointId === wp.id)
 
+    const getPlanArrival = (plan: Plan, wp: Waypoint) =>
+        plan?.waypointArrivals.find(a => a.waypointId === wp.id)
+
     const getWaypointIsNight = (wp: Waypoint) => {
         const arrival = getWaypointArrival(wp)
         return arrival ? isNight(arrival.arrivalTime, wp.lat, wp.lon) : false
@@ -126,6 +151,40 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
             isCold,
         })
     }
+
+    const getNextAidStation = (wp: Waypoint) =>
+        aidStationWaypoints.find(candidate => isAfterWaypoint(candidate, wp)) ?? null
+
+    const getNextBagWaypoint = (wp: Waypoint) =>
+        bagWaypoints.find(candidate => isAfterWaypoint(candidate, wp)) ?? null
+
+    const renderNextEtaRow = (label: string, target: Waypoint | null, labelClass: string) => (
+        <div className="flex items-start gap-3 text-xs">
+            <div className={`w-16 shrink-0 font-bold uppercase tracking-wide ${labelClass}`}>
+                {label}
+            </div>
+            {target ? (
+                <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                        <span className="truncate text-neutral-200 font-medium">{target.name}</span>
+                        <span className="shrink-0 font-mono text-neutral-500">Mile {target.mile.toFixed(1)}</span>
+                    </div>
+                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-neutral-400">
+                        {planOptions.map(({ label: planLabel, plan, color }) => {
+                            const arrival = getPlanArrival(plan, target)
+                            return (
+                                <span key={planLabel} className="font-mono">
+                                    <span className={`font-bold ${color}`}>{planLabel}</span> {arrival?.timeOfDay ?? '—'}
+                                </span>
+                            )
+                        })}
+                    </div>
+                </div>
+            ) : (
+                <div className="text-neutral-600">None ahead</div>
+            )}
+        </div>
+    )
 
     if (bagWaypoints.length === 0) {
         return (
@@ -234,9 +293,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                                     ) : (
                                         <div className="space-y-1.5">
                                             {[
-                                                { label: 'A', plan: planA, color: 'text-emerald-400' },
-                                                { label: 'B', plan: planB, color: 'text-blue-400' },
-                                                ...(planCMinutes !== null ? [{ label: 'C', plan: planC, color: 'text-orange-400' }] : []),
+                                                ...planOptions,
                                             ].map(({ label, plan: p, color }) => {
                                                 const arrival = p?.waypointArrivals.find(a => a.waypointId === wp.id)
                                                 return (
@@ -252,6 +309,13 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                                                     </div>
                                                 )
                                             })}
+                                        </div>
+                                    )}
+
+                                    {plans.hasCalculated && (
+                                        <div className="border-t border-neutral-800 pt-3 space-y-2">
+                                            {renderNextEtaRow('Next aid', getNextAidStation(wp), 'text-blue-400')}
+                                            {renderNextEtaRow('Next bag', getNextBagWaypoint(wp), isCrewBag ? 'text-emerald-400' : 'text-orange-400')}
                                         </div>
                                     )}
 
