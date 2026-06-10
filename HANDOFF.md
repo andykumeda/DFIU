@@ -1,14 +1,14 @@
 # Handoff Document
 
 **Date:** 2026-06-10
-**Status:** Terrain map selection replaced with double-click start/end selection. `npm run build` and `npm run lint` passed; deploy/commit/push still in progress.
-**Active task:** Commit and deploy double-click terrain selection, record `git describe`, then push `main`.
+**Status:** Terrain map selection replaced with double-click start/end selection, built, linted, deployed, and committed.
+**Active task:** Push `main` after this handoff update; production deploy hash is `a9d0fe1`.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change in this repo. Commit, branch, and document discipline is required to prevent the lost-work confusion that motivated this reconciliation.
 
 ## 2026-06-10 Terrain editing UX improvement
 
-- **Interaction replacement:** route drag selection has been removed from the map. Terrain map selection now uses double-click for start and double-click for end, while normal map drag-pan remains available in terrain edit mode. Double-click zoom is disabled only while terrain edit mode is active. `npm run build` passed; `npm run lint` passed with 41 warnings and no errors. Deploy pending from the clean interaction-replacement commit.
+- **Interaction replacement:** route drag selection has been removed from the map. Terrain map selection now uses double-click for start and double-click for end, while normal map drag-pan remains available in terrain edit mode. Double-click zoom is disabled only while terrain edit mode is active. `npm run build`, `npm run lint`, and `npm run deploy` passed from clean commit `a9d0fe1`.
 - **Regression fix:** route drag selection now starts from the map canvas, snaps to nearby route points, and no longer depends on receiving `mousedown` from the route hit-area layer. `npm run build`, `npm run lint`, and `npm run deploy` passed from clean commit `9b6b83f`.
 - **Correction:** terrain edit mode no longer shows every terrain boundary node as route dots. The intended interaction is click the route to set the segment start, drag either direction to the segment end, and use only the highlighted route span plus the active start/end handles as feedback. Drag snapping now uses the current mileage as a hint so it is less likely to jump on nearby repeated route sections.
 - **Map terrain definition now supports drag-select.** In terrain edit mode, owners can drag across the route to define a segment; the selected route span is highlighted in amber during the drag and remains highlighted while the terrain type picker is open. Click-start/click-end still works as a fallback, and elevation-profile drag selection remains available.
