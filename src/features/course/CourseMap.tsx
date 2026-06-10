@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import along from '@turf/along'
@@ -10,6 +10,8 @@ import MapStyleSwitcher from './MapStyleSwitcher'
 import { getNearestPointOnLine, getDistanceFromStart, getCoordinateAtDistance, getDistanceAtCoordinate } from '@/lib/geo-utils'
 import styles from './CourseMap.module.css'
 import { getTerrainColor } from './terrain-constants'
+
+type TerrainPoint = { lat: number, lon: number, mile: number }
 
 interface CourseMapProps {
     coordinates: [number, number][] // [lon, lat] pairs
@@ -51,10 +53,10 @@ interface CourseMapProps {
     totalDistance?: number
     highlightedWaypointId?: string | null // New prop
     highlightedTerrainId?: string | null // Highlight terrain node being edited
+    activeTerrainRange?: { startMile: number; endMile: number } | null
     onTerrainNodeMove?: (id: string, lat: number, lon: number, mile: number) => void
     // When provided, the map captures two clicks to define a terrain segment.
-    // RaceDetail then opens a classification popup; the picker is "click start,
-    // click end" rather than "select brush, then drag".
+    // RaceDetail then opens a classification popup.
     onSegmentDefined?: (startMile: number, endMile: number) => void
 }
 
@@ -76,6 +78,7 @@ export function CourseMap({
     totalDistance,
     highlightedWaypointId,
     highlightedTerrainId,
+    activeTerrainRange,
     onTerrainNodeMove,
     onSegmentDefined,
 }: CourseMapProps) {
@@ -109,6 +112,8 @@ export function CourseMap({
     const isTerrainModeRef = useRef(isTerrainMode)
     const terrainSelectionRef = useRef(terrainSelection)
     const onSegmentDefinedRef = useRef(onSegmentDefined)
+    const terrainDragRef = useRef<{ start: TerrainPoint; end: TerrainPoint | null } | null>(null)
+    const suppressTerrainClickRef = useRef(false)
     const canMoveWaypoints = !!onWaypointMove
 
     // Sync refs for event listeners
@@ -126,6 +131,37 @@ export function CourseMap({
     // Terrain editing is always active when the parent wires an onSegmentDefined
     // handler (i.e. owner + edit mode). No "T" toggle needed.
     useEffect(() => { setIsTerrainMode(!!onSegmentDefined) }, [onSegmentDefined])
+
+    useEffect(() => {
+        if (!onSegmentDefined) setTerrainSelection({ start: null, end: null })
+    }, [onSegmentDefined])
+
+    const getRouteGeoJson = useCallback((): GeoJSON.FeatureCollection<GeoJSON.LineString> => ({
+        type: 'FeatureCollection',
+        features: [{
+            type: 'Feature',
+            properties: {},
+            geometry: { type: 'LineString', coordinates }
+        }]
+    }), [coordinates])
+
+    const getTerrainPointFromLngLat = useCallback((lngLat: mapboxgl.LngLat): TerrainPoint | null => {
+        const snap = getNearestPointOnLine({ lat: lngLat.lat, lon: lngLat.lng }, coordinates)
+        if (!snap) return null
+
+        return {
+            lat: snap.lat,
+            lon: snap.lon,
+            mile: getDistanceFromStart(coordinates, snap.index, { lat: snap.lat, lon: snap.lon })
+        }
+    }, [coordinates])
+
+    const getTerrainPointAtMile = useCallback((mile: number): TerrainPoint | null => {
+        if (coordinates.length === 0) return null
+        const coord = getCoordinateAtDistance(getRouteGeoJson(), mile * 1609.34)
+        if (!coord) return null
+        return { lon: coord[0], lat: coord[1], mile }
+    }, [coordinates.length, getRouteGeoJson])
 
     const handleStyleChange = (style: 'outdoors' | 'streets' | 'satellite') => {
         if (style === mapStyle) return
@@ -842,52 +878,72 @@ export function CourseMap({
 
         const m = map.current
 
-        // Update/Remove Line Layer
-        if (m.getSource('terrain-selection')) {
-            m.removeLayer('terrain-selection-line')
-
-            m.removeSource('terrain-selection')
+        const emptySelection: GeoJSON.FeatureCollection<GeoJSON.LineString> = {
+            type: 'FeatureCollection',
+            features: []
         }
 
-        if (isTerrainMode && (terrainSelection.start || terrainSelection.end) && coordinates.length > 0) {
-            const { start, end } = terrainSelection
-
-            // Draw Line if both exist
-            if (start && end) {
-                const startIndex = getNearestPointOnLine({ lat: start.lat, lon: start.lon }, coordinates)?.index ?? 0
-                const endIndex = getNearestPointOnLine({ lat: end.lat, lon: end.lon }, coordinates)?.index ?? 0
-
-                // Handle different orders
-                const minIdx = Math.min(startIndex, endIndex)
-                const maxIdx = Math.max(startIndex, endIndex)
-
-                const segmentCoords = coordinates.slice(minIdx, maxIdx + 1)
-
+        const ensureSelectionLayer = () => {
+            if (!m.getSource('terrain-selection')) {
                 m.addSource('terrain-selection', {
                     type: 'geojson',
-                    data: {
-                        type: 'Feature',
-                        geometry: {
-                            type: 'LineString',
-                            coordinates: segmentCoords
-                        },
-                        properties: {}
-                    }
+                    data: emptySelection
                 })
-
+            }
+            if (!m.getLayer('terrain-selection-line')) {
                 m.addLayer({
                     id: 'terrain-selection-line',
                     type: 'line',
                     source: 'terrain-selection',
                     layout: { 'line-join': 'round', 'line-cap': 'round' },
                     paint: {
-                        'line-color': '#fbbf24', // Amber/Yellow
-                        'line-width': 6,
-                        'line-dasharray': [2, 2]
+                        'line-color': '#fbbf24',
+                        'line-width': 9,
+                        'line-opacity': 0.9,
+                        'line-dasharray': [1.5, 1.25]
                     }
                 })
             }
+        }
 
+        ensureSelectionLayer()
+
+        const rangeStart = !terrainSelection.start && activeTerrainRange
+            ? getTerrainPointAtMile(activeTerrainRange.startMile)
+            : terrainSelection.start
+        const rangeEnd = !terrainSelection.end && activeTerrainRange
+            ? getTerrainPointAtMile(activeTerrainRange.endMile)
+            : terrainSelection.end
+
+        if (isTerrainMode && rangeStart && rangeEnd && coordinates.length > 0) {
+            const startIndex = getNearestPointOnLine({ lat: rangeStart.lat, lon: rangeStart.lon }, coordinates)?.index ?? 0
+            const endIndex = getNearestPointOnLine({ lat: rangeEnd.lat, lon: rangeEnd.lon }, coordinates)?.index ?? 0
+
+            // Handle different orders
+            const minIdx = Math.min(startIndex, endIndex)
+            const maxIdx = Math.max(startIndex, endIndex)
+
+            const segmentCoords = coordinates.slice(minIdx, maxIdx + 1)
+
+            const source = m.getSource('terrain-selection') as mapboxgl.GeoJSONSource | undefined
+            source?.setData({
+                type: 'FeatureCollection',
+                features: [{
+                    type: 'Feature',
+                    geometry: {
+                        type: 'LineString',
+                        coordinates: segmentCoords
+                    },
+                    properties: {}
+                }]
+            })
+        } else {
+            const source = m.getSource('terrain-selection') as mapboxgl.GeoJSONSource | undefined
+            source?.setData(emptySelection)
+        }
+
+        if (isTerrainMode && (terrainSelection.start || terrainSelection.end) && coordinates.length > 0) {
+            const { start, end } = terrainSelection
             // Create Draggable Markers for Start/End
             const createSelectionMarker = (point: { lat: number, lon: number, mile: number }, type: 'start' | 'end') => {
                 const el = document.createElement('div')
@@ -932,7 +988,7 @@ export function CourseMap({
             if (end) createSelectionMarker(end, 'end')
         }
 
-    }, [isTerrainMode, terrainSelection, mapLoaded, coordinates])
+    }, [isTerrainMode, terrainSelection, activeTerrainRange, mapLoaded, coordinates, getTerrainPointAtMile])
 
     // Handle Waypoint Highlighting independent of marker recreation
     useEffect(() => {
@@ -1006,6 +1062,17 @@ export function CourseMap({
 
         // Hover Event Listeners
         const onMouseMove = (e: mapboxgl.MapMouseEvent) => {
+            if (
+                isTerrainModeRef.current &&
+                terrainSelectionRef.current.start &&
+                !terrainDragRef.current
+            ) {
+                const point = getTerrainPointFromLngLat(e.lngLat)
+                if (point) {
+                    setTerrainSelection(prev => prev.start ? { ...prev, end: point } : prev)
+                }
+            }
+
             if (!onHover) return
             // Calculate distance along route based on cursor position
             // We need a way to project the point onto the line
@@ -1014,16 +1081,8 @@ export function CourseMap({
 
             // For efficiency, let's assume we can use the helper with a constructed GeoJSON
             // or pass the GeoJSON source data.
-            const geoJson = {
-                type: 'FeatureCollection',
-                features: [{
-                    type: 'Feature',
-                    geometry: { type: 'LineString', coordinates }
-                }]
-            } as any
-
             // Dynamic import to avoid SSR issues if any (but we are client-side)
-            const distMeters = getDistanceAtCoordinate(geoJson, e.lngLat.lng, e.lngLat.lat)
+            const distMeters = getDistanceAtCoordinate(getRouteGeoJson(), e.lngLat.lng, e.lngLat.lat)
             if (distMeters !== null) {
                 onHover(distMeters / 1609.34) // Convert to miles
             }
@@ -1045,7 +1104,76 @@ export function CourseMap({
             m.off('mousemove', 'route', onMouseMove)
             m.off('mouseleave', 'route', onMouseLeave)
         }
-    }, [mapLoaded, coordinates, onHover])
+    }, [mapLoaded, styleLoaded, coordinates, onHover, getTerrainPointFromLngLat, getRouteGeoJson])
+
+    // Dragging across the route defines a terrain range and previews it on-map.
+    useEffect(() => {
+        if (!map.current || !mapLoaded || !styleLoaded || !map.current.getLayer('route-hit-area')) return
+        const m = map.current
+
+        const resetDrag = () => {
+            terrainDragRef.current = null
+            m.dragPan.enable()
+            m.getCanvas().style.cursor = ''
+        }
+
+        const emitSelection = (start: { mile: number }, end: { mile: number }) => {
+            const lo = Math.min(start.mile, end.mile)
+            const hi = Math.max(start.mile, end.mile)
+            if (hi - lo < 0.05) return false
+            onSegmentDefinedRef.current?.(lo, hi)
+            return true
+        }
+
+        const handleMouseDown = (e: mapboxgl.MapLayerMouseEvent) => {
+            if (!isTerrainModeRef.current || selectedPOITypeRef.current) return
+            const point = getTerrainPointFromLngLat(e.lngLat)
+            if (!point) return
+
+            e.preventDefault()
+            m.dragPan.disable()
+            terrainDragRef.current = { start: point, end: point }
+            setTerrainSelection({ start: point, end: point })
+            m.getCanvas().style.cursor = 'crosshair'
+        }
+
+        const handleMouseMove = (e: mapboxgl.MapMouseEvent) => {
+            const drag = terrainDragRef.current
+            if (!drag) return
+
+            const point = getTerrainPointFromLngLat(e.lngLat)
+            if (!point) return
+
+            drag.end = point
+            suppressTerrainClickRef.current = true
+            setTerrainSelection({ start: drag.start, end: point })
+        }
+
+        const handleMouseUp = (e?: mapboxgl.MapMouseEvent) => {
+            const drag = terrainDragRef.current
+            if (!drag) return
+
+            const point = e ? getTerrainPointFromLngLat(e.lngLat) : drag.end
+            resetDrag()
+            setTerrainSelection({ start: null, end: null })
+            suppressTerrainClickRef.current = point ? emitSelection(drag.start, point) : false
+        }
+
+        const handleWindowMouseUp = () => handleMouseUp()
+
+        m.on('mousedown', 'route-hit-area', handleMouseDown)
+        m.on('mousemove', handleMouseMove)
+        m.on('mouseup', handleMouseUp)
+        window.addEventListener('mouseup', handleWindowMouseUp)
+
+        return () => {
+            m.off('mousedown', 'route-hit-area', handleMouseDown)
+            m.off('mousemove', handleMouseMove)
+            m.off('mouseup', handleMouseUp)
+            window.removeEventListener('mouseup', handleWindowMouseUp)
+            resetDrag()
+        }
+    }, [mapLoaded, styleLoaded, coordinates, getTerrainPointFromLngLat])
 
     // Track View State
     useEffect(() => {
@@ -1126,10 +1254,14 @@ export function CourseMap({
                 return
             }
 
-            // Terrain Segment Picking — always-on when an onSegmentDefined handler
-            // is wired. 1st click: set start. 2nd click: fire callback (parent
-            // opens the classification popup) and reset local state.
+            // Terrain Segment Picking fallback. Dragging on the route is the
+            // primary interaction, but click-start/click-end still works.
             if (isTerrainModeRef.current) {
+                if (suppressTerrainClickRef.current) {
+                    suppressTerrainClickRef.current = false
+                    return
+                }
+
                 const lngLat = e.lngLat
                 const snap = getNearestPointOnLine({ lat: lngLat.lat, lon: lngLat.lng }, coordinates)
                 if (!snap) return

@@ -758,18 +758,32 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     }
   }
 
-
-  // Update a terrain node's mile (and recompute lat/lon from route).
-  // Used by TerrainSidebar inline mile editing.
-  const handleUpdateTerrainNodeMile = async (id: string, mile: number) => {
-    if (!course?.id) return
-    let lat = 0, lon = 0
-    if (course.geometry) {
+  const getRoutePointForMile = (mile: number) => {
+    let lat = 0
+    let lon = 0
+    if (course?.geometry) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const coord = getCoordinateAtDistance(course.geometry as any, mile * 1609.34)
-      if (coord) { lon = coord[0]; lat = coord[1] }
+      if (coord) {
+        lon = coord[0]
+        lat = coord[1]
+      }
     }
-    await handleTerrainNodeMove(id, lat, lon, mile)
+    return { lat, lon }
+  }
+
+  const refreshAndCompactTerrainNodes = async () => {
+    if (!course?.id) return
+
+    const { data: savedNodes } = await supabase.from('terrain_nodes').select('*').eq('course_id', course.id).order('mile')
+    const compactableIds = savedNodes ? getCompactableTerrainNodeIds(savedNodes as TerrainNode[]) : []
+    if (compactableIds.length > 0) {
+      const { error } = await supabase.from('terrain_nodes').delete().in('id', compactableIds)
+      if (error) throw error
+    }
+
+    const { data: tNodes } = await supabase.from('terrain_nodes').select('*').eq('course_id', course.id).order('mile')
+    if (tNodes) setTerrainNodes(tNodes)
   }
 
   // Select an existing terrain segment for editing (from sidebar pencil or map click).
@@ -785,6 +799,91 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     setPendingType((node.type === 'other' ? 'single_track' : node.type) as TerrainTypeValue)
     setPendingSegment({ startMile: node.mile, endMile, nodeId: node.id })
     setHoveredTerrainId(node.id)
+  }
+
+  const handleUpdateTerrainSegment = async (
+    segment: { startNodeId: string; endNodeId?: string; nodeIds: string[]; startMile: number; endMile: number },
+    startMile: number,
+    endMile: number,
+    type: TerrainTypeValue,
+    difficulty: number
+  ) => {
+    if (!course?.id) return
+
+    const totalDistance = course.total_distance_miles ?? endMile
+    if (startMile < 0 || endMile <= startMile || endMile > totalDistance + 0.01) {
+      throw new Error('Invalid segment mileage')
+    }
+
+    const { data, error: loadError } = await supabase
+      .from('terrain_nodes')
+      .select('*')
+      .eq('course_id', course.id)
+      .order('mile')
+    if (loadError) throw loadError
+
+    const latestNodes = (data ?? []) as TerrainNode[]
+    const sorted = [...latestNodes].sort((a, b) => a.mile - b.mile)
+    const EPS = 0.005
+
+    const terrainAfter = (mile: number) => {
+      let active: { type: string; difficulty: number } = { type: 'other', difficulty: 100 }
+      for (const node of sorted) {
+        if (node.mile <= mile + EPS) active = { type: node.type, difficulty: node.difficulty ?? 100 }
+        else break
+      }
+      return active
+    }
+
+    const oldSegmentEndsAtFinish = segment.endMile >= totalDistance - EPS
+    const afterOldEnd = oldSegmentEndsAtFinish
+      ? { type: 'other', difficulty: 100 }
+      : terrainAfter(segment.endMile + EPS)
+    const restoreAtEnd = endMile < segment.endMile - EPS
+      ? afterOldEnd
+      : terrainAfter(endMile + EPS)
+
+    const idsToDelete = new Set(segment.nodeIds)
+    for (const node of latestNodes) {
+      const insideNewRange = node.mile > startMile + EPS && node.mile < endMile - EPS
+      const onNewStart = Math.abs(node.mile - startMile) <= EPS
+      const onNewEnd = Math.abs(node.mile - endMile) <= EPS
+      if (insideNewRange || onNewStart || onNewEnd) idsToDelete.add(node.id)
+    }
+
+    if (idsToDelete.size > 0) {
+      const { error } = await supabase.from('terrain_nodes').delete().in('id', Array.from(idsToDelete))
+      if (error) throw error
+    }
+
+    const startPoint = getRoutePointForMile(startMile)
+    const rows = [{
+      course_id: course.id,
+      mile: startMile,
+      type,
+      difficulty,
+      lat: startPoint.lat,
+      lon: startPoint.lon,
+    }]
+
+    if (endMile < totalDistance - EPS) {
+      const endPoint = getRoutePointForMile(endMile)
+      rows.push({
+        course_id: course.id,
+        mile: endMile,
+        type: restoreAtEnd.type as TerrainTypeValue,
+        difficulty: restoreAtEnd.difficulty,
+        lat: endPoint.lat,
+        lon: endPoint.lon,
+      })
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: insertError } = await (supabase.from('terrain_nodes') as any).insert(rows)
+    if (insertError) throw insertError
+
+    await refreshAndCompactTerrainNodes()
+    clearPendingTerrainSegment()
   }
 
   const handleDeleteTerrainSegment = async (id: string) => {
@@ -1390,6 +1489,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
 
                         highlightedTerrainId={pendingSegment?.nodeId ?? hoveredTerrainId}
+                        activeTerrainRange={pendingSegment ? { startMile: pendingSegment.startMile, endMile: pendingSegment.endMile } : null}
                         terrainNodes={isOwner ? terrainNodes : []}
                         onTerrainNodeClick={isOwner && isTerrainEditMode ? handleEditTerrainSegment : undefined}
                         onTerrainNodeMove={isOwner && isTerrainEditMode ? handleTerrainNodeMove : undefined}
@@ -1640,8 +1740,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                       onHoverNode={setHoveredTerrainId}
                       onSaveSegment={handleSaveTerrainSegment}
                       onDeleteNode={handleDeleteTerrainNode}
-                      onUpdateNodeMile={handleUpdateTerrainNodeMile}
-                      onEditSegment={handleEditTerrainSegment}
+                      onUpdateSegment={handleUpdateTerrainSegment}
                     />
                   )}
                 </div>

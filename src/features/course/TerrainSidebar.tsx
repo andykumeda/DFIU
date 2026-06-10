@@ -13,6 +13,7 @@ import {
 
 interface Segment {
   startNodeId: string
+  endNodeId?: string
   nodeIds: string[]
   startMile: number
   endMile: number
@@ -28,10 +29,9 @@ interface TerrainSidebarProps {
   onHoverNode?: (id: string | null) => void
   onSaveSegment: (startMile: number, endMile: number, type: string, difficulty: number) => Promise<void> | void
   onDeleteNode: (id: string) => Promise<void> | void
-  onUpdateNodeMile?: (id: string, mile: number) => Promise<void> | void
+  onUpdateSegment?: (segment: Segment, startMile: number, endMile: number, type: TerrainTypeValue, difficulty: number) => Promise<void> | void
   canEnterEdit?: boolean
   onEditModeChange?: (editing: boolean) => void
-  onEditSegment?: (id: string, endMile?: number) => void
 }
 
 export function TerrainSidebar({
@@ -42,10 +42,9 @@ export function TerrainSidebar({
   onHoverNode,
   onSaveSegment,
   onDeleteNode,
-  onUpdateNodeMile,
+  onUpdateSegment,
   canEnterEdit = false,
   onEditModeChange,
-  onEditSegment,
 }: TerrainSidebarProps) {
   const [isOpen, setIsOpen] = useState(true)
   const [adding, setAdding] = useState(false)
@@ -54,8 +53,10 @@ export function TerrainSidebar({
   const [newType, setNewType] = useState<TerrainTypeValue>('single_track')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [editingMileId, setEditingMileId] = useState<string | null>(null)
-  const [editMileVal, setEditMileVal] = useState('')
+  const [editingSegmentId, setEditingSegmentId] = useState<string | null>(null)
+  const [editStart, setEditStart] = useState('')
+  const [editEnd, setEditEnd] = useState('')
+  const [editType, setEditType] = useState<TerrainTypeValue>('single_track')
 
   const segments = useMemo<Segment[]>(() => {
     const sorted = [...terrainNodes].sort((a, b) => a.mile - b.mile)
@@ -92,6 +93,7 @@ export function TerrainSidebar({
 
       result.push({
         startNodeId: startNode.id,
+        endNodeId: sorted[endIndex]?.id,
         nodeIds: mergedIds,
         startMile: startNode.mile,
         endMile: sorted[endIndex]?.mile ?? totalDistance,
@@ -136,8 +138,8 @@ export function TerrainSidebar({
     try {
       await onSaveSegment(s, e, newType, getTerrainDefaultDifficulty(newType))
       resetForm()
-    } catch (err: any) {
-      setError(err?.message || 'Failed to save')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to save')
     } finally {
       setBusy(false)
     }
@@ -163,25 +165,57 @@ export function TerrainSidebar({
     }
   }
 
-  const startEditMile = (seg: Segment) => {
-    setEditingMileId(seg.startNodeId)
-    setEditMileVal(seg.startMile.toFixed(2))
+  const startEditSegment = (seg: Segment) => {
+    setEditingSegmentId(seg.startNodeId)
+    setEditStart(seg.startMile.toFixed(2))
+    setEditEnd(seg.endMile.toFixed(2))
+    setEditType(seg.type)
+    setError(null)
   }
 
-  const cancelEditMile = () => {
-    setEditingMileId(null)
-    setEditMileVal('')
+  const cancelEditSegment = () => {
+    setEditingSegmentId(null)
+    setEditStart('')
+    setEditEnd('')
+    setEditType('single_track')
+    setError(null)
   }
 
-  const saveEditMile = async (seg: Segment) => {
-    if (!onUpdateNodeMile) return
-    const v = parseFloat(editMileVal)
-    if (Number.isNaN(v) || v < 0) return
-    if (totalDistance && v > totalDistance) return
+  const saveEditSegment = async (seg: Segment) => {
+    const start = parseFloat(editStart)
+    const end = parseFloat(editEnd)
+    if (Number.isNaN(start) || Number.isNaN(end)) {
+      setError('Enter numeric mile values')
+      return
+    }
+    if (start < 0 || end < 0) {
+      setError('Miles cannot be negative')
+      return
+    }
+    if (end <= start) {
+      setError('End must be greater than start')
+      return
+    }
+    if (end - start < 0.05) {
+      setError('Segment must be at least 0.05 mi')
+      return
+    }
+    if (totalDistance && end > totalDistance + 0.01) {
+      setError(`End exceeds total distance (${totalDistance.toFixed(2)} mi)`)
+      return
+    }
+
     setBusy(true)
+    setError(null)
     try {
-      await onUpdateNodeMile(seg.startNodeId, v)
-      cancelEditMile()
+      if (onUpdateSegment) {
+        await onUpdateSegment(seg, start, end, editType, getTerrainDefaultDifficulty(editType))
+      } else {
+        await onSaveSegment(start, end, editType, getTerrainDefaultDifficulty(editType))
+      }
+      cancelEditSegment()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to save segment')
     } finally {
       setBusy(false)
     }
@@ -222,7 +256,7 @@ export function TerrainSidebar({
 
       {isOpen && canEdit && (
         <p className="mb-3 text-[10px] text-neutral-500 italic">
-          Click two points on the map (or drag the profile) to define a segment.
+          Drag across the route or elevation profile to define a segment.
         </p>
       )}
 
@@ -281,12 +315,88 @@ export function TerrainSidebar({
 
           {segments.length === 0 ? (
             <p className="text-xs text-neutral-600 italic">
-              {canEdit ? 'No terrain segments. Click + Add to start.' : 'No terrain segments defined.'}
+              No terrain segments defined.
             </p>
           ) : (
             segments.map(seg => {
               const pct = seg.difficulty - 100
               const isHighlighted = highlightedTerrainId === seg.startNodeId
+              const isEditing = editingSegmentId === seg.startNodeId
+
+              if (isEditing && canEdit) {
+                return (
+                  <div
+                    key={seg.startNodeId}
+                    className="bg-neutral-950/70 border border-neutral-700 rounded p-2 space-y-2"
+                    onMouseEnter={() => onHoverNode?.(seg.startNodeId)}
+                    onMouseLeave={() => onHoverNode?.(null)}
+                  >
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <label className="text-[10px] text-neutral-500 uppercase tracking-wider">
+                        Start
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={editStart}
+                          onChange={e => setEditStart(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') saveEditSegment(seg)
+                            if (e.key === 'Escape') cancelEditSegment()
+                          }}
+                          autoFocus
+                          disabled={busy}
+                          className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1 text-xs text-white font-mono focus:outline-none focus:border-orange-500"
+                        />
+                      </label>
+                      <label className="text-[10px] text-neutral-500 uppercase tracking-wider">
+                        End
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={editEnd}
+                          onChange={e => setEditEnd(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') saveEditSegment(seg)
+                            if (e.key === 'Escape') cancelEditSegment()
+                          }}
+                          disabled={busy}
+                          className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1 text-xs text-white font-mono focus:outline-none focus:border-orange-500"
+                        />
+                      </label>
+                    </div>
+                    <select
+                      value={editType}
+                      onChange={e => setEditType(e.target.value as TerrainTypeValue)}
+                      disabled={busy}
+                      className="w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-orange-500"
+                    >
+                      {TERRAIN_TYPES.map(t => (
+                        <option key={t.value} value={t.value}>{t.label}</option>
+                      ))}
+                    </select>
+                    {error && <div className="text-xs text-red-400">{error}</div>}
+                    <div className="flex justify-end gap-1.5">
+                      <button
+                        onClick={cancelEditSegment}
+                        disabled={busy}
+                        className="text-xs px-2 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300 disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => saveEditSegment(seg)}
+                        disabled={busy}
+                        className="text-xs px-3 py-1 rounded bg-orange-600 hover:bg-orange-500 text-white font-medium disabled:opacity-50"
+                      >
+                        {busy ? 'Saving…' : 'Save'}
+                      </button>
+                    </div>
+                  </div>
+                )
+              }
+
               return (
                 <div
                   key={seg.startNodeId}
@@ -302,48 +412,14 @@ export function TerrainSidebar({
                     className="w-2.5 h-2.5 rounded-full shrink-0"
                     style={{ backgroundColor: getTerrainColor(seg.type) }}
                   />
-                  {editingMileId === seg.startNodeId && canEdit && onUpdateNodeMile ? (
-                    <span className="flex items-center gap-1 shrink-0">
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={editMileVal}
-                        onChange={e => setEditMileVal(e.target.value)}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter') saveEditMile(seg)
-                          if (e.key === 'Escape') cancelEditMile()
-                        }}
-                        autoFocus
-                        disabled={busy}
-                        className="w-16 bg-neutral-900 border border-neutral-700 rounded px-1 py-0.5 text-xs text-white font-mono focus:outline-none focus:border-orange-500"
-                      />
-                      <button
-                        onClick={() => saveEditMile(seg)}
-                        disabled={busy}
-                        className="text-green-400 hover:text-green-300 text-xs disabled:opacity-50"
-                        title="Save"
-                      >
-                        ✓
-                      </button>
-                      <button
-                        onClick={cancelEditMile}
-                        disabled={busy}
-                        className="text-neutral-500 hover:text-neutral-300 text-xs disabled:opacity-50"
-                        title="Cancel"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ) : (
-                    <span
-                      className={`text-xs text-neutral-300 font-mono shrink-0 w-[76px] ${canEdit && onUpdateNodeMile ? 'cursor-pointer hover:text-orange-300' : ''}`}
-                      onClick={() => canEdit && onUpdateNodeMile && startEditMile(seg)}
-                      title={canEdit && onUpdateNodeMile ? 'Click to edit start mile' : undefined}
-                    >
-                      {seg.startMile.toFixed(2)}–{seg.endMile.toFixed(2)}
-                    </span>
-                  )}
+                  <button
+                    type="button"
+                    className="text-xs text-neutral-300 font-mono shrink-0 w-[76px] text-left hover:text-orange-300"
+                    onClick={() => canEdit && startEditSegment(seg)}
+                    title="Edit segment mileage"
+                  >
+                    {seg.startMile.toFixed(2)}–{seg.endMile.toFixed(2)}
+                  </button>
                   {canEdit ? (
                     <select
                       value={seg.type}
@@ -363,12 +439,12 @@ export function TerrainSidebar({
                   <span className="text-[10px] text-neutral-500 shrink-0 w-6 text-right">
                     {pct === 0 ? '' : `${pct > 0 ? '+' : ''}${pct}%`}
                   </span>
-                  {canEdit && onEditSegment && (
+                  {canEdit && (
                     <button
-                      onClick={() => onEditSegment(seg.startNodeId, seg.endMile)}
+                      onClick={() => startEditSegment(seg)}
                       disabled={busy}
                       className="w-5 h-5 inline-flex items-center justify-center text-neutral-500 hover:text-blue-300 disabled:opacity-50 shrink-0"
-                      title="Edit segment on map"
+                      title="Edit segment"
                       aria-label={`Edit terrain segment ${seg.startMile.toFixed(2)} to ${seg.endMile.toFixed(2)}`}
                     >
                       <Pencil className="w-3.5 h-3.5" />
