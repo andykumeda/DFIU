@@ -1,8 +1,57 @@
 import type { Waypoint } from '@/types/database'
 
+export type BagKind = 'start' | 'official' | 'crew'
+
 /** Older map-entered drop bag notes may live in general waypoint `notes`. */
 export function getDropBagNotes(waypoint: Pick<Waypoint, 'drop_bag_notes' | 'notes'>): string {
     return waypoint.drop_bag_notes || waypoint.notes || ''
+}
+
+export function isStartBagWaypoint(waypoint: Pick<Waypoint, 'type' | 'mile'>): boolean {
+    return waypoint.type === 'start' || waypoint.mile <= 0.01
+}
+
+export function isOfficialDropBagWaypoint(waypoint: Pick<Waypoint, 'type' | 'has_drop_bag'>): boolean {
+    return !!waypoint.has_drop_bag || waypoint.type === 'drop_bag'
+}
+
+export function isCrewBagCandidateWaypoint(
+    waypoint: Pick<Waypoint, 'type' | 'mile' | 'has_drop_bag' | 'crew_allowed'>
+): boolean {
+    return waypoint.type === 'aid_station' &&
+        !!waypoint.crew_allowed &&
+        !isStartBagWaypoint(waypoint) &&
+        !isOfficialDropBagWaypoint(waypoint)
+}
+
+export function hasSavedBagPlan(
+    waypoint: Pick<Waypoint, 'drop_bag_items' | 'drop_bag_name' | 'drop_bag_notes'>
+): boolean {
+    const items = waypoint.drop_bag_items
+    return (Array.isArray(items) && items.length > 0) ||
+        !!waypoint.drop_bag_name?.trim() ||
+        !!waypoint.drop_bag_notes?.trim()
+}
+
+export function getBagKind(
+    waypoint: Pick<Waypoint, 'type' | 'mile' | 'has_drop_bag' | 'crew_allowed'>
+): BagKind | null {
+    if (isStartBagWaypoint(waypoint)) return 'start'
+    if (isOfficialDropBagWaypoint(waypoint)) return 'official'
+    if (isCrewBagCandidateWaypoint(waypoint)) return 'crew'
+    return null
+}
+
+export function getBagKindLabel(kind: BagKind): string {
+    if (kind === 'start') return 'Start Gear'
+    if (kind === 'crew') return 'Crew Bag'
+    return 'Official Drop Bag'
+}
+
+export function getBagActionLabel(kind: BagKind, hasPlan: boolean): string {
+    if (kind === 'start') return hasPlan ? 'Edit start gear' : 'Create start gear'
+    if (kind === 'crew') return hasPlan ? 'Edit crew bag' : 'Create crew bag'
+    return hasPlan ? 'Edit drop bag' : 'Create drop bag'
 }
 
 export interface DropBagTemplateItem {

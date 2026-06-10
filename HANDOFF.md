@@ -1,10 +1,17 @@
 # Handoff Document
 
 **Date:** 2026-06-09
-**Status:** Pace-plan mobile reorder (chart first) + Stop-column default-delay bug fixed (waypoints.delay made nullable). Built + deployed + migration applied to prod. Handoff reconciled for the current per-user default-delay model.
-**Active task:** Verify in production: mobile pace plan shows chart first / Print Columns last, and the Stop column shows the 2-min profile default on aid stations.
+**Status:** Crew-accessible non-drop aid station bag planning implemented; clean post-commit deploy pending. Prior pace-plan mobile reorder + Stop-column default-delay fix was built/deployed/migrated; production verification still needed.
+**Active task:** Commit crew bag planning, redeploy from the clean commit, then record the deployed `git describe` hash here.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change in this repo. Commit, branch, and document discipline is required to prevent the lost-work confusion that motivated this reconciliation.
+
+## 2026-06-10 Crew bag planning for crew-accessible aid stations
+
+- **Crew-accessible aid stations without official drop bags can now have crew bags.** The Drop Bags tab now includes crew-accessible non-drop aid stations for editors, labeled as **Crew Bag** with a distinct green/package treatment. Viewers only see those crew bags after a saved bag plan exists.
+- **Official drop bags remain separate from crew bags.** `waypoints.has_drop_bag` is unchanged and still means the aid station officially accepts drop bags. Crew bags reuse existing `drop_bag_items`, `drop_bag_name`, and `drop_bag_notes` on the waypoint without changing the official drop-bag flag.
+- **Read-only surfaces distinguish bag types.** Pace chart bag icons and Crew View bag buttons now show official drop bags separately from saved crew bags; Crew View's next crew station panel labels non-official handoff supplies as a crew bag.
+- **Validation completed before commit:** `npm run build`, `npm run lint`, and `npm run deploy` all passed. The first deploy was from dirty worktree hash `1c88f46-dirty`; a clean post-commit deploy is pending so the footer can show a clean commit hash.
 
 ## 2026-06-09 Pace-plan mobile order + Stop-column default fix
 

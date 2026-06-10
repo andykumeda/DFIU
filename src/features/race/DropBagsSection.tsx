@@ -2,12 +2,18 @@ import { useState, useEffect } from 'react'
 import { Race, Course, Waypoint, TerrainNode } from '@/types/database'
 import { calculatePacePlan } from './pace-utils'
 import { usePacePlans, computePlanMinutes } from './usePacePlans'
-import { Backpack, Clock, Sun, Moon, Info, Printer, List, ChevronDown, ChevronUp, Target } from 'lucide-react'
+import { Backpack, Clock, Sun, Moon, Info, Printer, List, ChevronDown, ChevronUp, Target, PackageCheck } from 'lucide-react'
 import { DropBagModal } from './DropBagModal'
 import { DropBagNotes } from './DropBagNotes'
 import { DropBagTemplateEditor } from './DropBagTemplateEditor'
 import { usePermission } from '@/features/auth/usePermission'
 import type { RunnerPacingProfile } from './runner-profile'
+import {
+    getBagActionLabel,
+    getBagKind,
+    getBagKindLabel,
+    hasSavedBagPlan,
+} from './drop-bag-shared'
 import SunCalc from 'suncalc'
 
 interface DropBagsSectionProps {
@@ -33,10 +39,12 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
         }))
     }
 
-    const isStartBag = (wp: Waypoint) => wp.type === 'start' || wp.mile <= 0.01
-    const isDropBag = (wp: Waypoint) => !!wp.has_drop_bag || wp.type === 'drop_bag'
-    const dropBagWaypoints = waypoints
-        .filter(wp => isDropBag(wp) || isStartBag(wp))
+    const bagWaypoints = waypoints
+        .filter(wp => {
+            const kind = getBagKind(wp)
+            if (!kind) return false
+            return kind !== 'crew' || canEdit || hasSavedBagPlan(wp)
+        })
         .sort((a, b) => a.mile - b.mile)
 
     const { plans } = usePacePlans(race.id)
@@ -97,12 +105,12 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
     const isCold = parseInt(race.avg_temp_low || '100') <= 40
     const hasConditions = isHot || isCold || !!race.weather_notes
 
-    if (dropBagWaypoints.length === 0) {
+    if (bagWaypoints.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center p-12 text-center text-neutral-500 border-2 border-dashed border-neutral-800 rounded-xl my-6">
                 <Backpack className="w-12 h-12 mb-4 opacity-20" />
-                <h3 className="text-xl font-medium text-white mb-2">No Start or Drop Bag points configured</h3>
-                <p>Go to the map tab and edit aid stations to enable drop bags for specific locations.</p>
+                <h3 className="text-xl font-medium text-white mb-2">No bag points configured</h3>
+                <p>Go to the map tab and edit aid stations to enable drop bags or crew access.</p>
             </div>
         )
     }
@@ -115,8 +123,8 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-2xl font-bold text-white flex items-center gap-2">
                         <Backpack className="w-6 h-6 text-orange-500 print:hidden" />
-                        <span className="print:hidden">Start & Drop Bag Planner</span>
-                        <span className="hidden print:inline-block">Start & Drop Bags - {race.name}</span>
+                        <span className="print:hidden">Start, Drop & Crew Bag Planner</span>
+                        <span className="hidden print:inline-block">Start, Drop & Crew Bags - {race.name}</span>
                     </h2>
                     <div className="flex items-center gap-2">
                         <DropBagTemplateEditor race={race} canEdit={canEditRaceSettings} />
@@ -134,7 +142,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                     <div className="bg-neutral-900/50 border border-neutral-800 rounded-xl p-4 mb-6 flex gap-3">
                         <Info className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
                         <div className="text-sm text-neutral-300">
-                            <strong className="text-white block mb-1">Weather Context for Drop Bags</strong>
+                            <strong className="text-white block mb-1">Weather Context for Bags</strong>
                             {isHot && <div className="text-orange-400">• High temps projected ({race.avg_temp_high}°): Plan for ice bandanas and extra fluids/electrolytes.</div>}
                             {isCold && <div className="text-blue-300">• Low temps projected ({race.avg_temp_low}°): Consider packing layers, gloves, and dry socks.</div>}
                             {race.weather_notes && <div className="text-neutral-400 mt-1 italic">{race.weather_notes}</div>}
@@ -143,24 +151,49 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                 )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {dropBagWaypoints.map(wp => {
+                    {bagWaypoints.map(wp => {
+                        const kind = getBagKind(wp) ?? 'official'
+                        const isStartBag = kind === 'start'
+                        const isCrewBag = kind === 'crew'
+                        const hasBagPlan = hasSavedBagPlan(wp)
+                        const cardClass = isCrewBag
+                            ? 'bg-emerald-950/15 border-emerald-900/70 hover:border-emerald-500/60 hover:shadow-emerald-950/30'
+                            : 'bg-neutral-900 border-neutral-800 hover:border-neutral-700 hover:shadow-black/50'
+                        const labelClass = isCrewBag
+                            ? 'border-emerald-700/60 bg-emerald-950/70 text-emerald-200'
+                            : 'border-orange-900/60 bg-orange-950/40 text-orange-200'
                         return (
                             <div
                                 key={wp.id}
-                                className="bg-neutral-900 border border-neutral-800 hover:border-neutral-700 rounded-xl p-5 cursor-pointer transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-black/50 group flex flex-col"
+                                className={`border rounded-xl p-5 cursor-pointer transition-all hover:-translate-y-1 hover:shadow-xl group flex flex-col ${cardClass}`}
                                 onClick={() => setSelectedWaypoint(wp)}
                             >
                                 <div className="flex justify-between items-start mb-4">
-                                    <div>
+                                    <div className="min-w-0">
+                                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                                            <span className={`text-[10px] font-bold uppercase tracking-[0.18em] border rounded-full px-2 py-0.5 ${labelClass}`}>
+                                                {getBagKindLabel(kind)}
+                                            </span>
+                                            {isCrewBag && !hasBagPlan && (
+                                                <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-400">
+                                                    Available
+                                                </span>
+                                            )}
+                                        </div>
                                         <h3 className="text-lg font-bold text-white mb-1 group-hover:text-orange-400 transition-colors">
-                                            {isStartBag(wp) ? 'Start' : wp.name}
+                                            {isStartBag ? 'Start' : wp.name}
                                         </h3>
-                                        <div className="text-neutral-500 text-sm font-mono">Mile {wp.mile.toFixed(1)}</div>
+                                        <div className="text-neutral-500 text-sm font-mono">
+                                            Mile {wp.mile.toFixed(1)}
+                                            {isCrewBag && <span className="ml-2 text-emerald-400 font-sans">crew access</span>}
+                                        </div>
                                     </div>
-                                    <div className="w-10 h-10 rounded-full bg-neutral-950 flex items-center justify-center border border-neutral-800 group-hover:border-orange-500/50 transition-colors">
-                                        {isStartBag(wp)
+                                    <div className={`w-10 h-10 rounded-full bg-neutral-950 flex items-center justify-center border transition-colors ${isCrewBag ? 'border-emerald-900 group-hover:border-emerald-500/70' : 'border-neutral-800 group-hover:border-orange-500/50'}`}>
+                                        {isStartBag
                                             ? <span className="text-[10px] font-bold text-emerald-300 leading-none">Start</span>
-                                            : <Backpack className="w-5 h-5 text-neutral-400 group-hover:text-orange-500 transition-colors" />}
+                                            : isCrewBag
+                                                ? <PackageCheck className="w-5 h-5 text-emerald-300 transition-colors" />
+                                                : <Backpack className="w-5 h-5 text-neutral-400 group-hover:text-orange-500 transition-colors" />}
                                     </div>
                                 </div>
 
@@ -203,13 +236,16 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                                     {wp.drop_bag_name && (
                                         <div className="mt-2 p-2 bg-neutral-950/50 rounded border border-neutral-800">
                                             <div className="text-xs text-neutral-500 uppercase tracking-wider mb-0.5">
-                                                {isStartBag(wp) ? 'Start Gear' : 'Bag Name'}
+                                                {isStartBag ? 'Start Gear' : isCrewBag ? 'Crew Bag' : 'Bag Name'}
                                             </div>
                                             <div className="text-sm text-neutral-300 font-medium">
                                                 {wp.drop_bag_name}
                                             </div>
                                         </div>
                                     )}
+                                    <div className={`mt-2 text-sm font-semibold ${isCrewBag ? 'text-emerald-300' : 'text-orange-300'}`}>
+                                        {getBagActionLabel(kind, hasBagPlan)}
+                                    </div>
                                     <DropBagNotes waypoint={wp} className="mt-2" />
                                 </div>
                             </div>
@@ -242,15 +278,18 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                     >
                         <div className="flex items-center gap-2">
                             <List className="w-5 h-5 text-orange-500" />
-                            {isSidePanelOpen ? <span>All Drop Bags</span> : <span className="hidden lg:hidden">All Drop Bags</span>}
+                            {isSidePanelOpen ? <span>All Bags</span> : <span className="hidden lg:hidden">All Bags</span>}
                         </div>
                         {isSidePanelOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                     </button>
 
-                    <h3 className="hidden print:block text-xl font-bold text-neutral-800 mb-4 border-b border-neutral-300 pb-2">Start & Drop Bag Contents</h3>
+                    <h3 className="hidden print:block text-xl font-bold text-neutral-800 mb-4 border-b border-neutral-300 pb-2">Start, Drop & Crew Bag Contents</h3>
 
                     <div className={`${isSidePanelOpen ? 'block' : 'hidden'} print:block p-4 space-y-6 max-h-[calc(100vh-150px)] overflow-y-auto print:max-h-none print:overflow-visible`}>
-                        {dropBagWaypoints.map(wp => {
+                        {bagWaypoints.map(wp => {
+                            const kind = getBagKind(wp) ?? 'official'
+                            const isStartBag = kind === 'start'
+                            const isCrewBag = kind === 'crew'
                             const items = wp.drop_bag_items as { checked: boolean, text: string, quantity?: string }[] || []
                             const packedItems = items.filter(i => i.checked)
                             if (packedItems.length === 0) return null
@@ -263,11 +302,12 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                                         className="text-sm font-bold text-neutral-300 print:text-neutral-800 mb-2 flex justify-between items-center cursor-pointer hover:text-white transition-colors"
                                         onClick={() => toggleStation(wp.id)}
                                     >
-                                        <div className="flex items-center gap-1 text-orange-400">
+                                        <div className={`flex items-center gap-1 ${isCrewBag ? 'text-emerald-400' : 'text-orange-400'}`}>
                                             {isCollapsed ? <ChevronDown className="w-4 h-4 print:hidden" /> : <ChevronUp className="w-4 h-4 print:hidden" />}
                                             <span className="text-neutral-300">
-                                                {isStartBag(wp) ? 'Start' : wp.name}
+                                                {isStartBag ? 'Start' : wp.name}
                                                 {wp.drop_bag_name ? ` (${wp.drop_bag_name})` : ''}
+                                                {isCrewBag ? ' · Crew bag' : ''}
                                             </span>
                                         </div>
                                         <span className="text-neutral-500 print:text-neutral-600 font-mono text-xs">Mile {wp.mile.toFixed(1)}</span>
@@ -276,7 +316,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                                         <ul className="space-y-1 pl-5">
                                             {packedItems.map((item, idx) => (
                                                 <li key={idx} className="text-sm text-neutral-400 print:text-neutral-700 flex items-start gap-2">
-                                                    <span className="text-orange-500/50 print:text-neutral-400 mt-1">&bull;</span>
+                                                    <span className={`${isCrewBag ? 'text-emerald-500/60' : 'text-orange-500/50'} print:text-neutral-400 mt-1`}>&bull;</span>
                                                     <span className="leading-snug">
                                                         {item.quantity && <span className="text-neutral-300 print:text-neutral-900 font-medium mr-1">{item.quantity}x</span>}
                                                         {item.text}
@@ -288,12 +328,12 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                                 </div>
                             )
                         })}
-                        {dropBagWaypoints.every(wp => {
+                        {bagWaypoints.every(wp => {
                             const items = wp.drop_bag_items as { checked: boolean }[] || [];
                             return items.filter(i => i.checked).length === 0;
                         }) && (
                                 <div className="text-sm text-neutral-500 italic text-center py-4 print:hidden">
-                                    No items packed yet. Click an aid station to add items.
+                                    No items packed yet. Click a bag point to add items.
                                 </div>
                             )}
                     </div>

@@ -7,6 +7,8 @@ import {
     DROP_BAG_CATEGORIES,
     DropBagItem,
     DEFAULT_START_BAG_TEMPLATE,
+    getBagKind,
+    getBagKindLabel,
     getDropBagNotes,
     mergeTemplateIntoItems,
     parseDropBagTemplate,
@@ -37,8 +39,12 @@ export function DropBagModal({ waypoint, race, arrivalTime, isNight, canEdit = t
 
     const isHot = parseInt(race.avg_temp_high || '0') >= 80
     const isCold = parseInt(race.avg_temp_low || '100') <= 40
-    const isStartBag = waypoint.type === 'start' || waypoint.mile <= 0.01
+    const bagKind = getBagKind(waypoint) ?? 'official'
+    const isStartBag = bagKind === 'start'
+    const isCrewBag = bagKind === 'crew'
     const template = isStartBag ? DEFAULT_START_BAG_TEMPLATE : parseDropBagTemplate(race.drop_bag_template)
+    const bagNoun = isStartBag ? 'Start Gear' : isCrewBag ? 'Crew Bag' : 'Drop Bag'
+    const bagNameLabel = isStartBag ? 'Start Gear' : isCrewBag ? 'Crew Bag' : 'Bag Name'
 
     useEffect(() => {
         const existingData = waypoint.drop_bag_items as unknown as DropBagItem[]
@@ -71,8 +77,8 @@ export function DropBagModal({ waypoint, race, arrivalTime, isNight, canEdit = t
             queryClient.invalidateQueries({ queryKey: ['waypoints', waypoint.course_id] })
             onClose()
         } catch (err) {
-            console.error('Failed to save drop bag:', err)
-            alert('Failed to save drop bag contents')
+            console.error('Failed to save bag:', err)
+            alert('Failed to save bag contents')
         } finally {
             setSaving(false)
         }
@@ -121,11 +127,16 @@ export function DropBagModal({ waypoint, race, arrivalTime, isNight, canEdit = t
                 <div className="flex justify-between items-center p-6 border-b border-neutral-800 shrink-0">
                     <div>
                         <h2 className="text-xl font-bold text-white mb-1 flex items-center gap-2">
-                            {bagName || (isStartBag ? `Start: ${waypoint.name}` : `Drop Bag: ${waypoint.name}`)}
+                            {bagName || (isStartBag ? `Start: ${waypoint.name}` : `${bagNoun}: ${waypoint.name}`)}
                             {!canEdit && <span className="text-xs font-normal text-neutral-500">(view only)</span>}
                         </h2>
                         <div className="flex items-center gap-3 text-sm text-neutral-400">
                             <span>Mile {waypoint.mile.toFixed(1)}</span>
+                            {!isStartBag && (
+                                <span className={`px-2 py-0.5 rounded border text-xs ${isCrewBag ? 'bg-emerald-950/50 border-emerald-800 text-emerald-200' : 'bg-orange-950/40 border-orange-900/60 text-orange-200'}`}>
+                                    {getBagKindLabel(bagKind)}
+                                </span>
+                            )}
                             {arrivalTime && (
                                 <span className="flex items-center gap-1 bg-neutral-950 px-2 py-0.5 rounded border border-neutral-800">
                                     <Clock className="w-3.5 h-3.5" />
@@ -147,14 +158,14 @@ export function DropBagModal({ waypoint, race, arrivalTime, isNight, canEdit = t
                         {bagName && (
                             <div className="bg-neutral-950/50 border border-neutral-800 rounded-xl p-4">
                                 <div className="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-0.5">
-                                    {isStartBag ? 'Start Gear' : 'Bag Name'}
+                                    {bagNameLabel}
                                 </div>
                                 <div className="text-sm text-white font-medium">{bagName}</div>
                             </div>
                         )}
                         <div>
                             <h3 className="text-sm font-bold uppercase tracking-wider text-neutral-500 mb-2">
-                                {isStartBag ? "What's at the start" : "What's inside"}
+                                {isStartBag ? "What's at the start" : isCrewBag ? "What's at crew handoff" : "What's inside"}
                             </h3>
                             <DropBagSummary waypoint={waypoint} />
                         </div>
@@ -176,14 +187,14 @@ export function DropBagModal({ waypoint, race, arrivalTime, isNight, canEdit = t
 
                     <div className="bg-neutral-950/50 border border-neutral-800 rounded-xl p-4">
                         <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1.5">
-                            {isStartBag ? 'Start Gear / Identifying Info' : 'Bag Name / Identifying Info'}
+                            {isStartBag ? 'Start Gear / Identifying Info' : isCrewBag ? 'Crew Bag / Identifying Info' : 'Bag Name / Identifying Info'}
                         </label>
                         <input
                             type="text"
                             value={bagName}
                             onChange={e => setBagName(e.target.value)}
                             readOnly={!canEdit}
-                            placeholder={isStartBag ? 'e.g. Start line checklist' : 'e.g. Red Salomon Bag'}
+                            placeholder={isStartBag ? 'e.g. Start line checklist' : isCrewBag ? 'e.g. Crew tote or soft cooler' : 'e.g. Red Salomon Bag'}
                             className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-white placeholder-neutral-600 focus:outline-none focus:border-orange-500 transition-colors disabled:opacity-70"
                         />
                     </div>
@@ -271,13 +282,13 @@ export function DropBagModal({ waypoint, race, arrivalTime, isNight, canEdit = t
                     <div className="pt-4 border-t border-neutral-800 space-y-4">
                         <div>
                             <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1.5">
-                                {isStartBag ? 'Start Notes & Instructions' : 'Drop Bag Notes & Instructions'}
+                                {isStartBag ? 'Start Notes & Instructions' : isCrewBag ? 'Crew Bag Notes & Instructions' : 'Drop Bag Notes & Instructions'}
                             </label>
                             <textarea
                                 value={bagNotes}
                                 onChange={e => setBagNotes(e.target.value)}
                                 readOnly={!canEdit}
-                                placeholder={isStartBag ? 'e.g. Final checklist before leaving the start...' : 'e.g. Change shoes here, grab headlamp for next section...'}
+                                placeholder={isStartBag ? 'e.g. Final checklist before leaving the start...' : isCrewBag ? 'e.g. Hand off ice, poles, or a dry shirt here...' : 'e.g. Change shoes here, grab headlamp for next section...'}
                                 rows={2}
                                 className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-white placeholder-neutral-600 focus:outline-none focus:border-orange-500 transition-colors resize-y"
                             />
@@ -301,12 +312,12 @@ export function DropBagModal({ waypoint, race, arrivalTime, isNight, canEdit = t
                         <button
                             onClick={handleSave}
                             disabled={saving}
-                            className="bg-orange-600 hover:bg-orange-500 text-white px-8 py-2.5 rounded-lg font-bold transition-all shadow-lg shadow-orange-900/20 flex items-center gap-2"
+                            className={`${isCrewBag ? 'bg-emerald-700 hover:bg-emerald-600 shadow-emerald-950/30' : 'bg-orange-600 hover:bg-orange-500 shadow-orange-900/20'} text-white px-8 py-2.5 rounded-lg font-bold transition-all shadow-lg flex items-center gap-2`}
                         >
                             {saving ? (
                                 <><Clock className="w-4 h-4 animate-spin" /> Saving...</>
                             ) : (
-                                <><Save className="w-4 h-4" /> Save Checklist</>
+                                <><Save className="w-4 h-4" /> Save {bagNoun}</>
                             )}
                         </button>
                     )}

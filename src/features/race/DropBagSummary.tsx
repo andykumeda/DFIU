@@ -9,7 +9,7 @@ export function DropBagSummary({ waypoint }: { waypoint: Waypoint }) {
     const allItems = (waypoint.drop_bag_items as Array<{ text?: string; label?: string; name?: string; qty?: number; quantity?: number | string; checked?: boolean }> | null) ?? []
     const packed = allItems.filter(it => it.checked)
     const items = packed.length ? packed : allItems
-    if (!items.length) return <div className='text-sm text-neutral-400'>No drop bag items recorded.</div>
+    if (!items.length) return <div className='text-sm text-neutral-400'>No bag items recorded.</div>
     return (
         <ul className='space-y-1'>
             {items.map((it, i) => {

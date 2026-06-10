@@ -13,6 +13,7 @@ import { calculatePacePlan, ActualCheckin } from './pace-utils'
 import { CrewMap } from './CrewMap'
 import { DropBagNotes } from './DropBagNotes'
 import { DropBagSummary } from './DropBagSummary'
+import { getBagKind, getBagKindLabel, hasSavedBagPlan } from './drop-bag-shared'
 import { getDistance, getCoordinateAtDistance } from '@/lib/geo-utils'
 import type { Race, Course, Waypoint, TerrainNode } from '@/types/database'
 
@@ -225,6 +226,7 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
     const [checkinDate, setCheckinDate] = useState<string>('')   // YYYY-MM-DD
     const [showCheckin, setShowCheckin] = useState(false)
     const [dropBagWaypoint, setDropBagWaypoint] = useState<Waypoint | null>(null)
+    const dropBagKind = dropBagWaypoint ? getBagKind(dropBagWaypoint) ?? 'official' : null
 
     // Next crew-accessible aid station after a given station (for leg directions).
     const nextCrewAfter = (wp: Waypoint): Waypoint | null => {
@@ -424,14 +426,20 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
 
                 {/* Drop bag + crew instructions for next crew AS */}
                 {nextCrewWaypoint && (
-                    <section className='bg-neutral-900 rounded-lg p-3'>
-                        <div className='flex items-center gap-2 mb-2'>
-                            <span className='text-base leading-none' aria-hidden>🎒</span>
-                            <div className='text-sm font-semibold'>Drop bag · {nextCrewWaypoint.name}</div>
-                        </div>
-                        <DropBagSummary waypoint={nextCrewWaypoint} />
-                        <DropBagNotes waypoint={nextCrewWaypoint} className='mt-3' />
-                    </section>
+                    (() => {
+                        const bagKind = getBagKind(nextCrewWaypoint) ?? 'crew'
+                        const label = bagKind === 'crew' ? 'Crew bag' : bagKind === 'start' ? 'Start gear' : 'Drop bag'
+                        return (
+                            <section className={`rounded-lg p-3 ${bagKind === 'crew' ? 'bg-emerald-950/20 border border-emerald-900/60' : 'bg-neutral-900'}`}>
+                                <div className='flex items-center gap-2 mb-2'>
+                                    <span className='text-base leading-none' aria-hidden>{bagKind === 'crew' ? '📦' : '🎒'}</span>
+                                    <div className='text-sm font-semibold'>{label} · {nextCrewWaypoint.name}</div>
+                                </div>
+                                <DropBagSummary waypoint={nextCrewWaypoint} />
+                                <DropBagNotes waypoint={nextCrewWaypoint} className='mt-3' />
+                            </section>
+                        )
+                    })()
                 )}
 
                 {/* Distance summary: next any AS vs next crew AS */}
@@ -503,6 +511,8 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
                             const arrival = pacePlan?.waypointArrivals.find(x => x.waypointId === wp.id)
                             const past = arrival ? arrival.arrivalTime <= elapsedMin : false
                             const checked = checkins.some(c => c.waypoint_id === wp.id)
+                            const bagKind = getBagKind(wp)
+                            const showBagButton = wp.crew_allowed && !!bagKind && (bagKind !== 'crew' || hasSavedBagPlan(wp))
                             return (
                                 <div key={wp.id} className='py-2 flex items-center gap-2'>
                                     <div className={`w-2 h-2 rounded-full ${
@@ -520,14 +530,14 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
                                         </div>
                                     </div>
                                     <div className='flex items-center gap-1 shrink-0'>
-                                        {wp.crew_allowed && wp.has_drop_bag && (
+                                        {showBagButton && (
                                             <button
                                                 onClick={() => setDropBagWaypoint(wp)}
-                                                title={`Drop bag · ${wp.name}`}
-                                                aria-label={`Drop bag for ${wp.name}`}
-                                                className='p-1.5 rounded bg-neutral-800 hover:bg-neutral-700 text-emerald-300 text-sm leading-none'
+                                                title={`${bagKind === 'crew' ? 'Crew bag' : 'Drop bag'} · ${wp.name}`}
+                                                aria-label={`${bagKind === 'crew' ? 'Crew bag' : 'Drop bag'} for ${wp.name}`}
+                                                className={`p-1.5 rounded bg-neutral-800 hover:bg-neutral-700 text-sm leading-none ${bagKind === 'crew' ? 'text-emerald-300' : 'text-orange-300'}`}
                                             >
-                                                <span aria-hidden>🎒</span>
+                                                <span aria-hidden>{bagKind === 'crew' ? '📦' : '🎒'}</span>
                                             </button>
                                         )}
                                         {wp.crew_allowed && (() => {
@@ -632,7 +642,7 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
             )}
 
             {/* Drop bag detail modal */}
-            {dropBagWaypoint && (
+            {dropBagWaypoint && dropBagKind && (
                 <div
                     className='fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-3'
                     onClick={() => setDropBagWaypoint(null)}
@@ -644,12 +654,17 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
                         <div className='flex items-start justify-between gap-3'>
                             <div className='min-w-0'>
                                 <div className='font-semibold flex items-center gap-2'>
-                                    <span className='text-base leading-none shrink-0' aria-hidden>🎒</span>
-                                    <span className='truncate'>Drop bag · {dropBagWaypoint.name}</span>
+                                    <span className='text-base leading-none shrink-0' aria-hidden>{dropBagKind === 'crew' ? '📦' : '🎒'}</span>
+                                    <span className='truncate'>
+                                        {dropBagKind === 'start' ? 'Start gear' : dropBagKind === 'crew' ? 'Crew bag' : 'Drop bag'} · {dropBagWaypoint.name}
+                                    </span>
                                 </div>
-                                <div className='text-xs text-neutral-400 mt-0.5'>
-                                    Mile {dropBagWaypoint.mile.toFixed(1)}
-                                    {dropBagWaypoint.drop_bag_name ? ` · ${dropBagWaypoint.drop_bag_name}` : ''}
+                                <div className='text-xs text-neutral-400 mt-0.5 flex flex-wrap items-center gap-1.5'>
+                                    <span>Mile {dropBagWaypoint.mile.toFixed(1)}</span>
+                                    <span className={`px-1.5 py-0.5 rounded border ${dropBagKind === 'crew' ? 'bg-emerald-950/50 border-emerald-800 text-emerald-200' : 'bg-orange-950/40 border-orange-900/60 text-orange-200'}`}>
+                                        {getBagKindLabel(dropBagKind)}
+                                    </span>
+                                    {dropBagWaypoint.drop_bag_name && <span>· {dropBagWaypoint.drop_bag_name}</span>}
                                 </div>
                             </div>
                             <button

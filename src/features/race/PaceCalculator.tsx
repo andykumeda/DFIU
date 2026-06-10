@@ -12,8 +12,9 @@ import {
     type PaceChartColumnsConfig,
 } from './pace-chart-columns'
 import { DropBagModal } from './DropBagModal'
+import { getBagKind, hasSavedBagPlan } from './drop-bag-shared'
 import type { RunnerPacingProfile } from './runner-profile'
-import { Calculator, Clock, TrendingUp, Activity, Users, Footprints, Moon, Sun, ArrowRight, Printer, AlertTriangle, Columns3, ChevronUp, ChevronDown, Eye, EyeOff, Plus, Minus } from 'lucide-react'
+import { Calculator, Clock, TrendingUp, Activity, Users, Footprints, Moon, Sun, ArrowRight, Printer, AlertTriangle, Columns3, ChevronUp, ChevronDown, Eye, EyeOff, Plus, Minus, Backpack, PackageCheck } from 'lucide-react'
 
 interface PaceCalculatorProps {
     race: Race
@@ -240,7 +241,10 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
 
         switch (colId) {
             case 'location': {
-                const showBagInfo = !!wp && (wp.has_drop_bag || isStartBag(wp, arrival.name))
+                const bagKind = wp
+                    ? (isStartBag(wp, arrival.name) ? 'start' : getBagKind(wp))
+                    : null
+                const showBagInfo = !!wp && !!bagKind && (bagKind !== 'crew' || hasSavedBagPlan(wp))
                 return (
                     <td key={colId} className="px-6 py-4 print:py-2">
                         <div className="font-medium text-white print:text-black flex items-center gap-2">
@@ -259,10 +263,12 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                                     <button
                                         type="button"
                                         onClick={() => setSelectedDropBagWaypoint(wp)}
-                                        title={isStartBag(wp, arrival.name) ? 'Start gear' : 'Drop bag info'}
-                                        className="text-[12px] opacity-90 leading-none flex items-center justify-center pt-0.5 hover:opacity-100"
+                                        title={bagKind === 'start' ? 'Start gear' : bagKind === 'crew' ? 'Crew bag info' : 'Drop bag info'}
+                                        className={`opacity-90 leading-none flex items-center justify-center pt-0.5 hover:opacity-100 ${bagKind === 'crew' ? 'text-emerald-300' : 'text-orange-300'}`}
                                     >
-                                        🎒
+                                        {bagKind === 'crew'
+                                            ? <PackageCheck className="w-4 h-4" />
+                                            : <Backpack className="w-4 h-4" />}
                                     </button>
                                 )}
                             </div>
