@@ -4,7 +4,15 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 
 interface CrewMapProps {
     coordinates: [number, number][]      // [lon, lat] tuples along course
-    waypoints: { id: string; name: string; lat: number; lon: number; mile: number; crew_allowed?: boolean | null }[]
+    waypoints: {
+        id: string
+        name: string
+        lat: number
+        lon: number
+        mile: number
+        crew_allowed?: boolean | null
+        bag_kind?: 'start' | 'official' | 'crew' | null
+    }[]
     runnerLatLon?: [number, number] | null   // [lon, lat] predicted runner position
     crewLatLon?: [number, number] | null     // [lon, lat] crew current position
     nextWaypointId?: string | null
@@ -13,7 +21,7 @@ interface CrewMapProps {
 
 // Read-only mobile-friendly map for the crew view. Renders:
 //   - course line
-//   - waypoint pins (crew-accessible highlighted)
+//   - waypoint pins (crew-accessible highlighted, saved bag points badged)
 //   - runner predicted-position marker (animated dot)
 //   - crew current-position marker (blue dot)
 // Auto-fits to the runner and next aid station; crew location is shown without
@@ -92,14 +100,48 @@ export function CrewMap({ coordinates, waypoints, runnerLatLon, crewLatLon, next
                 const el = document.createElement('div')
                 const isNext = wp.id === nextWaypointId
                 const crew = !!wp.crew_allowed
+                const hasBag = !!wp.bag_kind
+                const isCrewBag = wp.bag_kind === 'crew'
                 el.style.cssText = `
+                    position:relative;
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
                     width:${isNext ? 16 : 12}px;height:${isNext ? 16 : 12}px;
                     border-radius:50%;
                     background:${crew ? '#22c55e' : '#737373'};
                     border:${isNext ? '3px' : '2px'} solid #fff;
                     box-shadow:0 0 0 ${isNext ? '4px rgba(34,197,94,0.35)' : '2px rgba(0,0,0,0.4)'};
                 `
-                el.title = `${wp.name} — mile ${wp.mile.toFixed(1)}${crew ? ' (crew)' : ''}`
+                if (hasBag) {
+                    const badge = document.createElement('div')
+                    badge.textContent = isCrewBag ? '📦' : '🎒'
+                    badge.style.cssText = `
+                        position:absolute;
+                        top:-11px;
+                        right:-11px;
+                        width:18px;
+                        height:18px;
+                        display:flex;
+                        align-items:center;
+                        justify-content:center;
+                        border-radius:999px;
+                        background:${isCrewBag ? '#064e3b' : '#7c2d12'};
+                        border:1.5px solid #fff;
+                        box-shadow:0 1px 4px rgba(0,0,0,0.55);
+                        font-size:11px;
+                        line-height:1;
+                    `
+                    el.appendChild(badge)
+                }
+                const bagLabel = wp.bag_kind === 'crew'
+                    ? 'crew bag'
+                    : wp.bag_kind === 'start'
+                        ? 'start gear'
+                        : wp.bag_kind === 'official'
+                            ? 'drop bag'
+                            : ''
+                el.title = `${wp.name} — mile ${wp.mile.toFixed(1)}${crew ? ' (crew)' : ''}${bagLabel ? ` · ${bagLabel}` : ''}`
                 return new mapboxgl.Marker({ element: el }).setLngLat([wp.lon, wp.lat]).addTo(m)
             })
         }

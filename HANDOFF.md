@@ -1,14 +1,16 @@
 # Handoff Document
 
 **Date:** 2026-06-10
-**Status:** Drop Bags desktop side-panel item filtering fixed; built, linted, clean-deployed, and committed.
-**Active task:** Push `main`; production deploy hash is `d6eba48`.
+**Status:** Crew View map crew-bag icon added; built, linted, and deployed from dirty pre-commit state.
+**Active task:** Commit the Crew View crew-bag icon fix, perform a clean post-commit deploy, and push `main`.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change in this repo. Commit, branch, and document discipline is required to prevent the lost-work confusion that motivated this reconciliation.
 
 ## 2026-06-10 Drop-bag modal/template follow-up
 
 - **Branch/worktree check before edits:** working on `/Users/andy/Dev/DFIU` branch `main`, tracking `origin/main`, with a clean working tree. Additional worktree remains at `/Users/andy/.codex/worktrees/9dfe/DFIU` on `codex/fix-vite-chunk-deploy`.
+- **Crew View crew-bag icon follow-up:** Crew View now passes bag kind metadata into its map markers. Saved crew bags render a package badge on the map, while official/start bag points render the existing backpack badge treatment; unsaved crew-bag candidates remain unbadged.
+- **Validation/deploy for Crew View crew-bag icon:** targeted ESLint passed for touched files with existing CrewView warnings; `npm run build` passed; `npm run lint` passed with 39 warnings and no errors; `npm run deploy` passed from dirty hash `fd26f89-dirty`. Perform a clean deploy after commit so the footer hash is comparable.
 - **Side-panel item filtering follow-up:** writable desktop All Bags side panel no longer falls back to rendering all merged editor/template items when a station has zero checked items. It now lists only checked/packed items and shows an editor-only "No items packed yet." empty state for empty bag points; print output still hides empty sections.
 - **Validation/deploy for side-panel filtering:** targeted ESLint passed for touched files; `npm run build` passed; `npm run lint` passed with 39 warnings and no errors; `npm run deploy` passed from dirty hash `c1efe65-dirty`; clean post-commit deploy passed from `d6eba48`. Deployed bundle `/var/www/dfiu/assets/index-3-eg3ZgI.js` contains `d6eba48`. Interactive Browser smoke verification was unavailable because no ready in-app browser target was exposed in this thread.
 - **Plan A-only card ETA cleanup:** Drop Bags tab cards now show only Plan A ETA data; Plan B/C display and extra computations were removed from the current bag, next-aid, and next-bag timing rows.

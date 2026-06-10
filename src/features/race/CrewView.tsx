@@ -302,9 +302,19 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
                     <div className='h-[50vh] min-h-[300px] sm:h-[520px]'>
                         <CrewMap
                             coordinates={courseCoords}
-                            waypoints={waypoints.map(w => ({
-                                id: w.id, name: w.name, lat: w.lat, lon: w.lon, mile: w.mile, crew_allowed: w.crew_allowed,
-                            }))}
+                            waypoints={waypoints.map(w => {
+                                const bagKind = getBagKind(w)
+                                const showBagIcon = !!bagKind && (bagKind !== 'crew' || hasSavedBagPlan(w))
+                                return {
+                                    id: w.id,
+                                    name: w.name,
+                                    lat: w.lat,
+                                    lon: w.lon,
+                                    mile: w.mile,
+                                    crew_allowed: w.crew_allowed,
+                                    bag_kind: showBagIcon ? bagKind : null,
+                                }
+                            })}
                             runnerLatLon={runnerLatLon}
                             crewLatLon={crewLatLon}
                             nextWaypointId={nextCrewWaypoint?.id ?? nextWaypoint?.id ?? null}
