@@ -48,12 +48,6 @@ export function getBagKindLabel(kind: BagKind): string {
     return 'Official Drop Bag'
 }
 
-export function getBagActionLabel(kind: BagKind, hasPlan: boolean): string {
-    if (kind === 'start') return hasPlan ? 'Edit start gear' : 'Create start gear'
-    if (kind === 'crew') return hasPlan ? 'Edit crew bag' : 'Create crew bag'
-    return hasPlan ? 'Edit drop bag' : 'Create drop bag'
-}
-
 export interface DropBagTemplateItem {
     text: string
     category: string

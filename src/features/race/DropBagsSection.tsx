@@ -10,7 +10,6 @@ import { usePermission } from '@/features/auth/usePermission'
 import type { RunnerPacingProfile } from './runner-profile'
 import {
     DEFAULT_START_BAG_TEMPLATE,
-    getBagActionLabel,
     getBagKind,
     getBagKindLabel,
     getDropBagEditorItems,
@@ -266,9 +265,6 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                                             </div>
                                         </div>
                                     )}
-                                    <div className={`mt-2 text-sm font-semibold ${isCrewBag ? 'text-emerald-300' : 'text-orange-300'}`}>
-                                        {getBagActionLabel(kind, hasBagPlan)}
-                                    </div>
                                     <DropBagNotes waypoint={wp} className="mt-2" />
                                 </div>
                             </div>
