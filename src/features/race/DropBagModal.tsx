@@ -60,11 +60,22 @@ export function DropBagModal({ waypoint, race, arrivalTime, isNight, canEdit = t
     const handleSave = async () => {
         if (!canEdit) return
         setSaving(true)
+        const itemsToSave = items.reduce<DropBagItem[]>((acc, item) => {
+            const text = item.text.trim()
+            if (!text) return acc
+            const quantity = item.quantity?.trim()
+            acc.push({
+                ...item,
+                text,
+                quantity: quantity || undefined,
+            })
+            return acc
+        }, [])
         try {
             const { error } = await supabase
                 .from('waypoints')
                 .update({
-                    drop_bag_items: items as unknown as Json,
+                    drop_bag_items: itemsToSave as unknown as Json,
                     drop_bag_name: bagName,
                     drop_bag_notes: bagNotes
                 })
@@ -73,6 +84,7 @@ export function DropBagModal({ waypoint, race, arrivalTime, isNight, canEdit = t
                 .single()
 
             if (error) throw error
+            setItems(itemsToSave)
             queryClient.invalidateQueries({ queryKey: ['waypoints', waypoint.course_id] })
             onClose()
         } catch (err) {
@@ -96,6 +108,11 @@ export function DropBagModal({ waypoint, race, arrivalTime, isNight, canEdit = t
     const updateQuantity = (id: string, quantity: string) => {
         if (!canEdit) return
         setItems(prev => prev.map(item => item.id === id ? { ...item, quantity } : item))
+    }
+
+    const updateItemText = (id: string, text: string) => {
+        if (!canEdit) return
+        setItems(prev => prev.map(item => item.id === id ? { ...item, text } : item))
     }
 
     const addItem = (e: React.FormEvent) => {
@@ -217,15 +234,37 @@ export function DropBagModal({ waypoint, race, arrivalTime, isNight, canEdit = t
                                                 className={`flex items-center justify-between p-3 rounded-lg border transition-colors group ${item.checked
                                                     ? 'bg-neutral-800/80 border-neutral-700 text-white'
                                                     : 'bg-neutral-950/50 border-neutral-800 text-neutral-400 hover:bg-neutral-900'
-                                                    } ${canEdit ? 'cursor-pointer' : ''}`}
+                                                    }`}
                                             >
-                                                <div className="flex items-center gap-3 flex-1" onClick={() => toggleItem(item.id)}>
-                                                    {item.checked ? (
-                                                        <CheckCircle2 className="w-5 h-5 text-orange-500 shrink-0" />
+                                                <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => toggleItem(item.id)}
+                                                        disabled={!canEdit}
+                                                        className={`${canEdit ? 'cursor-pointer' : 'cursor-default'} shrink-0 rounded focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-neutral-900 disabled:opacity-100`}
+                                                        aria-label={item.checked ? 'Mark item unpacked' : 'Mark item packed'}
+                                                    >
+                                                        {item.checked ? (
+                                                            <CheckCircle2 className="w-5 h-5 text-orange-500" />
+                                                        ) : (
+                                                            <Circle className="w-5 h-5 text-neutral-600 group-hover:text-neutral-400" />
+                                                        )}
+                                                    </button>
+                                                    {canEdit ? (
+                                                        <input
+                                                            type="text"
+                                                            value={item.text}
+                                                            onChange={(e) => updateItemText(item.id, e.target.value)}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') e.currentTarget.blur()
+                                                            }}
+                                                            placeholder="Item name"
+                                                            className={`min-w-0 flex-1 bg-transparent border border-transparent rounded px-1 py-0.5 text-sm focus:outline-none focus:bg-neutral-950 focus:border-orange-500 ${item.checked ? 'text-neutral-100' : 'text-neutral-400'}`}
+                                                        />
                                                     ) : (
-                                                        <Circle className="w-5 h-5 text-neutral-600 group-hover:text-neutral-400 shrink-0" />
+                                                        <span className={`min-w-0 flex-1 ${item.checked ? 'text-neutral-500' : ''}`}>{item.text}</span>
                                                     )}
-                                                    <span className={item.checked ? 'text-neutral-500' : ''}>{item.text}</span>
                                                 </div>
 
                                                 {item.checked && (

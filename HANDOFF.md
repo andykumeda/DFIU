@@ -1,14 +1,17 @@
 # Handoff Document
 
 **Date:** 2026-06-10
-**Status:** Drop-bag section modal/template fix implemented, built, linted, clean-deployed, and committed.
-**Active task:** Push `main`; production deploy hash is `d64cdbc`.
+**Status:** Drop-bag popup inline item editing implemented, built, linted, and deployed from dirty pre-commit state.
+**Active task:** Commit, perform a clean post-commit deploy, and push `main`.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change in this repo. Commit, branch, and document discipline is required to prevent the lost-work confusion that motivated this reconciliation.
 
 ## 2026-06-10 Drop-bag modal/template follow-up
 
 - **Branch/worktree check before edits:** working on `/Users/andy/Dev/DFIU` branch `main`, tracking `origin/main`, with a clean working tree. Additional worktree remains at `/Users/andy/.codex/worktrees/9dfe/DFIU` on `codex/fix-vite-chunk-deploy`.
+- **Inline item editing follow-up:** individual item labels in the drop-bag popup modal are now editable text fields for write-enabled users, so users can rename template items like "Sport drink" to a specific brand without a separate edit flow. The pack/unpack toggle remains on the checkbox icon, quantity remains inline, and saved item labels are trimmed.
+- **Renamed template persistence:** template merge now matches existing bag items by generated template/smart item id as well as text/category, so a per-bag rename of a template item survives closing and reopening the modal instead of being replaced by the original template label.
+- **Validation/deploy for inline edit follow-up:** targeted ESLint passed for touched files; `npm run build` passed; `npm run lint` passed with 39 warnings and no errors; `npm run deploy` passed from dirty hash `f4a4c52-dirty`. Perform a clean deploy after commit so the footer hash is comparable.
 - **Modal write access:** the dedicated Drop Bags tab now passes the broader write/settings permission into `DropBagModal`, so race directors and other write-enabled users are not forced into view-only bag contents there.
 - **All Bags popup access:** the All Bags side list now shows an Edit/View action per bag point and opens the same popup modal from that list. Write-enabled users can open stations that only have template suggestions and pack/edit items from the modal.
 - **Template population fix:** drop-bag template parsing now accepts array templates plus common wrapped shapes (`items`, `template`, `drop_bag_template`) and normalizes legacy item labels (`text`, `label`, `name`, `qty`). The modal and All Bags list both use the same template merge/seed helper, so template edits appear before a bag has been saved.

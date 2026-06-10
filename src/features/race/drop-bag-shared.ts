@@ -210,41 +210,54 @@ export function mergeTemplateIntoItems(
     opts: { isNight: boolean; isHot: boolean; isCold: boolean }
 ): DropBagItem[] {
     const existingByKey = new Map(existing.map(item => [itemKey(item), item]))
+    const existingById = new Map(existing.map(item => [item.id, item]))
     const result: DropBagItem[] = []
     const usedKeys = new Set<string>()
+    const usedIds = new Set<string>()
 
     template.forEach((tpl, i) => {
         const key = itemKey(tpl)
         if (usedKeys.has(key)) return
-        const prior = existingByKey.get(key)
+        const templateId = `tpl_${i}`
+        const prior = existingByKey.get(key) ?? existingById.get(templateId)
         result.push({
-            id: prior?.id ?? `tpl_${i}`,
-            text: tpl.text,
+            id: prior?.id ?? templateId,
+            text: prior && itemKey(prior) !== key ? prior.text : tpl.text,
             category: tpl.category,
             checked: prior?.checked ?? false,
             quantity: prior?.quantity,
         })
         usedKeys.add(key)
+        if (prior) {
+            usedKeys.add(itemKey(prior))
+            usedIds.add(prior.id)
+        }
     })
 
     for (const conditionItem of seedDropBagItems([], opts)) {
         const key = itemKey(conditionItem)
         if (usedKeys.has(key)) continue
-        const prior = existingByKey.get(key)
+        const prior = existingByKey.get(key) ?? existingById.get(conditionItem.id)
         result.push({
             ...conditionItem,
+            text: prior && itemKey(prior) !== key ? prior.text : conditionItem.text,
             checked: prior?.checked ?? conditionItem.checked,
             quantity: prior?.quantity,
         })
         usedKeys.add(key)
+        if (prior) {
+            usedKeys.add(itemKey(prior))
+            usedIds.add(prior.id)
+        }
     }
 
     for (const item of existing) {
         const key = itemKey(item)
-        if (usedKeys.has(key)) continue
+        if (usedKeys.has(key) || usedIds.has(item.id)) continue
         if (item.category === 'custom') {
             result.push(item)
             usedKeys.add(key)
+            usedIds.add(item.id)
         }
     }
 
