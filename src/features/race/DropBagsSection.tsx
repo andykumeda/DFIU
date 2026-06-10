@@ -68,14 +68,13 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
     const aidStationWaypoints = sortedWaypoints.filter(isAidStationWaypoint)
 
     const { plans } = usePacePlans(race.id)
-    const { a: planAMinutes, b: planBMinutes, c: planCMinutes } = computePlanMinutes(plans, race.overall_cutoff)
+    const { a: planAMinutes } = computePlanMinutes(plans, race.overall_cutoff)
 
-    // Defer the three pace-plan simulations off the click path: each one runs a
-    // bisection up to ~16 simulateRun iterations over thousands of samples, which
-    // was making the tab feel unresponsive. useEffect + setTimeout(0) yields to
-    // the browser so the new tab paints before the compute starts.
+    // Defer the Plan A simulation off the click path: it runs a bisection over
+    // thousands of samples, which can otherwise make the tab feel unresponsive.
+    // useEffect + setTimeout(0) yields so the new tab paints before compute starts.
     type Plan = ReturnType<typeof calculatePacePlan> | null
-    const [computed, setComputed] = useState<{ A: Plan; B: Plan; C: Plan } | null>(null)
+    const [computed, setComputed] = useState<{ A: Plan } | null>(null)
 
     useEffect(() => {
         if (!plans.hasCalculated || !course?.elevation_samples) {
@@ -91,20 +90,14 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                     : null
             setComputed({
                 A: build(planAMinutes),
-                B: build(planBMinutes),
-                C: planCMinutes !== null ? build(planCMinutes) : null,
             })
         }, 0)
         return () => clearTimeout(handle)
-    }, [plans.hasCalculated, runnerProfile, planAMinutes, planBMinutes, planCMinutes, course, waypoints, terrainNodes, race, clock24h])
+    }, [plans.hasCalculated, runnerProfile, planAMinutes, course, waypoints, terrainNodes, race, clock24h])
 
     const planA = computed?.A ?? null
-    const planB = computed?.B ?? null
-    const planC = computed?.C ?? null
     const planOptions = [
         { label: 'A', plan: planA, color: 'text-emerald-400' },
-        { label: 'B', plan: planB, color: 'text-blue-400' },
-        ...(planCMinutes !== null ? [{ label: 'C', plan: planC, color: 'text-orange-400' }] : []),
     ]
 
     const isNight = (arrivalMinutes: number, wpLat: number, wpLon: number) => {

@@ -1,15 +1,17 @@
 # Handoff Document
 
 **Date:** 2026-06-10
-**Status:** Next aid-station and next drop-bag ETA context added to Drop Bags tab cards; built, linted, clean-deployed, and committed.
-**Active task:** Push `main`; production deploy hash is `820902b`.
+**Status:** Drop Bags tab card ETAs simplified to Plan A only; built, linted, and deployed from dirty pre-commit state.
+**Active task:** Commit, perform a clean post-commit deploy, and push `main`.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change in this repo. Commit, branch, and document discipline is required to prevent the lost-work confusion that motivated this reconciliation.
 
 ## 2026-06-10 Drop-bag modal/template follow-up
 
 - **Branch/worktree check before edits:** working on `/Users/andy/Dev/DFIU` branch `main`, tracking `origin/main`, with a clean working tree. Additional worktree remains at `/Users/andy/.codex/worktrees/9dfe/DFIU` on `codex/fix-vite-chunk-deploy`.
-- **Next waypoint ETA follow-up:** each Drop Bags tab card now shows compact next-aid and next-bag rows with Plan A/B/C ETA times. The two rows can point at the same waypoint when the next aid station is also a bag point. Next aid includes aid/drop-bag/water/medical/crew/pacer support stops and any waypoint marked crew/pacer/drop-bag accessible.
+- **Plan A-only card ETA cleanup:** Drop Bags tab cards now show only Plan A ETA data; Plan B/C display and extra computations were removed from the current bag, next-aid, and next-bag timing rows.
+- **Validation/deploy for Plan A-only cleanup:** targeted ESLint passed for touched files; `npm run build` passed; `npm run lint` passed with 39 warnings and no errors; `npm run deploy` passed from dirty hash `607eb86-dirty`. Perform a clean deploy after commit so the footer hash is comparable.
+- **Next waypoint ETA follow-up:** each Drop Bags tab card now shows compact next-aid and next-bag rows with Plan A ETA times. The two rows can point at the same waypoint when the next aid station is also a bag point. Next aid includes aid/drop-bag/water/medical/crew/pacer support stops and any waypoint marked crew/pacer/drop-bag accessible.
 - **Validation/deploy for next waypoint ETA follow-up:** targeted ESLint passed for touched files; `npm run build` passed; `npm run lint` passed with 39 warnings and no errors; `npm run deploy` passed from dirty hash `61de25f-dirty`; clean post-commit deploy passed from `820902b`. Deployed bundle `/var/www/dfiu/assets/index-CvI0iZq7.js` contains `820902b`. Interactive Browser smoke verification was unavailable because no `iab` browser target was exposed in this thread.
 - **Card action label cleanup:** removed the redundant edit/create drop-bag action label from the Drop Bags tab cards; the cards remain clickable and the All Bags side list still exposes explicit Edit/View controls.
 - **Validation/deploy for card label cleanup:** targeted ESLint passed for touched files; `npm run build` passed; `npm run lint` passed with 39 warnings and no errors; `npm run deploy` passed from dirty hash `3cb8e3a-dirty`; clean post-commit deploy passed from `f27f3c8`. Deployed bundle `/var/www/dfiu/assets/index-im6LuBp0.js` contains `f27f3c8`.
