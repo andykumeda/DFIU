@@ -98,18 +98,67 @@ export const DEFAULT_START_BAG_TEMPLATE: DropBagTemplateItem[] = [
     { text: 'Headlamp if starting in the dark', category: 'conditions' },
 ]
 
+function coerceTemplateArray(raw: unknown): unknown[] {
+    if (Array.isArray(raw)) return raw
+    if (raw && typeof raw === 'object') {
+        const candidate = raw as { items?: unknown; template?: unknown; drop_bag_template?: unknown }
+        if (Array.isArray(candidate.items)) return candidate.items
+        if (Array.isArray(candidate.template)) return candidate.template
+        if (Array.isArray(candidate.drop_bag_template)) return candidate.drop_bag_template
+    }
+    return []
+}
+
+function normalizeText(item: Record<string, unknown>): string {
+    const text = item.text ?? item.label ?? item.name
+    return typeof text === 'string' ? text.trim() : ''
+}
+
 export function parseDropBagTemplate(raw: unknown): DropBagTemplateItem[] {
-    if (!Array.isArray(raw)) return [...DEFAULT_DROP_BAG_TEMPLATE]
-    const items = raw
-        .filter((item): item is DropBagTemplateItem =>
-            !!item &&
-            typeof item === 'object' &&
-            typeof (item as DropBagTemplateItem).text === 'string' &&
-            typeof (item as DropBagTemplateItem).category === 'string'
-        )
-        .map(item => ({ text: item.text.trim(), category: item.category }))
+    const templateItems = coerceTemplateArray(raw)
+    if (!templateItems.length) return [...DEFAULT_DROP_BAG_TEMPLATE]
+
+    const items = templateItems
+        .map((item): DropBagTemplateItem | null => {
+            if (!item || typeof item !== 'object') return null
+            const itemRecord = item as Record<string, unknown>
+            const text = normalizeText(itemRecord)
+            if (!text) return null
+            const category = typeof itemRecord.category === 'string' && itemRecord.category.trim()
+                ? itemRecord.category.trim()
+                : 'custom'
+            return { text, category }
+        })
+        .filter((item): item is DropBagTemplateItem => item !== null)
         .filter(item => item.text.length > 0)
     return items.length > 0 ? items : [...DEFAULT_DROP_BAG_TEMPLATE]
+}
+
+export function parseDropBagItems(raw: unknown): DropBagItem[] {
+    if (!Array.isArray(raw)) return []
+
+    return raw
+        .map((item, i): DropBagItem | null => {
+            if (!item || typeof item !== 'object') return null
+            const itemRecord = item as Record<string, unknown>
+            const text = normalizeText(itemRecord)
+            if (!text) return null
+            const category = typeof itemRecord.category === 'string' && itemRecord.category.trim()
+                ? itemRecord.category.trim()
+                : 'custom'
+            const quantity = itemRecord.quantity ?? itemRecord.qty
+
+            return {
+                id: typeof itemRecord.id === 'string' && itemRecord.id.trim()
+                    ? itemRecord.id
+                    : `saved_${i}`,
+                text,
+                category,
+                checked: itemRecord.checked === true,
+                quantity: quantity == null ? undefined : String(quantity),
+            }
+        })
+        .filter((item): item is DropBagItem => item !== null)
 }
 
 export function seedDropBagItems(
@@ -200,4 +249,15 @@ export function mergeTemplateIntoItems(
     }
 
     return result
+}
+
+export function getDropBagEditorItems(
+    existing: unknown,
+    template: DropBagTemplateItem[],
+    opts: { isNight: boolean; isHot: boolean; isCold: boolean }
+): DropBagItem[] {
+    const existingItems = parseDropBagItems(existing)
+    return existingItems.length > 0
+        ? mergeTemplateIntoItems(existingItems, template, opts)
+        : seedDropBagItems(template, opts)
 }

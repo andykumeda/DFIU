@@ -2,17 +2,20 @@ import { useState, useEffect } from 'react'
 import { Race, Course, Waypoint, TerrainNode } from '@/types/database'
 import { calculatePacePlan } from './pace-utils'
 import { usePacePlans, computePlanMinutes } from './usePacePlans'
-import { Backpack, Clock, Sun, Moon, Info, Printer, List, ChevronDown, ChevronUp, Target, PackageCheck } from 'lucide-react'
+import { Backpack, Clock, Sun, Moon, Info, Printer, List, ChevronDown, ChevronUp, Target, PackageCheck, Pencil } from 'lucide-react'
 import { DropBagModal } from './DropBagModal'
 import { DropBagNotes } from './DropBagNotes'
 import { DropBagTemplateEditor } from './DropBagTemplateEditor'
 import { usePermission } from '@/features/auth/usePermission'
 import type { RunnerPacingProfile } from './runner-profile'
 import {
+    DEFAULT_START_BAG_TEMPLATE,
     getBagActionLabel,
     getBagKind,
     getBagKindLabel,
+    getDropBagEditorItems,
     hasSavedBagPlan,
+    parseDropBagTemplate,
 } from './drop-bag-shared'
 import SunCalc from 'suncalc'
 
@@ -27,7 +30,8 @@ interface DropBagsSectionProps {
 }
 
 export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24h = false, runnerProfile, onGoToPacePlan }: DropBagsSectionProps) {
-    const { canEdit, canEditRaceSettings } = usePermission(race.id, race.race_director_user_id)
+    const { canEditRaceSettings } = usePermission(race.id, race.race_director_user_id)
+    const canWriteDropBags = canEditRaceSettings
     const [selectedWaypoint, setSelectedWaypoint] = useState<Waypoint | null>(null)
     const [isSidePanelOpen, setIsSidePanelOpen] = useState(true)
     const [collapsedStations, setCollapsedStations] = useState<Record<string, boolean>>({})
@@ -43,7 +47,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
         .filter(wp => {
             const kind = getBagKind(wp)
             if (!kind) return false
-            return kind !== 'crew' || canEdit || hasSavedBagPlan(wp)
+            return kind !== 'crew' || canWriteDropBags || hasSavedBagPlan(wp)
         })
         .sort((a, b) => a.mile - b.mile)
 
@@ -104,6 +108,25 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
     const isHot = parseInt(race.avg_temp_high || '0') >= 80
     const isCold = parseInt(race.avg_temp_low || '100') <= 40
     const hasConditions = isHot || isCold || !!race.weather_notes
+    const dropBagTemplate = parseDropBagTemplate(race.drop_bag_template)
+
+    const getWaypointArrival = (wp: Waypoint) =>
+        planA?.waypointArrivals.find(a => a.waypointId === wp.id)
+
+    const getWaypointIsNight = (wp: Waypoint) => {
+        const arrival = getWaypointArrival(wp)
+        return arrival ? isNight(arrival.arrivalTime, wp.lat, wp.lon) : false
+    }
+
+    const getWaypointItems = (wp: Waypoint) => {
+        const kind = getBagKind(wp)
+        const template = kind === 'start' ? DEFAULT_START_BAG_TEMPLATE : dropBagTemplate
+        return getDropBagEditorItems(wp.drop_bag_items, template, {
+            isNight: getWaypointIsNight(wp),
+            isHot,
+            isCold,
+        })
+    }
 
     if (bagWaypoints.length === 0) {
         return (
@@ -257,7 +280,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                     <DropBagModal
                         waypoint={selectedWaypoint}
                         race={race}
-                        canEdit={canEdit}
+                        canEdit={canWriteDropBags}
                         arrivalTime={planA?.waypointArrivals.find(a => a.waypointId === selectedWaypoint.id)}
                         isNight={
                             planA?.waypointArrivals.find(a => a.waypointId === selectedWaypoint.id)
@@ -290,50 +313,76 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                             const kind = getBagKind(wp) ?? 'official'
                             const isStartBag = kind === 'start'
                             const isCrewBag = kind === 'crew'
-                            const items = wp.drop_bag_items as { checked: boolean, text: string, quantity?: string }[] || []
+                            const items = getWaypointItems(wp)
                             const packedItems = items.filter(i => i.checked)
-                            if (packedItems.length === 0) return null
+                            if (!canWriteDropBags && packedItems.length === 0) return null
+                            const displayItems = packedItems.length > 0 ? packedItems : items
+                            const showingTemplate = packedItems.length === 0
 
                             const isCollapsed = collapsedStations[wp.id]
 
                             return (
-                                <div key={wp.id} className="print:break-inside-avoid">
-                                    <h4
-                                        className="text-sm font-bold text-neutral-300 print:text-neutral-800 mb-2 flex justify-between items-center cursor-pointer hover:text-white transition-colors"
-                                        onClick={() => toggleStation(wp.id)}
-                                    >
-                                        <div className={`flex items-center gap-1 ${isCrewBag ? 'text-emerald-400' : 'text-orange-400'}`}>
+                                <div key={wp.id} className={`print:break-inside-avoid ${showingTemplate ? 'print:hidden' : ''}`}>
+                                    <div className="mb-2 flex items-start justify-between gap-2">
+                                        <button
+                                            type="button"
+                                            className={`min-w-0 flex items-center gap-1 text-left text-sm font-bold text-neutral-300 print:text-neutral-800 hover:text-white transition-colors ${isCrewBag ? 'text-emerald-400' : 'text-orange-400'}`}
+                                            onClick={() => toggleStation(wp.id)}
+                                        >
                                             {isCollapsed ? <ChevronDown className="w-4 h-4 print:hidden" /> : <ChevronUp className="w-4 h-4 print:hidden" />}
-                                            <span className="text-neutral-300">
+                                            <span className="min-w-0 truncate text-neutral-300">
                                                 {isStartBag ? 'Start' : wp.name}
                                                 {wp.drop_bag_name ? ` (${wp.drop_bag_name})` : ''}
                                                 {isCrewBag ? ' · Crew bag' : ''}
                                             </span>
+                                        </button>
+                                        <div className="flex shrink-0 items-center gap-2">
+                                            <span className="text-neutral-500 print:text-neutral-600 font-mono text-xs">Mile {wp.mile.toFixed(1)}</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => setSelectedWaypoint(wp)}
+                                                className={`print:hidden flex items-center gap-1 rounded border px-2 py-1 text-xs font-semibold transition-colors ${canWriteDropBags
+                                                    ? isCrewBag
+                                                        ? 'border-emerald-800 bg-emerald-950/40 text-emerald-200 hover:bg-emerald-900/50'
+                                                        : 'border-orange-900/60 bg-orange-950/40 text-orange-200 hover:bg-orange-900/40'
+                                                    : 'border-neutral-800 bg-neutral-950 text-neutral-300 hover:bg-neutral-800'
+                                                    }`}
+                                                title={canWriteDropBags ? 'Edit bag contents' : 'View bag contents'}
+                                            >
+                                                <Pencil className="w-3.5 h-3.5" />
+                                                {canWriteDropBags ? 'Edit' : 'View'}
+                                            </button>
                                         </div>
-                                        <span className="text-neutral-500 print:text-neutral-600 font-mono text-xs">Mile {wp.mile.toFixed(1)}</span>
-                                    </h4>
+                                    </div>
                                     {!isCollapsed && (
-                                        <ul className="space-y-1 pl-5">
-                                            {packedItems.map((item, idx) => (
+                                        <div className="space-y-2">
+                                            {showingTemplate && (
+                                                <div className="pl-5 text-xs uppercase tracking-wide text-neutral-600">
+                                                    Template loaded
+                                                </div>
+                                            )}
+                                            <ul className="space-y-1 pl-5">
+                                            {displayItems.map((item, idx) => (
                                                 <li key={idx} className="text-sm text-neutral-400 print:text-neutral-700 flex items-start gap-2">
                                                     <span className={`${isCrewBag ? 'text-emerald-500/60' : 'text-orange-500/50'} print:text-neutral-400 mt-1`}>&bull;</span>
-                                                    <span className="leading-snug">
+                                                    <span className={`leading-snug ${showingTemplate ? 'text-neutral-500' : ''}`}>
                                                         {item.quantity && <span className="text-neutral-300 print:text-neutral-900 font-medium mr-1">{item.quantity}x</span>}
                                                         {item.text}
                                                     </span>
                                                 </li>
                                             ))}
-                                        </ul>
+                                            </ul>
+                                        </div>
                                     )}
                                 </div>
                             )
                         })}
                         {bagWaypoints.every(wp => {
-                            const items = wp.drop_bag_items as { checked: boolean }[] || [];
-                            return items.filter(i => i.checked).length === 0;
+                            const items = getWaypointItems(wp)
+                            return !canWriteDropBags && items.filter(i => i.checked).length === 0;
                         }) && (
                                 <div className="text-sm text-neutral-500 italic text-center py-4 print:hidden">
-                                    No items packed yet. Click a bag point to add items.
+                                    {canWriteDropBags ? 'Open a bag point to add items.' : 'No items packed yet.'}
                                 </div>
                             )}
                     </div>

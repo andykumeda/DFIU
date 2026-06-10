@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Race, Waypoint } from '@/types/database'
+import { useState, useEffect, useMemo } from 'react'
+import { Race, Waypoint, type Json } from '@/types/database'
 import { X, Save, Plus, Trash2, Clock, Sun, Moon, Info, CheckCircle2, Circle } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
@@ -7,12 +7,11 @@ import {
     DROP_BAG_CATEGORIES,
     DropBagItem,
     DEFAULT_START_BAG_TEMPLATE,
+    getDropBagEditorItems,
     getBagKind,
     getBagKindLabel,
     getDropBagNotes,
-    mergeTemplateIntoItems,
     parseDropBagTemplate,
-    seedDropBagItems,
 } from './drop-bag-shared'
 import { DropBagNotes } from './DropBagNotes'
 import { DropBagSummary } from './DropBagSummary'
@@ -42,36 +41,36 @@ export function DropBagModal({ waypoint, race, arrivalTime, isNight, canEdit = t
     const bagKind = getBagKind(waypoint) ?? 'official'
     const isStartBag = bagKind === 'start'
     const isCrewBag = bagKind === 'crew'
-    const template = isStartBag ? DEFAULT_START_BAG_TEMPLATE : parseDropBagTemplate(race.drop_bag_template)
+    const template = useMemo(
+        () => isStartBag ? DEFAULT_START_BAG_TEMPLATE : parseDropBagTemplate(race.drop_bag_template),
+        [isStartBag, race.drop_bag_template]
+    )
     const bagNoun = isStartBag ? 'Start Gear' : isCrewBag ? 'Crew Bag' : 'Drop Bag'
     const bagNameLabel = isStartBag ? 'Start Gear' : isCrewBag ? 'Crew Bag' : 'Bag Name'
 
     useEffect(() => {
-        const existingData = waypoint.drop_bag_items as unknown as DropBagItem[]
-        if (existingData && Array.isArray(existingData) && existingData.length > 0) {
-            setItems(mergeTemplateIntoItems(existingData, template, { isNight, isHot, isCold }))
-        } else {
-            setItems(seedDropBagItems(template, { isNight, isHot, isCold }))
-        }
-    }, [waypoint.drop_bag_items, isNight, isHot, isCold, race.drop_bag_template])
+        setItems(getDropBagEditorItems(waypoint.drop_bag_items, template, { isNight, isHot, isCold }))
+    }, [waypoint.id, waypoint.drop_bag_items, template, isNight, isHot, isCold])
 
     useEffect(() => {
         setBagName(waypoint.drop_bag_name || '')
-        setBagNotes(getDropBagNotes(waypoint))
+        setBagNotes(waypoint.drop_bag_notes || waypoint.notes || '')
     }, [waypoint.id, waypoint.drop_bag_name, waypoint.drop_bag_notes, waypoint.notes])
 
     const handleSave = async () => {
         if (!canEdit) return
         setSaving(true)
         try {
-            const { error } = await (supabase
-                .from('waypoints') as any)
+            const { error } = await supabase
+                .from('waypoints')
                 .update({
-                    drop_bag_items: items,
+                    drop_bag_items: items as unknown as Json,
                     drop_bag_name: bagName,
                     drop_bag_notes: bagNotes
                 })
                 .eq('id', waypoint.id)
+                .select('id')
+                .single()
 
             if (error) throw error
             queryClient.invalidateQueries({ queryKey: ['waypoints', waypoint.course_id] })
