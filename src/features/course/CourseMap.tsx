@@ -995,67 +995,6 @@ export function CourseMap({
         }
     }, [mapLoaded, styleLoaded, coordinates, onHover, getTerrainPointFromLngLat, getRouteGeoJson])
 
-    useEffect(() => {
-        if (!map.current) return
-        if (isTerrainMode) {
-            map.current.doubleClickZoom.disable()
-        } else {
-            map.current.doubleClickZoom.enable()
-        }
-
-        return () => {
-            map.current?.doubleClickZoom.enable()
-        }
-    }, [isTerrainMode])
-
-    // Double-click the route once for start, then again for end.
-    useEffect(() => {
-        if (!map.current || !mapLoaded || !styleLoaded) return
-        const m = map.current
-
-        const emitSelection = (start: { mile: number }, end: { mile: number }) => {
-            const lo = Math.min(start.mile, end.mile)
-            const hi = Math.max(start.mile, end.mile)
-            if (hi - lo < 0.05) return false
-            onSegmentDefinedRef.current?.(lo, hi)
-            return true
-        }
-
-        const handleDoubleClick = (event: MouseEvent) => {
-            if (!isTerrainModeRef.current || selectedPOITypeRef.current) return
-            const target = event.target
-            if (target instanceof Element && target.closest('.mapboxgl-marker, .mapboxgl-ctrl, button, input, select, textarea')) return
-
-            const rect = m.getCanvas().getBoundingClientRect()
-            const lngLat = m.unproject([event.clientX - rect.left, event.clientY - rect.top])
-            const point = getTerrainPointFromLngLat(lngLat, undefined, TERRAIN_START_PICK_DISTANCE_MILES)
-            if (!point) return
-
-            event.preventDefault()
-            event.stopPropagation()
-            m.getCanvas().style.cursor = 'crosshair'
-
-            const start = terrainSelectionRef.current.start
-            if (!start) {
-                setTerrainSelection({ start: point, end: null })
-                return
-            }
-
-            if (emitSelection(start, point)) {
-                setTerrainSelection({ start: null, end: null })
-            } else {
-                setTerrainSelection({ start: point, end: null })
-            }
-        }
-
-        const canvas = m.getCanvas()
-        canvas.addEventListener('dblclick', handleDoubleClick)
-
-        return () => {
-            canvas.removeEventListener('dblclick', handleDoubleClick)
-        }
-    }, [mapLoaded, styleLoaded, coordinates, getTerrainPointFromLngLat])
-
     // Track View State
     useEffect(() => {
         if (!map.current) return
@@ -1135,9 +1074,27 @@ export function CourseMap({
                 return
             }
 
-            // Terrain map selection uses double-click start/end. Plain clicks
-            // are ignored so they do not conflict with map navigation.
+            // Terrain map selection uses ordinary route clicks for start/end.
+            // Dragging is left to Mapbox, so map pan remains available.
             if (isTerrainModeRef.current) {
+                const point = getTerrainPointFromLngLat(e.lngLat, undefined, TERRAIN_START_PICK_DISTANCE_MILES)
+                if (!point) return
+
+                e.preventDefault()
+                const start = terrainSelectionRef.current.start
+                if (!start) {
+                    setTerrainSelection({ start: point, end: null })
+                    return
+                }
+
+                const lo = Math.min(start.mile, point.mile)
+                const hi = Math.max(start.mile, point.mile)
+                if (hi - lo >= 0.05) {
+                    onSegmentDefinedRef.current?.(lo, hi)
+                    setTerrainSelection({ start: null, end: null })
+                } else {
+                    setTerrainSelection({ start: point, end: null })
+                }
                 return
             }
 

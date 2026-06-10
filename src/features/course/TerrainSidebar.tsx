@@ -158,7 +158,6 @@ export function TerrainSidebar({
   }
 
   const handleDelete = async (seg: Segment) => {
-    if (!confirm(`Delete terrain from mi ${seg.startMile.toFixed(2)} to ${seg.endMile.toFixed(2)}?`)) return
     setBusy(true)
     setError(null)
     try {
@@ -262,7 +261,7 @@ export function TerrainSidebar({
 
       {isOpen && canEdit && (
         <p className="mb-3 text-[10px] text-neutral-500 italic">
-          Double-click the route to set start, then double-click the end. You can still drag the elevation profile.
+          Click the route to set start, then click it again for end. Drag the map normally to pan.
         </p>
       )}
 
@@ -447,7 +446,11 @@ export function TerrainSidebar({
                   </span>
                   {canEdit && (
                     <button
-                      onClick={() => startEditSegment(seg)}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        startEditSegment(seg)
+                      }}
                       disabled={busy}
                       className="w-5 h-5 inline-flex items-center justify-center text-neutral-500 hover:text-blue-300 disabled:opacity-50 shrink-0"
                       title="Edit segment"
@@ -458,7 +461,11 @@ export function TerrainSidebar({
                   )}
                   {canEdit && (
                     <button
-                      onClick={() => handleDelete(seg)}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleDelete(seg)
+                      }}
                       disabled={busy}
                       className="w-5 h-5 inline-flex items-center justify-center text-neutral-500 hover:text-red-400 disabled:opacity-50 shrink-0"
                       title="Delete segment"

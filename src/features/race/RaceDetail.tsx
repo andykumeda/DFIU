@@ -857,7 +857,6 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     const endMile = sorted[index + 1]?.mile ?? course?.total_distance_miles ?? node.mile
     if (endMile <= node.mile) return
 
-    if (!confirm(`Delete terrain from mi ${node.mile.toFixed(2)} to ${endMile.toFixed(2)}?`)) return
     clearPendingTerrainSegment()
     await handleDeleteTerrainSegmentRange({
       startNodeId: id,
