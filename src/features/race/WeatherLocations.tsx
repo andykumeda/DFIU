@@ -4,6 +4,8 @@ import { MapPin, Plus, Trash2, RefreshCw, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { fetchWeatherForRace } from '@/lib/weather-service'
 import { getCoordinateAtDistance } from '@/lib/geo-utils'
+import { formatStoredClockTime } from '@/lib/utils'
+import { useAuth } from '@/features/auth/AuthContext'
 import type { Race, Course } from '@/types/database'
 
 export interface WeatherLocationEntry {
@@ -44,6 +46,8 @@ interface WeatherLocationsProps {
 }
 
 export function WeatherLocations({ race, course, canEdit }: WeatherLocationsProps) {
+    const { profile } = useAuth() as { profile: { clock_24h?: boolean } | null }
+    const clock24h = !!profile?.clock_24h
     const queryClient = useQueryClient()
     const locations = useMemo(() => parseWeatherLocations(race.weather_locations), [race.weather_locations])
 
@@ -221,8 +225,8 @@ export function WeatherLocations({ race, course, canEdit }: WeatherLocationsProp
                         </div>
                         {(loc.sunrise_time !== '--' || loc.weather_notes) && (
                             <div className="flex items-center gap-4 mt-1 text-xs text-neutral-500">
-                                {loc.sunrise_time !== '--' && <span>↑ {loc.sunrise_time}</span>}
-                                {loc.sunset_time !== '--' && <span>↓ {loc.sunset_time}</span>}
+                                {loc.sunrise_time !== '--' && <span>↑ {formatStoredClockTime(loc.sunrise_time, clock24h)}</span>}
+                                {loc.sunset_time !== '--' && <span>↓ {formatStoredClockTime(loc.sunset_time, clock24h)}</span>}
                                 {loc.weather_notes && <span className="truncate">{loc.weather_notes}</span>}
                             </div>
                         )}

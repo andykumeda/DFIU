@@ -11,7 +11,7 @@ import { RaceMembersSection } from './RaceMembersSection'
 import { fetchWeatherForRace, fetchCurrentWeather } from '@/lib/weather-service'
 import { sampleElevationProfile, type GpxParseResult } from '@/lib/gpx-parser'
 import { getCoordinateAtDistance, getNearestPointOnLine, getDistanceFromStart, getAllVisitsOnLine, getDistance } from '@/lib/geo-utils'
-import { formatDate } from '@/lib/utils'
+import { formatDate, formatStoredClockTime } from '@/lib/utils'
 import SunCalc from 'suncalc'
 
 const CourseMap = lazy(() =>
@@ -1795,13 +1795,13 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                   </div>
                   <div className="bg-neutral-950/50 p-4 rounded-lg">
                     <div className="text-neutral-500 text-xs uppercase tracking-wider mb-1">Sunrise</div>
-                    <div className="text-lg font-mono text-white mb-2">{race?.sunrise_time || '--'}</div>
+                    <div className="text-lg font-mono text-white mb-2">{formatStoredClockTime(race?.sunrise_time, clock24h) || '--'}</div>
                     <div className="text-neutral-500 text-xs uppercase tracking-wider mb-1">Civil Twilight (Dawn)</div>
                     <div className="text-sm font-mono text-blue-300">{twilight?.dawn || '--'}</div>
                   </div>
                   <div className="bg-neutral-950/50 p-4 rounded-lg">
                     <div className="text-neutral-500 text-xs uppercase tracking-wider mb-1">Sunset</div>
-                    <div className="text-lg font-mono text-white mb-2">{race?.sunset_time || '--'}</div>
+                    <div className="text-lg font-mono text-white mb-2">{formatStoredClockTime(race?.sunset_time, clock24h) || '--'}</div>
                     <div className="text-neutral-500 text-xs uppercase tracking-wider mb-1">Civil Twilight (Dusk)</div>
                     <div className="text-sm font-mono text-blue-300">{twilight?.dusk || '--'}</div>
                   </div>

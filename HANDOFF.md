@@ -1,8 +1,8 @@
 # Handoff Document
 
 **Date:** 2026-06-10
-**Status:** Map & Aid Stations edit-control placement plus 12/24-hour time-format consistency implemented, built, linted, deployed, and committed.
-**Active task:** Push `main` after committing this handoff update; production deploy hash is `6dcb6c9`.
+**Status:** Map & Aid Stations edit-control placement is deployed; stored weather sunrise/sunset displays now format at render time from the user's 12/24-hour preference. `npm run build` and `npm run lint` passed; deploy/commit/push in progress.
+**Active task:** Deploy the weather clock-format follow-up from a clean commit, record `git describe`, then push `main`.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change in this repo. Commit, branch, and document discipline is required to prevent the lost-work confusion that motivated this reconciliation.
 
@@ -12,6 +12,7 @@
 - **Waypoint and terrain edit modes are independent.** Entering waypoint edit mode disables terrain edit mode, and entering terrain edit mode disables waypoint edit mode, so adding/editing aid stations no longer depends on the terrain-edit controls.
 - **Clock preference gaps fixed in the map flow.** Race overview start time, waypoint cutoff details, and Runner View's last-upload time now honor the user's 12/24-hour preference.
 - **Validation/deploy:** `npm run build` passed; `npm run lint` passed with the existing 44 warnings and no errors; `npm run deploy` passed from clean commit `6dcb6c9`.
+- **Follow-up clock sweep:** race weather sunrise/sunset and additional course-location sunrise/sunset now parse stored clock strings at display time and render them in the viewer's 12/24-hour preference. `npm run build` and `npm run lint` passed; deploy pending from the clean follow-up commit.
 
 ## 2026-06-10 Waypoint drag persistence fix
 
