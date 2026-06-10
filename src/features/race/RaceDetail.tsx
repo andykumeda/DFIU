@@ -1349,7 +1349,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                           const wp = waypoints.find(w => w.id === id)
                           if (wp) setViewingWaypoint(wp)
                         }}
-                        onWaypointMove={isOwner && isEditMode ? handleWaypointMove : undefined}
+                        onWaypointMove={isOwner ? handleWaypointMove : undefined}
                         onHover={setHoveredMile}
                         highlightMile={hoveredMile ?? undefined}
                         showMileMarkers={showMileMarkers}

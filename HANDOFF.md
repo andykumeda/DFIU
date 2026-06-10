@@ -1,8 +1,8 @@
 # Handoff Document
 
 **Date:** 2026-06-10
-**Status:** Map waypoint drag persistence fix implemented, built, deployed, and committed. Crew-accessible non-drop aid station bag planning is implemented, built, deployed, and committed.
-**Active task:** Verify in production: outside map edit mode waypoint markers should not drag; inside map edit mode dragging an aid station should persist after refresh/revisit.
+**Status:** Waypoint drag regression correction implemented and locally validated; clean deploy pending. Crew-accessible non-drop aid station bag planning is implemented, built, deployed, and committed.
+**Active task:** Commit waypoint drag regression correction, deploy from clean commit, record deployed `git describe`, and push `main`.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change in this repo. Commit, branch, and document discipline is required to prevent the lost-work confusion that motivated this reconciliation.
 
@@ -12,6 +12,7 @@
 - **Fix:** waypoint markers are now draggable only when `onWaypointMove` is wired, and the marker-render effect rebuilds when that edit/save capability toggles. Non-edit markers use a pointer cursor and cannot be dragged.
 - **Save verification:** `handleWaypointMove` now asks Supabase to return the updated waypoint id with `.select('id').single()`, so RLS/no-row failures no longer look successful; failed saves log the error and show the actual failure message before refetching server state.
 - **Validation/deploy:** `npm run build` passed; `npm run lint` passed with the existing 44 warnings; `npm run deploy` passed from clean commit `6b2b4cd`.
+- **Regression correction:** marker dragging must be available whenever an editable user is viewing waypoint markers, not only while terrain/map edit mode is active. `RaceDetail` now passes `onWaypointMove` for editable users independent of `isEditMode`, while `CourseMap` still only makes markers draggable when that save callback exists. Local `npm run build` and `npm run lint` passed; clean deploy pending.
 
 ## 2026-06-10 Crew bag planning for crew-accessible aid stations
 
