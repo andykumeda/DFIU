@@ -1,12 +1,18 @@
 # Handoff Document
 
 **Date:** 2026-06-11
-**Status:** Event deletion fix implemented, production DB migrated, linted, and dirty-deployed.
-**Active task:** Commit/push the event deletion fix; run a clean post-commit deploy so the footer hash is clean.
+**Status:** Cloned-event deletion follow-up and Crew View CTA width fix built, linted, and dirty-deployed.
+**Active task:** Commit/push the cloned-event deletion and Crew View CTA alignment follow-up; run a clean post-commit deploy so the footer hash is clean.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change in this repo. Commit, branch, and document discipline is required to prevent the lost-work confusion that motivated this reconciliation.
 
 ## 2026-06-11 Clone duplicate and event home follow-up
+
+- **Cloned-event deletion follow-up started:** working on `/Users/andy/Dev/DFIU` branch `main`, tracking `origin/main`, from clean commit `997b182`. Additional worktree remains at `/Users/andy/.codex/worktrees/9dfe/DFIU` on `codex/fix-vite-chunk-deploy`; it is not part of this task.
+- **Cloned-event deletion follow-up:** production race `68898bee-b61b-4e95-a930-3efbca1fdbcb` exists, is a private clone of Bay Area 100, and has one owner membership for user `7b027eef-0aa7-444a-8649-1877b738a231`. Supabase API logs showed the signed-in user loading the race and membership successfully but no `POST /rpc/delete_race` attempts, so the likely failure was UI-side delete availability/reachability rather than a backend delete error.
+- **Owner fallback hardening:** migration `20260611_user_owns_race_user_id_fallback.sql` updates `user_owns_race` so `races.user_id = auth.uid()` counts as ownership in addition to an RBAC owner membership and site-admin status. `RaceDetail` now also shows/wires deletion when the loaded race creator is the signed-in user. Production Supabase project `nyjgyyuoscgekavheeqi` has migration `20260611040334 user_owns_race_user_id_fallback` applied. A rolled-back delete simulation for `68898bee-b61b-4e95-a930-3efbca1fdbcb` as user `7b027eef-0aa7-444a-8649-1877b738a231` completed without error and confirmed the race still exists after rollback.
+- **Crew View CTA alignment:** the sticky **Log arrival** footer now uses the same `max-w-3xl` plus `px-3` content sizing as the main Crew View stack, so it aligns with the map and aid-station cards above it instead of being wider on desktop.
+- **Validation/deploy for cloned delete/Crew CTA follow-up:** `git diff --check`, `npm run build`, and `npm run lint` passed; lint reported 38 existing warnings and no errors. `npm run deploy` passed from dirty hash `997b182-dirty` and deployed `/var/www/dfiu/assets/index-IedwcSBO.js`. In-app Browser confirmed production is serving the dirty bundle, but unauthenticated Crew View smoke stayed on `Loading...`, so authenticated visual/delete smoke still requires the signed-in user session or a disposable test event.
 
 - **Event deletion troubleshooting started:** working on `/Users/andy/Dev/DFIU` branch `main`, tracking `origin/main`, from clean commit `3a4887f`. Additional worktree remains at `/Users/andy/.codex/worktrees/9dfe/DFIU` on `codex/fix-vite-chunk-deploy`; it is not part of this task.
 - **Event deletion fix:** race deletion now goes through a new owner-checked `delete_race` Supabase RPC instead of relying on direct client deletion and legacy FK cascades. The RPC clears official clone source links, deletes check-ins, terrain nodes, waypoints, courses, runner locations, pace plans, pending invites, memberships, and then the race. The edit modal now treats deletion as an async operation with a disabled/deleting state and only receives a delete handler for true owners/site admins, not every edit-capable member.

@@ -584,8 +584,8 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
 
             {/* Sticky check-in CTA */}
             {canLogCheckins && nextWaypoint && !showCheckin && (
-                <div className='sticky bottom-0 inset-x-0 bg-neutral-950/95 backdrop-blur border-t border-neutral-800 p-3'>
-                    <div className='max-w-3xl mx-auto'>
+                <div className='sticky bottom-0 inset-x-0 bg-neutral-950/95 backdrop-blur border-t border-neutral-800 py-3'>
+                    <div className='max-w-3xl mx-auto px-3'>
                         <button
                             onClick={() => openCheckin(nextWaypoint)}
                             className='w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 rounded py-3 font-semibold'

@@ -248,10 +248,11 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     canEdit,
     canEditRaceSettings,
     isAdmin,
-    isOwner: canDeleteRace,
+    isOwner: hasOwnerMembership,
     canManageTeam,
     availableRoleViews,
   } = usePermission(raceId, race?.race_director_user_id)
+  const canDeleteRace = hasOwnerMembership || isAdmin || (!!user && race?.user_id === user.id)
 
   // Auto-fetch weather if missing — edit-perm only to avoid races and unauthorized writes
   useEffect(() => {
