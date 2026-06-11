@@ -1,8 +1,8 @@
 # Handoff Document
 
 **Date:** 2026-06-11
-**Status:** Pace plan column heading/edit ordering update built, linted, smoke-tested, and dirty-deployed.
-**Active task:** Commit/push the pace plan column heading/order update; run a clean post-commit deploy so the footer hash is clean.
+**Status:** Pace plan column heading/edit ordering update committed, pushed, smoke-tested, and deployed.
+**Active task:** None; monitor production for pace plan column customization issues.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change in this repo. Commit, branch, and document discipline is required to prevent the lost-work confusion that motivated this reconciliation.
 
@@ -10,7 +10,7 @@
 
 - **Pace plan column heading/order update started:** working on `/Users/andy/Dev/DFIU` branch `main`, tracking `origin/main`, from clean commit `49c21ac`. Additional worktree remains at `/Users/andy/.codex/worktrees/9dfe/DFIU` on `codex/fix-vite-chunk-deploy`; it is not part of this task.
 - **Pace plan column headings/order update:** pace chart column config now supports optional custom labels in `pace_chart_columns.labels`, preserving existing saved `order` and `hidden` configs. The Print Columns panel now renders editable heading inputs plus grip handles; clearing an input falls back to the default heading, including unit-aware Mile/Km labels. Arrow up/down ordering controls were removed in favor of click-drag grip reordering.
-- **Validation/deploy for pace plan columns:** `git diff --check`, `npm run build`, and `npm run lint` passed; lint reported 38 existing warnings and no errors. `npm run deploy` passed from dirty hash `49c21ac-dirty` and deployed `/var/www/dfiu/assets/index-DK2NvzBv.js`. Local production preview at `http://127.0.0.1:4173` opened public Bay Area 100, switched to Pace Plan, verified editing the Mile heading to `Distance` updated the table header, dragged **Segment Time** ahead of **Seg Mile**, and verified the table/order controls reflected the new order with no browser console errors.
+- **Validation/deploy for pace plan columns:** `git diff --check`, `npm run build`, and `npm run lint` passed; lint reported 38 existing warnings and no errors. `npm run deploy` passed from dirty hash `49c21ac-dirty` and later clean hash `8e4a862`, deploying `/var/www/dfiu/assets/index-VQvwxInA.js` with footer hash `8e4a862`. Local production preview at `http://127.0.0.1:4173` opened public Bay Area 100, switched to Pace Plan, verified editing the Mile heading to `Distance` updated the table header, dragged **Segment Time** ahead of **Seg Mile**, and verified the table/order controls reflected the new order with no browser console errors. Product commit `8e4a862` was pushed to `origin/main`.
 
 - **Cloned-event deletion follow-up started:** working on `/Users/andy/Dev/DFIU` branch `main`, tracking `origin/main`, from clean commit `997b182`. Additional worktree remains at `/Users/andy/.codex/worktrees/9dfe/DFIU` on `codex/fix-vite-chunk-deploy`; it is not part of this task.
 - **Cloned-event deletion follow-up:** production race `68898bee-b61b-4e95-a930-3efbca1fdbcb` exists, is a private clone of Bay Area 100, and has one owner membership for user `7b027eef-0aa7-444a-8649-1877b738a231`. Supabase API logs showed the signed-in user loading the race and membership successfully but no `POST /rpc/delete_race` attempts, so the likely failure was UI-side delete availability/reachability rather than a backend delete error.
