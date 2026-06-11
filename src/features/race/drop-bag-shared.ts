@@ -193,6 +193,25 @@ export function seedDropBagItems(
 const itemKey = (item: { category: string; text: string }) =>
     `${item.category}::${item.text.trim().toLowerCase()}`
 
+export function getDropBagTemplateForKind(
+    kind: BagKind,
+    dropBagTemplate: DropBagTemplateItem[]
+): DropBagTemplateItem[] {
+    if (kind !== 'start') return dropBagTemplate
+
+    const result: DropBagTemplateItem[] = []
+    const usedKeys = new Set<string>()
+
+    for (const item of [...dropBagTemplate, ...DEFAULT_START_BAG_TEMPLATE]) {
+        const key = itemKey(item)
+        if (usedKeys.has(key)) continue
+        result.push(item)
+        usedKeys.add(key)
+    }
+
+    return result
+}
+
 // Reconciles the race-level template into a bag's existing items so template
 // edits (adds, renames, removals) show up without wiping a runner's progress.
 // Standard template categories are driven by the template; smart "conditions"

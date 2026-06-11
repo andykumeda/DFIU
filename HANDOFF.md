@@ -1,12 +1,16 @@
 # Handoff Document
 
 **Date:** 2026-06-11
-**Status:** Clone duplicate naming prompt and authenticated event home built, linted, and dirty-deployed.
-**Active task:** Commit/push the clone duplicate UX and signed-in event-list update; run a clean post-commit deploy so the footer hash is clean.
+**Status:** Drop Bags start-card template and modal next-resource context built, linted, smoke-tested, and dirty-deployed.
+**Active task:** Commit/push the Drop Bags template/context update; run a clean post-commit deploy so the footer hash is clean.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change in this repo. Commit, branch, and document discipline is required to prevent the lost-work confusion that motivated this reconciliation.
 
 ## 2026-06-11 Clone duplicate and event home follow-up
+
+- **Drop Bags modal/resource context follow-up started:** working on `/Users/andy/Dev/DFIU` branch `main`, tracking `origin/main`, from clean commit `df9bcae`. Additional worktree remains at `/Users/andy/.codex/worktrees/9dfe/DFIU` on `codex/fix-vite-chunk-deploy`; it is not part of this task.
+- **Drop Bags start/template and modal coverage update:** start bags now combine the race-level drop-bag template with start-specific checklist items, so the start card/modal includes template items like other bag points while retaining start essentials. Drop Bags cards now show distance and Plan A duration to the next aid and next bag/crew point, and the same coverage rows render inside `DropBagModal` for the selected bag, including Start.
+- **Validation/deploy for Drop Bags context:** `git diff --check`, `npm run build`, and `npm run lint` passed; lint reported 38 existing warnings and no errors. `npm run deploy` passed from dirty hash `df9bcae-dirty` and deployed `/var/www/dfiu/assets/index-Dr46s_zE.js`. Local production preview responded at `http://127.0.0.1:4173`; in-app Browser smoke opened public Bay Area 100 (`/race/52d23785-cef7-4afe-bdf8-446f6053dc7a`), opened **Drop Bags**, verified card rows include **Next aid** and **Next bag/crew**, opened the Start modal, verified **Coverage from this bag** plus **Next aid/Next bag** rows, and verified start modal items include race-template items (`Flasks`, `Gels / Chews`) plus start-specific items (`Start bottles / bladder filled`, `Race bib / timing chip`). Browser console errors: none.
 
 - **Branch/worktree check before edits:** worked on `/Users/andy/Dev/DFIU` branch `main`, tracking `origin/main`, from a clean working tree. Additional worktree remains at `/Users/andy/.codex/worktrees/9dfe/DFIU` on `codex/fix-vite-chunk-deploy`; it is not part of this task.
 - **Repeat clone UX:** cloning still allows multiple private copies of the same public source race. If the current user already has one or more clones with `official_source_race_id = source race`, the clone button now prompts that they are creating another event, lists existing clone names, requires a non-empty name distinct from the prior clone names, applies that name to the new private race after `clone_race`, refreshes memberships, and invalidates race-list queries before navigation.

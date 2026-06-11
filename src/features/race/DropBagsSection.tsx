@@ -3,15 +3,15 @@ import { Race, Course, Waypoint, TerrainNode } from '@/types/database'
 import { calculatePacePlan } from './pace-utils'
 import { usePacePlans, computePlanMinutes } from './usePacePlans'
 import { Backpack, Clock, Sun, Moon, Info, Printer, List, ChevronDown, ChevronUp, Target, PackageCheck, Pencil } from 'lucide-react'
-import { DropBagModal } from './DropBagModal'
+import { DropBagModal, type DropBagCoverageRow } from './DropBagModal'
 import { DropBagNotes } from './DropBagNotes'
 import { DropBagTemplateEditor } from './DropBagTemplateEditor'
 import { usePermission } from '@/features/auth/usePermission'
 import type { RunnerPacingProfile } from './runner-profile'
 import {
-    DEFAULT_START_BAG_TEMPLATE,
     getBagKind,
     getBagKindLabel,
+    getDropBagTemplateForKind,
     getDropBagEditorItems,
     hasSavedBagPlan,
     parseDropBagTemplate,
@@ -43,6 +43,14 @@ const isAidStationWaypoint = (waypoint: Waypoint) =>
     !!waypoint.has_drop_bag ||
     !!waypoint.crew_allowed ||
     !!waypoint.pacer_allowed
+
+const formatDuration = (minutes: number) => {
+    if (!Number.isFinite(minutes)) return null
+    const rounded = Math.max(0, Math.round(minutes))
+    const hours = Math.floor(rounded / 60)
+    const mins = rounded % 60
+    return hours > 0 ? `${hours}h ${mins.toString().padStart(2, '0')}m` : `${mins}m`
+}
 
 export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24h = false, runnerProfile, onGoToPacePlan }: DropBagsSectionProps) {
     const { canEditRaceSettings } = usePermission(race.id, race.race_director_user_id)
@@ -136,8 +144,8 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
     }
 
     const getWaypointItems = (wp: Waypoint) => {
-        const kind = getBagKind(wp)
-        const template = kind === 'start' ? DEFAULT_START_BAG_TEMPLATE : dropBagTemplate
+        const kind = getBagKind(wp) ?? 'official'
+        const template = getDropBagTemplateForKind(kind, dropBagTemplate)
         return getDropBagEditorItems(wp.drop_bag_items, template, {
             isNight: getWaypointIsNight(wp),
             isHot,
@@ -151,26 +159,61 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
     const getNextBagWaypoint = (wp: Waypoint) =>
         bagWaypoints.find(candidate => isAfterWaypoint(candidate, wp)) ?? null
 
-    const renderNextEtaRow = (label: string, target: Waypoint | null, labelClass: string) => (
+    const getBagResourceLabel = (target: Waypoint | null) =>
+        target && getBagKind(target) === 'crew'
+            ? 'Next crew'
+            : 'Next bag'
+
+    const buildCoverageRow = (current: Waypoint, label: string, target: Waypoint | null, labelClass: string): DropBagCoverageRow => {
+        const currentPlanA = getPlanArrival(planA, current)
+        return {
+            label,
+            labelClass,
+            targetName: target?.name ?? null,
+            targetMile: target?.mile ?? null,
+            milesUntil: target ? Math.max(0, target.mile - current.mile) : null,
+            plans: planOptions.map(({ label: planLabel, plan, color }) => {
+                const arrival = target ? getPlanArrival(plan, target) : undefined
+                return {
+                    label: planLabel,
+                    colorClass: color,
+                    timeOfDay: arrival?.timeOfDay ?? null,
+                    duration: arrival && currentPlanA ? formatDuration(arrival.arrivalTime - currentPlanA.arrivalTime) : null,
+                }
+            }),
+        }
+    }
+
+    const getCoverageRows = (wp: Waypoint) => {
+        const nextBag = getNextBagWaypoint(wp)
+        const nextBagKind = nextBag ? getBagKind(nextBag) : null
+        return [
+            buildCoverageRow(wp, 'Next aid', getNextAidStation(wp), 'text-blue-400'),
+            buildCoverageRow(wp, getBagResourceLabel(nextBag), nextBag, nextBagKind === 'crew' ? 'text-emerald-400' : 'text-orange-400'),
+        ]
+    }
+
+    const renderNextEtaRow = (row: DropBagCoverageRow) => (
         <div className="flex items-start gap-3 text-xs">
-            <div className={`w-16 shrink-0 font-bold uppercase tracking-wide ${labelClass}`}>
-                {label}
+            <div className={`w-20 shrink-0 whitespace-nowrap font-bold uppercase tracking-wide ${row.labelClass}`}>
+                {row.label}
             </div>
-            {target ? (
+            {row.targetName ? (
                 <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
-                        <span className="truncate text-neutral-200 font-medium">{target.name}</span>
-                        <span className="shrink-0 font-mono text-neutral-500">Mile {target.mile.toFixed(1)}</span>
+                        <span className="truncate text-neutral-200 font-medium">{row.targetName}</span>
+                        <span className="shrink-0 font-mono text-neutral-500">Mile {row.targetMile?.toFixed(1)}</span>
                     </div>
                     <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-neutral-400">
-                        {planOptions.map(({ label: planLabel, plan, color }) => {
-                            const arrival = getPlanArrival(plan, target)
-                            return (
-                                <span key={planLabel} className="font-mono">
-                                    <span className={`font-bold ${color}`}>{planLabel}</span> {arrival?.timeOfDay ?? '—'}
-                                </span>
-                            )
-                        })}
+                        {row.milesUntil !== null && (
+                            <span className="font-mono">+{row.milesUntil.toFixed(1)} mi</span>
+                        )}
+                        {row.plans.map(plan => (
+                            <span key={plan.label} className="font-mono">
+                                <span className={`font-bold ${plan.colorClass}`}>{plan.label}</span> {plan.timeOfDay ?? '—'}
+                                {plan.duration && <span className="text-neutral-500"> · in {plan.duration}</span>}
+                            </span>
+                        ))}
                     </div>
                 </div>
             ) : (
@@ -230,6 +273,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                         const isStartBag = kind === 'start'
                         const isCrewBag = kind === 'crew'
                         const hasBagPlan = hasSavedBagPlan(wp)
+                        const coverageRows = getCoverageRows(wp)
                         const cardClass = isCrewBag
                             ? 'bg-emerald-950/15 border-emerald-900/70 hover:border-emerald-500/60 hover:shadow-emerald-950/30'
                             : 'bg-neutral-900 border-neutral-800 hover:border-neutral-700 hover:shadow-black/50'
@@ -307,8 +351,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
 
                                     {plans.hasCalculated && (
                                         <div className="border-t border-neutral-800 pt-3 space-y-2">
-                                            {renderNextEtaRow('Next aid', getNextAidStation(wp), 'text-blue-400')}
-                                            {renderNextEtaRow('Next bag', getNextBagWaypoint(wp), isCrewBag ? 'text-emerald-400' : 'text-orange-400')}
+                                            {coverageRows.map(row => renderNextEtaRow(row))}
                                         </div>
                                     )}
 
@@ -335,6 +378,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                         race={race}
                         canEdit={canWriteDropBags}
                         arrivalTime={planA?.waypointArrivals.find(a => a.waypointId === selectedWaypoint.id)}
+                        coverageRows={plans.hasCalculated ? getCoverageRows(selectedWaypoint) : []}
                         isNight={
                             planA?.waypointArrivals.find(a => a.waypointId === selectedWaypoint.id)
                                 ? isNight(planA.waypointArrivals.find(a => a.waypointId === selectedWaypoint.id)!.arrivalTime, selectedWaypoint.lat, selectedWaypoint.lon)

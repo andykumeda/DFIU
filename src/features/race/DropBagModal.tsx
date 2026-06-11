@@ -6,10 +6,10 @@ import { supabase } from '@/lib/supabase'
 import {
     DROP_BAG_CATEGORIES,
     DropBagItem,
-    DEFAULT_START_BAG_TEMPLATE,
     getDropBagEditorItems,
     getBagKind,
     getBagKindLabel,
+    getDropBagTemplateForKind,
     getDropBagNotes,
     parseDropBagTemplate,
 } from './drop-bag-shared'
@@ -20,6 +20,7 @@ interface DropBagModalProps {
     waypoint: Waypoint
     race: Race
     arrivalTime?: { arrivalTime: number, timeOfDay: string }
+    coverageRows?: DropBagCoverageRow[]
     isNight: boolean
     canEdit?: boolean
     /** Show only what's packed in the bag (no editor/template), like Crew View.
@@ -28,7 +29,21 @@ interface DropBagModalProps {
     onClose: () => void
 }
 
-export function DropBagModal({ waypoint, race, arrivalTime, isNight, canEdit = true, contentsOnly = false, onClose }: DropBagModalProps) {
+export interface DropBagCoverageRow {
+    label: string
+    labelClass: string
+    targetName: string | null
+    targetMile: number | null
+    milesUntil: number | null
+    plans: Array<{
+        label: string
+        colorClass: string
+        timeOfDay: string | null
+        duration: string | null
+    }>
+}
+
+export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], isNight, canEdit = true, contentsOnly = false, onClose }: DropBagModalProps) {
     const queryClient = useQueryClient()
     const [items, setItems] = useState<DropBagItem[]>([])
     const [newItemText, setNewItemText] = useState('')
@@ -42,8 +57,8 @@ export function DropBagModal({ waypoint, race, arrivalTime, isNight, canEdit = t
     const isStartBag = bagKind === 'start'
     const isCrewBag = bagKind === 'crew'
     const template = useMemo(
-        () => isStartBag ? DEFAULT_START_BAG_TEMPLATE : parseDropBagTemplate(race.drop_bag_template),
-        [isStartBag, race.drop_bag_template]
+        () => getDropBagTemplateForKind(bagKind, parseDropBagTemplate(race.drop_bag_template)),
+        [bagKind, race.drop_bag_template]
     )
     const bagNoun = isStartBag ? 'Start Gear' : isCrewBag ? 'Crew Bag' : 'Drop Bag'
     const bagNameLabel = isStartBag ? 'Start Gear' : isCrewBag ? 'Crew Bag' : 'Bag Name'
@@ -168,6 +183,48 @@ export function DropBagModal({ waypoint, race, arrivalTime, isNight, canEdit = t
                 </div>
 
                 <div className="p-6 overflow-y-auto space-y-8 flex-1">
+
+                    {coverageRows.length > 0 && (
+                        <div className="bg-neutral-950/50 border border-neutral-800 rounded-xl p-4 space-y-3">
+                            <div className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
+                                Coverage from this bag
+                            </div>
+                            <div className="space-y-3">
+                                {coverageRows.map(row => (
+                                    <div key={row.label} className="flex items-start gap-3 text-xs">
+                                        <div className={`w-20 shrink-0 whitespace-nowrap font-bold uppercase tracking-wide ${row.labelClass}`}>
+                                            {row.label}
+                                        </div>
+                                        {row.targetName ? (
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <span className="truncate text-neutral-200 font-medium">{row.targetName}</span>
+                                                    <span className="shrink-0 font-mono text-neutral-500">
+                                                        Mile {row.targetMile?.toFixed(1)}
+                                                    </span>
+                                                </div>
+                                                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-neutral-400">
+                                                    {row.milesUntil !== null && (
+                                                        <span className="font-mono">
+                                                            +{row.milesUntil.toFixed(1)} mi
+                                                        </span>
+                                                    )}
+                                                    {row.plans.map(plan => (
+                                                        <span key={plan.label} className="font-mono">
+                                                            <span className={`font-bold ${plan.colorClass}`}>{plan.label}</span> {plan.timeOfDay ?? '—'}
+                                                            {plan.duration && <span className="text-neutral-500"> · in {plan.duration}</span>}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="text-neutral-600">None ahead</div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     {contentsOnly ? (
                     <div className="space-y-5">
