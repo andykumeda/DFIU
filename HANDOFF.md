@@ -1,8 +1,8 @@
 # Handoff Document
 
 **Date:** 2026-06-11
-**Status:** Pace Plan PDF follow-up in progress on `main` from clean commit `c64dcb2`.
-**Active task:** Fix Pace Plan print/PDF styling so it renders as a normal white document and make Time to Next consistently use H:MM.
+**Status:** Pace Plan PDF follow-up implemented, clean-built, and deployed from product commit `c3a2e7c`.
+**Active task:** Completed Pace Plan print/PDF cleanup and H:MM Time to Next formatting.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change in this repo. Commit, branch, and document discipline is required to prevent the lost-work confusion that motivated this reconciliation.
 
@@ -12,6 +12,7 @@
 - **Planned scope:** reproduce the Pace Plan PDF/print output, remove the black-background/pasted-image look by forcing print surfaces to a plain white document, and format all Time to Next values as `H:MM` including sub-hour legs such as `0:48`.
 - **Pace Plan PDF implementation:** print CSS now scopes aggressive print cleanup to pages containing `.pace-print-sheet`, hides the app header/nav/print-hidden controls, forces the race shell and pace table surfaces to white/black, removes shadows, and prints the pace table as a full-width document instead of an inline white block over the dark app background. Pace-plan leg duration formatting now always returns `H:MM`, so sub-hour Time to Next values print as `0:53`, `0:48`, etc.
 - **Validation/deploy before product commit:** `git diff --check`, `npm run build`, and `npm run lint` passed; lint reported the existing 36 warnings and no errors. Headless Chrome `Page.printToPDF` smoke against local production preview `http://127.0.0.1:4173/race/52d23785-cef7-4afe-bdf8-446f6053dc7a` verified a one-page letter portrait PDF with white body/shell/sheet backgrounds, Pinehurst present, and sub-hour Time to Next values such as `0:48`; rendered page PNG confirmed the PDF looks like a normal white table document. `npm run deploy` passed from dirty hash `c64dcb2-dirty`, deploying `index-BYI3_lVx.js`, `index-DL-PHH9h.css`, and related chunks to `web:/var/www/dfiu`.
+- **Clean deploy after product commit:** Product commit `c3a2e7c` was deployed with `npm run deploy`, publishing `index-PHvWgiAr.js`, `index-DL-PHH9h.css`, `LiveEventTab-BBzfiPuY.js`, `CrewView-GJWvskcT.js`, and related chunks to `web:/var/www/dfiu`. `git describe --always --dirty --abbrev=7` after deploy was `c3a2e7c`.
 
 - **Pace Plan print formatting follow-up started:** working on `/Users/andy/Dev/DFIU` branch `main`, tracking `origin/main`, clean and current at `5614c2d` (`0 ahead / 0 behind`). Additional clean worktree remains at `/Users/andy/.codex/worktrees/9dfe/DFIU` on `codex/fix-vite-chunk-deploy`; it is not part of this task.
 - **Planned scope:** compare current Pace Plan print layout to the previous git formatting, tighten printed table width/column spacing in portrait/profile orientation, remove the large `NIGHT` print label, leave only small `crew`, `drop`, and `pacer` labels under aid-station names, and ensure water-only stations appear as pace chart rows.
