@@ -244,6 +244,134 @@ export type Database = {
           },
         ]
       }
+      race_live_configs: {
+        Row: {
+          bib_number: string | null
+          race_id: string
+          runner_name: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          bib_number?: string | null
+          race_id: string
+          runner_name?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          bib_number?: string | null
+          race_id?: string
+          runner_name?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "race_live_configs_race_id_fkey"
+            columns: ["race_id"]
+            isOneToOne: true
+            referencedRelation: "races"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      race_live_followed_runners: {
+        Row: {
+          bib_number: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          predicted_finish_minutes: number
+          race_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          bib_number?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          predicted_finish_minutes: number
+          race_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          bib_number?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          predicted_finish_minutes?: number
+          race_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "race_live_followed_runners_race_id_fkey"
+            columns: ["race_id"]
+            isOneToOne: false
+            referencedRelation: "races"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      race_live_followed_runner_checkins: {
+        Row: {
+          arrived_at: string
+          created_at: string
+          entered_by: string | null
+          followed_runner_id: string
+          id: string
+          race_id: string
+          waypoint_id: string
+        }
+        Insert: {
+          arrived_at: string
+          created_at?: string
+          entered_by?: string | null
+          followed_runner_id: string
+          id?: string
+          race_id: string
+          waypoint_id: string
+        }
+        Update: {
+          arrived_at?: string
+          created_at?: string
+          entered_by?: string | null
+          followed_runner_id?: string
+          id?: string
+          race_id?: string
+          waypoint_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "race_live_followed_runner_checkins_followed_runner_id_fkey"
+            columns: ["followed_runner_id"]
+            isOneToOne: false
+            referencedRelation: "race_live_followed_runners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "race_live_followed_runner_checkins_race_id_fkey"
+            columns: ["race_id"]
+            isOneToOne: false
+            referencedRelation: "races"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "race_live_followed_runner_checkins_waypoint_id_fkey"
+            columns: ["waypoint_id"]
+            isOneToOne: false
+            referencedRelation: "waypoints"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       races: {
         Row: {
           avg_temp_high: string | null
@@ -828,5 +956,8 @@ export type TerrainNode = Tables<"terrain_nodes">
 export type RaceMembership = Tables<"race_memberships">
 export type SiteAdmin = Tables<"site_admins">
 export type RacePacePlan = Tables<"race_pace_plans">
+export type RaceLiveConfig = Tables<"race_live_configs">
+export type RaceLiveFollowedRunner = Tables<"race_live_followed_runners">
+export type RaceLiveFollowedRunnerCheckin = Tables<"race_live_followed_runner_checkins">
 export type RunnerCheckin = Tables<"runner_checkins">
 export type RunnerLocation = Tables<"runner_locations">

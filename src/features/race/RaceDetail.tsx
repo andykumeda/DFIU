@@ -34,7 +34,11 @@ const CrewView = lazy(() =>
     import('@/features/race/CrewView').then(m => ({ default: m.CrewView }))
 )
 
-type Tab = 'overview' | 'map' | 'plan' | 'drop_bags' | 'resources' | 'crew' | 'members'
+const LiveEventTab = lazy(() =>
+    import('@/features/race/LiveEventTab').then(m => ({ default: m.LiveEventTab }))
+)
+
+type Tab = 'live' | 'overview' | 'map' | 'plan' | 'drop_bags' | 'resources' | 'crew' | 'members'
 type ExistingRaceClone = Pick<Race, 'id' | 'name' | 'created_at'>
 
 function normalizeRaceName(name: string) {
@@ -198,7 +202,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   const { user, refreshMemberships } = useAuth()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [activeTab, setActiveTab] = useState<Tab>('overview')
+  const [activeTab, setActiveTab] = useState<Tab>('live')
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingWaypoint, setEditingWaypoint] = useState<Partial<Waypoint> | null>(null)
   const [viewingWaypoint, setViewingWaypoint] = useState<Waypoint | null>(null)
@@ -249,6 +253,8 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     canEditRaceSettings,
     isAdmin,
     isOwner: hasOwnerMembership,
+    isRunner,
+    canLogCheckins,
     canManageTeam,
     availableRoleViews,
   } = usePermission(raceId, race?.race_director_user_id)
@@ -1304,6 +1310,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     [waypoints]
   )
   const tabs: { id: Tab; label: string }[] = [
+    { id: 'live', label: 'Live' },
     { id: 'overview', label: 'Overview' },
     { id: 'map', label: 'Map & Aid Stations' },
     { id: 'plan', label: 'Pace Plan' },
@@ -1532,6 +1539,24 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
       {/* Content */}
       <main className='flex-1 relative'>
+        {activeTab === 'live' && (
+          <div className="animate-in fade-in duration-500">
+            <Suspense fallback={<div className='p-6 text-white text-center'>Loading live view...</div>}>
+              <LiveEventTab
+                raceId={raceId}
+                race={race}
+                course={course || null}
+                waypoints={waypoints}
+                terrainNodes={terrainNodes}
+                clock24h={clock24h}
+                runnerProfile={userRunnerProfile}
+                canEditRunnerIdentity={isAdmin || hasOwnerMembership || isRunner}
+                canEditLive={canLogCheckins}
+              />
+            </Suspense>
+          </div>
+        )}
+
         {activeTab === 'map' && (
           <div className='flex flex-col md:flex-row relative md:absolute md:inset-0 md:h-[calc(100vh-130px)]'>
             {coordinates.length > 0 ? (

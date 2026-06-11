@@ -14,7 +14,8 @@ import { CrewMap } from './CrewMap'
 import { DropBagNotes } from './DropBagNotes'
 import { DropBagSummary } from './DropBagSummary'
 import { getBagKind, getBagKindLabel, hasSavedBagPlan } from './drop-bag-shared'
-import { getDistance, getCoordinateAtDistance } from '@/lib/geo-utils'
+import { getDistance } from '@/lib/geo-utils'
+import { getCourseCoordinates, getElapsedMinutes, getPredictedMile, getRunnerLatLonAtMile, getRunnerMapFocus } from './race-day-utils'
 import type { Race, Course, Waypoint, TerrainNode } from '@/types/database'
 
 const planAColor: {
@@ -168,32 +169,16 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
     }, [pacePlanInputs, race, waypoints, terrainNodes, planAMinutes, checkins, clock24h, runnerProfile])
 
     const elapsedMin = useMemo(() => {
-        if (!race?.start_datetime) return 0
-        return (now - new Date(race.start_datetime).getTime()) / 60000
+        return getElapsedMinutes(race, now)
     }, [race, now])
 
     // Predicted runner mile from current elapsed, walked along the planned arrivals curve.
     const predictedMile = useMemo(() => {
-        if (!pacePlan || elapsedMin <= 0) return 0
-        const arrivals = pacePlan.waypointArrivals
-        if (arrivals.length === 0) return 0
-        if (elapsedMin >= arrivals[arrivals.length - 1].arrivalTime) return arrivals[arrivals.length - 1].mile
-        for (let i = 0; i < arrivals.length - 1; i++) {
-            const a = arrivals[i]
-            const b = arrivals[i + 1]
-            if (elapsedMin >= a.arrivalTime && elapsedMin <= b.arrivalTime) {
-                const span = b.arrivalTime - a.arrivalTime
-                const t = span <= 0 ? 0 : (elapsedMin - a.arrivalTime) / span
-                return a.mile + t * (b.mile - a.mile)
-            }
-        }
-        return 0
+        return getPredictedMile(pacePlan, elapsedMin)
     }, [pacePlan, elapsedMin])
 
     const predictedRunnerLatLon: [number, number] | null = useMemo(() => {
-        if (!course?.geometry || predictedMile <= 0) return null
-        const meters = predictedMile * 1609.34
-        return getCoordinateAtDistance(course.geometry as any, meters) as [number, number] | null
+        return getRunnerLatLonAtMile(course, predictedMile)
     }, [course, predictedMile])
 
     const runnerLatLon: [number, number] | null = liveRunnerLocation && liveRunnerLocationFresh
@@ -201,11 +186,7 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
         : predictedRunnerLatLon
 
     const courseCoords: [number, number][] = useMemo(() => {
-        const g = course?.geometry as any
-        if (!g) return []
-        if (g.type === 'LineString' && Array.isArray(g.coordinates)) return g.coordinates as [number, number][]
-        if (g.type === 'Feature' && g.geometry?.type === 'LineString') return g.geometry.coordinates as [number, number][]
-        return []
+        return getCourseCoordinates(course)
     }, [course])
 
     const mapWaypoints = useMemo(() => {
@@ -239,25 +220,8 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
     }, [waypoints, predictedMile])
 
     const mapFocus = useMemo(() => {
-        const totalMiles = course?.total_distance_miles ?? 0
-        if (totalMiles <= 0) return null
-
-        const sorted = [...waypoints].sort((a, b) => a.mile - b.mile)
-        const previous = [...sorted].reverse().find(w => w.mile <= predictedMile + 0.05)
-        const next = sorted.find(w => w.mile > predictedMile + 0.05)
-        const baseStart = previous?.mile ?? Math.max(0, predictedMile - 2)
-        const baseEnd = next?.mile ?? Math.min(totalMiles, predictedMile + 2)
-        let startMile = Math.max(0, Math.min(baseStart, predictedMile) - 0.75)
-        let endMile = Math.min(totalMiles, Math.max(baseEnd, predictedMile) + 0.75)
-
-        if (endMile - startMile < 2) {
-            const center = Math.max(0, Math.min(totalMiles, predictedMile))
-            startMile = Math.max(0, center - 1)
-            endMile = Math.min(totalMiles, center + 1)
-        }
-
-        return { startMile, endMile }
-    }, [course?.total_distance_miles, waypoints, predictedMile])
+        return getRunnerMapFocus(course?.total_distance_miles, predictedMile, 4)
+    }, [course?.total_distance_miles, predictedMile])
 
     const arrivalAt = (wpId: string): number | null => {
         const a = pacePlan?.waypointArrivals.find(x => x.waypointId === wpId)

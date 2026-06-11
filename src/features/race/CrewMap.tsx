@@ -217,9 +217,17 @@ export function CrewMap({
             const next = waypoints.find(wp => wp.id === nextWaypointId)
             const focusPoints = getFocusCoordinates(coordinates, focusStartMile, focusEndMile)
             const points = [...focusPoints]
+            const hasFocusedWindow = focusStartMile != null && focusEndMile != null
+                && Number.isFinite(focusStartMile) && Number.isFinite(focusEndMile)
 
             if (runnerLatLon) points.push(runnerLatLon)
-            if (next && isFiniteCoordinate(next.lon, next.lat)) points.push([next.lon, next.lat])
+            if (
+                next &&
+                isFiniteCoordinate(next.lon, next.lat) &&
+                (!hasFocusedWindow || (next.mile >= Math.min(focusStartMile, focusEndMile) - 0.1 && next.mile <= Math.max(focusStartMile, focusEndMile) + 0.1))
+            ) {
+                points.push([next.lon, next.lat])
+            }
 
             if (points.length >= 2) {
                 const lons = points.map(point => point[0])
@@ -228,12 +236,12 @@ export function CrewMap({
                     [Math.min(...lons), Math.min(...lats)],
                     [Math.max(...lons), Math.max(...lats)],
                 ]
-                map.fitBounds(bounds, { padding: 48, maxZoom: 14.5, duration: 600 })
+                map.fitBounds(bounds, { padding: 44, maxZoom: 15.5, duration: 600 })
                 return
             }
 
             if (points.length === 1) {
-                map.easeTo({ center: points[0], zoom: 13.5, duration: 600 })
+                map.easeTo({ center: points[0], zoom: 15, duration: 600 })
                 return
             }
 
