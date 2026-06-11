@@ -1,12 +1,17 @@
 # Handoff Document
 
 **Date:** 2026-06-11
-**Status:** Race planning print follow-up implemented, clean-built, and deployed from product commit `cd16ff1`.
-**Active task:** Completed Pace Plan full-width portrait/profile print layout and Drop Bags white-background/readable-text print cleanup.
+**Status:** Drop Bags one-page print follow-up implemented, built, linted, and dirty-deployed from `e199d7c-dirty`; product commit pending.
+**Active task:** Commit compact two-column Drop Bags print layout, then clean-deploy and push `main`.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change in this repo. Commit, branch, and document discipline is required to prevent the lost-work confusion that motivated this reconciliation.
 
 ## 2026-06-11 Clone duplicate and event home follow-up
+
+- **Drop Bags one-page print follow-up started:** working on `/Users/andy/Dev/DFIU` branch `main`, tracking `origin/main`, clean and current at `e199d7c` (`0 ahead / 0 behind`). Additional clean worktree remains at `/Users/andy/.codex/worktrees/9dfe/DFIU` on `codex/fix-vite-chunk-deploy`; it is not part of this task.
+- **Planned scope:** keep the white/readable Drop Bags print styling, but reduce printed list height by formatting bag contents into two columns on letter portrait/profile output and tightening print-only spacing/type.
+- **Drop Bags one-page print implementation:** Drop Bags print now adds dedicated list/section/item print hooks and formats printed bag contents in two columns with a small column gap/rule, compact station/item type, reduced vertical margins, and `break-inside: avoid` on bag sections/items. Empty bag sections still hide in print, so the printed page focuses on packed contents.
+- **Validation/deploy before product commit:** `git diff --check`, `npm run build`, and `npm run lint` passed; lint reported the existing 36 warnings and no errors. Static verification confirmed the Drop Bags print list uses `column-count: 2`, compact section/item hooks, and the expected print classes in `DropBagsSection`. `npm run deploy` passed from dirty hash `e199d7c-dirty`, deploying `index-anj5pcIf.js`, `index-BUqlvCEu.css`, and related chunks to `web:/var/www/dfiu`.
 
 - **Pace Plan page-fill follow-up started:** working on `/Users/andy/Dev/DFIU` branch `main`, tracking `origin/main`, clean and current at `13c5bc1` (`0 ahead / 0 behind`). Additional clean worktree remains at `/Users/andy/.codex/worktrees/9dfe/DFIU` on `codex/fix-vite-chunk-deploy`; it is not part of this task.
 - **Planned scope:** keep the print output in letter portrait/profile orientation, but remove the content-sized top-left layout by making the print sheet/table fill the printable page width with fixed, compact column proportions.

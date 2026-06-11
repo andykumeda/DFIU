@@ -138,11 +138,53 @@
   }
 
   .drop-bags-print-sheet h3 {
+    font-size: 13px !important;
+    line-height: 1.1 !important;
+    margin: 0 0 0.06in !important;
+    padding-bottom: 0.03in !important;
     border-bottom-color: #d1d5db !important;
+  }
+
+  .drop-bags-print-list {
+    column-count: 2;
+    column-gap: 0.25in;
+    column-rule: 1px solid #e5e7eb;
+    font-size: 8px;
+    line-height: 1.12;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .drop-bag-print-section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    border-bottom: 1px solid #e5e7eb;
+    margin: 0 0 0.055in !important;
+    padding: 0 0 0.035in !important;
+  }
+
+  .drop-bag-print-section > div {
+    margin: 0 !important;
+  }
+
+  .drop-bag-print-section button,
+  .drop-bag-print-section span {
+    font-size: 8px !important;
+    line-height: 1.1 !important;
+  }
+
+  .drop-bag-print-items {
+    margin: 0.015in 0 0 !important;
+    padding-left: 0.13in !important;
   }
 
   .drop-bags-print-sheet li {
     break-inside: avoid;
     page-break-inside: avoid;
+    gap: 2px !important;
+    font-size: 8px !important;
+    line-height: 1.1 !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 }

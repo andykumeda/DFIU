@@ -358,7 +358,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
 
                     <h3 className="hidden print:block text-xl font-bold text-neutral-800 mb-4 border-b border-neutral-300 pb-2">Start, Drop & Crew Bag Contents</h3>
 
-                    <div className={`${isSidePanelOpen ? 'block' : 'hidden'} print:block p-4 space-y-6 max-h-[calc(100vh-150px)] overflow-y-auto print:max-h-none print:overflow-visible`}>
+                    <div className={`drop-bags-print-list ${isSidePanelOpen ? 'block' : 'hidden'} print:block p-4 space-y-6 max-h-[calc(100vh-150px)] overflow-y-auto print:max-h-none print:overflow-visible`}>
                         {bagWaypoints.map(wp => {
                             const kind = getBagKind(wp) ?? 'official'
                             const isStartBag = kind === 'start'
@@ -372,7 +372,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                             const isCollapsed = collapsedStations[wp.id]
 
                             return (
-                                <div key={wp.id} className={`print:break-inside-avoid ${packedItems.length === 0 ? 'print:hidden' : ''}`}>
+                                <div key={wp.id} className={`drop-bag-print-section print:break-inside-avoid ${packedItems.length === 0 ? 'print:hidden' : ''}`}>
                                     <div className="mb-2 flex items-start justify-between gap-2">
                                         <button
                                             type="button"
@@ -407,7 +407,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                                     {!isCollapsed && (
                                         <div className="space-y-2">
                                             {packedItems.length > 0 ? (
-                                                <ul className="space-y-1 pl-5">
+                                                <ul className="drop-bag-print-items space-y-1 pl-5">
                                                     {packedItems.map((item, idx) => (
                                                         <li key={idx} className="text-sm text-neutral-400 print:text-neutral-700 flex items-start gap-2">
                                                             <span className={`${isCrewBag ? 'text-emerald-500/60' : 'text-orange-500/50'} print:text-neutral-400 mt-1`}>&bull;</span>
