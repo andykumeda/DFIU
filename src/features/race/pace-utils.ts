@@ -713,8 +713,7 @@ function applyActualCheckins(
 function formatDuration(minutes: number): string {
     const h = Math.floor(minutes / 60)
     const m = Math.floor(minutes % 60)
-    if (h > 0) return `${h}:${m.toString().padStart(2, '0')}`
-    return `${m}m`
+    return `${h}:${m.toString().padStart(2, '0')}`
 }
 
 function formatTimeOfDay(minutesFromStart: number, startTime?: Date, timeZone?: string, clock24h: boolean = false): string {

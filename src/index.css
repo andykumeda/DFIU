@@ -10,6 +10,8 @@
   body,
   #root {
     background: #fff !important;
+    color: #000 !important;
+    min-height: 0 !important;
   }
 
   body {
@@ -17,19 +19,67 @@
     print-color-adjust: exact;
   }
 
+  body:has(.pace-print-sheet) {
+    margin: 0 !important;
+  }
+
+  body:has(.pace-print-sheet) header,
+  body:has(.pace-print-sheet) nav,
+  body:has(.pace-print-sheet) .print\:hidden {
+    display: none !important;
+  }
+
+  body:has(.pace-print-sheet) #root,
+  body:has(.pace-print-sheet) #root > *,
+  body:has(.pace-print-sheet) main,
+  body:has(.pace-print-sheet) .min-h-screen,
+  body:has(.pace-print-sheet) [class*="bg-neutral-"],
+  body:has(.pace-print-sheet) [class*="bg-black"] {
+    background: #fff !important;
+    background-color: #fff !important;
+  }
+
+  body:has(.pace-print-sheet) main {
+    padding: 0 !important;
+  }
+
+  body:has(.pace-print-sheet) * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
   .pace-print-sheet {
-    display: inline-block;
-    max-width: 100%;
-    width: fit-content;
+    display: block;
+    max-width: none;
+    width: 100%;
+    background: #fff !important;
+    color: #000 !important;
     break-after: avoid;
     page-break-after: avoid;
+  }
+
+  .pace-print-sheet *,
+  .pace-print-table,
+  .pace-print-table tbody,
+  .pace-print-table tr,
+  .pace-print-table td {
+    background: #fff !important;
+    background-color: #fff !important;
+    color: #000 !important;
   }
 
   .pace-print-table {
     font-size: 7px;
     line-height: 1.05;
     table-layout: auto !important;
-    width: auto !important;
+    width: 100% !important;
+  }
+
+  .pace-print-table thead,
+  .pace-print-table th {
+    background: #f3f4f6 !important;
+    background-color: #f3f4f6 !important;
+    color: #000 !important;
   }
 
   .pace-print-table th,
