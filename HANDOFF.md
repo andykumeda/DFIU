@@ -1,8 +1,8 @@
 # Handoff Document
 
 **Date:** 2026-06-11
-**Status:** Pace Plan print/water-only/next-leg follow-up implemented and dirty-deployed from `5614c2d-dirty`; product commit and clean deploy pending.
-**Active task:** Commit and clean-deploy the Pace Plan chart update: water-only rows, next-leg distance/time columns, and portrait/profile print layout.
+**Status:** Pace Plan print/water-only/next-leg follow-up implemented, clean-built, and deployed from product commit `e11daa1`.
+**Active task:** Completed Pace Plan chart update: water-only rows, next-leg distance/time columns, and portrait/profile print layout.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change in this repo. Commit, branch, and document discipline is required to prevent the lost-work confusion that motivated this reconciliation.
 
@@ -13,6 +13,7 @@
 - **Pace Plan water-only/next-leg implementation:** Pace Plan now filters chart rows to pace-chart support waypoints while explicitly including `water_only`; water-only rows show a water marker/icon and use the same default editable stop-time model as other support stops. The `Segment Mile` and `Segment Time` defaults were renamed to `Miles to Next` and `Time to Next`, and their displayed values now shift up one row so each row shows the distance/time from that location to the next chart stop. The final row shows em dashes for those next-leg values.
 - **Print layout update:** Pace Plan print CSS now requests letter portrait/profile output, keeps the printed table compact, removes the printed `NIGHT` badge/legend, and keeps small print-only station labels under names.
 - **Validation/deploy before product commit:** `git diff --check`, `npm run build`, and `npm run lint` passed; lint reported the existing 36 warnings and no errors. `npm run deploy` passed from dirty hash `5614c2d-dirty`, deploying `index-CoREQLWg.js`, `index-DorIW-Xr.css`, and related chunks to `web:/var/www/dfiu`. In-app Browser smoke against local production preview `http://127.0.0.1:4173/race/52d23785-cef7-4afe-bdf8-446f6053dc7a` verified the Pace Plan table has 25 rows, includes the water-only `Pinehurst` row with a water marker, shows headers `Miles to Next` and `Time to Next`, and shows the Start row as `0.00 / 4.30 / 1:07` for mile, miles-to-next, and time-to-next. Browser console errors: none.
+- **Clean deploy after product commit:** Product commit `e11daa1` was deployed with `npm run deploy`, publishing `index-BSl9SwrS.js`, `index-DorIW-Xr.css`, `LiveEventTab-BjEcQfFs.js`, `CrewView-BIsA_J92.js`, and related chunks to `web:/var/www/dfiu`. `git describe --always --dirty --abbrev=7` after deploy was `e11daa1`.
 
 - **Strava auth/tab visibility follow-up started:** working on `/Users/andy/Dev/DFIU` branch `main`, tracking `origin/main`, clean and current at `d827063` (`0 ahead / 0 behind`). Additional clean worktree remains at `/Users/andy/.codex/worktrees/9dfe/DFIU` on `codex/fix-vite-chunk-deploy`; it is not part of this task.
 - **Planned scope:** change the custom Strava OAuth start URL from forced approval to reuse existing Strava authorization when possible, and make the horizontal race tab menu more visible and easier to notice on mobile through stronger contrast, larger tap targets, and scroll affordance.
