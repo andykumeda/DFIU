@@ -8,15 +8,19 @@ import { formatDate } from '@/lib/utils'
 import { CheckCircle2, Search } from 'lucide-react'
 
 interface RaceListProps {
-  mode?: 'dashboard' | 'public'
+  mode?: 'user' | 'public'
   showSearch?: boolean
 }
 
-export function RaceList({ mode = 'dashboard', showSearch = mode === 'public' }: RaceListProps) {
-  const { user } = useAuth()
+export function RaceList({ mode = 'user', showSearch = mode === 'public' }: RaceListProps) {
+  const { user, memberships } = useAuth()
   const [search, setSearch] = useState('')
+  const membershipRaceIds = useMemo(
+    () => Object.keys(memberships).sort(),
+    [memberships]
+  )
   const { data: races, isLoading, error } = useQuery({
-    queryKey: ['races', mode, user?.id ?? 'anon'],
+    queryKey: ['races', mode, user?.id ?? 'anon', membershipRaceIds],
     queryFn: async () => {
       if (mode === 'public') {
         const { data, error } = await supabase
@@ -29,17 +33,39 @@ export function RaceList({ mode = 'dashboard', showSearch = mode === 'public' }:
         return data as Race[]
       }
 
-      const filter = user
-        ? `user_id.eq.${user.id},is_public.eq.true`
-        : `is_public.eq.true`
-      const { data, error } = await supabase
+      if (!user) return []
+
+      const raceMap = new Map<string, Race>()
+
+      if (membershipRaceIds.length > 0) {
+        const { data, error } = await supabase
+          .from('races')
+          .select('*')
+          .in('id', membershipRaceIds)
+          .order('created_at', { ascending: false })
+
+        if (error) throw error
+        for (const race of (data ?? []) as Race[]) {
+          raceMap.set(race.id, race)
+        }
+      }
+
+      const { data: ownedRaces, error: ownedError } = await supabase
         .from('races')
         .select('*')
-        .or(filter)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
 
-      if (error) throw error
-      return data as Race[]
+      if (ownedError) throw ownedError
+      for (const race of (ownedRaces ?? []) as Race[]) {
+        raceMap.set(race.id, race)
+      }
+
+      return Array.from(raceMap.values()).sort((a, b) => {
+        const aTime = a.created_at ? new Date(a.created_at).getTime() : 0
+        const bTime = b.created_at ? new Date(b.created_at).getTime() : 0
+        return bTime - aTime
+      })
     }
   })
 
@@ -94,13 +120,13 @@ export function RaceList({ mode = 'dashboard', showSearch = mode === 'public' }:
     return (
       <div className='flex flex-col items-center justify-center p-16 bg-neutral-900 rounded-xl border border-neutral-800 border-dashed text-center'>
         <div className='text-4xl mb-4'>🏃</div>
-        <h3 className='text-xl font-semibold text-white mb-2'>No races yet</h3>
-        <p className='text-neutral-400 mb-6'>Create your first race to get started with planning your ultra.</p>
+        <h3 className='text-xl font-semibold text-white mb-2'>No events yet</h3>
+        <p className='text-neutral-400 mb-6'>Create your first race or clone a public event to start planning.</p>
         <Link 
           to='/race/new' 
           className='bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-lg font-semibold transition-colors'
         >
-          Create Your First Race
+          Create Your First Event
         </Link>
       </div>
     )

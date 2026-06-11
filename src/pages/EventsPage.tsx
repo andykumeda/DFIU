@@ -51,14 +51,36 @@ export default function EventsPage() {
         </div>
       </header>
 
-      <main className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6'>
-        <div>
-          <h1 className='text-3xl font-bold'>Events</h1>
-          <p className='mt-2 text-neutral-400 max-w-2xl'>
-            Search public race plans by event, location, or date. Official events are marked with a blue check.
-          </p>
-        </div>
-        <RaceList mode='public' />
+      <main className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10'>
+        {user && (
+          <section className='space-y-6'>
+            <div className='flex items-center justify-between gap-4'>
+              <div>
+                <h1 className='text-3xl font-bold'>Your Events</h1>
+                <p className='mt-2 text-neutral-400 max-w-2xl'>
+                  Races you own or have been invited to help manage.
+                </p>
+              </div>
+              <Link
+                to='/race/new'
+                className='bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-semibold transition-colors text-sm whitespace-nowrap'
+              >
+                New Race
+              </Link>
+            </div>
+            <RaceList mode='user' />
+          </section>
+        )}
+
+        <section className='space-y-6'>
+          <div>
+            <h2 className={user ? 'text-2xl font-bold' : 'text-3xl font-bold'}>Public Events</h2>
+            <p className='mt-2 text-neutral-400 max-w-2xl'>
+              Search public race plans by event, location, or date. Official events are marked with a blue check.
+            </p>
+          </div>
+          <RaceList mode='public' />
+        </section>
       </main>
     </div>
   )

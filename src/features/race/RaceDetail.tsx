@@ -35,6 +35,74 @@ const CrewView = lazy(() =>
 )
 
 type Tab = 'overview' | 'map' | 'plan' | 'drop_bags' | 'resources' | 'crew' | 'members'
+type ExistingRaceClone = Pick<Race, 'id' | 'name' | 'created_at'>
+
+function normalizeRaceName(name: string) {
+  return name.trim().toLowerCase()
+}
+
+function getSuggestedRepeatCloneName(sourceName: string, existingNames: string[]) {
+  const takenNames = new Set(existingNames.map(normalizeRaceName))
+  let cloneNumber = existingNames.length + 1
+  let candidate = `${sourceName} (My Plan ${cloneNumber})`
+
+  while (takenNames.has(normalizeRaceName(candidate))) {
+    cloneNumber += 1
+    candidate = `${sourceName} (My Plan ${cloneNumber})`
+  }
+
+  return candidate
+}
+
+function formatExistingCloneNames(existingNames: string[]) {
+  const namesToShow = existingNames.slice(0, 3)
+  if (namesToShow.length === 0) return ''
+  const remainingCount = existingNames.length - namesToShow.length
+  return remainingCount > 0
+    ? `${namesToShow.join(', ')}, and ${remainingCount} more`
+    : namesToShow.join(', ')
+}
+
+function promptForRepeatCloneName(sourceName: string, existingClones: ExistingRaceClone[]) {
+  const existingNames = existingClones.map(clone => clone.name).filter(Boolean)
+  const takenNames = new Set(existingNames.map(normalizeRaceName))
+  const existingNameSummary = formatExistingCloneNames(existingNames)
+  const eventLabel = existingClones.length === 1 ? 'event' : 'events'
+  const message = [
+    `You already have ${existingClones.length} ${eventLabel} cloned from ${sourceName}.`,
+    'You are creating another event. Enter a different name for this clone.',
+    existingNameSummary ? `Existing clone names: ${existingNameSummary}` : '',
+  ].filter(Boolean).join('\n\n')
+  let suggestedName = getSuggestedRepeatCloneName(sourceName, existingNames)
+
+  while (true) {
+    const value = window.prompt(message, suggestedName)
+    if (value === null) return null
+
+    const trimmed = value.trim()
+    if (!trimmed) {
+      alert('Enter a name for the new cloned event, or cancel cloning.')
+      continue
+    }
+
+    if (takenNames.has(normalizeRaceName(trimmed))) {
+      alert('That name is already used by one of your cloned events. Enter a different name, or cancel cloning.')
+      suggestedName = getSuggestedRepeatCloneName(sourceName, [...existingNames, suggestedName])
+      continue
+    }
+
+    return trimmed
+  }
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message
+  if (typeof error === 'object' && error && 'message' in error) {
+    const message = (error as { message?: unknown }).message
+    if (typeof message === 'string') return message
+  }
+  return 'Unknown error'
+}
 
 // Helper to get icon
 function getWaypointIcon(type: string): string {
@@ -127,7 +195,7 @@ function RoleSwitcher({ raceId, views }: { raceId: string; views: Array<'full' |
 }
 
 export function RaceDetail({ raceId }: { raceId: string }) {
-  const { user } = useAuth()
+  const { user, refreshMemberships } = useAuth()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState<Tab>('overview')
@@ -1120,19 +1188,48 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       alert('You must be logged in to clone a race.')
       return
     }
-    if (!confirm('Are you sure you want to clone this public race to your account?')) return
 
     setIsCloning(true)
     try {
+      const { data: existingClones, error: existingClonesError } = await supabase
+        .from('races')
+        .select('id, name, created_at')
+        .eq('user_id', user.id)
+        .eq('official_source_race_id', raceId)
+        .order('created_at', { ascending: false })
+
+      if (existingClonesError) throw existingClonesError
+
+      let repeatCloneName: string | null = null
+      if ((existingClones ?? []).length > 0) {
+        repeatCloneName = promptForRepeatCloneName(race?.name ?? 'this race', (existingClones ?? []) as ExistingRaceClone[])
+        if (!repeatCloneName) return
+      } else if (!confirm('Are you sure you want to clone this public race to your account?')) {
+        return
+      }
+
       const { data: newRaceId, error } = await supabase.rpc('clone_race', { p_race_id: raceId })
       if (error) throw error
 
       if (newRaceId) {
+        if (repeatCloneName) {
+          const { error: renameError } = await supabase
+            .from('races')
+            .update({ name: repeatCloneName })
+            .eq('id', newRaceId)
+
+          if (renameError) {
+            console.error('Error renaming cloned race:', renameError)
+            alert(`Race was cloned, but the custom name could not be saved: ${renameError.message}`)
+          }
+        }
+        await refreshMemberships?.()
+        await queryClient.invalidateQueries({ queryKey: ['races'] })
         navigate(`/race/${newRaceId}`)
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error cloning race:', err)
-      alert(`Failed to clone race: ${err.message || 'Unknown error'}`)
+      alert(`Failed to clone race: ${getErrorMessage(err)}`)
     } finally {
       setIsCloning(false)
     }
