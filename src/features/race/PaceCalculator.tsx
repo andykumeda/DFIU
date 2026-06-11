@@ -227,15 +227,15 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
             ? '88%'
             : '100%'
     const printFontSize = printColumnCount <= 5
-        ? '10px'
+        ? '12px'
         : printColumnCount <= 7
-            ? '9px'
-            : '8px'
+            ? '11px'
+            : '10px'
     const printCellPadding = printColumnCount <= 5
-        ? '3px 4px'
+        ? '3.5px 4.5px'
         : printColumnCount <= 7
-            ? '2.5px 3.5px'
-            : '2px 3px'
+            ? '3px 4px'
+            : '2.5px 3.5px'
     const pacePrintSheetStyle = {
         '--pace-print-table-width': printTableWidth,
         '--pace-print-font-size': printFontSize,

@@ -19,8 +19,8 @@ export interface PaceChartColumnDef {
 
 export const PACE_CHART_COLUMNS: PaceChartColumnDef[] = [
     { id: 'location', label: 'Location', shortLabel: 'Location', align: 'left' },
-    { id: 'mile', label: 'Mile', shortLabel: 'Mi', align: 'left' },
-    { id: 'segMile', label: 'Miles to Next', shortLabel: 'Next Mi', align: 'left' },
+    { id: 'mile', label: 'Mile', shortLabel: 'Mi', align: 'right' },
+    { id: 'segMile', label: 'Miles to Next', shortLabel: 'Next Mi', align: 'right' },
     { id: 'segmentTime', label: 'Time to Next', shortLabel: 'Next Time', align: 'right' },
     { id: 'stopTime', label: 'Stop', shortLabel: 'Stop', align: 'right' },
     { id: 'clockTime', label: 'Clock Time', shortLabel: 'Clock', align: 'right' },

@@ -102,6 +102,7 @@
 
   .pace-print-table th,
   .pace-print-table td {
+    font-size: var(--pace-print-font-size, 10px) !important;
     padding: var(--pace-print-cell-padding, 2px 3px) !important;
     vertical-align: top;
     white-space: nowrap;

@@ -1,12 +1,17 @@
 # Handoff Document
 
 **Date:** 2026-06-11
-**Status:** Pace Plan print spacing follow-up implemented, clean-built, and deployed from product commit `0a41067`.
-**Active task:** Completed column-count-aware Pace Plan print spacing for low-column PDFs.
+**Status:** Pace Plan print header/font follow-up implemented, built, linted, and dirty-deployed from `5628c28-dirty`; product commit pending.
+**Active task:** Commit Pace Plan print header/font fix, then clean-deploy and push `main`.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change in this repo. Commit, branch, and document discipline is required to prevent the lost-work confusion that motivated this reconciliation.
 
 ## 2026-06-11 Clone duplicate and event home follow-up
+
+- **Pace Plan print header/font follow-up started:** working on `/Users/andy/Dev/DFIU` branch `main`, tracking `origin/main`, clean and current at `5628c28` (`0 ahead / 0 behind`). Additional clean worktree remains at `/Users/andy/.codex/worktrees/9dfe/DFIU` on `codex/fix-vite-chunk-deploy`; it is not part of this task.
+- **Planned scope:** fix `Mile` and `Next Mi` print headers being visually skewed left while other headers align correctly, and increase Pace Plan print table text by roughly two pixels/points for better readability.
+- **Pace Plan header/font implementation:** `mile` and `segMile` column definitions now align right like the rest of the numeric columns. Pace Plan print font tiers increased from `10/9/8px` to `12/11/10px`, print padding increased accordingly, and print CSS now applies `--pace-print-font-size` directly to `th`/`td` with `!important` so table/header Tailwind print text utilities cannot keep headers smaller.
+- **Validation/deploy before product commit:** `git diff --check`, `npm run build`, and `npm run lint` passed; lint reported the existing 36 warnings and no errors. Static verification confirmed the `mile` and `segMile` print headers/cells use right alignment, print font tiers are `12/11/10px`, and `th`/`td` consume `--pace-print-font-size`. `npm run deploy` passed from dirty hash `5628c28-dirty`, deploying `index-0jZ17WND.js`, `index-CTHtnLdR.css`, `LiveEventTab-NpVNkLxV.js`, `CrewView-DwM7Qpgx.js`, and related chunks to `web:/var/www/dfiu`.
 
 - **Pace Plan print spacing follow-up started:** working on `/Users/andy/Dev/DFIU` branch `main`, tracking `origin/main`, clean and current at `db859e5` (`0 ahead / 0 behind`). Additional clean worktree remains at `/Users/andy/.codex/worktrees/9dfe/DFIU` on `codex/fix-vite-chunk-deploy`; it is not part of this task.
 - **Planned scope:** fix the low-column Pace Plan PDF layout shown in Preview where visible columns stretch too far apart across the page. Make print table width/font responsive to visible column count so fewer-column charts use less horizontal spread and larger type/row spacing.
