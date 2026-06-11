@@ -21,7 +21,7 @@ const DEFAULTS: PacePlans = {
     planBTimeStr: '',
     planCBufferStr: '00:30',
     hasCalculated: false,
-    paceChartColumns: { ...DEFAULT_PACE_CHART_COLUMNS, order: [...DEFAULT_PACE_CHART_COLUMNS.order], hidden: [] },
+    paceChartColumns: { ...DEFAULT_PACE_CHART_COLUMNS, order: [...DEFAULT_PACE_CHART_COLUMNS.order], hidden: [], labels: {} },
 }
 
 const legacyKey = (raceId: string) => `pace_plans_${raceId}`
@@ -37,6 +37,7 @@ function readLegacyLocal(raceId: string): PacePlans | null {
             ...(typeof p.planBTimeStr === 'string' ? { planBTimeStr: p.planBTimeStr } : {}),
             ...(typeof p.planCBufferStr === 'string' ? { planCBufferStr: p.planCBufferStr } : {}),
             ...(typeof p.hasCalculated === 'boolean' ? { hasCalculated: p.hasCalculated } : {}),
+            paceChartColumns: parsePaceChartColumns(p.paceChartColumns),
         }
     } catch {
         return null

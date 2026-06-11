@@ -35,15 +35,19 @@ export const DEFAULT_PACE_CHART_COLUMN_ORDER: PaceChartColumnId[] = PACE_CHART_C
 export interface PaceChartColumnsConfig {
     order: PaceChartColumnId[]
     hidden: PaceChartColumnId[]
+    labels: Partial<Record<PaceChartColumnId, string>>
 }
 
 export const DEFAULT_PACE_CHART_COLUMNS: PaceChartColumnsConfig = {
     order: [...DEFAULT_PACE_CHART_COLUMN_ORDER],
     hidden: [],
+    labels: {},
 }
 
 export function parsePaceChartColumns(raw: unknown): PaceChartColumnsConfig {
-    if (!raw || typeof raw !== 'object') return { ...DEFAULT_PACE_CHART_COLUMNS, order: [...DEFAULT_PACE_CHART_COLUMN_ORDER], hidden: [] }
+    if (!raw || typeof raw !== 'object') {
+        return { ...DEFAULT_PACE_CHART_COLUMNS, order: [...DEFAULT_PACE_CHART_COLUMN_ORDER], hidden: [], labels: {} }
+    }
 
     const config = raw as Partial<PaceChartColumnsConfig>
     const validIds = new Set(PACE_CHART_COLUMNS.map(c => c.id))
@@ -59,7 +63,26 @@ export function parsePaceChartColumns(raw: unknown): PaceChartColumnsConfig {
         ? config.hidden.filter((id): id is PaceChartColumnId => typeof id === 'string' && validIds.has(id as PaceChartColumnId))
         : []
 
-    return { order, hidden }
+    const labels: Partial<Record<PaceChartColumnId, string>> = {}
+    if (config.labels && typeof config.labels === 'object') {
+        for (const [key, value] of Object.entries(config.labels)) {
+            if (!validIds.has(key as PaceChartColumnId) || typeof value !== 'string') continue
+            const label = value.trim()
+            if (label) labels[key as PaceChartColumnId] = label.slice(0, 40)
+        }
+    }
+
+    return { order, hidden, labels }
+}
+
+export function getPaceChartColumnLabel(config: PaceChartColumnsConfig, id: PaceChartColumnId, isKm: boolean): string {
+    const custom = config.labels?.[id]?.trim()
+    if (custom) return custom
+
+    const col = PACE_CHART_COLUMNS.find(c => c.id === id)
+    if (id === 'mile') return isKm ? 'Km' : 'Mile'
+    if (id === 'segMile') return `Seg ${isKm ? 'Km' : 'Mile'}`
+    return col?.label ?? id
 }
 
 export function getVisiblePaceChartColumns(config: PaceChartColumnsConfig, isKm: boolean): PaceChartColumnDef[] {
@@ -69,8 +92,6 @@ export function getVisiblePaceChartColumns(config: PaceChartColumnsConfig, isKm:
         .filter(id => !hidden.has(id))
         .map(id => {
             const col = byId.get(id)!
-            if (id === 'mile') return { ...col, label: isKm ? 'Km' : 'Mile' }
-            if (id === 'segMile') return { ...col, label: `Seg ${isKm ? 'Km' : 'Mile'}` }
-            return col
+            return { ...col, label: getPaceChartColumnLabel(config, id, isKm) }
         })
 }

@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type DragEvent } from 'react'
 import { toast } from 'react-hot-toast'
 import { Course, Race, TerrainNode, Waypoint } from '@/types/database'
 import { calculatePacePlan, type PacePlanResult } from './pace-utils'
 import { usePacePlans, computePlanMinutes } from './usePacePlans'
 import {
+    getPaceChartColumnLabel,
     getVisiblePaceChartColumns,
     PACE_CHART_COLUMNS,
     type PaceChartColumnId,
@@ -14,7 +15,7 @@ import {
 import { DropBagModal } from './DropBagModal'
 import { getBagKind, hasSavedBagPlan } from './drop-bag-shared'
 import type { RunnerPacingProfile } from './runner-profile'
-import { Calculator, Clock, TrendingUp, Activity, Users, Footprints, Moon, Sun, ArrowRight, Printer, AlertTriangle, Columns3, ChevronUp, ChevronDown, Eye, EyeOff, Plus, Minus, Backpack, PackageCheck } from 'lucide-react'
+import { Calculator, Clock, TrendingUp, Activity, Users, Footprints, Moon, Sun, ArrowRight, Printer, AlertTriangle, Columns3, Eye, EyeOff, Plus, Minus, Backpack, PackageCheck, GripVertical } from 'lucide-react'
 
 interface PaceCalculatorProps {
     race: Race
@@ -64,6 +65,8 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
     const [plan, setPlan] = useState<ReturnType<typeof calculatePacePlan> | null>(null)
     const [calcError, setCalcError] = useState<string | null>(null)
     const [selectedDropBagWaypoint, setSelectedDropBagWaypoint] = useState<Waypoint | null>(null)
+    const [draggedColumnId, setDraggedColumnId] = useState<PaceChartColumnId | null>(null)
+    const draggedColumnIdRef = useRef<PaceChartColumnId | null>(null)
 
     const { plans, loading: plansLoading, canEdit, setPlanA, setPlanB, setPlanCBuffer, markCalculated, setPaceChartColumns } = usePacePlans(race.id)
     const { planATimeStr, planBTimeStr, planCBufferStr } = plans
@@ -206,9 +209,9 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
     // Anyone (including public viewers) can reorder/hide columns. For editors
     // the change is persisted to the race; for viewers it stays local to their
     // session (usePacePlans.persist is a no-op without edit permission).
-    const updateColumnConfig = (next: PaceChartColumnsConfig) => {
+    const updateColumnConfig = useCallback((next: PaceChartColumnsConfig) => {
         setPaceChartColumns(next)
-    }
+    }, [setPaceChartColumns])
 
     const toggleColumnVisibility = (id: PaceChartColumnId) => {
         const hidden = new Set(plans.paceChartColumns.hidden)
@@ -217,14 +220,84 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
         updateColumnConfig({ ...plans.paceChartColumns, hidden: [...hidden] })
     }
 
-    const moveColumn = (id: PaceChartColumnId, direction: -1 | 1) => {
-        const order = [...plans.paceChartColumns.order]
-        const idx = order.indexOf(id)
-        const target = idx + direction
-        if (idx === -1 || target < 0 || target >= order.length) return
-        ;[order[idx], order[target]] = [order[target], order[idx]]
-        updateColumnConfig({ ...plans.paceChartColumns, order })
+    const updateColumnLabel = (id: PaceChartColumnId, value: string) => {
+        const labels = { ...(plans.paceChartColumns.labels ?? {}) }
+        const next = value.slice(0, 40)
+        if (next.trim()) labels[id] = next
+        else delete labels[id]
+        updateColumnConfig({ ...plans.paceChartColumns, labels })
     }
+
+    const reorderColumn = useCallback((sourceId: PaceChartColumnId, targetId: PaceChartColumnId) => {
+        if (sourceId === targetId) return
+        const order = [...plans.paceChartColumns.order]
+        const sourceIndex = order.indexOf(sourceId)
+        const targetIndex = order.indexOf(targetId)
+        if (sourceIndex === -1 || targetIndex === -1) return
+        const [moved] = order.splice(sourceIndex, 1)
+        const adjustedTargetIndex = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex
+        if (sourceIndex === adjustedTargetIndex) return
+        order.splice(adjustedTargetIndex, 0, moved)
+        updateColumnConfig({ ...plans.paceChartColumns, order })
+    }, [plans.paceChartColumns, updateColumnConfig])
+
+    const startColumnDrag = useCallback((id: PaceChartColumnId) => {
+        draggedColumnIdRef.current = id
+        setDraggedColumnId(id)
+    }, [])
+
+    const clearColumnDrag = useCallback(() => {
+        draggedColumnIdRef.current = null
+        setDraggedColumnId(null)
+    }, [])
+
+    const handleColumnPointerEnter = (targetId: PaceChartColumnId) => {
+        const sourceId = draggedColumnIdRef.current
+        if (!sourceId || sourceId === targetId) return
+        reorderColumn(sourceId, targetId)
+    }
+
+    const handleColumnDragStart = (event: DragEvent<HTMLButtonElement>, id: PaceChartColumnId) => {
+        startColumnDrag(id)
+        event.dataTransfer.effectAllowed = 'move'
+        event.dataTransfer.setData('text/plain', id)
+    }
+
+    const handleColumnDragOver = (event: DragEvent<HTMLDivElement>) => {
+        event.preventDefault()
+        event.dataTransfer.dropEffect = 'move'
+    }
+
+    const handleColumnDragEnter = (event: DragEvent<HTMLDivElement>, targetId: PaceChartColumnId) => {
+        event.preventDefault()
+        const sourceId = (event.dataTransfer.getData('text/plain') || draggedColumnIdRef.current) as PaceChartColumnId | null
+        if (sourceId && sourceId !== targetId) reorderColumn(sourceId, targetId)
+    }
+
+    useEffect(() => {
+        if (!draggedColumnId) return
+
+        const moveColumnAtPoint = (event: MouseEvent | PointerEvent) => {
+            const target = document
+                .elementFromPoint(event.clientX, event.clientY)
+                ?.closest<HTMLElement>('[data-pace-column-id]')
+            const targetId = target?.dataset.paceColumnId as PaceChartColumnId | undefined
+            const sourceId = draggedColumnIdRef.current
+            if (!sourceId || !targetId || sourceId === targetId) return
+            reorderColumn(sourceId, targetId)
+        }
+
+        window.addEventListener('pointermove', moveColumnAtPoint)
+        window.addEventListener('mousemove', moveColumnAtPoint)
+        window.addEventListener('pointerup', clearColumnDrag)
+        window.addEventListener('mouseup', clearColumnDrag)
+        return () => {
+            window.removeEventListener('pointermove', moveColumnAtPoint)
+            window.removeEventListener('mousemove', moveColumnAtPoint)
+            window.removeEventListener('pointerup', clearColumnDrag)
+            window.removeEventListener('mouseup', clearColumnDrag)
+        }
+    }, [clearColumnDrag, draggedColumnId, reorderColumn])
 
     const isStartBag = (wp: Waypoint | undefined, arrivalName?: string) =>
         !!wp && (wp.type === 'start' || wp.mile <= 0.01 || arrivalName?.toLowerCase() === 'start')
@@ -452,31 +525,52 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                         <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                             <Columns3 className="w-5 h-5 text-blue-500" /> Print Columns
                         </h2>
-                        <p className="text-xs text-neutral-500 mb-4">
-                            Choose which columns appear in the table and printout. Drag order with arrows.
-                        </p>
                         <div className="space-y-2">
-                            {plans.paceChartColumns.order.map((colId, index) => {
+                            {plans.paceChartColumns.order.map((colId) => {
                                 const def = PACE_CHART_COLUMNS.find(c => c.id === colId)
                                 if (!def) return null
                                 const hidden = plans.paceChartColumns.hidden.includes(colId)
-                                const label = colId === 'mile'
-                                    ? (isKm ? 'Km' : 'Mile')
-                                    : colId === 'segMile'
-                                        ? `Seg ${isKm ? 'Km' : 'Mile'}`
-                                        : def.label
+                                const defaultLabel = getPaceChartColumnLabel({ ...plans.paceChartColumns, labels: {} }, colId, isKm)
+                                const customLabel = plans.paceChartColumns.labels?.[colId] ?? ''
                                 return (
-                                    <div key={colId} className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${hidden ? 'border-neutral-800/50 opacity-60' : 'border-neutral-800'}`}>
-                                        <div className="flex flex-col">
-                                            <button onClick={() => moveColumn(colId, -1)} disabled={index === 0} className="text-neutral-500 hover:text-white disabled:opacity-30">
-                                                <ChevronUp className="w-3.5 h-3.5" />
-                                            </button>
-                                            <button onClick={() => moveColumn(colId, 1)} disabled={index === plans.paceChartColumns.order.length - 1} className="text-neutral-500 hover:text-white disabled:opacity-30">
-                                                <ChevronDown className="w-3.5 h-3.5" />
-                                            </button>
-                                        </div>
-                                        <span className="flex-1 text-sm text-neutral-300">{label}</span>
-                                        <button onClick={() => toggleColumnVisibility(colId)} className="text-neutral-500 hover:text-white">
+                                    <div
+                                        key={colId}
+                                        data-pace-column-id={colId}
+                                        onPointerEnter={() => handleColumnPointerEnter(colId)}
+                                        onMouseEnter={() => handleColumnPointerEnter(colId)}
+                                        onDragEnter={(event) => handleColumnDragEnter(event, colId)}
+                                        onDragOver={handleColumnDragOver}
+                                        onDrop={clearColumnDrag}
+                                        className={`flex items-center gap-2 rounded-lg border px-3 py-2 transition-colors ${hidden ? 'border-neutral-800/50 opacity-60' : 'border-neutral-800'} ${draggedColumnId === colId ? 'bg-neutral-800/70' : 'bg-neutral-950/40'}`}
+                                    >
+                                        <button
+                                            type="button"
+                                            draggable
+                                            onDragStart={(event) => handleColumnDragStart(event, colId)}
+                                            onDragEnd={clearColumnDrag}
+                                            onPointerDown={() => startColumnDrag(colId)}
+                                            onMouseDown={() => startColumnDrag(colId)}
+                                            className="cursor-grab active:cursor-grabbing text-neutral-500 hover:text-white"
+                                            aria-label={`Move ${defaultLabel} column`}
+                                        >
+                                            <GripVertical className="w-4 h-4" />
+                                        </button>
+                                        <label className="min-w-0 flex-1">
+                                            <span className="sr-only">Column heading for {defaultLabel}</span>
+                                            <input
+                                                type="text"
+                                                value={customLabel}
+                                                onChange={(event) => updateColumnLabel(colId, event.target.value)}
+                                                placeholder={defaultLabel}
+                                                className="w-full rounded-md border border-neutral-800 bg-neutral-900 px-2 py-1.5 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                            />
+                                        </label>
+                                        <button
+                                            type="button"
+                                            onClick={() => toggleColumnVisibility(colId)}
+                                            className="text-neutral-500 hover:text-white"
+                                            aria-label={`${hidden ? 'Show' : 'Hide'} ${defaultLabel} column`}
+                                        >
                                             {hidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                         </button>
                                     </div>
