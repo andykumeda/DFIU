@@ -209,8 +209,9 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                             <span className="font-mono">+{row.milesUntil.toFixed(1)} mi</span>
                         )}
                         {row.plans.map(plan => (
-                            <span key={plan.label} className="font-mono">
-                                <span className={`font-bold ${plan.colorClass}`}>{plan.label}</span> {plan.timeOfDay ?? '—'}
+                            <span key={plan.label} className="flex flex-wrap items-baseline gap-x-1.5">
+                                <span className={`font-mono font-semibold ${plan.colorClass}`}>{plan.timeOfDay ?? '—'}</span>
+                                <span className="text-neutral-500">Estimated arrival time</span>
                                 {plan.duration && <span className="text-neutral-500"> · in {plan.duration}</span>}
                             </span>
                         ))}
@@ -335,13 +336,13 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                                                 const arrival = p?.waypointArrivals.find(a => a.waypointId === wp.id)
                                                 return (
                                                     <div key={label} className="flex items-center gap-2 text-sm bg-neutral-950/50 px-2 py-1.5 rounded border border-neutral-800">
-                                                        <span className={`text-xs font-bold w-4 shrink-0 ${color}`}>{label}</span>
                                                         <Clock className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
-                                                        <span className="text-neutral-300">{arrival?.timeOfDay ?? '—'}</span>
+                                                        <span className={`font-mono font-semibold ${color}`}>{arrival?.timeOfDay ?? '—'}</span>
+                                                        <span className="min-w-0 flex-1 truncate text-xs text-neutral-500">Estimated arrival time</span>
                                                         {arrival && race.start_datetime && (
                                                             isNight(arrival.arrivalTime, wp.lat, wp.lon)
-                                                                ? <Moon className="w-3.5 h-3.5 text-blue-300 ml-auto" />
-                                                                : <Sun className="w-3.5 h-3.5 text-yellow-500 ml-auto" />
+                                                                ? <Moon className="w-3.5 h-3.5 text-blue-300 shrink-0" />
+                                                                : <Sun className="w-3.5 h-3.5 text-yellow-500 shrink-0" />
                                                         )}
                                                     </div>
                                                 )

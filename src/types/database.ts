@@ -260,6 +260,8 @@ export type Database = {
           id: string
           is_official: boolean
           is_public: boolean | null
+          public_share_enabled: boolean
+          public_share_token: string | null
           location: string | null
           lodging_info: string | null
           media_url: string | null
@@ -307,6 +309,8 @@ export type Database = {
           id?: string
           is_official?: boolean
           is_public?: boolean | null
+          public_share_enabled?: boolean
+          public_share_token?: string | null
           location?: string | null
           lodging_info?: string | null
           media_url?: string | null
@@ -354,6 +358,8 @@ export type Database = {
           id?: string
           is_official?: boolean
           is_public?: boolean | null
+          public_share_enabled?: boolean
+          public_share_token?: string | null
           location?: string | null
           lodging_info?: string | null
           media_url?: string | null

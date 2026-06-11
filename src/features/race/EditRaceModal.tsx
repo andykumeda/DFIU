@@ -5,6 +5,25 @@ import { supabase } from '@/lib/supabase'
 import { Race } from '@/types/database'
 import styles from './EditRaceModal.module.css' // We will create this or use inline/global for now if need be, but best to module
 
+function createShareToken(): string {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID()
+    }
+
+    if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+        const bytes = new Uint8Array(16)
+        crypto.getRandomValues(bytes)
+        return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('')
+    }
+
+    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+}
+
+function buildShareLink(raceId: string, token: string): string {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://dfiu.app'
+    return `${origin}/race/${raceId}?share=${encodeURIComponent(token)}`
+}
+
 interface EditRaceModalProps {
     race: Race
     onClose: () => void
@@ -15,6 +34,8 @@ interface EditRaceModalProps {
 export function EditRaceModal({ race, onClose, onUpdate, onDelete }: EditRaceModalProps) {
     const [isLoading, setIsLoading] = useState(false)
     const [isDeleting, setIsDeleting] = useState(false)
+    const [shareToken, setShareToken] = useState(race.public_share_token || '')
+    const [copiedShareLink, setCopiedShareLink] = useState(false)
     const [formData, setFormData] = useState({
         name: race.name,
         location: race.location || '',
@@ -26,6 +47,7 @@ export function EditRaceModal({ race, onClose, onUpdate, onDelete }: EditRaceMod
         })() : '',
         website_url: race.website_url || '',
         is_public: race.is_public || false,
+        public_share_enabled: race.public_share_enabled || false,
         registration_url: race.registration_url || '',
         avg_temp_high: race.avg_temp_high || '',
         avg_temp_low: race.avg_temp_low || '',
@@ -42,6 +64,12 @@ export function EditRaceModal({ race, onClose, onUpdate, onDelete }: EditRaceMod
         terrain_type: race.terrain_type || 'trail'
     })
 
+    const shareLink = formData.public_share_enabled && shareToken ? buildShareLink(race.id, shareToken) : ''
+    const shareLinkNeedsSave = formData.public_share_enabled && (
+        !race.public_share_enabled ||
+        shareToken !== (race.public_share_token || '')
+    )
+
 
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -49,6 +77,13 @@ export function EditRaceModal({ race, onClose, onUpdate, onDelete }: EditRaceMod
         setIsLoading(true)
 
         try {
+            const nextShareToken = formData.public_share_enabled
+                ? shareToken || createShareToken()
+                : null
+            if (nextShareToken && nextShareToken !== shareToken) {
+                setShareToken(nextShareToken)
+            }
+
             const { data, error } = await (supabase
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 .from('races') as any)
@@ -58,6 +93,8 @@ export function EditRaceModal({ race, onClose, onUpdate, onDelete }: EditRaceMod
                     start_datetime: formData.start_datetime ? new Date(formData.start_datetime).toISOString() : null,
                     website_url: formData.website_url || null,
                     is_public: formData.is_public,
+                    public_share_enabled: formData.public_share_enabled,
+                    public_share_token: nextShareToken,
                     registration_url: formData.registration_url || null,
                     avg_temp_high: formData.avg_temp_high || null,
                     avg_temp_low: formData.avg_temp_low || null,
@@ -86,6 +123,23 @@ export function EditRaceModal({ race, onClose, onUpdate, onDelete }: EditRaceMod
             alert('Failed to update race')
         } finally {
             setIsLoading(false)
+        }
+    }
+
+    const handleShareEnabledChange = (enabled: boolean) => {
+        setFormData({ ...formData, public_share_enabled: enabled })
+        setCopiedShareLink(false)
+        if (enabled && !shareToken) setShareToken(createShareToken())
+    }
+
+    const handleCopyShareLink = async () => {
+        if (!shareLink) return
+        try {
+            await navigator.clipboard.writeText(shareLink)
+            setCopiedShareLink(true)
+            window.setTimeout(() => setCopiedShareLink(false), 2000)
+        } catch {
+            window.prompt('Copy read-only share link:', shareLink)
         }
     }
 
@@ -295,6 +349,7 @@ export function EditRaceModal({ race, onClose, onUpdate, onDelete }: EditRaceMod
                         />
                     </div>
 
+                    <div className={styles.sectionHeader}>Access</div>
                     <div className={styles.field}>
                         <label className={styles.checkboxLabel}>
                             <input
@@ -304,6 +359,40 @@ export function EditRaceModal({ race, onClose, onUpdate, onDelete }: EditRaceMod
                             />
                             Make Public (Visible to everyone)
                         </label>
+                    </div>
+                    <div className={styles.shareBox}>
+                        <label className={styles.checkboxLabel}>
+                            <input
+                                type="checkbox"
+                                checked={formData.public_share_enabled}
+                                onChange={e => handleShareEnabledChange(e.target.checked)}
+                            />
+                            Anyone with the link can view read-only
+                        </label>
+                        <p className={styles.helpText}>
+                            Keeps the event out of Public Events, but allows the exact link to open the race plan without edit access.
+                        </p>
+                        {shareLink && (
+                            <div className={styles.shareLinkControls}>
+                                <input
+                                    type="text"
+                                    value={shareLink}
+                                    readOnly
+                                    aria-label="Read-only share link"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={handleCopyShareLink}
+                                    disabled={shareLinkNeedsSave}
+                                    className={styles.copyBtn}
+                                >
+                                    {copiedShareLink ? 'Copied' : 'Copy'}
+                                </button>
+                            </div>
+                        )}
+                        {shareLinkNeedsSave && (
+                            <p className={styles.helpText}>Save changes before sharing this link.</p>
+                        )}
                     </div>
 
                     <div className={styles.actions} style={{ justifyContent: 'space-between' }}>

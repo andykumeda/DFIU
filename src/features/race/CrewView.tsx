@@ -17,32 +17,12 @@ import { getBagKind, getBagKindLabel, hasSavedBagPlan } from './drop-bag-shared'
 import { getDistance, getCoordinateAtDistance } from '@/lib/geo-utils'
 import type { Race, Course, Waypoint, TerrainNode } from '@/types/database'
 
-type PlanKey = 'A' | 'B' | 'C'
-
-const planColors: Record<PlanKey, {
-    active: string
-    inactive: string
+const planAColor: {
     text: string
     dot: string
-}> = {
-    A: {
-        active: 'bg-emerald-600 text-white shadow-emerald-950/40',
-        inactive: 'bg-emerald-950/40 text-emerald-100 hover:bg-emerald-900/60 border border-emerald-800/60',
-        text: 'text-emerald-300',
-        dot: 'bg-emerald-400',
-    },
-    B: {
-        active: 'bg-amber-500 text-neutral-950 shadow-amber-950/40',
-        inactive: 'bg-amber-950/40 text-amber-100 hover:bg-amber-900/60 border border-amber-800/60',
-        text: 'text-amber-300',
-        dot: 'bg-amber-400',
-    },
-    C: {
-        active: 'bg-red-600 text-white shadow-red-950/40',
-        inactive: 'bg-red-950/40 text-red-100 hover:bg-red-900/60 border border-red-800/60',
-        text: 'text-red-300',
-        dot: 'bg-red-400',
-    },
+} = {
+    text: 'text-emerald-300',
+    dot: 'bg-emerald-400',
 }
 
 interface CrewViewProps {
@@ -66,7 +46,6 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
     const { checkins, upsertCheckin } = useRunnerCheckins(raceId)
     const { location: liveRunnerLocation, isFresh: liveRunnerLocationFresh } = useLatestRunnerLocation(raceId)
 
-    const [activePlan, setActivePlan] = useState<PlanKey>('A')
     const [crewLatLon, setCrewLatLon] = useState<[number, number] | null>(null)
     const [now, setNow] = useState<number>(() => Date.now())
 
@@ -126,29 +105,57 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
     }
     useEffect(() => { requestLocation() }, [])
 
-    const planMinutes = useMemo(() => {
+    const planAMinutes = useMemo(() => {
         const m = computePlanMinutes(plans, race?.overall_cutoff)
-        return { A: m.a, B: m.b, C: m.c }
+        return m.a
     }, [plans, race?.overall_cutoff])
 
-    // Resolved pace plan with check-in re-extrapolation.
-    const pacePlan = useMemo(() => {
-        if (!course || !race) return null
+    const pacePlanInputs = useMemo(() => {
+        if (!course) return null
         const samples = course.elevation_samples as { distance: number; elevation: number }[] | null
         if (!samples || samples.length < 2) return null
         const total = course.total_distance_miles ?? 0
         if (total <= 0) return null
-        const target = planMinutes[activePlan] ?? 0
+        return { samples, total }
+    }, [course])
+
+    const baselinePlanA = useMemo(() => {
+        if (!pacePlanInputs || !race) return null
+        const target = planAMinutes ?? 0
+        if (!target || !isFinite(target) || target <= 0) return null
+        try {
+            return calculatePacePlan(
+                pacePlanInputs.samples,
+                pacePlanInputs.total,
+                waypoints,
+                terrainNodes,
+                { mode: 'time', value: target },
+                race,
+                clock24h,
+                [],
+                runnerProfile,
+                runnerProfile.aidStationDefaultDelay
+            )
+        } catch (err) {
+            console.error('CrewView baseline Plan A failed', err)
+            return null
+        }
+    }, [pacePlanInputs, race, planAMinutes, waypoints, terrainNodes, clock24h, runnerProfile])
+
+    // Resolved Plan A with check-in re-extrapolation.
+    const pacePlan = useMemo(() => {
+        if (!pacePlanInputs || !race) return null
+        const target = planAMinutes ?? 0
         if (!target || !isFinite(target) || target <= 0) return null
         const actuals: ActualCheckin[] = checkins.map(c => ({ waypointId: c.waypoint_id, arrivedAt: new Date(c.arrived_at) }))
         try {
-            return calculatePacePlan(samples, total, waypoints, terrainNodes,
+            return calculatePacePlan(pacePlanInputs.samples, pacePlanInputs.total, waypoints, terrainNodes,
                 { mode: 'time', value: target }, race, clock24h, actuals, runnerProfile, runnerProfile.aidStationDefaultDelay)
         } catch (err) {
             console.error('CrewView pace plan failed', err)
             return null
         }
-    }, [course, race, waypoints, terrainNodes, planMinutes, activePlan, checkins, clock24h, runnerProfile])
+    }, [pacePlanInputs, race, waypoints, terrainNodes, planAMinutes, checkins, clock24h, runnerProfile])
 
     const elapsedMin = useMemo(() => {
         if (!race?.start_datetime) return 0
@@ -190,6 +197,26 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
         if (g.type === 'Feature' && g.geometry?.type === 'LineString') return g.geometry.coordinates as [number, number][]
         return []
     }, [course])
+
+    const mapWaypoints = useMemo(() => {
+        const courseLine: GeoJSON.LineString | null = courseCoords.length > 1
+            ? { type: 'LineString', coordinates: courseCoords }
+            : null
+        return waypoints.map(w => {
+            const bagKind = getBagKind(w)
+            const showBagIcon = !!bagKind && (bagKind !== 'crew' || hasSavedBagPlan(w))
+            const routeCoord = courseLine ? getCoordinateAtDistance(courseLine, w.mile * 1609.34) : null
+            return {
+                id: w.id,
+                name: w.name,
+                lat: routeCoord?.[1] ?? w.lat,
+                lon: routeCoord?.[0] ?? w.lon,
+                mile: w.mile,
+                crew_allowed: w.crew_allowed,
+                bag_kind: showBagIcon ? bagKind : null,
+            }
+        })
+    }, [courseCoords, waypoints])
 
     // "Next" = first waypoint past predicted mile (epsilon to avoid hitching on the current AS).
     const nextWaypoint: Waypoint | null = useMemo(() => {
@@ -277,8 +304,37 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
     const lastCheckin = checkins.length > 0 ? checkins[checkins.length - 1] : null
     const lastCheckinWp = lastCheckin ? waypoints.find(w => w.id === lastCheckin.waypoint_id) : null
 
-    // Plan delta vs Plan A baseline (re-extrapolated total minus original Plan A).
-    const planDeltaMin = pacePlan ? pacePlan.totalTime - planMinutes.A : 0
+    const baselineArrival = lastCheckin
+        ? baselinePlanA?.waypointArrivals.find(x => x.waypointId === lastCheckin.waypoint_id)
+        : null
+    const statusDeltaMin = (() => {
+        if (!lastCheckin || !baselineArrival || !race.start_datetime) return null
+        const startMs = new Date(race.start_datetime).getTime()
+        const arrivedMs = new Date(lastCheckin.arrived_at).getTime()
+        const actualElapsed = (arrivedMs - startMs) / 60000
+        if (!isFinite(actualElapsed)) return null
+        return Math.round(actualElapsed - baselineArrival.arrivalTime)
+    })()
+    const statusTone = statusDeltaMin == null
+        ? 'text-neutral-300'
+        : statusDeltaMin > 0
+            ? 'text-amber-300'
+            : statusDeltaMin < 0
+                ? 'text-emerald-300'
+                : 'text-emerald-300'
+    const statusLabel = statusDeltaMin == null
+        ? planAMinutes > 0 ? 'No check-in yet' : 'Plan A unavailable'
+        : statusDeltaMin > 0
+            ? `${statusDeltaMin} min above Plan A`
+            : statusDeltaMin < 0
+                ? `${Math.abs(statusDeltaMin)} min below Plan A`
+                : 'On Plan A'
+    const statusDetail = statusDeltaMin == null
+        ? planAMinutes > 0 ? 'Using Plan A projection' : 'Set Plan A in Pace Plan'
+        : `${statusDeltaMin > 0 ? 'behind' : statusDeltaMin < 0 ? 'ahead' : 'matched'} at ${lastCheckinWp?.name ?? 'last check-in'}`
+    const projectedDeltaMin = pacePlan && planAMinutes > 0
+        ? Math.round(pacePlan.totalTime - planAMinutes)
+        : null
 
     return (
         <div className={embedded ? 'text-white' : 'min-h-screen bg-neutral-950 text-white'}>
@@ -302,19 +358,7 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
                     <div className='h-[50vh] min-h-[300px] sm:h-[520px]'>
                         <CrewMap
                             coordinates={courseCoords}
-                            waypoints={waypoints.map(w => {
-                                const bagKind = getBagKind(w)
-                                const showBagIcon = !!bagKind && (bagKind !== 'crew' || hasSavedBagPlan(w))
-                                return {
-                                    id: w.id,
-                                    name: w.name,
-                                    lat: w.lat,
-                                    lon: w.lon,
-                                    mile: w.mile,
-                                    crew_allowed: w.crew_allowed,
-                                    bag_kind: showBagIcon ? bagKind : null,
-                                }
-                            })}
+                            waypoints={mapWaypoints}
                             runnerLatLon={runnerLatLon}
                             crewLatLon={crewLatLon}
                             nextWaypointId={nextCrewWaypoint?.id ?? nextWaypoint?.id ?? null}
@@ -337,46 +381,32 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
                     )}
                 </section>
 
-                {/* Plan toggle + status strip */}
+                {/* Plan A + status strip */}
                 <section className='bg-neutral-900 rounded-lg p-3'>
                     <div className='flex items-center justify-between mb-2'>
-                        <div className='text-xs text-neutral-400 uppercase tracking-wide'>Active plan</div>
+                        <div className='text-xs text-neutral-400 uppercase tracking-wide'>Plan A status</div>
                         <div className='text-xs text-neutral-400'>
                             {race.start_datetime ? `Elapsed ${formatHM(elapsedMin)}` : 'Not started'}
                         </div>
                     </div>
-                    <div className='flex gap-2'>
-                        {(['A', 'B', 'C'] as PlanKey[]).map(k => {
-                            const m = planMinutes[k]
-                            const disabled = !m || m <= 0
-                            const active = activePlan === k
-                            const colors = planColors[k]
-                            return (
-                                <button
-                                    key={k}
-                                    disabled={disabled}
-                                    onClick={() => setActivePlan(k)}
-                                    className={`flex-1 py-2 rounded text-sm font-medium transition shadow-lg ${
-                                        active
-                                            ? colors.active
-                                            : disabled
-                                                ? 'bg-neutral-800 text-neutral-600'
-                                                : colors.inactive
-                                    }`}
-                                >
-                                    <div className='text-xs opacity-80'>Plan {k}</div>
-                                    <div className='text-base'>{m && m > 0 ? formatHM(m) : '—'}</div>
-                                </button>
-                            )
-                        })}
+                    <div className='grid grid-cols-2 gap-2'>
+                        <div className='rounded bg-emerald-950/40 border border-emerald-800/60 px-3 py-2'>
+                            <div className='text-xs text-emerald-100/80'>Plan A</div>
+                            <div className='text-base font-semibold text-emerald-100'>{planAMinutes > 0 ? formatHM(planAMinutes) : '—'}</div>
+                        </div>
+                        <div className='rounded bg-neutral-800 px-3 py-2'>
+                            <div className='text-xs text-neutral-400'>Runner status</div>
+                            <div className={`text-sm font-semibold ${statusTone}`}>{statusLabel}</div>
+                            <div className='text-[10px] text-neutral-500 mt-0.5 truncate'>{statusDetail}</div>
+                        </div>
                     </div>
-                    {pacePlan && lastCheckin && (
+                    {pacePlan && lastCheckin && projectedDeltaMin !== null && (
                         <div className='mt-2 text-xs text-neutral-400'>
-                            Re-extrapolated from last check-in
+                            Projected from last check-in
                             {lastCheckinWp ? ` at ${lastCheckinWp.name}` : ''}
                             {' · '}
-                            <span className={planDeltaMin > 0 ? 'text-amber-400' : 'text-emerald-400'}>
-                                {planDeltaMin > 0 ? '+' : ''}{Math.round(planDeltaMin)} min vs Plan A
+                            <span className={projectedDeltaMin > 0 ? 'text-amber-400' : 'text-emerald-400'}>
+                                {projectedDeltaMin > 0 ? '+' : ''}{projectedDeltaMin} min projected finish
                             </span>
                         </div>
                     )}
@@ -526,7 +556,7 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
                             return (
                                 <div key={wp.id} className='py-2 flex items-center gap-2'>
                                     <div className={`w-2 h-2 rounded-full ${
-                                        checked ? 'bg-emerald-400' : past ? 'bg-neutral-500' : wp.crew_allowed ? planColors[activePlan].dot : 'bg-neutral-600'
+                                        checked ? 'bg-emerald-400' : past ? 'bg-neutral-500' : wp.crew_allowed ? planAColor.dot : 'bg-neutral-600'
                                     }`} />
                                     <div className='min-w-0 flex-1'>
                                         <div className='text-sm font-medium truncate'>
@@ -536,7 +566,7 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
                                         </div>
                                         <div className='text-xs text-neutral-500'>
                                             mile {wp.mile.toFixed(1)} · ETA{' '}
-                                            <span className={arrival ? planColors[activePlan].text : ''}>{arrival?.timeOfDay ?? '—'}</span>
+                                            <span className={arrival ? planAColor.text : ''}>{arrival?.timeOfDay ?? '—'}</span>
                                         </div>
                                     </div>
                                     <div className='flex items-center gap-1 shrink-0'>

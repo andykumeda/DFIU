@@ -171,7 +171,8 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], i
                             {arrivalTime && (
                                 <span className="flex items-center gap-1 bg-neutral-950 px-2 py-0.5 rounded border border-neutral-800">
                                     <Clock className="w-3.5 h-3.5" />
-                                    ETA: {arrivalTime.timeOfDay}
+                                    <span className="font-mono text-neutral-200">{arrivalTime.timeOfDay}</span>
+                                    <span className="text-neutral-500">Estimated arrival time</span>
                                     {isNight ? <Moon className="w-3 h-3 text-blue-300 ml-1" /> : <Sun className="w-3 h-3 text-yellow-500 ml-1" />}
                                 </span>
                             )}
@@ -210,8 +211,9 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], i
                                                         </span>
                                                     )}
                                                     {row.plans.map(plan => (
-                                                        <span key={plan.label} className="font-mono">
-                                                            <span className={`font-bold ${plan.colorClass}`}>{plan.label}</span> {plan.timeOfDay ?? '—'}
+                                                        <span key={plan.label} className="flex flex-wrap items-baseline gap-x-1.5">
+                                                            <span className={`font-mono font-semibold ${plan.colorClass}`}>{plan.timeOfDay ?? '—'}</span>
+                                                            <span className="text-neutral-500">Estimated arrival time</span>
                                                             {plan.duration && <span className="text-neutral-500"> · in {plan.duration}</span>}
                                                         </span>
                                                     ))}
