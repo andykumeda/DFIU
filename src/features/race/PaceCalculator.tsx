@@ -220,6 +220,27 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
 
     const visibleColumns = getVisiblePaceChartColumns(plans.paceChartColumns, isKm)
     const printColumnWeightTotal = visibleColumns.reduce((sum, col) => sum + PACE_PRINT_COLUMN_WEIGHTS[col.id], 0)
+    const printColumnCount = visibleColumns.length
+    const printTableWidth = printColumnCount <= 5
+        ? '76%'
+        : printColumnCount <= 7
+            ? '88%'
+            : '100%'
+    const printFontSize = printColumnCount <= 5
+        ? '10px'
+        : printColumnCount <= 7
+            ? '9px'
+            : '8px'
+    const printCellPadding = printColumnCount <= 5
+        ? '3px 4px'
+        : printColumnCount <= 7
+            ? '2.5px 3.5px'
+            : '2px 3px'
+    const pacePrintSheetStyle = {
+        '--pace-print-table-width': printTableWidth,
+        '--pace-print-font-size': printFontSize,
+        '--pace-print-cell-padding': printCellPadding,
+    } as CSSProperties
     const getPrintColumnStyle = (id: PaceChartColumnId) => ({
         '--pace-print-width': `${(PACE_PRINT_COLUMN_WEIGHTS[id] / printColumnWeightTotal) * 100}%`,
     }) as CSSProperties
@@ -648,7 +669,10 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                         </div>
 
                         {/* Splits Table */}
-                        <div className="pace-print-sheet bg-neutral-900 border border-neutral-800 rounded-xl mt-6 print:m-0 print:border-none print:shadow-none print:bg-white text-black print:text-black">
+                        <div
+                            className="pace-print-sheet bg-neutral-900 border border-neutral-800 rounded-xl mt-6 print:m-0 print:border-none print:shadow-none print:bg-white text-black print:text-black"
+                            style={pacePrintSheetStyle}
+                        >
                             <div className="px-6 py-4 border-b border-neutral-800 flex items-center justify-between print:block print:px-0 print:py-0.5 print:border-neutral-300">
                                 <h3 className="font-bold text-white print:text-black print:hidden">Splits</h3>
                                 <h3 className="hidden font-bold text-xl mb-2 text-black print:block print:text-[13px] print:leading-tight print:mb-0">{race.name} - Pace Plan</h3>

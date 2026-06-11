@@ -1,12 +1,17 @@
 # Handoff Document
 
 **Date:** 2026-06-11
-**Status:** Drop Bags one-page print follow-up implemented, clean-built, and deployed from product commit `90fcf86`.
-**Active task:** Completed compact two-column Drop Bags print layout for typical one-page portrait/profile output.
+**Status:** Pace Plan print spacing follow-up implemented, built, linted, and dirty-deployed from `db859e5-dirty`; product commit pending.
+**Active task:** Commit column-count-aware Pace Plan print spacing, then clean-deploy and push `main`.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change in this repo. Commit, branch, and document discipline is required to prevent the lost-work confusion that motivated this reconciliation.
 
 ## 2026-06-11 Clone duplicate and event home follow-up
+
+- **Pace Plan print spacing follow-up started:** working on `/Users/andy/Dev/DFIU` branch `main`, tracking `origin/main`, clean and current at `db859e5` (`0 ahead / 0 behind`). Additional clean worktree remains at `/Users/andy/.codex/worktrees/9dfe/DFIU` on `codex/fix-vite-chunk-deploy`; it is not part of this task.
+- **Planned scope:** fix the low-column Pace Plan PDF layout shown in Preview where visible columns stretch too far apart across the page. Make print table width/font responsive to visible column count so fewer-column charts use less horizontal spread and larger type/row spacing.
+- **Pace Plan spacing implementation:** `PaceCalculator` now derives print table width, font size, and cell padding from the visible column count. Five-or-fewer-column printouts use a narrower `76%` table with larger `10px` print type and more row padding, seven-or-fewer-column printouts use an intermediate `88%`/`9px` layout, and full-column charts keep the full-width compact layout. This reduces the wide gutters seen in Preview while making sparse-column PDFs fill more of the page vertically.
+- **Validation/deploy before product commit:** `git diff --check`, `npm run build`, and `npm run lint` passed; lint reported the existing 36 warnings and no errors. Static verification confirmed print CSS consumes `--pace-print-table-width`, `--pace-print-font-size`, and `--pace-print-cell-padding`, and `PaceCalculator` sets those values from `printColumnCount`. `npm run deploy` passed from dirty hash `db859e5-dirty`, deploying `index-C1CJbkNr.js`, `index-CNgDiSLC.css`, and related chunks to `web:/var/www/dfiu`.
 
 - **Drop Bags one-page print follow-up started:** working on `/Users/andy/Dev/DFIU` branch `main`, tracking `origin/main`, clean and current at `e199d7c` (`0 ahead / 0 behind`). Additional clean worktree remains at `/Users/andy/.codex/worktrees/9dfe/DFIU` on `codex/fix-vite-chunk-deploy`; it is not part of this task.
 - **Planned scope:** keep the white/readable Drop Bags print styling, but reduce printed list height by formatting bag contents into two columns on letter portrait/profile output and tightening print-only spacing/type.

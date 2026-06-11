@@ -82,10 +82,10 @@
 
   .pace-print-table {
     border-collapse: collapse !important;
-    font-size: 8px;
-    line-height: 1.08;
+    font-size: var(--pace-print-font-size, 8px);
+    line-height: 1.12;
     table-layout: fixed !important;
-    width: 100% !important;
+    width: var(--pace-print-table-width, 100%) !important;
     max-width: 100% !important;
   }
 
@@ -102,7 +102,7 @@
 
   .pace-print-table th,
   .pace-print-table td {
-    padding: 2px 3px !important;
+    padding: var(--pace-print-cell-padding, 2px 3px) !important;
     vertical-align: top;
     white-space: nowrap;
   }
