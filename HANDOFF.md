@@ -1,8 +1,8 @@
 # Handoff Document
 
 **Date:** 2026-06-11
-**Status:** Strava auth prompt and race tab visibility follow-up in progress on `main` from clean commit `d827063`.
-**Active task:** Reduce repeat Strava authorization prompts and make race top tabs more discoverable, especially on mobile.
+**Status:** Strava auth prompt and race tab visibility follow-up implemented, clean-built, and deployed from product commit `8557eb3`.
+**Active task:** Completed repeat Strava authorization reduction and race top-tab discoverability improvements.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change in this repo. Commit, branch, and document discipline is required to prevent the lost-work confusion that motivated this reconciliation.
 
@@ -10,6 +10,9 @@
 
 - **Strava auth/tab visibility follow-up started:** working on `/Users/andy/Dev/DFIU` branch `main`, tracking `origin/main`, clean and current at `d827063` (`0 ahead / 0 behind`). Additional clean worktree remains at `/Users/andy/.codex/worktrees/9dfe/DFIU` on `codex/fix-vite-chunk-deploy`; it is not part of this task.
 - **Planned scope:** change the custom Strava OAuth start URL from forced approval to reuse existing Strava authorization when possible, and make the horizontal race tab menu more visible and easier to notice on mobile through stronger contrast, larger tap targets, and scroll affordance.
+- **Strava auth prompt reduction:** `strava-auth` now builds the Strava authorize URL with encoded `URLSearchParams` and `approval_prompt=auto` instead of `force`, so Strava can reuse an existing authorization instead of prompting every time. The function catch block also handles unknown thrown values cleanly for `deno check`.
+- **Race tab visibility:** the full race top tabs are now a sticky, higher-contrast pill-style tab row below the header, with larger mobile tap targets, bright inactive labels, stronger active state, thin horizontal scrollbar support, and edge fade affordances for sideways scrolling.
+- **Validation/deploy for Strava auth/tab visibility:** Supabase changelog/docs were checked; the local Supabase CLI and direct binary were killed before startup, so production Edge Function `strava-auth` was deployed through the Supabase connector to project `nyjgyyuoscgekavheeqi` as version 4 with `verify_jwt=false` preserved. A live function start-action invoke confirmed the returned Strava URL has host `www.strava.com`, `approval_prompt=auto`, `response_type=code`, and a scope parameter. `git diff --check`, `deno check supabase/functions/strava-auth/index.ts`, targeted ESLint for `RaceDetail.tsx`, `npm run build`, and `npm run lint` passed; lint reported the existing 36 warnings and no errors. `npm run deploy` passed first from dirty hash `d827063-dirty`, then clean from product commit `8557eb3`, deploying `index-Jg7iXj23.js`, `LiveEventTab-BvE3z5dK.js`, `CourseMap-CMd446YR.js`, and related chunks to `web:/var/www/dfiu`. `git describe --always --dirty --abbrev=7` after the clean deploy was `8557eb3`. In-app Browser smoke against local production preview `http://127.0.0.1:4173/race/52d23785-cef7-4afe-bdf8-446f6053dc7a` verified the tab row renders on desktop, is sticky below the header, has 7 tabs, has no page-level horizontal overflow, and at 390px mobile shows `Live`, `Overview`, `Map & Aid Stations`, plus part of `Pace Plan` with horizontal tab scrolling available.
 
 - **Supabase email bounce/access follow-up started:** working on `/Users/andy/Dev/DFIU` branch `main`, tracking `origin/main`, clean and current at `5234baf` after `git fetch --prune` (`0 ahead / 0 behind`). Additional clean worktree remains at `/Users/andy/.codex/worktrees/9dfe/DFIU` on `codex/fix-vite-chunk-deploy`; it is not part of this task.
 - **Planned scope:** inspect the invite/member flow and production memberships for `salladaysbiz@aol.com`, apply a production workaround granting crew + edit access without sending Supabase transactional email when possible, and update app/server behavior to reduce bounce risk while a custom SMTP provider is configured.
