@@ -245,20 +245,27 @@ export function mergeTemplateIntoItems(
     const result: DropBagItem[] = []
     const usedKeys = new Set<string>()
     const usedIds = new Set<string>()
+    const templateKeys = new Set(template.map(itemKey))
 
     template.forEach((tpl, i) => {
         const key = itemKey(tpl)
         if (usedKeys.has(key)) return
         const templateId = `tpl_${i}`
-        const prior = existingByKey.get(key) ?? existingById.get(templateId)
+        const priorByKey = existingByKey.get(key)
+        const priorById = existingById.get(templateId)
+        const priorByIdKey = priorById ? itemKey(priorById) : null
+        const idMatchIsUserRename = priorByIdKey !== null && priorByIdKey !== key && !templateKeys.has(priorByIdKey)
+        const prior = priorByKey ?? (idMatchIsUserRename ? priorById : undefined)
+        const id = prior && !usedIds.has(prior.id) ? prior.id : templateId
         result.push({
-            id: prior?.id ?? templateId,
+            id,
             text: prior && itemKey(prior) !== key ? prior.text : tpl.text,
             category: tpl.category,
             checked: prior?.checked ?? false,
             quantity: prior?.quantity,
         })
         usedKeys.add(key)
+        usedIds.add(id)
         if (prior) {
             usedKeys.add(itemKey(prior))
             usedIds.add(prior.id)
@@ -269,13 +276,16 @@ export function mergeTemplateIntoItems(
         const key = itemKey(conditionItem)
         if (usedKeys.has(key)) continue
         const prior = existingByKey.get(key) ?? existingById.get(conditionItem.id)
+        const id = prior && !usedIds.has(prior.id) ? prior.id : conditionItem.id
         result.push({
             ...conditionItem,
+            id,
             text: prior && itemKey(prior) !== key ? prior.text : conditionItem.text,
             checked: prior?.checked ?? conditionItem.checked,
             quantity: prior?.quantity,
         })
         usedKeys.add(key)
+        usedIds.add(id)
         if (prior) {
             usedKeys.add(itemKey(prior))
             usedIds.add(prior.id)

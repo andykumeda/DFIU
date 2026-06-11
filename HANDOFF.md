@@ -1,12 +1,18 @@
 # Handoff Document
 
 **Date:** 2026-06-11
-**Status:** Pace-plan print and drop-bag start/finish/template follow-up implemented. Product commit `12bc68c` was clean-built, deployed, and pushed to `origin/main`.
-**Active task:** Completed code work to fit Pace Plan print output onto one page with support/drop-bag/pacer notation, show bag name/identifier details on Drop Bags cards, make Start behave like regular bag stations for template items, add Finish bag support, and verify cloned events inherit the full master drop-bag template.
+**Status:** Drop Bags card cleanup and Start Gear template merge follow-up implemented and deployed from dirty hash `f478013-dirty`, pending clean commit/deploy/push closeout.
+**Active task:** Completed code work to fix Start Gear missing race-template items such as `Drink Mix/Powder`, remove checklist previews from bag cards, move bag name closer to the station heading, and simplify the Drop Bags tab card presentation so it feels less busy.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change in this repo. Commit, branch, and document discipline is required to prevent the lost-work confusion that motivated this reconciliation.
 
 ## 2026-06-11 Clone duplicate and event home follow-up
+
+- **Drop Bags card cleanup follow-up started:** working on `/Users/andy/Dev/DFIU` branch `main`, tracking `origin/main`, clean and current at `f478013` after `git fetch --prune` (`0 ahead / 0 behind`). Additional clean worktree remains at `/Users/andy/.codex/worktrees/9dfe/DFIU` on `codex/fix-vite-chunk-deploy`; it is not part of this task.
+- **Planned scope:** repair the Start Gear template merge so race-level template items like `Drink Mix/Powder` are not hidden by old start-specific generated ids, remove the per-card checklist preview, move bag name/identifying label into the card header area, and reduce Drop Bags card text density.
+- **Drop Bags cleanup implementation:** card checklist previews were removed, next-aid/next-bag coverage rows were removed from cards, bag names now render inline with the station heading, and cards now show only bag type, station/bag name, mile, compact ETA, crew access, and a short clipped note when present. Full coverage/timing details remain in the bag modal.
+- **Start Gear template merge fix:** `mergeTemplateIntoItems` now treats an id-only match as a user rename only when the saved item text is not another current template item. This prevents old Start-specific `tpl_#` entries from replacing race-level template labels such as `Drink Mix / Powder`, and avoids duplicate ids when old template items are later matched by text.
+- **Validation/deploy for Drop Bags cleanup:** `git diff --check`, `npm run build`, and `npm run lint` passed; lint reported 36 existing warnings and no errors. `npm run deploy` passed from dirty hash `f478013-dirty`, deploying `index-DG17Yyvt.js`, `index-DmGaJslC.css`, and related chunks. In-app Browser smoke against local dev `http://127.0.0.1:5173/race/52d23785-cef7-4afe-bdf8-446f6053dc7a` verified Drop Bags card text no longer contains `Checklist`, `Estimated arrival time`, or `Next aid`; verified the Finish card is still present as `FINISH GEAR`; and opened the Start modal to confirm `Drink Mix / Powder` appears in Hydration & Nutrition.
 
 - **Pace print/drop-bag follow-up started:** working on `/Users/andy/Dev/DFIU` branch `main`, tracking `origin/main`, clean and current at `d23d2bc` after `git fetch --prune` (`0 ahead / 0 behind`). Additional clean worktree remains at `/Users/andy/.codex/worktrees/9dfe/DFIU` on `codex/fix-vite-chunk-deploy`; it is not part of this task.
 - **Planned scope:** compact Pace Plan print CSS/content to a single printed page, add printed station capability notation for crew/drop bags/pacers, surface bag names/identifying notes on Drop Bags cards, include Start and Finish in the same drop-bag/template flow as other stations, and audit/fix cloned race template syncing if the master template is not fully carried into clones.

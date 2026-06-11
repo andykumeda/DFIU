@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Race, Course, Waypoint, TerrainNode } from '@/types/database'
 import { calculatePacePlan } from './pace-utils'
 import { usePacePlans, computePlanMinutes } from './usePacePlans'
-import { Backpack, Clock, Sun, Moon, Info, Printer, List, ChevronDown, ChevronUp, Target, PackageCheck, Pencil } from 'lucide-react'
+import { Backpack, Clock, Sun, Moon, Info, Printer, List, ChevronDown, ChevronUp, Target, Pencil } from 'lucide-react'
 import { DropBagModal, type DropBagCoverageRow } from './DropBagModal'
 import { DropBagNotes } from './DropBagNotes'
 import { DropBagTemplateEditor } from './DropBagTemplateEditor'
@@ -194,36 +194,6 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
         ]
     }
 
-    const renderNextEtaRow = (row: DropBagCoverageRow) => (
-        <div className="flex items-start gap-3 text-xs">
-            <div className={`w-20 shrink-0 whitespace-nowrap font-bold uppercase tracking-wide ${row.labelClass}`}>
-                {row.label}
-            </div>
-            {row.targetName ? (
-                <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                        <span className="truncate text-neutral-200 font-medium">{row.targetName}</span>
-                        <span className="shrink-0 font-mono text-neutral-500">Mile {row.targetMile?.toFixed(1)}</span>
-                    </div>
-                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-neutral-400">
-                        {row.milesUntil !== null && (
-                            <span className="font-mono">+{row.milesUntil.toFixed(1)} mi</span>
-                        )}
-                        {row.plans.map(plan => (
-                            <span key={plan.label} className="flex flex-wrap items-baseline gap-x-1.5">
-                                <span className={`font-mono font-semibold ${plan.colorClass}`}>{plan.timeOfDay ?? '—'}</span>
-                                <span className="text-neutral-500">Estimated arrival time</span>
-                                {plan.duration && <span className="text-neutral-500"> · in {plan.duration}</span>}
-                            </span>
-                        ))}
-                    </div>
-                </div>
-            ) : (
-                <div className="text-neutral-600">None ahead</div>
-            )}
-        </div>
-    )
-
     if (bagWaypoints.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center p-12 text-center text-neutral-500 border-2 border-dashed border-neutral-800 rounded-xl my-6">
@@ -276,147 +246,77 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                         const isFinishBag = kind === 'finish'
                         const isCrewBag = kind === 'crew'
                         const displayName = isStartBag ? 'Start' : isFinishBag ? 'Finish' : wp.name
-                        const bagNameLabel = isStartBag ? 'Start Gear' : isFinishBag ? 'Finish Gear' : isCrewBag ? 'Crew Bag' : 'Bag Name'
                         const identityNotes = getDropBagNotes(wp)
-                        const allItems = getWaypointItems(wp)
-                        const packedCount = allItems.filter(i => i.checked).length
-                        const cardItems = canWriteDropBags ? allItems : allItems.filter(i => i.checked)
-                        const previewItems = cardItems.slice(0, 4)
+                        const arrival = getWaypointArrival(wp)
+                        const arrivalIsNight = !!arrival && !!race.start_datetime && isNight(arrival.arrivalTime, wp.lat, wp.lon)
                         const hasBagPlan = hasSavedBagPlan(wp)
-                        const coverageRows = getCoverageRows(wp)
                         const cardClass = isCrewBag
-                            ? 'bg-emerald-950/15 border-emerald-900/70 hover:border-emerald-500/60 hover:shadow-emerald-950/30'
-                            : 'bg-neutral-900 border-neutral-800 hover:border-neutral-700 hover:shadow-black/50'
+                            ? 'bg-emerald-950/10 border-emerald-900/60 hover:border-emerald-500/50'
+                            : 'bg-neutral-900 border-neutral-800 hover:border-neutral-700'
                         const labelClass = isCrewBag
                             ? 'border-emerald-700/60 bg-emerald-950/70 text-emerald-200'
                             : 'border-orange-900/60 bg-orange-950/40 text-orange-200'
                         return (
                             <div
                                 key={wp.id}
-                                className={`border rounded-xl p-5 cursor-pointer transition-all hover:-translate-y-1 hover:shadow-xl group flex flex-col ${cardClass}`}
+                                className={`border rounded-lg p-4 cursor-pointer transition-colors group flex flex-col ${cardClass}`}
                                 onClick={() => setSelectedWaypoint(wp)}
                             >
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="min-w-0">
-                                        <div className="flex flex-wrap items-center gap-2 mb-2">
-                                            <span className={`text-[10px] font-bold uppercase tracking-[0.18em] border rounded-full px-2 py-0.5 ${labelClass}`}>
-                                                {getBagKindLabel(kind)}
+                                <div className="min-w-0 space-y-2">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className={`text-[10px] font-bold uppercase tracking-[0.16em] border rounded-full px-2 py-0.5 ${labelClass}`}>
+                                            {getBagKindLabel(kind)}
+                                        </span>
+                                        {isCrewBag && !hasBagPlan && (
+                                            <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-400">
+                                                Available
                                             </span>
-                                            {isCrewBag && !hasBagPlan && (
-                                                <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-400">
-                                                    Available
+                                        )}
+                                    </div>
+
+                                    <div className="min-w-0">
+                                        <h3 className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-lg font-bold text-white group-hover:text-orange-400 transition-colors">
+                                            <span>{displayName}</span>
+                                            {wp.drop_bag_name && (
+                                                <span className="max-w-full truncate rounded border border-neutral-700 bg-neutral-950/70 px-2 py-0.5 text-sm font-semibold text-neutral-200">
+                                                    {wp.drop_bag_name}
                                                 </span>
                                             )}
-                                        </div>
-                                        <h3 className="text-lg font-bold text-white mb-1 group-hover:text-orange-400 transition-colors">
-                                            {displayName}
                                         </h3>
-                                        <div className="text-neutral-500 text-sm font-mono">
-                                            Mile {wp.mile.toFixed(1)}
-                                            {isCrewBag && <span className="ml-2 text-emerald-400 font-sans">crew access</span>}
+                                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-neutral-500">
+                                            <span className="font-mono">Mile {wp.mile.toFixed(1)}</span>
+                                            {arrival ? (
+                                                <span className="inline-flex items-center gap-1">
+                                                    <Clock className="w-3.5 h-3.5" />
+                                                    <span className="font-mono text-neutral-300">{arrival.timeOfDay}</span>
+                                                    {arrivalIsNight
+                                                        ? <Moon className="w-3.5 h-3.5 text-blue-300" />
+                                                        : <Sun className="w-3.5 h-3.5 text-yellow-500" />}
+                                                </span>
+                                            ) : plans.hasCalculated ? (
+                                                <span className="text-neutral-600">ETA unavailable</span>
+                                            ) : null}
+                                            {isCrewBag && <span className="text-emerald-400">Crew access</span>}
                                         </div>
                                     </div>
-                                    <div className={`w-10 h-10 rounded-full bg-neutral-950 flex items-center justify-center border transition-colors ${isCrewBag ? 'border-emerald-900 group-hover:border-emerald-500/70' : 'border-neutral-800 group-hover:border-orange-500/50'}`}>
-                                        {isStartBag || isFinishBag
-                                            ? <span className="text-[10px] font-bold text-emerald-300 leading-none">{displayName}</span>
-                                            : isCrewBag
-                                                ? <PackageCheck className="w-5 h-5 text-emerald-300 transition-colors" />
-                                                : <Backpack className="w-5 h-5 text-neutral-400 group-hover:text-orange-500 transition-colors" />}
-                                    </div>
-                                </div>
 
-                                <div className="space-y-3 flex-1">
-                                    {!plans.hasCalculated ? (
-                                        <div className="text-center py-3 space-y-2">
-                                            <p className="text-sm text-neutral-500">Set your goal time to see ETAs.</p>
+                                    {!plans.hasCalculated && (
+                                        <div className="flex items-center justify-between gap-3 rounded border border-neutral-800 bg-neutral-950/40 px-3 py-2">
+                                            <p className="text-sm text-neutral-500">Set a goal time to show ETA.</p>
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); onGoToPacePlan() }}
-                                                className="text-sm text-orange-400 hover:text-orange-300 font-medium flex items-center gap-1 mx-auto transition-colors"
+                                                className="text-sm text-orange-400 hover:text-orange-300 font-medium flex items-center gap-1 transition-colors"
                                             >
                                                 <Target className="w-4 h-4" />
-                                                Go to Pace Plan
+                                                Pace Plan
                                             </button>
                                         </div>
-                                    ) : (
-                                        <div className="space-y-1.5">
-                                            {[
-                                                ...planOptions,
-                                            ].map(({ label, plan: p, color }) => {
-                                                const arrival = p?.waypointArrivals.find(a => a.waypointId === wp.id)
-                                                return (
-                                                    <div key={label} className="flex items-center gap-2 text-sm bg-neutral-950/50 px-2 py-1.5 rounded border border-neutral-800">
-                                                        <Clock className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
-                                                        <span className={`font-mono font-semibold ${color}`}>{arrival?.timeOfDay ?? '—'}</span>
-                                                        <span className="min-w-0 flex-1 truncate text-xs text-neutral-500">Estimated arrival time</span>
-                                                        {arrival && race.start_datetime && (
-                                                            isNight(arrival.arrivalTime, wp.lat, wp.lon)
-                                                                ? <Moon className="w-3.5 h-3.5 text-blue-300 shrink-0" />
-                                                                : <Sun className="w-3.5 h-3.5 text-yellow-500 shrink-0" />
-                                                        )}
-                                                    </div>
-                                                )
-                                            })}
-                                        </div>
                                     )}
 
-                                    {plans.hasCalculated && (
-                                        <div className="border-t border-neutral-800 pt-3 space-y-2">
-                                            {coverageRows.map(row => renderNextEtaRow(row))}
-                                        </div>
-                                    )}
-
-                                    {(wp.drop_bag_name || identityNotes) && (
-                                        <div className="mt-2 p-2 bg-neutral-950/50 rounded border border-neutral-800">
-                                            {wp.drop_bag_name && (
-                                                <>
-                                                    <div className="text-xs text-neutral-500 uppercase tracking-wider mb-0.5">
-                                                        {bagNameLabel}
-                                                    </div>
-                                                    <div className="text-sm text-neutral-300 font-medium">
-                                                        {wp.drop_bag_name}
-                                                    </div>
-                                                </>
-                                            )}
-                                            {identityNotes && (
-                                                <div className={wp.drop_bag_name ? 'mt-2 border-t border-neutral-800 pt-2' : ''}>
-                                                    <div className="text-xs text-neutral-500 uppercase tracking-wider mb-0.5">
-                                                        Identifying Info
-                                                    </div>
-                                                    <div className="text-sm text-neutral-300 whitespace-pre-wrap">
-                                                        {identityNotes}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {previewItems.length > 0 && (
-                                        <div className="mt-2 p-2 bg-neutral-950/50 rounded border border-neutral-800">
-                                            <div className="mb-1.5 flex items-center justify-between gap-2 text-xs uppercase tracking-wider text-neutral-500">
-                                                <span>Checklist</span>
-                                                <span className="font-mono normal-case tracking-normal text-neutral-400">
-                                                    {canWriteDropBags ? `${packedCount}/${allItems.length} packed` : `${packedCount} packed`}
-                                                </span>
-                                            </div>
-                                            <div className="flex flex-wrap gap-1.5">
-                                                {previewItems.map(item => (
-                                                    <span
-                                                        key={item.id}
-                                                        className={`rounded border px-2 py-0.5 text-xs ${item.checked
-                                                            ? 'border-orange-900/60 bg-orange-950/40 text-orange-200'
-                                                            : 'border-neutral-800 bg-neutral-900 text-neutral-400'
-                                                            }`}
-                                                    >
-                                                        {item.text}
-                                                    </span>
-                                                ))}
-                                                {cardItems.length > previewItems.length && (
-                                                    <span className="rounded border border-neutral-800 bg-neutral-900 px-2 py-0.5 text-xs text-neutral-500">
-                                                        +{cardItems.length - previewItems.length} more
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
+                                    {identityNotes && (
+                                        <p className="max-h-10 overflow-hidden text-sm leading-5 text-neutral-400 whitespace-pre-wrap">
+                                            {identityNotes}
+                                        </p>
                                     )}
                                     <DropBagNotes waypoint={wp} className="mt-2" showDropBagNotes={false} />
                                 </div>
