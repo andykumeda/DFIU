@@ -1,12 +1,15 @@
 # Handoff Document
 
 **Date:** 2026-06-11
-**Status:** Supabase email bounce restriction workaround implemented, clean-built, and deployed from product commit `9442ce5`.
-**Active task:** Completed no-email invite/access workaround, documented the required custom SMTP follow-up, and configured `salladaysbiz@aol.com` with production crew edit access without sending email.
+**Status:** Strava auth prompt and race tab visibility follow-up in progress on `main` from clean commit `d827063`.
+**Active task:** Reduce repeat Strava authorization prompts and make race top tabs more discoverable, especially on mobile.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change in this repo. Commit, branch, and document discipline is required to prevent the lost-work confusion that motivated this reconciliation.
 
 ## 2026-06-11 Clone duplicate and event home follow-up
+
+- **Strava auth/tab visibility follow-up started:** working on `/Users/andy/Dev/DFIU` branch `main`, tracking `origin/main`, clean and current at `d827063` (`0 ahead / 0 behind`). Additional clean worktree remains at `/Users/andy/.codex/worktrees/9dfe/DFIU` on `codex/fix-vite-chunk-deploy`; it is not part of this task.
+- **Planned scope:** change the custom Strava OAuth start URL from forced approval to reuse existing Strava authorization when possible, and make the horizontal race tab menu more visible and easier to notice on mobile through stronger contrast, larger tap targets, and scroll affordance.
 
 - **Supabase email bounce/access follow-up started:** working on `/Users/andy/Dev/DFIU` branch `main`, tracking `origin/main`, clean and current at `5234baf` after `git fetch --prune` (`0 ahead / 0 behind`). Additional clean worktree remains at `/Users/andy/.codex/worktrees/9dfe/DFIU` on `codex/fix-vite-chunk-deploy`; it is not part of this task.
 - **Planned scope:** inspect the invite/member flow and production memberships for `salladaysbiz@aol.com`, apply a production workaround granting crew + edit access without sending Supabase transactional email when possible, and update app/server behavior to reduce bounce risk while a custom SMTP provider is configured.

@@ -1523,17 +1523,33 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       )}
 
       {/* Tabs */}
-      <nav className='print:hidden border-b border-neutral-800 bg-neutral-900'>
-        <div className='max-w-7xl mx-auto px-4 flex gap-6 overflow-x-auto whitespace-nowrap [-webkit-overflow-scrolling:touch]'>
-          {tabs.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`shrink-0 py-3 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === tab.id ? 'border-blue-500 text-blue-500' : 'border-transparent text-neutral-400 hover:text-neutral-200'}`}
-            >
-              {tab.label}
-            </button>
-          ))}
+      <nav
+        aria-label='Race sections'
+        className='print:hidden sticky z-[90] border-y border-neutral-700 bg-neutral-900/95 shadow-lg shadow-black/20 backdrop-blur-sm'
+        style={{ top: 'var(--page-header-h, 0px)' }}
+      >
+        <div className='max-w-7xl mx-auto px-2 sm:px-4'>
+          <div className='relative'>
+            <div className='pointer-events-none absolute inset-y-0 left-0 z-10 w-4 bg-gradient-to-r from-neutral-900 to-transparent sm:hidden' />
+            <div className='pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-neutral-900 to-transparent' />
+            <div role='tablist' className='flex gap-2 overflow-x-auto whitespace-nowrap py-2 pr-8 [-webkit-overflow-scrolling:touch] [scrollbar-color:#525252_transparent] [scrollbar-width:thin]'>
+              {tabs.map(tab => {
+                const isActive = activeTab === tab.id
+                return (
+                  <button
+                    key={tab.id}
+                    type='button'
+                    role='tab'
+                    aria-selected={isActive}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`shrink-0 rounded-md border px-3.5 py-2 text-[15px] sm:text-sm font-semibold transition-colors ${isActive ? 'border-blue-400 bg-blue-600 text-white shadow-sm shadow-blue-950/60' : 'border-neutral-700 bg-neutral-800/70 text-neutral-100 hover:border-neutral-500 hover:bg-neutral-800 hover:text-white'}`}
+                  >
+                    {tab.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
         </div>
       </nav>
 

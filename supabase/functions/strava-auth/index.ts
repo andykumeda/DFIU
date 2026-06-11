@@ -28,7 +28,14 @@ serve(async (req) => {
 
         if (action === 'start') {
             const scope = 'activity:read_all,profile:read_all'
-            const url = `https://www.strava.com/oauth/authorize?client_id=${clientId}&response_type=code&redirect_uri=${redirectUrl}&approval_prompt=force&scope=${scope}`
+            const params = new URLSearchParams({
+                client_id: clientId,
+                response_type: 'code',
+                redirect_uri: redirectUrl,
+                approval_prompt: 'auto',
+                scope,
+            })
+            const url = `https://www.strava.com/oauth/authorize?${params.toString()}`
             return new Response(JSON.stringify({ url }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             })
@@ -145,7 +152,8 @@ serve(async (req) => {
         throw new Error('Invalid action')
 
     } catch (err) {
-        return new Response(JSON.stringify({ error: err.message }), {
+        const message = err instanceof Error ? err.message : 'Unknown Strava authentication error'
+        return new Response(JSON.stringify({ error: message }), {
             status: 400,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         })
