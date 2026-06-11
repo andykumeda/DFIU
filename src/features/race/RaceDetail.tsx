@@ -3,7 +3,7 @@ import { useAuth } from '@/features/auth/AuthContext'
 import { usePermission } from '@/features/auth/usePermission'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Calendar, MapPin, Globe, ArrowUpRight, CloudSun, Trophy, RefreshCw, Settings, Download, Save, CheckCircle2, Trash2 } from 'lucide-react'
+import { Calendar, MapPin, Globe, ArrowUpRight, CloudSun, Trophy, RefreshCw, Settings, Download, Save, CheckCircle2, Trash2, Share2 } from 'lucide-react'
 
 import { supabase } from '@/lib/supabase'
 import { Race, Course, Waypoint, TerrainNode } from '@/types/database'
@@ -235,7 +235,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   const [isCloning, setIsCloning] = useState(false)
 
   // Data Fetching
-  const { data: race, isLoading: raceLoading } = useQuery({
+  const { data: race, isLoading: raceLoading, isError: raceLoadFailed } = useQuery({
     queryKey: ['race', raceId],
     queryFn: async () => {
       const { data, error } = await supabase.from('races').select('*').eq('id', raceId).single()
@@ -253,6 +253,12 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     availableRoleViews,
   } = usePermission(raceId, race?.race_director_user_id)
   const canDeleteRace = hasOwnerMembership || isAdmin || (!!user && race?.user_id === user.id)
+
+  useEffect(() => {
+    if (!raceLoading && raceLoadFailed) {
+      navigate('/events', { replace: true })
+    }
+  }, [raceLoading, raceLoadFailed, navigate])
 
   // Auto-fetch weather if missing — edit-perm only to avoid races and unauthorized writes
   useEffect(() => {
@@ -1333,7 +1339,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   const isOwner = canEdit
 
   if (raceLoading) return <div className='p-8 text-white'>Loading race...</div>
-  if (!race) return <div className='p-8 text-white'>Race not found</div>
+  if (raceLoadFailed || !race) return <div className='p-8 text-white'>Redirecting...</div>
 
   return (
     <div className='min-h-screen bg-neutral-950 flex flex-col'>
@@ -1402,6 +1408,16 @@ export function RaceDetail({ raceId }: { raceId: string }) {
           </div>
           <div className='flex items-center gap-2 sm:gap-4'>
             <RoleSwitcher raceId={raceId} views={race.is_official ? ['full'] : availableRoleViews} />
+            {canManageTeam && (
+              <button
+                onClick={() => setActiveTab('members')}
+                className='flex items-center gap-2 p-1.5 sm:px-3 sm:py-1.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-200 text-sm font-medium rounded-lg border border-neutral-800 transition-colors'
+                title='Share event'
+              >
+                <Share2 className='w-4 h-4' />
+                <span className='hidden sm:inline'>Share</span>
+              </button>
+            )}
             {isAdmin && (
               <button
                 onClick={race.is_official ? handleClearOfficial : handleMarkOfficial}

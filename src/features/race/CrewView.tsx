@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, MapPin, Navigation2, Clock, CheckCircle2, AlertCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { supabase } from '@/lib/supabase'
@@ -31,6 +31,7 @@ interface CrewViewProps {
 }
 
 export function CrewView({ raceId, embedded = false }: CrewViewProps) {
+    const navigate = useNavigate()
     const { profile } = useAuth() as { profile: { clock_24h?: boolean; runner_profile?: unknown } | null }
     const clock24h = !!profile?.clock_24h
     const runnerProfile = useMemo(() => parseRunnerProfile(profile?.runner_profile), [profile?.runner_profile])
@@ -61,8 +62,17 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setLoading(true)
         ;(async () => {
-            const { data: r } = await supabase.from('races').select('*').eq('id', raceId).single()
+            const { data: r, error: raceError } = await supabase.from('races').select('*').eq('id', raceId).single()
             if (cancelled) return
+            if (raceError || !r) {
+                setRace(null)
+                setCourse(null)
+                setWaypoints([])
+                setTerrainNodes([])
+                setLoading(false)
+                if (!embedded) navigate('/events', { replace: true })
+                return
+            }
             setRace(r as Race | null)
 
             const { data: c } = await supabase.from('courses').select('*').eq('race_id', raceId).maybeSingle()
@@ -89,7 +99,7 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
             setLoading(false)
         })()
         return () => { cancelled = true }
-    }, [raceId])
+    }, [raceId, embedded, navigate])
 
     // Crew current location (one-shot — user can refresh).
     const requestLocation = () => {
@@ -199,24 +209,23 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
     }, [course])
 
     const mapWaypoints = useMemo(() => {
-        const courseLine: GeoJSON.LineString | null = courseCoords.length > 1
-            ? { type: 'LineString', coordinates: courseCoords }
-            : null
         return waypoints.map(w => {
             const bagKind = getBagKind(w)
             const showBagIcon = !!bagKind && (bagKind !== 'crew' || hasSavedBagPlan(w))
-            const routeCoord = courseLine ? getCoordinateAtDistance(courseLine, w.mile * 1609.34) : null
             return {
                 id: w.id,
                 name: w.name,
-                lat: routeCoord?.[1] ?? w.lat,
-                lon: routeCoord?.[0] ?? w.lon,
+                lat: w.lat,
+                lon: w.lon,
                 mile: w.mile,
+                type: w.type,
+                has_drop_bag: w.has_drop_bag,
                 crew_allowed: w.crew_allowed,
+                pacer_allowed: w.pacer_allowed,
                 bag_kind: showBagIcon ? bagKind : null,
             }
         })
-    }, [courseCoords, waypoints])
+    }, [waypoints])
 
     // "Next" = first waypoint past predicted mile (epsilon to avoid hitching on the current AS).
     const nextWaypoint: Waypoint | null = useMemo(() => {
@@ -228,6 +237,27 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
         const sorted = [...waypoints].sort((a, b) => a.mile - b.mile)
         return sorted.find(w => w.mile > predictedMile + 0.05 && !!w.crew_allowed) ?? null
     }, [waypoints, predictedMile])
+
+    const mapFocus = useMemo(() => {
+        const totalMiles = course?.total_distance_miles ?? 0
+        if (totalMiles <= 0) return null
+
+        const sorted = [...waypoints].sort((a, b) => a.mile - b.mile)
+        const previous = [...sorted].reverse().find(w => w.mile <= predictedMile + 0.05)
+        const next = sorted.find(w => w.mile > predictedMile + 0.05)
+        const baseStart = previous?.mile ?? Math.max(0, predictedMile - 2)
+        const baseEnd = next?.mile ?? Math.min(totalMiles, predictedMile + 2)
+        let startMile = Math.max(0, Math.min(baseStart, predictedMile) - 0.75)
+        let endMile = Math.min(totalMiles, Math.max(baseEnd, predictedMile) + 0.75)
+
+        if (endMile - startMile < 2) {
+            const center = Math.max(0, Math.min(totalMiles, predictedMile))
+            startMile = Math.max(0, center - 1)
+            endMile = Math.min(totalMiles, center + 1)
+        }
+
+        return { startMile, endMile }
+    }, [course?.total_distance_miles, waypoints, predictedMile])
 
     const arrivalAt = (wpId: string): number | null => {
         const a = pacePlan?.waypointArrivals.find(x => x.waypointId === wpId)
@@ -362,6 +392,8 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
                             runnerLatLon={runnerLatLon}
                             crewLatLon={crewLatLon}
                             nextWaypointId={nextCrewWaypoint?.id ?? nextWaypoint?.id ?? null}
+                            focusStartMile={mapFocus?.startMile ?? null}
+                            focusEndMile={mapFocus?.endMile ?? null}
                         />
                     </div>
                     {race.start_datetime && (

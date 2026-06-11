@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Trash2, Search, UserPlus, Mail, X, RefreshCw } from 'lucide-react'
+import { Trash2, Search, UserPlus, Mail, X, RefreshCw, Link as LinkIcon, Copy, ExternalLink } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/features/auth/AuthContext'
+import type { Race } from '@/types/database'
+import { buildShareLink, createShareToken } from './share-link'
 
 type Role = 'crew' | 'pacer'
 type Permission = 'view' | 'edit'
@@ -58,6 +60,21 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
   const [pendingRoles, setPendingRoles] = useState<RoleSelection>({ crew: true, pacer: false })
   const [pendingPermission, setPendingPermission] = useState<Permission>('view')
   const [inviteStatus, setInviteStatus] = useState<string | null>(null)
+  const [shareStatus, setShareStatus] = useState<string | null>(null)
+
+  const { data: raceAccess } = useQuery<Pick<Race, 'id' | 'public_share_enabled' | 'public_share_token'>>({
+    queryKey: ['race-share-access', raceId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('races')
+        .select('id, public_share_enabled, public_share_token')
+        .eq('id', raceId)
+        .single()
+      if (error) throw error
+      return data as Pick<Race, 'id' | 'public_share_enabled' | 'public_share_token'>
+    },
+    enabled: canManage,
+  })
 
   const { data: members = [], isLoading } = useQuery<Member[]>({
     queryKey: ['race_members', raceId],
@@ -234,6 +251,34 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
     },
   })
 
+  const shareMutation = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      const token = enabled
+        ? raceAccess?.public_share_token || createShareToken()
+        : null
+      const { data, error } = await (supabase
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .from('races') as any)
+        .update({
+          public_share_enabled: enabled,
+          public_share_token: token,
+        })
+        .eq('id', raceId)
+        .select('id, public_share_enabled, public_share_token')
+        .single()
+      if (error) throw error
+      return data as Pick<Race, 'id' | 'public_share_enabled' | 'public_share_token'>
+    },
+    onSuccess: async (data) => {
+      setShareStatus(data.public_share_enabled ? 'Private read-only link is enabled.' : 'Private read-only link revoked.')
+      await queryClient.invalidateQueries({ queryKey: ['race-share-access', raceId] })
+      await queryClient.invalidateQueries({ queryKey: ['race', raceId] })
+    },
+    onError: (err: Error) => {
+      setShareStatus(`Error: ${err.message}`)
+    },
+  })
+
   const resendPendingInvite = (invite: PendingInvite) => {
     inviteMutation.mutate({
       email: invite.email,
@@ -266,6 +311,21 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
   // choice here for managers so the permission control is usable.
   const permissionOptions: Permission[] = canManage ? ['view', 'edit'] : ['view']
   const inviteStatusIsError = inviteStatus?.startsWith('Error:') || inviteStatus?.toLowerCase().includes('failed')
+  const shareStatusIsError = shareStatus?.startsWith('Error:')
+  const shareLink = raceAccess?.public_share_enabled && raceAccess.public_share_token
+    ? buildShareLink(raceId, raceAccess.public_share_token)
+    : ''
+
+  const copyShareLink = async () => {
+    if (!shareLink) return
+    try {
+      await navigator.clipboard.writeText(shareLink)
+      setShareStatus('Private read-only link copied.')
+      window.setTimeout(() => setShareStatus(null), 2500)
+    } catch {
+      window.prompt('Copy private read-only link:', shareLink)
+    }
+  }
 
   return (
     <div className='max-w-3xl mx-auto px-4 py-6 space-y-6'>
@@ -275,6 +335,68 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
           People with access to this race. Any member can invite others; only owners can grant edit permission or remove members.
         </p>
       </div>
+
+      {canManage && (
+        <div className='border border-blue-900/60 rounded-lg bg-blue-950/20 p-4 space-y-3'>
+          <div className='flex items-start justify-between gap-3'>
+            <div>
+              <div className='flex items-center gap-2 text-white font-semibold'>
+                <LinkIcon className='w-4 h-4 text-blue-300' /> Private read-only link
+              </div>
+              <p className='text-neutral-400 text-sm mt-1'>
+                Share this event with anyone who has the exact link, without listing it in Public Events or granting edit access.
+              </p>
+            </div>
+            <button
+              type='button'
+              onClick={() => shareMutation.mutate(!raceAccess?.public_share_enabled)}
+              disabled={shareMutation.isPending || !raceAccess}
+              className={`shrink-0 px-3 py-1.5 rounded text-sm font-medium disabled:opacity-50 ${
+                raceAccess?.public_share_enabled
+                  ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-100'
+                  : 'bg-blue-600 hover:bg-blue-500 text-white'
+              }`}
+            >
+              {shareMutation.isPending
+                ? 'Saving...'
+                : raceAccess?.public_share_enabled ? 'Revoke' : 'Enable'}
+            </button>
+          </div>
+
+          {shareLink ? (
+            <div className='flex flex-col sm:flex-row gap-2'>
+              <input
+                type='text'
+                value={shareLink}
+                readOnly
+                aria-label='Private read-only share link'
+                className='min-w-0 flex-1 bg-neutral-950 border border-blue-900/70 rounded px-3 py-2 text-sm text-blue-100'
+              />
+              <button
+                type='button'
+                onClick={copyShareLink}
+                className='inline-flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded text-sm font-medium'
+              >
+                <Copy className='w-4 h-4' />
+                Copy
+              </button>
+              <a
+                href={shareLink}
+                target='_blank'
+                rel='noreferrer'
+                className='inline-flex items-center justify-center gap-1.5 bg-neutral-800 hover:bg-neutral-700 text-white px-3 py-2 rounded text-sm font-medium'
+              >
+                <ExternalLink className='w-4 h-4' />
+                Open
+              </a>
+            </div>
+          ) : (
+            <p className='text-neutral-500 text-sm'>Enable the link to generate a private read-only URL.</p>
+          )}
+
+          {shareStatus && <p className={`text-sm ${shareStatusIsError ? 'text-red-400' : 'text-emerald-400'}`}>{shareStatus}</p>}
+        </div>
+      )}
 
       {isLoading ? (
         <div className='text-neutral-400 text-sm'>Loading members…</div>
