@@ -1,8 +1,8 @@
 # Handoff Document
 
 **Date:** 2026-06-11
-**Status:** Pace Plan portrait/profile print follow-up implemented, validated, and dirty-deployed from `dd7f985-dirty`; product commit pending.
-**Active task:** Commit compact portrait/profile Pace Plan print layout, then clean-deploy and push `main`.
+**Status:** Pace Plan portrait/profile print follow-up implemented, clean-built, and deployed from product commit `33e9663`.
+**Active task:** Completed compact portrait/profile Pace Plan print layout.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change in this repo. Commit, branch, and document discipline is required to prevent the lost-work confusion that motivated this reconciliation.
 
@@ -12,6 +12,7 @@
 - **Planned scope:** keep the improved white PDF output, but prevent the Pace Plan print table from expanding into landscape by tightening column spacing, using a portrait/profile print page, and validating the generated PDF dimensions.
 - **Pace Plan portrait/profile implementation:** Pace Plan print now uses short print-only column labels, per-column print width hooks keyed by column id, narrower cell padding, a non-stretched `fit-content` print sheet, and an auto-width table so columns stay compact in portrait/profile output while the screen table remains unchanged.
 - **Validation/deploy before product commit:** `git diff --check`, `npm run build`, and `npm run lint` passed; lint reported the existing 36 warnings and no errors. In-app Browser smoke against local production preview `http://127.0.0.1:4173/race/52d23785-cef7-4afe-bdf8-446f6053dc7a` verified the Pace Plan tab renders with Pinehurst and `0:48`. Headless Chrome `Page.printToPDF` generated a one-page letter portrait PDF (`612 x 792`, rotation `0`) with white backgrounds, 25 rows, Pinehurst and `0:48` present, and a compact table/sheet width of about `495px` inside a `756px` portrait viewport. `npm run deploy` passed from dirty hash `dd7f985-dirty`, deploying `index-C1wcRt9f.js`, `index-Ca4W_Clg.css`, and related chunks to `web:/var/www/dfiu`.
+- **Clean deploy after product commit:** Product commit `33e9663` was deployed with `npm run deploy`, publishing `index-CoGSSUuc.js`, `index-Ca4W_Clg.css`, `LiveEventTab-DPHM9WbT.js`, `CrewView-Y9Yis1Px.js`, and related chunks to `web:/var/www/dfiu`. `git describe --always --dirty --abbrev=7` after deploy was `33e9663`.
 
 - **Pace Plan PDF follow-up started:** working on `/Users/andy/Dev/DFIU` branch `main`, tracking `origin/main`, clean and current at `c64dcb2` (`0 ahead / 0 behind`). Additional clean worktree remains at `/Users/andy/.codex/worktrees/9dfe/DFIU` on `codex/fix-vite-chunk-deploy`; it is not part of this task.
 - **Planned scope:** reproduce the Pace Plan PDF/print output, remove the black-background/pasted-image look by forcing print surfaces to a plain white document, and format all Time to Next values as `H:MM` including sub-hour legs such as `0:48`.
