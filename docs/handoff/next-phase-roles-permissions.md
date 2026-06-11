@@ -11,8 +11,9 @@
 - `AuthContext` loads `isSiteAdmin` and race membership map.
 - `usePermission(raceId)` is the UI gating source of truth.
 - Race Detail gates editing on `canEdit` and Members tab on strict owner.
-- Members UI can add existing users by email.
-- Email invite flow for new users via `pending_race_memberships`, `invite-race-member`, Supabase invite email, `/auth/set-password`, and pending-membership claim on signup.
+- Members UI can add existing users by email, with an optional email link.
+- New-user access can be saved without sending email through `pending_race_memberships`; when the person later signs up with the same email, the pending membership is claimed automatically.
+- Invite email sending for new users is explicit and still routes through `invite-race-member`, Supabase invite email, `/auth/set-password`, and pending-membership claim on signup.
 
 ## Current Behavior
 

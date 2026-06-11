@@ -197,6 +197,8 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
         setInviteStatus(`Pending invite saved, but email failed: ${data.message}`)
       } else if (status === 'resend_email_failed') {
         setInviteStatus(`Pending invite still saved, but resend failed: ${data.message}`)
+      } else if (status === 'pending_saved') {
+        setInviteStatus('Pending access saved. No email sent; ask them to sign up with this exact email address.')
       } else if (status === 'resent') {
         setInviteStatus('Invite email resent.')
       } else {
@@ -285,6 +287,7 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
       roles: rolesFromPendingInvite(invite),
       permission: normalizePermission(invite.permission),
       resend: true,
+      sendEmail: true,
     })
   }
 
@@ -569,11 +572,19 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
               permission={pendingPermission}
               setPermission={setPendingPermission}
               permissionOptions={permissionOptions}
-              onInvite={() =>
+              onSavePending={() =>
                 inviteMutation.mutate({
                   email: searchedEmail,
                   roles: pendingRoles,
                   permission: pendingPermission,
+                })
+              }
+              onSendInvite={() =>
+                inviteMutation.mutate({
+                  email: searchedEmail,
+                  roles: pendingRoles,
+                  permission: pendingPermission,
+                  sendEmail: true,
                 })
               }
               isPending={inviteMutation.isPending}
@@ -654,31 +665,40 @@ interface InviteCardProps {
   permission: Permission
   setPermission: (p: Permission) => void
   permissionOptions: Permission[]
-  onInvite: () => void
+  onSavePending: () => void
+  onSendInvite: () => void
   isPending: boolean
 }
 
 function InviteCard({
-  email, roles, setRoles, permission, setPermission, permissionOptions, onInvite, isPending,
+  email, roles, setRoles, permission, setPermission, permissionOptions, onSavePending, onSendInvite, isPending,
 }: InviteCardProps) {
   return (
     <div className='border border-neutral-700 rounded p-3 bg-neutral-950 space-y-3'>
       <div className='text-sm text-neutral-300'>
-        No DFIU account for <span className='text-white font-medium'>{email}</span>. Send an invite email — they'll set a password and join automatically.
+        No DFIU account for <span className='text-white font-medium'>{email}</span>. Save pending access now without sending email; they can create an account with this exact address and join automatically.
       </div>
       <RolePermFields
         roles={roles} setRoles={setRoles}
         permission={permission} setPermission={setPermission}
         permissionOptions={permissionOptions}
       />
-      <div className='flex justify-end'>
+      <div className='flex flex-wrap justify-end gap-2'>
         <button
-          onClick={onInvite}
+          onClick={onSavePending}
           disabled={isPending || !hasAnyRole(roles)}
-          className='flex items-center gap-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white px-3 py-1.5 rounded text-sm font-medium'
+          className='bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white px-3 py-1.5 rounded text-sm font-medium'
+        >
+          {isPending ? 'Saving…' : 'Save pending access'}
+        </button>
+        <button
+          onClick={onSendInvite}
+          disabled={isPending || !hasAnyRole(roles)}
+          className='flex items-center gap-1 bg-neutral-800 hover:bg-neutral-700 disabled:opacity-50 text-white px-3 py-1.5 rounded text-sm font-medium'
+          title='Sends a Supabase Auth invite email; avoid this while email delivery is restricted.'
         >
           <Mail className='w-4 h-4' />
-          {isPending ? 'Sending…' : 'Send invite'}
+          {isPending ? 'Sending…' : 'Send invite email'}
         </button>
       </div>
     </div>

@@ -8,9 +8,9 @@
 //      (runner/team managers may add crew/pacer view-log members).
 //   2. If email already belongs to an auth.users row → insert/update
 //      race_memberships directly; optionally send a magic link to the event.
-//   3. Otherwise → insert pending_race_memberships and call
-//      auth.admin.inviteUserByEmail with redirect to /auth/set-password.
-//      handle_new_user trigger claims pending row on signup.
+//   3. Otherwise → insert pending_race_memberships. Email is sent only when
+//      send_email/resend is true, so managers can save access while SMTP is
+//      restricted and have the user sign up manually with the same email.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
@@ -144,7 +144,10 @@ serve(async (req) => {
             return json({ status: baseStatus })
         }
 
-        // No existing user — insert pending row + send invite email.
+        // No existing user — insert pending row first. This gives managers a
+        // no-email workaround while Supabase Auth email sending is restricted:
+        // the handle_new_user trigger claims the pending row when the person
+        // later signs up with the same email address.
         const { error: pendingErr } = await admin
             .from('pending_race_memberships')
             .upsert(
@@ -160,6 +163,10 @@ serve(async (req) => {
                 { onConflict: 'race_id,email' }
             )
         if (pendingErr) return json({ error: pendingErr.message }, 500)
+
+        if (!shouldSendExistingUserEmail) {
+            return json({ status: 'pending_saved' })
+        }
 
         const { error: inviteErr } = await admin.auth.admin.inviteUserByEmail(
             normalizedEmail,

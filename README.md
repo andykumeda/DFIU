@@ -32,7 +32,7 @@ DFIU helps you centralize your course, pace plan, logistics, and crew info in on
 -   **Terrain Segments:** Visualize terrain types (paved, dirt, single track, technical) as colored overlays on the route. Supports map two-click range selection, elevation-profile drag selection, sidebar editing, and out-and-back auto-painting.
 -   **Pace Plans:** Plan A/B/C pacing with terrain, grade, time-of-day, weather, and aid-station-delay factors. Pace plan inputs are stored in Supabase and sync realtime between race members.
 -   **Crew View:** Mobile-first `/race/:id/crew` view with predicted runner location, next crew aid station, Google Maps destination links, drop bag details, and runner arrival check-ins.
--   **Roles & Invites:** Race owners can manage crew/pacer memberships, grant view/edit permissions, invite existing users, send email invites to new users, and create private read-only share links for exact-link access.
+-   **Roles & Invites:** Race owners can manage crew/pacer memberships, grant view/edit permissions, add existing users, save no-email pending access for new users, optionally send invite emails, and create private read-only share links for exact-link access.
 -   **Weather Integration:** Fetch weather data for race locations.
 -   **Settings:** User preferences, runner profile, and Strava integration.
 
