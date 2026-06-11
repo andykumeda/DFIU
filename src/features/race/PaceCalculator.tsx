@@ -13,7 +13,7 @@ import {
     type PaceChartColumnsConfig,
 } from './pace-chart-columns'
 import { DropBagModal } from './DropBagModal'
-import { getBagKind, hasSavedBagPlan } from './drop-bag-shared'
+import { getBagKind, getBagKindLabel, hasSavedBagPlan } from './drop-bag-shared'
 import type { RunnerPacingProfile } from './runner-profile'
 import { Calculator, Clock, TrendingUp, Activity, Users, Footprints, Moon, Sun, ArrowRight, Printer, AlertTriangle, Columns3, Eye, EyeOff, Plus, Minus, Backpack, PackageCheck, GripVertical } from 'lucide-react'
 
@@ -299,9 +299,6 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
         }
     }, [clearColumnDrag, draggedColumnId, reorderColumn])
 
-    const isStartBag = (wp: Waypoint | undefined, arrivalName?: string) =>
-        !!wp && (wp.type === 'start' || wp.mile <= 0.01 || arrivalName?.toLowerCase() === 'start')
-
     const renderColumnCell = (
         colId: PaceChartColumnId,
         arrival: PacePlanResult['waypointArrivals'][number],
@@ -310,18 +307,30 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
         displayMile: number,
     ) => {
         const align = colId === 'location' ? '' : 'text-right'
-        const base = `px-6 py-4 print:py-2 font-mono ${align}`
+        const base = `px-6 py-4 print:px-1 print:py-0.5 print:text-[7px] print:leading-tight font-mono ${align}`
 
         switch (colId) {
             case 'location': {
-                const bagKind = wp
-                    ? (isStartBag(wp, arrival.name) ? 'start' : getBagKind(wp))
-                    : null
+                const bagKind = wp ? getBagKind(wp) : null
                 const showBagInfo = !!wp && !!bagKind && (bagKind !== 'crew' || hasSavedBagPlan(wp))
+                const bagMarker = bagKind === 'start'
+                    ? 'START BAG'
+                    : bagKind === 'finish'
+                        ? 'FINISH BAG'
+                        : bagKind === 'crew'
+                            ? 'CREW BAG'
+                            : bagKind === 'official'
+                                ? 'DROP'
+                                : null
+                const printMarkers = [
+                    ...(wp?.crew_allowed ? ['CREW'] : []),
+                    ...(wp?.pacer_allowed ? ['PACER'] : []),
+                    ...(showBagInfo && bagMarker ? [bagMarker] : []),
+                ]
                 return (
-                    <td key={colId} className="px-6 py-4 print:py-2">
-                        <div className="font-medium text-white print:text-black flex items-center gap-2">
-                            <span>
+                    <td key={colId} className="px-6 py-4 print:px-1 print:py-0.5 print:align-top">
+                        <div className="font-medium text-white print:text-black flex items-center gap-2 print:block print:leading-tight">
+                            <span className="print:block print:break-words">
                                 {displayName}
                                 {race.start_datetime && (
                                     isNight(arrival.arrivalTime)
@@ -329,6 +338,15 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                                         : <span title="Daytime Arrival" className="inline-flex items-center print:hidden"><Sun className="w-3.5 h-3.5 text-yellow-500 ml-1.5" /></span>
                                 )}
                             </span>
+                            {printMarkers.length > 0 && (
+                                <span className="hidden print:flex print:flex-wrap print:gap-0.5 print:pt-0.5">
+                                    {printMarkers.map(marker => (
+                                        <span key={marker} className="print:inline-block print:rounded print:border print:border-neutral-300 print:px-0.5 print:text-[5.5px] print:font-bold print:leading-tight print:text-neutral-700">
+                                            {marker}
+                                        </span>
+                                    ))}
+                                </span>
+                            )}
                             <div className="flex gap-1 ml-1 print:hidden">
                                 {wp?.crew_allowed && <span title="Crew Allowed"><Users className="w-4 h-4 text-green-400" /></span>}
                                 {wp?.pacer_allowed && <span title="Pacer Allowed"><Footprints className="w-4 h-4 text-blue-400" /></span>}
@@ -336,7 +354,7 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                                     <button
                                         type="button"
                                         onClick={() => setSelectedDropBagWaypoint(wp)}
-                                        title={bagKind === 'start' ? 'Start gear' : bagKind === 'crew' ? 'Crew bag info' : 'Drop bag info'}
+                                        title={bagKind ? getBagKindLabel(bagKind) : 'Drop bag info'}
                                         className={`opacity-90 leading-none flex items-center justify-center pt-0.5 hover:opacity-100 ${bagKind === 'crew' ? 'text-emerald-300' : 'text-orange-300'}`}
                                     >
                                         {bagKind === 'crew'
@@ -617,10 +635,17 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                         </div>
 
                         {/* Splits Table */}
-                        <div className="bg-neutral-900 border border-neutral-800 rounded-xl mt-6 print:border-none print:shadow-none print:bg-white text-black print:text-black">
-                            <div className="px-6 py-4 border-b border-neutral-800 flex items-center justify-between print:border-neutral-300">
+                        <div className="pace-print-sheet bg-neutral-900 border border-neutral-800 rounded-xl mt-6 print:m-0 print:border-none print:shadow-none print:bg-white text-black print:text-black">
+                            <div className="px-6 py-4 border-b border-neutral-800 flex items-center justify-between print:block print:px-0 print:py-0.5 print:border-neutral-300">
                                 <h3 className="font-bold text-white print:text-black print:hidden">Splits</h3>
-                                <h3 className="hidden font-bold text-xl mb-2 text-black print:block">{race.name} - Pace Plan</h3>
+                                <h3 className="hidden font-bold text-xl mb-2 text-black print:block print:text-[13px] print:leading-tight print:mb-0">{race.name} - Pace Plan</h3>
+                                <div className="hidden print:flex print:flex-wrap print:items-center print:gap-x-2 print:gap-y-0.5 print:text-[6.5px] print:leading-tight print:text-neutral-600">
+                                    <span>CREW = crewed station</span>
+                                    <span>DROP = official drop bag</span>
+                                    <span>START/FINISH BAG = endpoint gear</span>
+                                    <span>PACER = pacers allowed</span>
+                                    <span>NIGHT = nighttime ETA</span>
+                                </div>
 
                                 <div className="flex items-center gap-4">
                                     <div className="text-xs text-neutral-500 flex items-center gap-1 md:hidden print:hidden">
@@ -639,15 +664,15 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                                 className="overflow-x-auto print:overflow-visible"
                                 style={{ overflowY: 'clip' }}
                             >
-                                <table className="w-full text-sm text-left print:text-xs">
+                                <table className="pace-print-table w-full text-sm text-left print:table-fixed print:text-[7px] print:leading-tight">
                                     <thead
-                                        className="bg-neutral-950 text-neutral-400 print:bg-neutral-100 print:text-black uppercase text-xs font-semibold sticky top-0 z-10 print:static shadow-sm shadow-neutral-950"
+                                        className="bg-neutral-950 text-neutral-400 print:bg-neutral-100 print:text-black uppercase text-xs font-semibold sticky top-0 z-10 print:static shadow-sm shadow-neutral-950 print:text-[6px] print:tracking-normal"
                                     >
                                         <tr>
                                             {visibleColumns.map(col => (
                                                 <th
                                                     key={col.id}
-                                                    className={`px-6 py-3 ${col.align === 'right' ? 'text-right' : ''}`}
+                                                    className={`px-6 py-3 print:px-1 print:py-0.5 print:whitespace-normal ${col.align === 'right' ? 'text-right' : ''}`}
                                                 >
                                                     {col.label}
                                                 </th>
@@ -662,7 +687,7 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                                             const displayMile = wp?.mile ?? arrival.mile
 
                                             return (
-                                                <tr key={arrival.waypointId} className="hover:bg-neutral-800/50 transition-colors print:border-b print:border-neutral-200">
+                                                <tr key={arrival.waypointId} className="hover:bg-neutral-800/50 transition-colors print:break-inside-avoid print:border-b print:border-neutral-200">
                                                     {visibleColumns.map(col =>
                                                         renderColumnCell(col.id, arrival, wp, displayName, displayMile)
                                                     )}

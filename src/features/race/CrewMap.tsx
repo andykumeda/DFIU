@@ -4,6 +4,7 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 
 import { getDistance, getCoordinateAtDistance } from '@/lib/geo-utils'
 import styles from '@/features/course/CourseMap.module.css'
+import type { BagKind } from './drop-bag-shared'
 
 type CrewWaypoint = {
     id: string
@@ -15,7 +16,7 @@ type CrewWaypoint = {
     has_drop_bag?: boolean | null
     crew_allowed?: boolean | null
     pacer_allowed?: boolean | null
-    bag_kind?: 'start' | 'official' | 'crew' | null
+    bag_kind?: BagKind | null
 }
 
 interface CrewMapProps {

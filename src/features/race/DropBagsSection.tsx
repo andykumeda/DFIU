@@ -11,6 +11,7 @@ import type { RunnerPacingProfile } from './runner-profile'
 import {
     getBagKind,
     getBagKindLabel,
+    getDropBagNotes,
     getDropBagTemplateForKind,
     getDropBagEditorItems,
     hasSavedBagPlan,
@@ -272,7 +273,15 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                     {bagWaypoints.map(wp => {
                         const kind = getBagKind(wp) ?? 'official'
                         const isStartBag = kind === 'start'
+                        const isFinishBag = kind === 'finish'
                         const isCrewBag = kind === 'crew'
+                        const displayName = isStartBag ? 'Start' : isFinishBag ? 'Finish' : wp.name
+                        const bagNameLabel = isStartBag ? 'Start Gear' : isFinishBag ? 'Finish Gear' : isCrewBag ? 'Crew Bag' : 'Bag Name'
+                        const identityNotes = getDropBagNotes(wp)
+                        const allItems = getWaypointItems(wp)
+                        const packedCount = allItems.filter(i => i.checked).length
+                        const cardItems = canWriteDropBags ? allItems : allItems.filter(i => i.checked)
+                        const previewItems = cardItems.slice(0, 4)
                         const hasBagPlan = hasSavedBagPlan(wp)
                         const coverageRows = getCoverageRows(wp)
                         const cardClass = isCrewBag
@@ -300,7 +309,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                                             )}
                                         </div>
                                         <h3 className="text-lg font-bold text-white mb-1 group-hover:text-orange-400 transition-colors">
-                                            {isStartBag ? 'Start' : wp.name}
+                                            {displayName}
                                         </h3>
                                         <div className="text-neutral-500 text-sm font-mono">
                                             Mile {wp.mile.toFixed(1)}
@@ -308,8 +317,8 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                                         </div>
                                     </div>
                                     <div className={`w-10 h-10 rounded-full bg-neutral-950 flex items-center justify-center border transition-colors ${isCrewBag ? 'border-emerald-900 group-hover:border-emerald-500/70' : 'border-neutral-800 group-hover:border-orange-500/50'}`}>
-                                        {isStartBag
-                                            ? <span className="text-[10px] font-bold text-emerald-300 leading-none">Start</span>
+                                        {isStartBag || isFinishBag
+                                            ? <span className="text-[10px] font-bold text-emerald-300 leading-none">{displayName}</span>
                                             : isCrewBag
                                                 ? <PackageCheck className="w-5 h-5 text-emerald-300 transition-colors" />
                                                 : <Backpack className="w-5 h-5 text-neutral-400 group-hover:text-orange-500 transition-colors" />}
@@ -356,17 +365,60 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                                         </div>
                                     )}
 
-                                    {wp.drop_bag_name && (
+                                    {(wp.drop_bag_name || identityNotes) && (
                                         <div className="mt-2 p-2 bg-neutral-950/50 rounded border border-neutral-800">
-                                            <div className="text-xs text-neutral-500 uppercase tracking-wider mb-0.5">
-                                                {isStartBag ? 'Start Gear' : isCrewBag ? 'Crew Bag' : 'Bag Name'}
+                                            {wp.drop_bag_name && (
+                                                <>
+                                                    <div className="text-xs text-neutral-500 uppercase tracking-wider mb-0.5">
+                                                        {bagNameLabel}
+                                                    </div>
+                                                    <div className="text-sm text-neutral-300 font-medium">
+                                                        {wp.drop_bag_name}
+                                                    </div>
+                                                </>
+                                            )}
+                                            {identityNotes && (
+                                                <div className={wp.drop_bag_name ? 'mt-2 border-t border-neutral-800 pt-2' : ''}>
+                                                    <div className="text-xs text-neutral-500 uppercase tracking-wider mb-0.5">
+                                                        Identifying Info
+                                                    </div>
+                                                    <div className="text-sm text-neutral-300 whitespace-pre-wrap">
+                                                        {identityNotes}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {previewItems.length > 0 && (
+                                        <div className="mt-2 p-2 bg-neutral-950/50 rounded border border-neutral-800">
+                                            <div className="mb-1.5 flex items-center justify-between gap-2 text-xs uppercase tracking-wider text-neutral-500">
+                                                <span>Checklist</span>
+                                                <span className="font-mono normal-case tracking-normal text-neutral-400">
+                                                    {canWriteDropBags ? `${packedCount}/${allItems.length} packed` : `${packedCount} packed`}
+                                                </span>
                                             </div>
-                                            <div className="text-sm text-neutral-300 font-medium">
-                                                {wp.drop_bag_name}
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {previewItems.map(item => (
+                                                    <span
+                                                        key={item.id}
+                                                        className={`rounded border px-2 py-0.5 text-xs ${item.checked
+                                                            ? 'border-orange-900/60 bg-orange-950/40 text-orange-200'
+                                                            : 'border-neutral-800 bg-neutral-900 text-neutral-400'
+                                                            }`}
+                                                    >
+                                                        {item.text}
+                                                    </span>
+                                                ))}
+                                                {cardItems.length > previewItems.length && (
+                                                    <span className="rounded border border-neutral-800 bg-neutral-900 px-2 py-0.5 text-xs text-neutral-500">
+                                                        +{cardItems.length - previewItems.length} more
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
                                     )}
-                                    <DropBagNotes waypoint={wp} className="mt-2" />
+                                    <DropBagNotes waypoint={wp} className="mt-2" showDropBagNotes={false} />
                                 </div>
                             </div>
                         )
@@ -410,7 +462,9 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                         {bagWaypoints.map(wp => {
                             const kind = getBagKind(wp) ?? 'official'
                             const isStartBag = kind === 'start'
+                            const isFinishBag = kind === 'finish'
                             const isCrewBag = kind === 'crew'
+                            const displayName = isStartBag ? 'Start' : isFinishBag ? 'Finish' : wp.name
                             const items = getWaypointItems(wp)
                             const packedItems = items.filter(i => i.checked)
                             if (!canWriteDropBags && packedItems.length === 0) return null
@@ -427,7 +481,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                                         >
                                             {isCollapsed ? <ChevronDown className="w-4 h-4 print:hidden" /> : <ChevronUp className="w-4 h-4 print:hidden" />}
                                             <span className="min-w-0 truncate text-neutral-300">
-                                                {isStartBag ? 'Start' : wp.name}
+                                                {displayName}
                                                 {wp.drop_bag_name ? ` (${wp.drop_bag_name})` : ''}
                                                 {isCrewBag ? ' · Crew bag' : ''}
                                             </span>

@@ -1,6 +1,6 @@
 import type { Waypoint } from '@/types/database'
 
-export type BagKind = 'start' | 'official' | 'crew'
+export type BagKind = 'start' | 'finish' | 'official' | 'crew'
 
 /** Older map-entered drop bag notes may live in general waypoint `notes`. */
 export function getDropBagNotes(waypoint: Pick<Waypoint, 'drop_bag_notes' | 'notes'>): string {
@@ -9,6 +9,10 @@ export function getDropBagNotes(waypoint: Pick<Waypoint, 'drop_bag_notes' | 'not
 
 export function isStartBagWaypoint(waypoint: Pick<Waypoint, 'type' | 'mile'>): boolean {
     return waypoint.type === 'start' || waypoint.mile <= 0.01
+}
+
+export function isFinishBagWaypoint(waypoint: Pick<Waypoint, 'type'>): boolean {
+    return waypoint.type === 'finish'
 }
 
 export function isOfficialDropBagWaypoint(waypoint: Pick<Waypoint, 'type' | 'has_drop_bag'>): boolean {
@@ -37,6 +41,7 @@ export function getBagKind(
     waypoint: Pick<Waypoint, 'type' | 'mile' | 'has_drop_bag' | 'crew_allowed'>
 ): BagKind | null {
     if (isStartBagWaypoint(waypoint)) return 'start'
+    if (isFinishBagWaypoint(waypoint)) return 'finish'
     if (isOfficialDropBagWaypoint(waypoint)) return 'official'
     if (isCrewBagCandidateWaypoint(waypoint)) return 'crew'
     return null
@@ -44,6 +49,7 @@ export function getBagKind(
 
 export function getBagKindLabel(kind: BagKind): string {
     if (kind === 'start') return 'Start Gear'
+    if (kind === 'finish') return 'Finish Gear'
     if (kind === 'crew') return 'Crew Bag'
     return 'Official Drop Bag'
 }
@@ -90,6 +96,13 @@ export const DEFAULT_START_BAG_TEMPLATE: DropBagTemplateItem[] = [
     { text: 'Phone / watch charged', category: 'gear' },
     { text: 'Sunscreen / anti-chafe applied', category: 'medical' },
     { text: 'Headlamp if starting in the dark', category: 'conditions' },
+]
+
+export const DEFAULT_FINISH_BAG_TEMPLATE: DropBagTemplateItem[] = [
+    { text: 'Dry clothes', category: 'gear' },
+    { text: 'Recovery shoes / sandals', category: 'gear' },
+    { text: 'Recovery drink / meal', category: 'hydration' },
+    { text: 'Warm layer', category: 'gear' },
 ]
 
 function coerceTemplateArray(raw: unknown): unknown[] {
@@ -197,12 +210,17 @@ export function getDropBagTemplateForKind(
     kind: BagKind,
     dropBagTemplate: DropBagTemplateItem[]
 ): DropBagTemplateItem[] {
-    if (kind !== 'start') return dropBagTemplate
+    const endpointTemplate = kind === 'start'
+        ? DEFAULT_START_BAG_TEMPLATE
+        : kind === 'finish'
+            ? DEFAULT_FINISH_BAG_TEMPLATE
+            : null
+    if (!endpointTemplate) return dropBagTemplate
 
     const result: DropBagTemplateItem[] = []
     const usedKeys = new Set<string>()
 
-    for (const item of [...dropBagTemplate, ...DEFAULT_START_BAG_TEMPLATE]) {
+    for (const item of [...dropBagTemplate, ...endpointTemplate]) {
         const key = itemKey(item)
         if (usedKeys.has(key)) continue
         result.push(item)

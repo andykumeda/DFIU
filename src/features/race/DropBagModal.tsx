@@ -55,13 +55,35 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], i
     const isCold = parseInt(race.avg_temp_low || '100') <= 40
     const bagKind = getBagKind(waypoint) ?? 'official'
     const isStartBag = bagKind === 'start'
+    const isFinishBag = bagKind === 'finish'
     const isCrewBag = bagKind === 'crew'
     const template = useMemo(
         () => getDropBagTemplateForKind(bagKind, parseDropBagTemplate(race.drop_bag_template)),
         [bagKind, race.drop_bag_template]
     )
-    const bagNoun = isStartBag ? 'Start Gear' : isCrewBag ? 'Crew Bag' : 'Drop Bag'
-    const bagNameLabel = isStartBag ? 'Start Gear' : isCrewBag ? 'Crew Bag' : 'Bag Name'
+    const bagNoun = isStartBag ? 'Start Gear' : isFinishBag ? 'Finish Gear' : isCrewBag ? 'Crew Bag' : 'Drop Bag'
+    const bagNameLabel = isStartBag ? 'Start Gear' : isFinishBag ? 'Finish Gear' : isCrewBag ? 'Crew Bag' : 'Bag Name'
+    const bagPlaceholder = isStartBag
+        ? 'e.g. Start line checklist'
+        : isFinishBag
+            ? 'e.g. Finish line duffel'
+            : isCrewBag
+                ? 'e.g. Crew tote or soft cooler'
+                : 'e.g. Red Salomon Bag'
+    const notesLabel = isStartBag
+        ? 'Start Notes & Instructions'
+        : isFinishBag
+            ? 'Finish Notes & Instructions'
+            : isCrewBag
+                ? 'Crew Bag Notes & Instructions'
+                : 'Drop Bag Notes & Instructions'
+    const notesPlaceholder = isStartBag
+        ? 'e.g. Final checklist before leaving the start...'
+        : isFinishBag
+            ? 'e.g. Recovery clothes, pickup plan, or post-race gear...'
+            : isCrewBag
+                ? 'e.g. Hand off ice, poles, or a dry shirt here...'
+                : 'e.g. Change shoes here, grab headlamp for next section...'
 
     useEffect(() => {
         setItems(getDropBagEditorItems(waypoint.drop_bag_items, template, { isNight, isHot, isCold }))
@@ -158,16 +180,14 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], i
                 <div className="flex justify-between items-center p-6 border-b border-neutral-800 shrink-0">
                     <div>
                         <h2 className="text-xl font-bold text-white mb-1 flex items-center gap-2">
-                            {bagName || (isStartBag ? `Start: ${waypoint.name}` : `${bagNoun}: ${waypoint.name}`)}
+                            {bagName || (isStartBag ? `Start: ${waypoint.name}` : isFinishBag ? `Finish: ${waypoint.name}` : `${bagNoun}: ${waypoint.name}`)}
                             {!canEdit && <span className="text-xs font-normal text-neutral-500">(view only)</span>}
                         </h2>
                         <div className="flex items-center gap-3 text-sm text-neutral-400">
                             <span>Mile {waypoint.mile.toFixed(1)}</span>
-                            {!isStartBag && (
-                                <span className={`px-2 py-0.5 rounded border text-xs ${isCrewBag ? 'bg-emerald-950/50 border-emerald-800 text-emerald-200' : 'bg-orange-950/40 border-orange-900/60 text-orange-200'}`}>
-                                    {getBagKindLabel(bagKind)}
-                                </span>
-                            )}
+                            <span className={`px-2 py-0.5 rounded border text-xs ${isCrewBag ? 'bg-emerald-950/50 border-emerald-800 text-emerald-200' : 'bg-orange-950/40 border-orange-900/60 text-orange-200'}`}>
+                                {getBagKindLabel(bagKind)}
+                            </span>
                             {arrivalTime && (
                                 <span className="flex items-center gap-1 bg-neutral-950 px-2 py-0.5 rounded border border-neutral-800">
                                     <Clock className="w-3.5 h-3.5" />
@@ -240,7 +260,7 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], i
                         )}
                         <div>
                             <h3 className="text-sm font-bold uppercase tracking-wider text-neutral-500 mb-2">
-                                {isStartBag ? "What's at the start" : isCrewBag ? "What's at crew handoff" : "What's inside"}
+                                {isStartBag ? "What's at the start" : isFinishBag ? "What's at the finish" : isCrewBag ? "What's at crew handoff" : "What's inside"}
                             </h3>
                             <DropBagSummary waypoint={waypoint} />
                         </div>
@@ -262,14 +282,14 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], i
 
                     <div className="bg-neutral-950/50 border border-neutral-800 rounded-xl p-4">
                         <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1.5">
-                            {isStartBag ? 'Start Gear / Identifying Info' : isCrewBag ? 'Crew Bag / Identifying Info' : 'Bag Name / Identifying Info'}
+                            {bagNameLabel} / Identifying Info
                         </label>
                         <input
                             type="text"
                             value={bagName}
                             onChange={e => setBagName(e.target.value)}
                             readOnly={!canEdit}
-                            placeholder={isStartBag ? 'e.g. Start line checklist' : isCrewBag ? 'e.g. Crew tote or soft cooler' : 'e.g. Red Salomon Bag'}
+                            placeholder={bagPlaceholder}
                             className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-white placeholder-neutral-600 focus:outline-none focus:border-orange-500 transition-colors disabled:opacity-70"
                         />
                     </div>
@@ -379,13 +399,13 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], i
                     <div className="pt-4 border-t border-neutral-800 space-y-4">
                         <div>
                             <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1.5">
-                                {isStartBag ? 'Start Notes & Instructions' : isCrewBag ? 'Crew Bag Notes & Instructions' : 'Drop Bag Notes & Instructions'}
+                                {notesLabel}
                             </label>
                             <textarea
                                 value={bagNotes}
                                 onChange={e => setBagNotes(e.target.value)}
                                 readOnly={!canEdit}
-                                placeholder={isStartBag ? 'e.g. Final checklist before leaving the start...' : isCrewBag ? 'e.g. Hand off ice, poles, or a dry shirt here...' : 'e.g. Change shoes here, grab headlamp for next section...'}
+                                placeholder={notesPlaceholder}
                                 rows={2}
                                 className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-white placeholder-neutral-600 focus:outline-none focus:border-orange-500 transition-colors resize-y"
                             />

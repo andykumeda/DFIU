@@ -1,1 +1,40 @@
 @import 'tailwindcss';
+
+@page {
+  size: letter landscape;
+  margin: 0.25in;
+}
+
+@media print {
+  html,
+  body,
+  #root {
+    background: #fff !important;
+  }
+
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .pace-print-sheet {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  .pace-print-table {
+    font-size: 7px;
+    line-height: 1.05;
+  }
+
+  .pace-print-table th,
+  .pace-print-table td {
+    padding: 2px 3px !important;
+    vertical-align: top;
+  }
+
+  .pace-print-table tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
