@@ -1552,6 +1552,8 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                 runnerProfile={userRunnerProfile}
                 canEditRunnerIdentity={isAdmin || hasOwnerMembership || isRunner}
                 canEditLive={canLogCheckins}
+                canEditLiveFeed={canEditRaceSettings}
+                onRaceUpdate={() => queryClient.invalidateQueries({ queryKey: ['race', raceId] })}
               />
             </Suspense>
           </div>
@@ -1582,6 +1584,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                         onHover={setHoveredMile}
                         highlightMile={hoveredMile ?? undefined}
                         showMileMarkers={showMileMarkers}
+                        showWaypointLabels
                         onToggleMileMarkers={() => setShowMileMarkers(!showMileMarkers)}
                         totalDistance={course?.total_distance_miles || 0}
                         highlightElevation={hoveredMile != null && sampledProfile.length > 0 ? (() => {

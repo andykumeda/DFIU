@@ -49,6 +49,7 @@ interface CourseMapProps {
     }[]
     onTerrainNodeClick?: (id: string) => void
     showMileMarkers?: boolean
+    showWaypointLabels?: boolean
     onToggleMileMarkers?: () => void
     highlightElevation?: number | null
     totalDistance?: number
@@ -73,6 +74,7 @@ export function CourseMap({
     terrainNodes = [],
     onTerrainNodeClick,
     showMileMarkers = false,
+    showWaypointLabels = false,
     onToggleMileMarkers,
     highlightElevation,
     totalDistance,
@@ -773,6 +775,87 @@ export function CourseMap({
             markersRef.current = []
         }
     }, [waypoints, mapLoaded, coordinates, terrainNodes, isTerrainMode, highlightedWaypointId, canMoveWaypoints])
+
+    // Waypoint labels for the main Map view. This uses a Mapbox symbol layer
+    // so labels do not catch marker clicks and can avoid each other naturally.
+    useEffect(() => {
+        if (!map.current || !styleLoaded) return
+
+        const m = map.current
+        const sourceId = 'waypoint-labels'
+        const layerId = 'waypoint-labels-text'
+        const removeLabels = () => {
+            if (m.getLayer(layerId)) m.removeLayer(layerId)
+            if (m.getSource(sourceId)) m.removeSource(sourceId)
+        }
+
+        if (!showWaypointLabels || isTerrainMode || waypoints.length === 0) {
+            removeLabels()
+            return
+        }
+
+        const groups: typeof waypoints[] = []
+        waypoints.forEach(wp => {
+            const existingGroup = groups.find(g =>
+                Math.abs(g[0].lat - wp.lat) < 0.0001 &&
+                Math.abs(g[0].lon - wp.lon) < 0.0001
+            )
+            if (existingGroup) existingGroup.push(wp)
+            else groups.push([wp])
+        })
+
+        const labelData: GeoJSON.FeatureCollection<GeoJSON.Point, { label: string }> = {
+            type: 'FeatureCollection',
+            features: groups.map(group => {
+                group.sort((a, b) => a.mile - b.mile)
+                const primaryWp = group[0]
+                const label = group.length === 1
+                    ? primaryWp.name
+                    : group.map(wp => wp.name).join(' / ')
+                return {
+                    type: 'Feature',
+                    properties: { label },
+                    geometry: {
+                        type: 'Point',
+                        coordinates: [primaryWp.lon, primaryWp.lat],
+                    },
+                }
+            }),
+        }
+
+        if (m.getSource(sourceId)) {
+            (m.getSource(sourceId) as mapboxgl.GeoJSONSource).setData(labelData)
+            return
+        }
+
+        m.addSource(sourceId, { type: 'geojson', data: labelData })
+        const layer: mapboxgl.SymbolLayerSpecification = {
+            id: layerId,
+            type: 'symbol',
+            source: sourceId,
+            layout: {
+                'text-field': ['get', 'label'],
+                'text-size': 11,
+                'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
+                'text-variable-anchor': ['top', 'bottom', 'left', 'right', 'top-left', 'top-right', 'bottom-left', 'bottom-right'],
+                'text-radial-offset': 1.55,
+                'text-justify': 'auto',
+                'text-max-width': 10,
+                'text-allow-overlap': false,
+                'text-ignore-placement': false,
+                'text-optional': true,
+            },
+            paint: {
+                'text-color': '#f8fafc',
+                'text-halo-color': '#111827',
+                'text-halo-width': 1.4,
+                'text-halo-blur': 0.4,
+            },
+        }
+        m.addLayer(layer)
+
+        return removeLabels
+    }, [showWaypointLabels, styleLoaded, waypoints, isTerrainMode])
 
     // Terrain Selection Visuals (Markers & Line)
     useEffect(() => {

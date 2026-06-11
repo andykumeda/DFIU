@@ -299,6 +299,15 @@ ${body}
                                                 value={link.url}
                                                 onChange={e => updateLink(link.id, { url: e.target.value })}
                                             />
+                                            {link.id === 'tracking_url' && (
+                                                <input
+                                                    type="text"
+                                                    className="w-full bg-neutral-950 border border-neutral-800 rounded px-3 py-2 text-sm text-white placeholder-neutral-700 focus:ring-1 focus:ring-blue-500 outline-none"
+                                                    placeholder="Embed URL"
+                                                    value={link.embed_url ?? ''}
+                                                    onChange={e => updateLink(link.id, { embed_url: e.target.value })}
+                                                />
+                                            )}
                                             {link.hasDate && (
                                                 <div className="grid grid-cols-[1fr_96px] gap-2">
                                                     <input

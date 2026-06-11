@@ -11,6 +11,7 @@ export interface ResourceLinkEntry {
     id: string
     label: string
     url: string
+    embed_url?: string
     datetime: string | null
     icon: ResourceIconId
     enabled: boolean
@@ -90,6 +91,7 @@ export function parseResourcesConfig(raw: unknown, race: Race): ResourcesConfig 
                 id: link.id,
                 label: typeof link.label === 'string' && link.label.trim() ? link.label.trim() : (builtin?.label ?? 'Link'),
                 url: typeof link.url === 'string' ? link.url : (builtin?.url ?? ''),
+                embed_url: typeof link.embed_url === 'string' ? link.embed_url : '',
                 datetime: typeof link.datetime === 'string' ? link.datetime : (builtin?.datetime ?? null),
                 icon: (link.icon as ResourceIconId) in RESOURCE_ICON_MAP ? link.icon as ResourceIconId : (builtin?.icon ?? 'link'),
                 enabled: typeof link.enabled === 'boolean' ? link.enabled : true,

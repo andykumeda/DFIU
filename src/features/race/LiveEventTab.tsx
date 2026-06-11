@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
     CheckCircle2,
+    ChevronDown,
+    ChevronRight,
+    Edit2,
     ExternalLink,
     MapPin,
     Plus,
@@ -19,7 +22,7 @@ import { usePacePlans, computePlanMinutes } from './usePacePlans'
 import { useRunnerCheckins } from './useRunnerCheckins'
 import { calculatePacePlan, type ActualCheckin, type PacePlanResult } from './pace-utils'
 import { DEFAULT_RUNNER_PROFILE, type RunnerPacingProfile } from './runner-profile'
-import { parseResourcesConfig } from './resources-shared'
+import { parseResourcesConfig, resourcesConfigToRacePatch } from './resources-shared'
 import { getBagKind, hasSavedBagPlan } from './drop-bag-shared'
 import {
     formatDurationInput,
@@ -36,6 +39,8 @@ import {
 } from './race-day-utils'
 import type {
     Course,
+    Database,
+    Json,
     Race,
     RaceLiveConfig,
     RaceLiveFollowedRunner,
@@ -54,6 +59,8 @@ interface LiveEventTabProps {
     runnerProfile: RunnerPacingProfile
     canEditRunnerIdentity: boolean
     canEditLive: boolean
+    canEditLiveFeed: boolean
+    onRaceUpdate: () => void | Promise<void>
 }
 
 type NewFollowerDraft = {
@@ -79,6 +86,8 @@ export function LiveEventTab({
     runnerProfile,
     canEditRunnerIdentity,
     canEditLive,
+    canEditLiveFeed,
+    onRaceUpdate,
 }: LiveEventTabProps) {
     const { profile } = useAuth() as { profile: { name?: string | null } | null }
     const { plans } = usePacePlans(raceId)
@@ -102,6 +111,10 @@ export function LiveEventTab({
     const [newFollower, setNewFollower] = useState<NewFollowerDraft>({ name: '', bibNumber: '', finishTime: '24:00' })
     const [followerDrafts, setFollowerDrafts] = useState<Record<string, NewFollowerDraft>>({})
     const [arrivalDrafts, setArrivalDrafts] = useState<Record<string, DateTimeDraft & { waypointId: string }>>({})
+    const [expandedFollowerIds, setExpandedFollowerIds] = useState<Set<string>>(() => new Set())
+    const [isEditingFeed, setIsEditingFeed] = useState(false)
+    const [isSavingFeed, setIsSavingFeed] = useState(false)
+    const [feedDraft, setFeedDraft] = useState({ url: '', embedUrl: '' })
 
     useEffect(() => {
         const t = window.setInterval(() => setNow(Date.now()), 60_000)
@@ -192,8 +205,12 @@ export function LiveEventTab({
     const nextWaypoint = useMemo(() => {
         return [...waypoints].sort((a, b) => a.mile - b.mile).find(w => w.mile > predictedMile + 0.05) ?? null
     }, [waypoints, predictedMile])
-    const trackingUrl = useMemo(() => getLiveTrackingUrl(race), [race])
-    const trackingEmbedUrl = useMemo(() => trackingUrl ? getEmbeddableLiveUrl(trackingUrl) : null, [trackingUrl])
+    const liveTracking = useMemo(() => getLiveTrackingResource(race), [race])
+    const trackingUrl = liveTracking?.url ?? null
+    const trackingEmbedUrl = useMemo(() => {
+        if (!liveTracking) return null
+        return (liveTracking.embedUrl ? getEmbeddableLiveUrl(liveTracking.embedUrl) : null) ?? getEmbeddableLiveUrl(liveTracking.url)
+    }, [liveTracking])
 
     const lastCheckin = checkins.length > 0 ? checkins[checkins.length - 1] : null
     const lastCheckinWaypoint = lastCheckin ? waypoints.find(w => w.id === lastCheckin.waypoint_id) : null
@@ -256,6 +273,65 @@ export function LiveEventTab({
             toast.success('Live runner updated')
         } catch (err) {
             toast.error(`Save failed: ${err instanceof Error ? err.message : 'unknown'}`)
+        }
+    }
+
+    const startEditingFeed = () => {
+        setFeedDraft({
+            url: trackingUrl ?? '',
+            embedUrl: liveTracking?.embedUrl ?? '',
+        })
+        setIsEditingFeed(true)
+    }
+
+    const saveLiveFeed = async () => {
+        if (!canEditLiveFeed) return
+        const url = feedDraft.url.trim()
+        const embedUrl = feedDraft.embedUrl.trim()
+        const normalizedUrl = url ? normalizeHttpUrl(url) : ''
+        const normalizedEmbedUrl = embedUrl ? normalizeHttpUrl(embedUrl) : ''
+        if (url && !normalizedUrl) {
+            toast.error('Enter a valid feed URL')
+            return
+        }
+        if (embedUrl && !normalizedEmbedUrl) {
+            toast.error('Enter a valid embed URL')
+            return
+        }
+
+        setIsSavingFeed(true)
+        try {
+            const config = parseResourcesConfig(race.resources_config, race)
+            const nextLinks = config.links.map(link => {
+                if (link.id !== 'tracking_url') return link
+                return {
+                    ...link,
+                    url: normalizedUrl || '',
+                    embed_url: normalizedEmbedUrl || '',
+                    enabled: !!normalizedUrl,
+                }
+            })
+            const nextConfig = { ...config, links: nextLinks }
+            const legacyPatch = resourcesConfigToRacePatch(nextConfig)
+
+            const racePatch: Database['public']['Tables']['races']['Update'] = {
+                ...legacyPatch,
+                resources_config: nextConfig as unknown as Json,
+            }
+
+            const { error } = await supabase
+                .from('races')
+                .update(racePatch)
+                .eq('id', race.id)
+
+            if (error) throw error
+            await onRaceUpdate()
+            setIsEditingFeed(false)
+            toast.success('Live feed updated')
+        } catch (err) {
+            toast.error(`Save failed: ${err instanceof Error ? err.message : 'unknown'}`)
+        } finally {
+            setIsSavingFeed(false)
         }
     }
 
@@ -351,6 +427,17 @@ export function LiveEventTab({
         }
     }
 
+    const toggleFollowerAidStations = (runnerId: string) => {
+        setExpandedFollowerIds(prev => {
+            const next = new Set(prev)
+            if (next.has(runnerId)) next.delete(runnerId)
+            else next.add(runnerId)
+            return next
+        })
+    }
+
+    const showLiveFeedPanel = isEditingFeed || !!trackingUrl
+
     return (
         <div className='max-w-6xl mx-auto p-4 md:p-6 space-y-5 text-white'>
             <section className='border border-neutral-800 bg-neutral-900 rounded-lg p-4 md:p-5'>
@@ -432,25 +519,69 @@ export function LiveEventTab({
                 )}
             </section>
 
-            <div className='grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(22rem,32rem)]'>
+            <div className={`grid grid-cols-1 gap-5 ${showLiveFeedPanel ? 'xl:grid-cols-[minmax(0,1fr)_minmax(22rem,32rem)]' : ''}`}>
+                {showLiveFeedPanel && (
                 <section className='border border-neutral-800 bg-neutral-900 rounded-lg overflow-hidden'>
                     <div className='flex items-center justify-between gap-3 border-b border-neutral-800 px-4 py-3'>
                         <div className='flex items-center gap-2'>
                             <Radio className='h-4 w-4 text-red-300' />
                             <h2 className='text-sm font-semibold'>Live Update Feed</h2>
                         </div>
-                        {trackingUrl && (
-                            <a href={trackingUrl} target='_blank' rel='noopener noreferrer' className='inline-flex items-center gap-1.5 rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-200 hover:bg-neutral-800'>
-                                <ExternalLink className='h-3.5 w-3.5' />
-                                Open
-                            </a>
-                        )}
+                        <div className='flex items-center gap-2'>
+                            {canEditLiveFeed && (
+                                <button
+                                    type='button'
+                                    onClick={isEditingFeed ? () => setIsEditingFeed(false) : startEditingFeed}
+                                    className='inline-flex items-center gap-1.5 rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-200 hover:bg-neutral-800'
+                                >
+                                    {isEditingFeed ? <X className='h-3.5 w-3.5' /> : <Edit2 className='h-3.5 w-3.5' />}
+                                    {isEditingFeed ? 'Cancel' : 'Edit'}
+                                </button>
+                            )}
+                            {trackingUrl && (
+                                <a href={trackingUrl} target='_blank' rel='noopener noreferrer' className='inline-flex items-center gap-1.5 rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-200 hover:bg-neutral-800'>
+                                    <ExternalLink className='h-3.5 w-3.5' />
+                                    Open
+                                </a>
+                            )}
+                        </div>
                     </div>
+                    {isEditingFeed && canEditLiveFeed && (
+                        <div className='grid gap-2 border-b border-neutral-800 bg-neutral-950/50 px-4 py-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end'>
+                            <label className='block text-sm'>
+                                <span className='text-xs text-neutral-400'>Feed URL</span>
+                                <input
+                                    value={feedDraft.url}
+                                    onChange={e => setFeedDraft(prev => ({ ...prev, url: e.target.value }))}
+                                    className='mt-1 w-full rounded border border-neutral-700 bg-neutral-950 px-3 py-2 text-white outline-none focus:border-blue-500'
+                                />
+                            </label>
+                            <label className='block text-sm'>
+                                <span className='text-xs text-neutral-400'>Embed URL</span>
+                                <input
+                                    value={feedDraft.embedUrl}
+                                    onChange={e => setFeedDraft(prev => ({ ...prev, embedUrl: e.target.value }))}
+                                    className='mt-1 w-full rounded border border-neutral-700 bg-neutral-950 px-3 py-2 text-white outline-none focus:border-blue-500'
+                                />
+                            </label>
+                            <button
+                                type='button'
+                                onClick={saveLiveFeed}
+                                disabled={isSavingFeed}
+                                className='inline-flex items-center justify-center gap-2 rounded bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60'
+                            >
+                                <Save className='h-4 w-4' />
+                                {isSavingFeed ? 'Saving...' : 'Save'}
+                            </button>
+                        </div>
+                    )}
                     {trackingEmbedUrl ? (
                         <iframe
                             title={`${race.name} live update feed`}
                             src={trackingEmbedUrl}
                             className='h-[420px] w-full bg-white md:h-[560px]'
+                            allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share'
+                            allowFullScreen
                             sandbox='allow-forms allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts'
                         />
                     ) : trackingUrl ? (
@@ -471,6 +602,7 @@ export function LiveEventTab({
                         </div>
                     )}
                 </section>
+                )}
 
                 <section className='border border-neutral-800 bg-neutral-900 rounded-lg overflow-hidden'>
                     <div className='flex items-center justify-between border-b border-neutral-800 px-4 py-3'>
@@ -478,7 +610,19 @@ export function LiveEventTab({
                             <MapPin className='h-4 w-4 text-amber-300' />
                             <h2 className='text-sm font-semibold'>Runner Location</h2>
                         </div>
-                        <span className='text-xs text-neutral-500'>{course?.total_distance_miles?.toFixed(1) ?? '--'} mi</span>
+                        <div className='flex items-center gap-2'>
+                            {canEditLiveFeed && !showLiveFeedPanel && (
+                                <button
+                                    type='button'
+                                    onClick={startEditingFeed}
+                                    className='inline-flex items-center gap-1.5 rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-200 hover:bg-neutral-800'
+                                >
+                                    <Plus className='h-3.5 w-3.5' />
+                                    Add feed
+                                </button>
+                            )}
+                            <span className='text-xs text-neutral-500'>{course?.total_distance_miles?.toFixed(1) ?? '--'} mi</span>
+                        </div>
                     </div>
                     <div className='h-[420px] md:h-[560px]'>
                         <CrewMap
@@ -552,6 +696,7 @@ export function LiveEventTab({
                             const draft = getFollowerDraft(item.runner)
                             const defaultWaypointId = item.nextArrival?.waypointId ?? waypoints[0]?.id ?? ''
                             const arrivalDraft = getArrivalDraft(item.runner.id, defaultWaypointId)
+                            const aidStationsExpanded = expandedFollowerIds.has(item.runner.id)
                             const checkinsByWaypoint = new Map(
                                 followedCheckins
                                     .filter(c => c.followed_runner_id === item.runner.id)
@@ -631,90 +776,107 @@ export function LiveEventTab({
                                         </div>
                                     )}
 
-                                    {canEditLive && waypoints.length > 0 && (
-                                        <div className='mt-4 grid gap-2 md:grid-cols-[minmax(0,1fr)_9rem_8rem_auto] md:items-end'>
-                                            <label className='block text-sm'>
-                                                <span className='text-xs text-neutral-500'>Arrival aid station</span>
-                                                <select
-                                                    value={arrivalDraft.waypointId}
-                                                    onChange={e => updateArrivalDraft(item.runner.id, defaultWaypointId, { waypointId: e.target.value })}
-                                                    className='mt-1 w-full rounded border border-neutral-700 bg-neutral-900 px-2 py-2 text-white outline-none focus:border-blue-500'
-                                                >
-                                                    {waypoints.map(wp => (
-                                                        <option key={wp.id} value={wp.id}>{wp.name} - mile {wp.mile.toFixed(1)}</option>
-                                                    ))}
-                                                </select>
-                                            </label>
-                                            <label className='block text-sm'>
-                                                <span className='text-xs text-neutral-500'>Date</span>
-                                                <input
-                                                    type='date'
-                                                    value={arrivalDraft.date}
-                                                    onChange={e => updateArrivalDraft(item.runner.id, defaultWaypointId, { date: e.target.value })}
-                                                    className='mt-1 w-full rounded border border-neutral-700 bg-neutral-900 px-2 py-2 text-white outline-none focus:border-blue-500'
-                                                />
-                                            </label>
-                                            <label className='block text-sm'>
-                                                <span className='text-xs text-neutral-500'>Time</span>
-                                                <input
-                                                    type='time'
-                                                    value={arrivalDraft.time}
-                                                    onChange={e => updateArrivalDraft(item.runner.id, defaultWaypointId, { time: e.target.value })}
-                                                    className='mt-1 w-full rounded border border-neutral-700 bg-neutral-900 px-2 py-2 text-white outline-none focus:border-blue-500'
-                                                />
-                                            </label>
-                                            <button onClick={() => submitFollowerArrival(item.runner.id, defaultWaypointId)} className='inline-flex items-center justify-center gap-2 rounded bg-emerald-600 px-3 py-2 font-semibold hover:bg-emerald-500'>
-                                                <CheckCircle2 className='h-4 w-4' />
-                                                Log
-                                            </button>
+                                    <button
+                                        type='button'
+                                        onClick={() => toggleFollowerAidStations(item.runner.id)}
+                                        className='mt-4 flex w-full items-center justify-between rounded border border-neutral-800 bg-neutral-900 px-3 py-2 text-left text-sm font-semibold text-neutral-100 hover:bg-neutral-800'
+                                        aria-expanded={aidStationsExpanded}
+                                    >
+                                        <span>Aid stations</span>
+                                        <span className='flex items-center gap-2 text-xs text-neutral-400'>
+                                            {item.plan?.waypointArrivals.length ?? 0} stops
+                                            {aidStationsExpanded ? <ChevronDown className='h-4 w-4' /> : <ChevronRight className='h-4 w-4' />}
+                                        </span>
+                                    </button>
+
+                                    {aidStationsExpanded && (
+                                        <div className='mt-3'>
+                                            {canEditLive && waypoints.length > 0 && (
+                                                <div className='grid gap-2 md:grid-cols-[minmax(0,1fr)_9rem_8rem_auto] md:items-end'>
+                                                    <label className='block text-sm'>
+                                                        <span className='text-xs text-neutral-500'>Arrival aid station</span>
+                                                        <select
+                                                            value={arrivalDraft.waypointId}
+                                                            onChange={e => updateArrivalDraft(item.runner.id, defaultWaypointId, { waypointId: e.target.value })}
+                                                            className='mt-1 w-full rounded border border-neutral-700 bg-neutral-900 px-2 py-2 text-white outline-none focus:border-blue-500'
+                                                        >
+                                                            {waypoints.map(wp => (
+                                                                <option key={wp.id} value={wp.id}>{wp.name} - mile {wp.mile.toFixed(1)}</option>
+                                                            ))}
+                                                        </select>
+                                                    </label>
+                                                    <label className='block text-sm'>
+                                                        <span className='text-xs text-neutral-500'>Date</span>
+                                                        <input
+                                                            type='date'
+                                                            value={arrivalDraft.date}
+                                                            onChange={e => updateArrivalDraft(item.runner.id, defaultWaypointId, { date: e.target.value })}
+                                                            className='mt-1 w-full rounded border border-neutral-700 bg-neutral-900 px-2 py-2 text-white outline-none focus:border-blue-500'
+                                                        />
+                                                    </label>
+                                                    <label className='block text-sm'>
+                                                        <span className='text-xs text-neutral-500'>Time</span>
+                                                        <input
+                                                            type='time'
+                                                            value={arrivalDraft.time}
+                                                            onChange={e => updateArrivalDraft(item.runner.id, defaultWaypointId, { time: e.target.value })}
+                                                            className='mt-1 w-full rounded border border-neutral-700 bg-neutral-900 px-2 py-2 text-white outline-none focus:border-blue-500'
+                                                        />
+                                                    </label>
+                                                    <button onClick={() => submitFollowerArrival(item.runner.id, defaultWaypointId)} className='inline-flex items-center justify-center gap-2 rounded bg-emerald-600 px-3 py-2 font-semibold hover:bg-emerald-500'>
+                                                        <CheckCircle2 className='h-4 w-4' />
+                                                        Log
+                                                    </button>
+                                                </div>
+                                            )}
+
+                                            <div className='mt-4 overflow-x-auto'>
+                                                <table className='min-w-full text-left text-sm'>
+                                                    <thead className='text-xs uppercase text-neutral-500'>
+                                                        <tr>
+                                                            <th className='whitespace-nowrap py-2 pr-4 font-medium'>Aid station</th>
+                                                            <th className='whitespace-nowrap py-2 pr-4 font-medium'>Mile</th>
+                                                            <th className='whitespace-nowrap py-2 pr-4 font-medium'>ETA</th>
+                                                            <th className='whitespace-nowrap py-2 pr-4 font-medium'>Actual</th>
+                                                            {canEditLive && <th className='py-2 font-medium'></th>}
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className='divide-y divide-neutral-800'>
+                                                        {(item.plan?.waypointArrivals ?? []).map(arrival => {
+                                                            const actual = checkinsByWaypoint.get(arrival.waypointId)
+                                                            return (
+                                                                <tr key={arrival.waypointId}>
+                                                                    <td className='whitespace-nowrap py-2 pr-4 text-neutral-100'>{arrival.name}</td>
+                                                                    <td className='whitespace-nowrap py-2 pr-4 text-neutral-400'>{arrival.mile.toFixed(1)}</td>
+                                                                    <td className='whitespace-nowrap py-2 pr-4 font-mono text-emerald-200'>{arrival.timeOfDay}</td>
+                                                                    <td className='whitespace-nowrap py-2 pr-4 text-neutral-300'>{actual ? formatRaceTime(actual.arrived_at, race.timezone, clock24h) : '--'}</td>
+                                                                    {canEditLive && (
+                                                                        <td className='py-2 text-right'>
+                                                                            {actual && (
+                                                                                <button
+                                                                                    onClick={async () => {
+                                                                                        try {
+                                                                                            await deleteFollowedCheckin(item.runner.id, arrival.waypointId)
+                                                                                            toast.success('Arrival cleared')
+                                                                                        } catch (err) {
+                                                                                            toast.error(`Clear failed: ${err instanceof Error ? err.message : 'unknown'}`)
+                                                                                        }
+                                                                                    }}
+                                                                                    className='rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-400 hover:bg-neutral-800 hover:text-white'
+                                                                                >
+                                                                                    Clear
+                                                                                </button>
+                                                                            )}
+                                                                        </td>
+                                                                    )}
+                                                                </tr>
+                                                            )
+                                                        })}
+                                                    </tbody>
+                                                </table>
+                                            </div>
                                         </div>
                                     )}
-
-                                    <div className='mt-4 overflow-x-auto'>
-                                        <table className='min-w-full text-left text-sm'>
-                                            <thead className='text-xs uppercase text-neutral-500'>
-                                                <tr>
-                                                    <th className='whitespace-nowrap py-2 pr-4 font-medium'>Aid station</th>
-                                                    <th className='whitespace-nowrap py-2 pr-4 font-medium'>Mile</th>
-                                                    <th className='whitespace-nowrap py-2 pr-4 font-medium'>ETA</th>
-                                                    <th className='whitespace-nowrap py-2 pr-4 font-medium'>Actual</th>
-                                                    {canEditLive && <th className='py-2 font-medium'></th>}
-                                                </tr>
-                                            </thead>
-                                            <tbody className='divide-y divide-neutral-800'>
-                                                {(item.plan?.waypointArrivals ?? []).map(arrival => {
-                                                    const actual = checkinsByWaypoint.get(arrival.waypointId)
-                                                    return (
-                                                        <tr key={arrival.waypointId}>
-                                                            <td className='whitespace-nowrap py-2 pr-4 text-neutral-100'>{arrival.name}</td>
-                                                            <td className='whitespace-nowrap py-2 pr-4 text-neutral-400'>{arrival.mile.toFixed(1)}</td>
-                                                            <td className='whitespace-nowrap py-2 pr-4 font-mono text-emerald-200'>{arrival.timeOfDay}</td>
-                                                            <td className='whitespace-nowrap py-2 pr-4 text-neutral-300'>{actual ? formatRaceTime(actual.arrived_at, race.timezone, clock24h) : '--'}</td>
-                                                            {canEditLive && (
-                                                                <td className='py-2 text-right'>
-                                                                    {actual && (
-                                                                        <button
-                                                                            onClick={async () => {
-                                                                                try {
-                                                                                    await deleteFollowedCheckin(item.runner.id, arrival.waypointId)
-                                                                                    toast.success('Arrival cleared')
-                                                                                } catch (err) {
-                                                                                    toast.error(`Clear failed: ${err instanceof Error ? err.message : 'unknown'}`)
-                                                                                }
-                                                                            }}
-                                                                            className='rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-400 hover:bg-neutral-800 hover:text-white'
-                                                                        >
-                                                                            Clear
-                                                                        </button>
-                                                                    )}
-                                                                </td>
-                                                            )}
-                                                        </tr>
-                                                    )
-                                                })}
-                                            </tbody>
-                                        </table>
-                                    </div>
                                 </article>
                             )
                         })}
@@ -739,10 +901,15 @@ function StatusTile({ label, value, tone = 'neutral' }: { label: string; value: 
     )
 }
 
-function getLiveTrackingUrl(race: Race): string | null {
+function getLiveTrackingResource(race: Race): { url: string; embedUrl: string | null } | null {
     const config = parseResourcesConfig(race.resources_config, race)
     const tracking = config.links.find(link => link.id === 'tracking_url' && link.enabled && link.url.trim())
-    return normalizeHttpUrl(tracking?.url || race.tracking_url)
+    const url = normalizeHttpUrl(tracking?.url || race.tracking_url)
+    if (!url) return null
+    return {
+        url,
+        embedUrl: normalizeHttpUrl(tracking?.embed_url),
+    }
 }
 
 function normalizeHttpUrl(value: string | null | undefined): string | null {
@@ -765,6 +932,10 @@ function getEmbeddableLiveUrl(value: string): string | null {
         }
         if (host === 'youtube.com' || host === 'm.youtube.com') {
             if (url.pathname.startsWith('/embed/')) return url.href
+            const channelId = url.pathname.match(/^\/channel\/(UC[a-zA-Z0-9_-]+)(?:\/|$)/)?.[1]
+            if (channelId && url.pathname.endsWith('/streams')) {
+                return `https://www.youtube-nocookie.com/embed/live_stream?channel=${channelId}`
+            }
             const videoId = url.searchParams.get('v')
             if (videoId) return `https://www.youtube-nocookie.com/embed/${videoId}`
             return null
