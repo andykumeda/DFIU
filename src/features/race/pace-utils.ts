@@ -48,6 +48,33 @@ export interface PacePlanResult {
     }[]
 }
 
+const PACE_CHART_WAYPOINT_TYPES = new Set([
+    'start',
+    'finish',
+    'aid_station',
+    'drop_bag',
+    'water_only',
+    'medical',
+    'crew',
+    'pacer',
+])
+
+export function isPaceChartWaypoint(
+    waypoint: Pick<Waypoint, 'type' | 'has_drop_bag' | 'crew_allowed' | 'pacer_allowed'>
+): boolean {
+    return PACE_CHART_WAYPOINT_TYPES.has(waypoint.type) ||
+        !!waypoint.has_drop_bag ||
+        !!waypoint.crew_allowed ||
+        !!waypoint.pacer_allowed
+}
+
+export function usesAidStationDefaultDelay(
+    waypoint: Pick<Waypoint, 'type' | 'has_drop_bag' | 'crew_allowed' | 'pacer_allowed'>
+): boolean {
+    if (waypoint.type === 'start' || waypoint.type === 'finish' || waypoint.type === 'landmark') return false
+    return isPaceChartWaypoint(waypoint)
+}
+
 /**
  * Minetti's energy cost formula for running (J/kg/m) based on gradient (rise/run)
  */
@@ -322,7 +349,7 @@ export function calculatePacePlan(
         let d = wp.delay
         if (d === null || d === undefined) {
             // No explicit per-waypoint override → use the race's default for aid stations.
-            if (wp.type === 'aid_station') d = aidStationDefaultDelay
+            if (usesAidStationDefaultDelay(wp)) d = aidStationDefaultDelay
             else d = 0
         }
 

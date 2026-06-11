@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 
 @page {
-  size: letter landscape;
+  size: letter portrait;
   margin: 0.25in;
 }
 
@@ -18,6 +18,9 @@
   }
 
   .pace-print-sheet {
+    display: inline-block;
+    max-width: 100%;
+    width: fit-content;
     break-after: avoid;
     page-break-after: avoid;
   }
@@ -25,12 +28,20 @@
   .pace-print-table {
     font-size: 7px;
     line-height: 1.05;
+    table-layout: auto !important;
+    width: auto !important;
   }
 
   .pace-print-table th,
   .pace-print-table td {
     padding: 2px 3px !important;
     vertical-align: top;
+  }
+
+  .pace-print-table th:first-child,
+  .pace-print-table td:first-child {
+    max-width: 1.35in;
+    min-width: 0.9in;
   }
 
   .pace-print-table tr {

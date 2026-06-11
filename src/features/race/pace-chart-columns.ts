@@ -20,8 +20,8 @@ export interface PaceChartColumnDef {
 export const PACE_CHART_COLUMNS: PaceChartColumnDef[] = [
     { id: 'location', label: 'Location', shortLabel: 'Location', align: 'left' },
     { id: 'mile', label: 'Mile', shortLabel: 'Mi', align: 'left' },
-    { id: 'segMile', label: 'Seg Mile', shortLabel: 'Seg Mi', align: 'left' },
-    { id: 'segmentTime', label: 'Segment Time', shortLabel: 'Seg Time', align: 'right' },
+    { id: 'segMile', label: 'Miles to Next', shortLabel: 'Next Mi', align: 'left' },
+    { id: 'segmentTime', label: 'Time to Next', shortLabel: 'Next Time', align: 'right' },
     { id: 'stopTime', label: 'Stop', shortLabel: 'Stop', align: 'right' },
     { id: 'clockTime', label: 'Clock Time', shortLabel: 'Clock', align: 'right' },
     { id: 'elapsedTime', label: 'Elapsed Time', shortLabel: 'Elapsed', align: 'right' },
@@ -81,7 +81,7 @@ export function getPaceChartColumnLabel(config: PaceChartColumnsConfig, id: Pace
 
     const col = PACE_CHART_COLUMNS.find(c => c.id === id)
     if (id === 'mile') return isKm ? 'Km' : 'Mile'
-    if (id === 'segMile') return `Seg ${isKm ? 'Km' : 'Mile'}`
+    if (id === 'segMile') return isKm ? 'Km to Next' : 'Miles to Next'
     return col?.label ?? id
 }
 

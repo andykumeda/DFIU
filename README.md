@@ -64,8 +64,9 @@ segment pace = base pace × grade × terrain × conditions × runner profile
   descending, flats, technical, night, heat, cold, altitude, surfaces, and overall
   pacing style) nudge each segment — strong gives time back, weak costs more. The
   combined profile effect is capped so it can't dominate the physics.
-- **Aid-station time:** Each aid station adds a stop duration (default 2 minutes) to your
-  elapsed time.
+- **Aid-station time:** Each support stop (aid station, water-only stop, crew/pacer,
+  drop bag, or medical point) adds a stop duration (default 2 minutes) to your elapsed
+  time.
 
 Because it solves backward from your goal time, the chart answers *"what pace plan gets
 me to my goal on this course?"* rather than predicting a finish time from your ability.
