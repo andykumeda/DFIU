@@ -50,8 +50,8 @@
 
   .pace-print-sheet {
     display: block;
-    max-width: none;
-    width: 100%;
+    max-width: 100%;
+    width: fit-content;
     background: #fff !important;
     color: #000 !important;
     break-after: avoid;
@@ -69,10 +69,12 @@
   }
 
   .pace-print-table {
-    font-size: 7px;
-    line-height: 1.05;
+    border-collapse: collapse !important;
+    font-size: 6.4px;
+    line-height: 1;
     table-layout: auto !important;
-    width: 100% !important;
+    width: auto !important;
+    max-width: 100% !important;
   }
 
   .pace-print-table thead,
@@ -84,14 +86,49 @@
 
   .pace-print-table th,
   .pace-print-table td {
-    padding: 2px 3px !important;
+    padding: 1px 2px !important;
     vertical-align: top;
+    white-space: nowrap;
   }
 
-  .pace-print-table th:first-child,
-  .pace-print-table td:first-child {
-    max-width: 1.35in;
-    min-width: 0.9in;
+  .pace-print-table [data-pace-print-col="location"] {
+    max-width: 1.15in;
+    min-width: 0.95in;
+    width: 1.15in;
+    white-space: normal;
+  }
+
+  .pace-print-table [data-pace-print-col="mile"] {
+    width: 0.34in;
+  }
+
+  .pace-print-table [data-pace-print-col="segMile"] {
+    width: 0.45in;
+  }
+
+  .pace-print-table [data-pace-print-col="segmentTime"] {
+    width: 0.48in;
+  }
+
+  .pace-print-table [data-pace-print-col="stopTime"] {
+    width: 0.32in;
+  }
+
+  .pace-print-table [data-pace-print-col="clockTime"] {
+    width: 0.55in;
+  }
+
+  .pace-print-table [data-pace-print-col="elapsedTime"] {
+    width: 0.45in;
+  }
+
+  .pace-print-table [data-pace-print-col="segmentPace"],
+  .pace-print-table [data-pace-print-col="overallPace"] {
+    width: 0.46in;
+  }
+
+  .pace-print-table [data-pace-print-col="cutoffTime"] {
+    width: 0.5in;
   }
 
   .pace-print-table tr {

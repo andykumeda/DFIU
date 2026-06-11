@@ -310,6 +310,7 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
     ) => {
         const align = colId === 'location' ? '' : 'text-right'
         const base = `px-6 py-4 print:px-1 print:py-0.5 print:text-[7px] print:leading-tight font-mono ${align}`
+        const printColProps = { 'data-pace-print-col': colId }
 
         switch (colId) {
             case 'location': {
@@ -322,7 +323,7 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                     ...(wp?.pacer_allowed ? ['pacer'] : []),
                 ]
                 return (
-                    <td key={colId} className="px-6 py-4 print:px-1 print:py-0.5 print:align-top">
+                    <td key={colId} {...printColProps} className="px-6 py-4 print:px-1 print:py-0.5 print:align-top">
                         <div className="font-medium text-white print:text-black flex items-center gap-2 print:block print:leading-tight">
                             <span className="print:block print:break-words">
                                 {displayName}
@@ -364,19 +365,19 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
             }
             case 'mile':
                 return (
-                    <td key={colId} className={`${base} text-neutral-300 print:text-neutral-800`}>
+                    <td key={colId} {...printColProps} className={`${base} text-neutral-300 print:text-neutral-800`}>
                         {(isKm ? displayMile * 1.60934 : displayMile).toFixed(2)}
                     </td>
                 )
             case 'segMile':
                 return (
-                    <td key={colId} className={`${base} text-neutral-400 print:text-neutral-600`}>
+                    <td key={colId} {...printColProps} className={`${base} text-neutral-400 print:text-neutral-600`}>
                         {nextArrival ? (isKm ? nextArrival.segmentMile * 1.60934 : nextArrival.segmentMile).toFixed(2) : '—'}
                     </td>
                 )
             case 'segmentTime':
                 return (
-                    <td key={colId} className={`${base} text-neutral-400 print:text-neutral-600`}>
+                    <td key={colId} {...printColProps} className={`${base} text-neutral-400 print:text-neutral-600`}>
                         {nextArrival?.segmentTime ?? '—'}
                     </td>
                 )
@@ -384,12 +385,12 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                 const isAid = !!wp && usesAidStationDefaultDelay(wp)
                 const hasOverride = !!wp && wp.delay !== null && wp.delay !== undefined
                 if (!wp || (!isAid && !hasOverride)) {
-                    return <td key={colId} className={`${base} text-neutral-600`}>—</td>
+                    return <td key={colId} {...printColProps} className={`${base} text-neutral-600`}>—</td>
                 }
                 const effective = hasOverride ? (wp.delay as number) : runnerProfile.aidStationDefaultDelay
                 const editable = canEdit && !!onUpdateWaypointDelay
                 return (
-                    <td key={colId} className={`${base} text-neutral-300 print:text-neutral-600`}>
+                    <td key={colId} {...printColProps} className={`${base} text-neutral-300 print:text-neutral-600`}>
                         {editable ? (
                             <div className="flex items-center justify-end gap-1">
                                 <button
@@ -419,31 +420,31 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
             }
             case 'clockTime':
                 return (
-                    <td key={colId} className={`${base} font-semibold ${currentStrategy.timeText}`}>
+                    <td key={colId} {...printColProps} className={`${base} font-semibold ${currentStrategy.timeText}`}>
                         {arrival.timeOfDay}
                     </td>
                 )
             case 'elapsedTime':
                 return (
-                    <td key={colId} className={`${base} font-semibold ${currentStrategy.timeText}`}>
+                    <td key={colId} {...printColProps} className={`${base} font-semibold ${currentStrategy.timeText}`}>
                         {Math.floor(arrival.arrivalTime / 60)}:{Math.floor(arrival.arrivalTime % 60).toString().padStart(2, '0')}
                     </td>
                 )
             case 'segmentPace':
                 return (
-                    <td key={colId} className={`${base} text-neutral-400 print:text-neutral-600`}>
+                    <td key={colId} {...printColProps} className={`${base} text-neutral-400 print:text-neutral-600`}>
                         {formatPace(arrival.segmentPace)}
                     </td>
                 )
             case 'overallPace':
                 return (
-                    <td key={colId} className={`${base} text-neutral-400 print:text-neutral-600`}>
+                    <td key={colId} {...printColProps} className={`${base} text-neutral-400 print:text-neutral-600`}>
                         {formatPace(arrival.overallPace)}
                     </td>
                 )
             case 'cutoffTime':
                 return (
-                    <td key={colId} className={`${base} text-red-400 print:text-red-700 font-semibold max-w-[120px] truncate`} title={arrival.cutoffTime}>
+                    <td key={colId} {...printColProps} className={`${base} text-red-400 print:text-red-700 font-semibold max-w-[120px] truncate`} title={arrival.cutoffTime}>
                         {arrival.cutoffTime || '--'}
                     </td>
                 )
@@ -660,9 +661,11 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                                             {visibleColumns.map(col => (
                                                 <th
                                                     key={col.id}
+                                                    data-pace-print-col={col.id}
                                                     className={`px-6 py-3 print:px-1 print:py-0.5 print:whitespace-normal ${col.align === 'right' ? 'text-right' : ''}`}
                                                 >
-                                                    {col.label}
+                                                    <span className="print:hidden">{col.label}</span>
+                                                    <span className="hidden print:inline">{plans.paceChartColumns.labels?.[col.id] ? col.label : col.shortLabel}</span>
                                                 </th>
                                             ))}
                                         </tr>
