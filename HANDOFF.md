@@ -1,12 +1,17 @@
 # Handoff Document
 
 **Date:** 2026-06-11
-**Status:** Drop Bags start-card template and modal next-resource context built, linted, smoke-tested, and dirty-deployed.
-**Active task:** Commit/push the Drop Bags template/context update; run a clean post-commit deploy so the footer hash is clean.
+**Status:** Event deletion fix implemented, production DB migrated, linted, and dirty-deployed.
+**Active task:** Commit/push the event deletion fix; run a clean post-commit deploy so the footer hash is clean.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change in this repo. Commit, branch, and document discipline is required to prevent the lost-work confusion that motivated this reconciliation.
 
 ## 2026-06-11 Clone duplicate and event home follow-up
+
+- **Event deletion troubleshooting started:** working on `/Users/andy/Dev/DFIU` branch `main`, tracking `origin/main`, from clean commit `3a4887f`. Additional worktree remains at `/Users/andy/.codex/worktrees/9dfe/DFIU` on `codex/fix-vite-chunk-deploy`; it is not part of this task.
+- **Event deletion fix:** race deletion now goes through a new owner-checked `delete_race` Supabase RPC instead of relying on direct client deletion and legacy FK cascades. The RPC clears official clone source links, deletes check-ins, terrain nodes, waypoints, courses, runner locations, pace plans, pending invites, memberships, and then the race. The edit modal now treats deletion as an async operation with a disabled/deleting state and only receives a delete handler for true owners/site admins, not every edit-capable member.
+- **Production DB migration for event deletion:** Supabase project `nyjgyyuoscgekavheeqi` has migrations `20260611034918 delete_race_rpc` and `20260611035326 delete_race_rpc_hardening` applied.
+- **Validation/deploy for event deletion:** schema reference audit found no additional client-known dependent tables beyond the cleanup set. `git diff --check`, `npm run build`, and `npm run lint` passed; lint reported 38 existing warnings and no errors. `npm run deploy` passed from dirty hash `3a4887f-dirty` and deployed `/var/www/dfiu/assets/index-DbNgjNus.js`. Destructive in-browser delete smoke was not run because it would require a sacrificial production event owned by the signed-in test user.
 
 - **Drop Bags modal/resource context follow-up started:** working on `/Users/andy/Dev/DFIU` branch `main`, tracking `origin/main`, from clean commit `df9bcae`. Additional worktree remains at `/Users/andy/.codex/worktrees/9dfe/DFIU` on `codex/fix-vite-chunk-deploy`; it is not part of this task.
 - **Drop Bags start/template and modal coverage update:** start bags now combine the race-level drop-bag template with start-specific checklist items, so the start card/modal includes template items like other bag points while retaining start essentials. Drop Bags cards now show distance and Plan A duration to the next aid and next bag/crew point, and the same coverage rows render inside `DropBagModal` for the selected bag, including Start.

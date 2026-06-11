@@ -9,11 +9,12 @@ interface EditRaceModalProps {
     race: Race
     onClose: () => void
     onUpdate: (updatedRace: Race) => void
-    onDelete?: () => void
+    onDelete?: () => void | Promise<void>
 }
 
 export function EditRaceModal({ race, onClose, onUpdate, onDelete }: EditRaceModalProps) {
     const [isLoading, setIsLoading] = useState(false)
+    const [isDeleting, setIsDeleting] = useState(false)
     const [formData, setFormData] = useState({
         name: race.name,
         location: race.location || '',
@@ -85,6 +86,18 @@ export function EditRaceModal({ race, onClose, onUpdate, onDelete }: EditRaceMod
             alert('Failed to update race')
         } finally {
             setIsLoading(false)
+        }
+    }
+
+    const handleDelete = async () => {
+        if (!onDelete) return
+        if (!confirm('Are you sure you want to delete this race? This cannot be undone.')) return
+
+        setIsDeleting(true)
+        try {
+            await onDelete()
+        } finally {
+            setIsDeleting(false)
         }
     }
 
@@ -297,19 +310,16 @@ export function EditRaceModal({ race, onClose, onUpdate, onDelete }: EditRaceMod
                         {onDelete && (
                             <button
                                 type="button"
-                                onClick={() => {
-                                    if (confirm('Are you sure you want to delete this race? This cannot be undone.')) {
-                                        onDelete()
-                                    }
-                                }}
+                                onClick={handleDelete}
+                                disabled={isLoading || isDeleting}
                                 style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}
                             >
-                                Delete Race
+                                {isDeleting ? 'Deleting...' : 'Delete Race'}
                             </button>
                         )}
                         <div style={{ display: 'flex', gap: '1rem' }}>
-                            <button type="button" onClick={onClose} className={styles.cancelBtn}>Cancel</button>
-                            <button type="submit" disabled={isLoading} className={styles.saveBtn}>
+                            <button type="button" onClick={onClose} disabled={isDeleting} className={styles.cancelBtn}>Cancel</button>
+                            <button type="submit" disabled={isLoading || isDeleting} className={styles.saveBtn}>
                                 {isLoading ? 'Saving...' : 'Save Changes'}
                             </button>
                         </div>

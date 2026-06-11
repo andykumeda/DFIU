@@ -248,6 +248,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     canEdit,
     canEditRaceSettings,
     isAdmin,
+    isOwner: canDeleteRace,
     canManageTeam,
     availableRoleViews,
   } = usePermission(raceId, race?.race_director_user_id)
@@ -1453,23 +1454,19 @@ export function RaceDetail({ raceId }: { raceId: string }) {
           onUpdate={() => {
             queryClient.invalidateQueries({ queryKey: ['race', raceId] })
           }}
-          onDelete={async () => {
+          onDelete={canDeleteRace ? async () => {
             try {
-              // Delete everything related to this race
-              // Supabase should handle cascade if configured, but let's be safe usually
-              // Assuming cascade is ON for race_id foreign keys, which is standard.
-              // If not, we'd need to delete courses, waypoints, etc. first.
-              // Let's assume simplest path: delete race.
-              const { error } = await supabase.from('races').delete().eq('id', race.id)
+              const { error } = await supabase.rpc('delete_race', { p_race_id: race.id })
               if (error) throw error
 
-              // Redirect to dashboard
-              window.location.href = '/dashboard'
+              await refreshMemberships?.()
+              await queryClient.invalidateQueries({ queryKey: ['races'] })
+              navigate('/dashboard', { replace: true })
             } catch (err) {
               console.error('Failed to delete race:', err)
-              alert('Failed to delete race. Please try again.')
+              alert(`Failed to delete race: ${getErrorMessage(err)}`)
             }
-          }}
+          } : undefined}
         />
       )}
 

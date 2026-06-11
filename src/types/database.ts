@@ -636,6 +636,7 @@ export type Database = {
     }
     Functions: {
       clone_race: { Args: { p_race_id: string }; Returns: string }
+      delete_race: { Args: { p_race_id: string }; Returns: void }
       find_user_by_email: {
         Args: { p_email: string }
         Returns: {
