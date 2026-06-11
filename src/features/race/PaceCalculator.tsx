@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent } from 'react'
 import { toast } from 'react-hot-toast'
 import { Course, Race, TerrainNode, Waypoint } from '@/types/database'
 import { calculatePacePlan, isPaceChartWaypoint, type PacePlanResult, usesAidStationDefaultDelay } from './pace-utils'
@@ -58,6 +58,19 @@ const strategyColors: Record<StrategyMode, {
         timeText: 'text-red-300 print:text-red-800',
         button: 'bg-red-600 hover:bg-red-500 shadow-red-900/20',
     },
+}
+
+const PACE_PRINT_COLUMN_WEIGHTS: Record<PaceChartColumnId, number> = {
+    location: 24,
+    mile: 7,
+    segMile: 8,
+    segmentTime: 8.5,
+    stopTime: 5,
+    clockTime: 10,
+    elapsedTime: 8.5,
+    segmentPace: 8.5,
+    overallPace: 8.5,
+    cutoffTime: 12,
 }
 
 export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h = false, unitsDistance = 'miles', runnerProfile, onUpdateWaypointDelay }: PaceCalculatorProps) {
@@ -206,6 +219,10 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
     }
 
     const visibleColumns = getVisiblePaceChartColumns(plans.paceChartColumns, isKm)
+    const printColumnWeightTotal = visibleColumns.reduce((sum, col) => sum + PACE_PRINT_COLUMN_WEIGHTS[col.id], 0)
+    const getPrintColumnStyle = (id: PaceChartColumnId) => ({
+        '--pace-print-width': `${(PACE_PRINT_COLUMN_WEIGHTS[id] / printColumnWeightTotal) * 100}%`,
+    }) as CSSProperties
 
     // Anyone (including public viewers) can reorder/hide columns. For editors
     // the change is persisted to the race; for viewers it stays local to their
@@ -654,6 +671,15 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                                 style={{ overflowY: 'clip' }}
                             >
                                 <table className="pace-print-table w-full text-sm text-left print:w-auto print:table-auto print:text-[7px] print:leading-tight">
+                                    <colgroup>
+                                        {visibleColumns.map(col => (
+                                            <col
+                                                key={col.id}
+                                                data-pace-print-col={col.id}
+                                                style={getPrintColumnStyle(col.id)}
+                                            />
+                                        ))}
+                                    </colgroup>
                                     <thead
                                         className="bg-neutral-950 text-neutral-400 print:bg-neutral-100 print:text-black uppercase text-xs font-semibold sticky top-0 z-10 print:static shadow-sm shadow-neutral-950 print:text-[6px] print:tracking-normal"
                                     >

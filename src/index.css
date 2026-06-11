@@ -19,13 +19,17 @@
     print-color-adjust: exact;
   }
 
-  body:has(.pace-print-sheet) {
+  body:has(.pace-print-sheet),
+  body:has(.drop-bags-print-sheet) {
     margin: 0 !important;
   }
 
   body:has(.pace-print-sheet) header,
   body:has(.pace-print-sheet) nav,
-  body:has(.pace-print-sheet) .print\:hidden {
+  body:has(.pace-print-sheet) .print\:hidden,
+  body:has(.drop-bags-print-sheet) header,
+  body:has(.drop-bags-print-sheet) nav,
+  body:has(.drop-bags-print-sheet) .print\:hidden {
     display: none !important;
   }
 
@@ -34,16 +38,24 @@
   body:has(.pace-print-sheet) main,
   body:has(.pace-print-sheet) .min-h-screen,
   body:has(.pace-print-sheet) [class*="bg-neutral-"],
-  body:has(.pace-print-sheet) [class*="bg-black"] {
+  body:has(.pace-print-sheet) [class*="bg-black"],
+  body:has(.drop-bags-print-sheet) #root,
+  body:has(.drop-bags-print-sheet) #root > *,
+  body:has(.drop-bags-print-sheet) main,
+  body:has(.drop-bags-print-sheet) .min-h-screen,
+  body:has(.drop-bags-print-sheet) [class*="bg-neutral-"],
+  body:has(.drop-bags-print-sheet) [class*="bg-black"] {
     background: #fff !important;
     background-color: #fff !important;
   }
 
-  body:has(.pace-print-sheet) main {
+  body:has(.pace-print-sheet) main,
+  body:has(.drop-bags-print-sheet) main {
     padding: 0 !important;
   }
 
-  body:has(.pace-print-sheet) * {
+  body:has(.pace-print-sheet) *,
+  body:has(.drop-bags-print-sheet) * {
     box-shadow: none !important;
     text-shadow: none !important;
   }
@@ -51,7 +63,7 @@
   .pace-print-sheet {
     display: block;
     max-width: 100%;
-    width: fit-content;
+    width: 100%;
     background: #fff !important;
     color: #000 !important;
     break-after: avoid;
@@ -70,11 +82,15 @@
 
   .pace-print-table {
     border-collapse: collapse !important;
-    font-size: 6.4px;
-    line-height: 1;
-    table-layout: auto !important;
-    width: auto !important;
+    font-size: 8px;
+    line-height: 1.08;
+    table-layout: fixed !important;
+    width: 100% !important;
     max-width: 100% !important;
+  }
+
+  .pace-print-table col {
+    width: var(--pace-print-width);
   }
 
   .pace-print-table thead,
@@ -86,52 +102,46 @@
 
   .pace-print-table th,
   .pace-print-table td {
-    padding: 1px 2px !important;
+    padding: 2px 3px !important;
     vertical-align: top;
     white-space: nowrap;
   }
 
   .pace-print-table [data-pace-print-col="location"] {
-    max-width: 1.15in;
-    min-width: 0.95in;
-    width: 1.15in;
     white-space: normal;
   }
 
-  .pace-print-table [data-pace-print-col="mile"] {
-    width: 0.34in;
-  }
-
-  .pace-print-table [data-pace-print-col="segMile"] {
-    width: 0.45in;
-  }
-
-  .pace-print-table [data-pace-print-col="segmentTime"] {
-    width: 0.48in;
-  }
-
-  .pace-print-table [data-pace-print-col="stopTime"] {
-    width: 0.32in;
-  }
-
-  .pace-print-table [data-pace-print-col="clockTime"] {
-    width: 0.55in;
-  }
-
-  .pace-print-table [data-pace-print-col="elapsedTime"] {
-    width: 0.45in;
-  }
-
-  .pace-print-table [data-pace-print-col="segmentPace"],
-  .pace-print-table [data-pace-print-col="overallPace"] {
-    width: 0.46in;
-  }
-
-  .pace-print-table [data-pace-print-col="cutoffTime"] {
-    width: 0.5in;
-  }
-
   .pace-print-table tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .drop-bags-print-sheet {
+    display: block;
+    max-width: 100%;
+    width: 100%;
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  .drop-bags-print-sheet,
+  .drop-bags-print-sheet * {
+    color: #000 !important;
+  }
+
+  .drop-bags-print-sheet [class*="bg-neutral-"],
+  .drop-bags-print-sheet [class*="bg-emerald-"],
+  .drop-bags-print-sheet [class*="bg-orange-"],
+  .drop-bags-print-sheet [class*="bg-black"] {
+    background: transparent !important;
+    background-color: transparent !important;
+  }
+
+  .drop-bags-print-sheet h3 {
+    border-bottom-color: #d1d5db !important;
+  }
+
+  .drop-bags-print-sheet li {
     break-inside: avoid;
     page-break-inside: avoid;
   }

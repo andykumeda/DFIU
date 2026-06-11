@@ -343,7 +343,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
             </div>
 
             {/* Side Panel */}
-            <div className={`w-full shrink-0 print:w-full print:block ${isSidePanelOpen ? 'lg:w-80' : 'lg:w-auto'}`}>
+            <div className={`drop-bags-print-sheet w-full shrink-0 print:w-full print:block ${isSidePanelOpen ? 'lg:w-80' : 'lg:w-auto'}`}>
                 <div className="bg-neutral-900 border border-neutral-800 rounded-xl sticky top-24 overflow-hidden print:border-none print:bg-transparent">
                     <button
                         onClick={() => setIsSidePanelOpen(!isSidePanelOpen)}
