@@ -41,7 +41,7 @@ export const RESOURCE_ICON_MAP: Record<ResourceIconId, LucideIcon> = {
 const BUILTIN_RESOURCES: Array<{
     id: string
     label: string
-    urlKey: keyof Race
+    urlKey?: keyof Race
     dateKey?: 'briefing_datetime' | 'packet_pickup_datetime'
     icon: ResourceIconId
 }> = [
@@ -52,6 +52,7 @@ const BUILTIN_RESOURCES: Array<{
     { id: 'media_url', label: 'Media / Photos', urlKey: 'media_url', icon: 'camera' },
     { id: 'entrants_url', label: 'Entrants List', urlKey: 'entrants_url', icon: 'users' },
     { id: 'tracking_url', label: 'Live Tracking', urlKey: 'tracking_url', icon: 'radio' },
+    { id: 'live_results_url', label: 'Live Results', icon: 'trophy' },
 ]
 
 export function buildDefaultResourcesConfig(race: Race): ResourcesConfig {
@@ -59,7 +60,7 @@ export function buildDefaultResourcesConfig(race: Race): ResourcesConfig {
         links: BUILTIN_RESOURCES.map(def => ({
             id: def.id,
             label: def.label,
-            url: (race[def.urlKey] as string | null) || '',
+            url: def.urlKey ? (race[def.urlKey] as string | null) || '' : '',
             datetime: def.dateKey ? (race[def.dateKey] as string | null) : null,
             icon: def.icon,
             enabled: true,

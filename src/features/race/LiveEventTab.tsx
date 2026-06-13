@@ -76,6 +76,15 @@ type FollowedRunnerPlan = {
     nextArrival: PacePlanResult['waypointArrivals'][number] | null
 }
 
+type LiveFeedItem = {
+    id: 'stream' | 'results'
+    title: string
+    openLabel: string
+    url: string
+    embedUrl: string | null
+    iframeTitle: string
+}
+
 export function LiveEventTab({
     raceId,
     race,
@@ -114,7 +123,7 @@ export function LiveEventTab({
     const [expandedFollowerIds, setExpandedFollowerIds] = useState<Set<string>>(() => new Set())
     const [isEditingFeed, setIsEditingFeed] = useState(false)
     const [isSavingFeed, setIsSavingFeed] = useState(false)
-    const [feedDraft, setFeedDraft] = useState({ url: '', embedUrl: '' })
+    const [feedDraft, setFeedDraft] = useState({ url: '', embedUrl: '', resultsUrl: '', resultsEmbedUrl: '' })
 
     useEffect(() => {
         const t = window.setInterval(() => setNow(Date.now()), 60_000)
@@ -206,11 +215,17 @@ export function LiveEventTab({
         return [...waypoints].sort((a, b) => a.mile - b.mile).find(w => w.mile > predictedMile + 0.05) ?? null
     }, [waypoints, predictedMile])
     const liveTracking = useMemo(() => getLiveTrackingResource(race), [race])
+    const liveResults = useMemo(() => getLiveResultsResource(race), [race])
     const trackingUrl = liveTracking?.url ?? null
+    const liveResultsUrl = liveResults?.url ?? null
     const trackingEmbedUrl = useMemo(() => {
         if (!liveTracking) return null
         return (liveTracking.embedUrl ? getEmbeddableLiveUrl(liveTracking.embedUrl) : null) ?? getEmbeddableLiveUrl(liveTracking.url)
     }, [liveTracking])
+    const liveResultsEmbedUrl = useMemo(() => {
+        if (!liveResults) return null
+        return (liveResults.embedUrl ? getEmbeddableLiveUrl(liveResults.embedUrl) : null) ?? getEmbeddableLiveUrl(liveResults.url)
+    }, [liveResults])
 
     const lastCheckin = checkins.length > 0 ? checkins[checkins.length - 1] : null
     const lastCheckinWaypoint = lastCheckin ? waypoints.find(w => w.id === lastCheckin.waypoint_id) : null
@@ -280,6 +295,8 @@ export function LiveEventTab({
         setFeedDraft({
             url: trackingUrl ?? '',
             embedUrl: liveTracking?.embedUrl ?? '',
+            resultsUrl: liveResultsUrl ?? '',
+            resultsEmbedUrl: liveResults?.embedUrl ?? '',
         })
         setIsEditingFeed(true)
     }
@@ -288,14 +305,26 @@ export function LiveEventTab({
         if (!canEditLiveFeed) return
         const url = feedDraft.url.trim()
         const embedUrl = feedDraft.embedUrl.trim()
+        const resultsUrl = feedDraft.resultsUrl.trim()
+        const resultsEmbedUrl = feedDraft.resultsEmbedUrl.trim()
         const normalizedUrl = url ? normalizeHttpUrl(url) : ''
         const normalizedEmbedUrl = embedUrl ? normalizeHttpUrl(embedUrl) : ''
+        const normalizedResultsUrl = resultsUrl ? normalizeHttpUrl(resultsUrl) : ''
+        const normalizedResultsEmbedUrl = resultsEmbedUrl ? normalizeHttpUrl(resultsEmbedUrl) : ''
         if (url && !normalizedUrl) {
-            toast.error('Enter a valid feed URL')
+            toast.error('Enter a valid stream URL')
             return
         }
         if (embedUrl && !normalizedEmbedUrl) {
-            toast.error('Enter a valid embed URL')
+            toast.error('Enter a valid stream embed URL')
+            return
+        }
+        if (resultsUrl && !normalizedResultsUrl) {
+            toast.error('Enter a valid results URL')
+            return
+        }
+        if (resultsEmbedUrl && !normalizedResultsEmbedUrl) {
+            toast.error('Enter a valid results embed URL')
             return
         }
 
@@ -303,13 +332,23 @@ export function LiveEventTab({
         try {
             const config = parseResourcesConfig(race.resources_config, race)
             const nextLinks = config.links.map(link => {
-                if (link.id !== 'tracking_url') return link
-                return {
-                    ...link,
-                    url: normalizedUrl || '',
-                    embed_url: normalizedEmbedUrl || '',
-                    enabled: !!normalizedUrl,
+                if (link.id === 'tracking_url') {
+                    return {
+                        ...link,
+                        url: normalizedUrl || '',
+                        embed_url: normalizedEmbedUrl || '',
+                        enabled: !!normalizedUrl,
+                    }
                 }
+                if (link.id === 'live_results_url') {
+                    return {
+                        ...link,
+                        url: normalizedResultsUrl || '',
+                        embed_url: normalizedResultsEmbedUrl || '',
+                        enabled: !!normalizedResultsUrl,
+                    }
+                }
+                return link
             })
             const nextConfig = { ...config, links: nextLinks }
             const legacyPatch = resourcesConfigToRacePatch(nextConfig)
@@ -436,7 +475,32 @@ export function LiveEventTab({
         })
     }
 
-    const showLiveFeedPanel = isEditingFeed || !!trackingUrl
+    const liveFeedItems: LiveFeedItem[] = []
+    if (trackingUrl) {
+        liveFeedItems.push({
+            id: 'stream',
+            title: 'Live Stream',
+            openLabel: 'Open stream',
+            url: trackingUrl,
+            embedUrl: trackingEmbedUrl,
+            iframeTitle: `${race.name} live stream`,
+        })
+    }
+    if (liveResultsUrl) {
+        liveFeedItems.push({
+            id: 'results',
+            title: 'Live Results',
+            openLabel: 'Open results',
+            url: liveResultsUrl,
+            embedUrl: liveResultsEmbedUrl,
+            iframeTitle: `${race.name} live results`,
+        })
+    }
+    const showLiveFeedPanel = isEditingFeed || liveFeedItems.length > 0
+    const showMultipleLiveFeeds = liveFeedItems.length > 1
+    const liveAndMapGridClass = showMultipleLiveFeeds
+        ? 'grid grid-cols-1 gap-5'
+        : `grid grid-cols-1 gap-5 ${showLiveFeedPanel ? 'xl:grid-cols-[minmax(0,1fr)_minmax(22rem,32rem)]' : ''}`
 
     return (
         <div className='max-w-6xl mx-auto p-4 md:p-6 space-y-5 text-white'>
@@ -519,15 +583,15 @@ export function LiveEventTab({
                 )}
             </section>
 
-            <div className={`grid grid-cols-1 gap-5 ${showLiveFeedPanel ? 'xl:grid-cols-[minmax(0,1fr)_minmax(22rem,32rem)]' : ''}`}>
+            <div className={liveAndMapGridClass}>
                 {showLiveFeedPanel && (
                 <section className='border border-neutral-800 bg-neutral-900 rounded-lg overflow-hidden'>
-                    <div className='flex items-center justify-between gap-3 border-b border-neutral-800 px-4 py-3'>
+                    <div className='flex flex-col gap-3 border-b border-neutral-800 px-4 py-3 sm:flex-row sm:items-center sm:justify-between'>
                         <div className='flex items-center gap-2'>
                             <Radio className='h-4 w-4 text-red-300' />
-                            <h2 className='text-sm font-semibold'>Live Update Feed</h2>
+                            <h2 className='text-sm font-semibold'>Live Updates</h2>
                         </div>
-                        <div className='flex items-center gap-2'>
+                        <div className='flex flex-wrap items-center gap-2'>
                             {canEditLiveFeed && (
                                 <button
                                     type='button'
@@ -538,18 +602,18 @@ export function LiveEventTab({
                                     {isEditingFeed ? 'Cancel' : 'Edit'}
                                 </button>
                             )}
-                            {trackingUrl && (
-                                <a href={trackingUrl} target='_blank' rel='noopener noreferrer' className='inline-flex items-center gap-1.5 rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-200 hover:bg-neutral-800'>
+                            {liveFeedItems.map(item => (
+                                <a key={item.id} href={item.url} target='_blank' rel='noopener noreferrer' className='inline-flex items-center gap-1.5 rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-200 hover:bg-neutral-800'>
                                     <ExternalLink className='h-3.5 w-3.5' />
-                                    Open
+                                    {item.openLabel}
                                 </a>
-                            )}
+                            ))}
                         </div>
                     </div>
                     {isEditingFeed && canEditLiveFeed && (
-                        <div className='grid gap-2 border-b border-neutral-800 bg-neutral-950/50 px-4 py-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end'>
+                        <div className='grid gap-2 border-b border-neutral-800 bg-neutral-950/50 px-4 py-3 md:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end'>
                             <label className='block text-sm'>
-                                <span className='text-xs text-neutral-400'>Feed URL</span>
+                                <span className='text-xs text-neutral-400'>Stream URL</span>
                                 <input
                                     value={feedDraft.url}
                                     onChange={e => setFeedDraft(prev => ({ ...prev, url: e.target.value }))}
@@ -557,10 +621,26 @@ export function LiveEventTab({
                                 />
                             </label>
                             <label className='block text-sm'>
-                                <span className='text-xs text-neutral-400'>Embed URL</span>
+                                <span className='text-xs text-neutral-400'>Stream embed URL</span>
                                 <input
                                     value={feedDraft.embedUrl}
                                     onChange={e => setFeedDraft(prev => ({ ...prev, embedUrl: e.target.value }))}
+                                    className='mt-1 w-full rounded border border-neutral-700 bg-neutral-950 px-3 py-2 text-white outline-none focus:border-blue-500'
+                                />
+                            </label>
+                            <label className='block text-sm'>
+                                <span className='text-xs text-neutral-400'>Results URL</span>
+                                <input
+                                    value={feedDraft.resultsUrl}
+                                    onChange={e => setFeedDraft(prev => ({ ...prev, resultsUrl: e.target.value }))}
+                                    className='mt-1 w-full rounded border border-neutral-700 bg-neutral-950 px-3 py-2 text-white outline-none focus:border-blue-500'
+                                />
+                            </label>
+                            <label className='block text-sm'>
+                                <span className='text-xs text-neutral-400'>Results embed URL</span>
+                                <input
+                                    value={feedDraft.resultsEmbedUrl}
+                                    onChange={e => setFeedDraft(prev => ({ ...prev, resultsEmbedUrl: e.target.value }))}
                                     className='mt-1 w-full rounded border border-neutral-700 bg-neutral-950 px-3 py-2 text-white outline-none focus:border-blue-500'
                                 />
                             </label>
@@ -568,37 +648,22 @@ export function LiveEventTab({
                                 type='button'
                                 onClick={saveLiveFeed}
                                 disabled={isSavingFeed}
-                                className='inline-flex items-center justify-center gap-2 rounded bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60'
+                                className='inline-flex items-center justify-center gap-2 rounded bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60 md:col-span-2 lg:col-span-1'
                             >
                                 <Save className='h-4 w-4' />
                                 {isSavingFeed ? 'Saving...' : 'Save'}
                             </button>
                         </div>
                     )}
-                    {trackingEmbedUrl ? (
-                        <iframe
-                            title={`${race.name} live update feed`}
-                            src={trackingEmbedUrl}
-                            className='h-[420px] w-full bg-white md:h-[560px]'
-                            allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share'
-                            allowFullScreen
-                            sandbox='allow-forms allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts'
-                        />
-                    ) : trackingUrl ? (
-                        <div className='flex h-[220px] items-center justify-center px-4 text-center md:h-[320px]'>
-                            <a
-                                href={trackingUrl}
-                                target='_blank'
-                                rel='noopener noreferrer'
-                                className='inline-flex items-center gap-2 rounded bg-red-600 px-4 py-3 text-sm font-semibold text-white hover:bg-red-500'
-                            >
-                                <ExternalLink className='h-4 w-4' />
-                                Open Live Stream
-                            </a>
+                    {liveFeedItems.length > 0 ? (
+                        <div className={showMultipleLiveFeeds ? 'grid grid-cols-1 gap-3 p-3 xl:grid-cols-2' : ''}>
+                            {liveFeedItems.map(item => (
+                                <LiveFeedFrame key={item.id} item={item} showHeading={showMultipleLiveFeeds} />
+                            ))}
                         </div>
                     ) : (
                         <div className='flex h-[220px] items-center justify-center px-4 text-center text-sm text-neutral-400'>
-                            No live tracking resource is configured for this event.
+                            No live resources are configured for this event.
                         </div>
                     )}
                 </section>
@@ -887,6 +952,43 @@ export function LiveEventTab({
     )
 }
 
+function LiveFeedFrame({ item, showHeading }: { item: LiveFeedItem; showHeading: boolean }) {
+    const content = item.embedUrl ? (
+        <iframe
+            title={item.iframeTitle}
+            src={item.embedUrl}
+            className='h-[420px] w-full bg-white md:h-[560px]'
+            allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share'
+            allowFullScreen
+            referrerPolicy='strict-origin-when-cross-origin'
+            sandbox='allow-forms allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts'
+        />
+    ) : (
+        <div className='flex h-[220px] items-center justify-center px-4 text-center md:h-[320px]'>
+            <a
+                href={item.url}
+                target='_blank'
+                rel='noopener noreferrer'
+                className='inline-flex items-center gap-2 rounded bg-red-600 px-4 py-3 text-sm font-semibold text-white hover:bg-red-500'
+            >
+                <ExternalLink className='h-4 w-4' />
+                {item.openLabel}
+            </a>
+        </div>
+    )
+
+    if (!showHeading) return content
+
+    return (
+        <div className='overflow-hidden rounded border border-neutral-800 bg-neutral-950'>
+            <div className='border-b border-neutral-800 px-3 py-2 text-xs font-semibold uppercase text-neutral-400'>
+                {item.title}
+            </div>
+            {content}
+        </div>
+    )
+}
+
 function StatusTile({ label, value, tone = 'neutral' }: { label: string; value: string; tone?: 'neutral' | 'green' | 'amber' }) {
     const toneClass = tone === 'green'
         ? 'text-emerald-200'
@@ -902,13 +1004,21 @@ function StatusTile({ label, value, tone = 'neutral' }: { label: string; value: 
 }
 
 function getLiveTrackingResource(race: Race): { url: string; embedUrl: string | null } | null {
+    return getLiveResource(race, 'tracking_url', race.tracking_url)
+}
+
+function getLiveResultsResource(race: Race): { url: string; embedUrl: string | null } | null {
+    return getLiveResource(race, 'live_results_url')
+}
+
+function getLiveResource(race: Race, resourceId: string, fallbackUrl?: string | null): { url: string; embedUrl: string | null } | null {
     const config = parseResourcesConfig(race.resources_config, race)
-    const tracking = config.links.find(link => link.id === 'tracking_url' && link.enabled && link.url.trim())
-    const url = normalizeHttpUrl(tracking?.url || race.tracking_url)
+    const resource = config.links.find(link => link.id === resourceId && link.enabled && link.url.trim())
+    const url = normalizeHttpUrl(resource?.url || fallbackUrl)
     if (!url) return null
     return {
         url,
-        embedUrl: normalizeHttpUrl(tracking?.embed_url),
+        embedUrl: normalizeHttpUrl(resource?.embed_url),
     }
 }
 

@@ -299,7 +299,7 @@ ${body}
                                                 value={link.url}
                                                 onChange={e => updateLink(link.id, { url: e.target.value })}
                                             />
-                                            {link.id === 'tracking_url' && (
+                                            {(link.id === 'tracking_url' || link.id === 'live_results_url') && (
                                                 <input
                                                     type="text"
                                                     className="w-full bg-neutral-950 border border-neutral-800 rounded px-3 py-2 text-sm text-white placeholder-neutral-700 focus:ring-1 focus:ring-blue-500 outline-none"
