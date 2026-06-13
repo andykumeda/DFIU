@@ -1,8 +1,8 @@
 # Handoff Document
 
 **Date:** 2026-06-13
-**Status:** Live Results embed support implemented, production data configured, built/linted, and dirty-deployed from `988eb6c-dirty`; product commit and clean deploy pending.
-**Active task:** Commit the Live Results embed work, run the clean post-commit deploy, then push `main`.
+**Status:** Live Results embed support implemented, production data configured, committed as `0327a49`, and clean-deployed.
+**Active task:** Commit this handoff closeout, then push `main`.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change in this repo. Commit, branch, and document discipline is required to prevent the lost-work confusion that motivated this reconciliation.
 
@@ -13,6 +13,7 @@
 - **Live Results implementation:** Resources now include a JSON-only built-in `live_results_url` link with an optional `embed_url` and no database migration. The Live tab edit panel saves Stream URL/embed URL plus Results URL/embed URL in one update. When both stream and results are configured, the Live tab renders a full-width Live Updates section with Stream and Results iframes side-by-side on wide screens and stacked on smaller screens; the Runner Location map moves below that media section. Single-feed events preserve the previous feed-next-to-map layout.
 - **Production data configuration:** Supabase project `nyjgyyuoscgekavheeqi` was updated for `Bay Area 100 (Master)` (`52d23785-cef7-4afe-bdf8-446f6053dc7a`) and `Bay Area 100 (Team AK)` (`1b3b4ee8-55fa-4bef-b109-383e5d9913ea`). Both records now have `live_results_url` set to `https://my.raceresult.com/392297/live`, and Team AK's `tracking_url` resource now also has the YouTube no-cookie embed URL `https://www.youtube-nocookie.com/embed/live_stream?channel=UC4cidKXtADj6df9XwF8zL-w`.
 - **Validation/deploy before product commit:** `npm run build` passed; per repo policy `npm run deploy` then passed from dirty hash `988eb6c-dirty`, publishing `LiveEventTab-BXNlE9Ua.js`, `index-9KtxD6Ga.js`, and related assets to `web:/var/www/dfiu`. `git diff --check` passed. `npm run lint` passed with the existing 36 warnings and no errors. Race Result responded to `GET https://my.raceresult.com/392297/live` without `X-Frame-Options` or a `frame-ancestors` CSP header. In-app Browser smoke was unavailable because the browser plugin was not trusted in this session; fallback headless Chrome against local production preview `http://127.0.0.1:4173/race/52d23785-cef7-4afe-bdf8-446f6053dc7a` verified the Live tab renders `Live Updates`, two iframes (`youtube-nocookie` stream and `my.raceresult.com/392297/live` results), and Runner Location below. Screenshot capture hung on third-party frames and was stopped; no screenshot artifact was produced. Direct `curl http://web/...` deployed smoke was unavailable from this shell because `web` does not resolve locally, but rsync deploy completed successfully.
+- **Clean deploy after product commit:** Product commit `0327a49` was deployed with `npm run deploy`, publishing `LiveEventTab-DmC9bUvP.js`, `index-oZJsl3S8.js`, and related assets to `web:/var/www/dfiu`. `git describe --always --dirty --abbrev=7` after deploy was `0327a49`.
 
 - **Pace Plan print header/font follow-up started:** working on `/Users/andy/Dev/DFIU` branch `main`, tracking `origin/main`, clean and current at `5628c28` (`0 ahead / 0 behind`). Additional clean worktree remains at `/Users/andy/.codex/worktrees/9dfe/DFIU` on `codex/fix-vite-chunk-deploy`; it is not part of this task.
 - **Planned scope:** fix `Mile` and `Next Mi` print headers being visually skewed left while other headers align correctly, and increase Pace Plan print table text by roughly two pixels/points for better readability.
