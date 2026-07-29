@@ -1,32 +1,33 @@
 # Handoff Document
 
 **Date:** 2026-07-28  
-**Branch:** `main`  
-**Status:** Security hardening + docs refresh implemented, frontend deployed dirty; commit/push next.
+**Branch:** `main` @ `eaf73d3` (pushed, clean-deployed)  
+**Status:** Security hardening + docs refresh complete.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Frontend deployed from dirty tree; footer hash before commit: `def612c-dirty`.
+- Frontend clean-deployed; footer/hash: `eaf73d3`.
 - Supabase project: `nyjgyyuoscgekavheeqi`.
 - Edge Functions deployed: `weather` (JWT on), `strava-auth` (`--no-verify-jwt`, OAuth state hardened).
 - Secret set: `VISUAL_CROSSING_KEY`.
-- Migration applied: `20260728_restrict_public_share_token` (`get_race_share_settings` + column SELECT revoke).
+- Migration applied: `20260728_restrict_public_share_token` — `get_race_share_settings` exists; `anon`/`authenticated` cannot SELECT `public_share_token` (verified).
+- `.env` untracked; use `.env.example`. Local `.env` should remain on disk for deploy vars.
 - Extra worktree (unchanged): `/Users/andy/.codex/worktrees/9dfe/DFIU` on `codex/fix-vite-chunk-deploy`.
 
-## This batch (2026-07-28)
+## Shipped this batch
 
-1. **Env hygiene:** `.env` removed from git index; `.env.example` added. **Rotate the Strava client secret** (it lived in git history).
-2. **Strava auth:** HMAC-signed OAuth `state`, sessionStorage check, email admin lookup (no `listUsers()`), no refresh tokens in `user_metadata`.
-3. **Weather:** `weather` Edge Function; client no longer bundles Visual Crossing key.
-4. **Share tokens:** `RACE_SELECT` omits `public_share_token`; managers use `get_race_share_settings`.
-5. **CI/tests:** `.github/workflows/ci.yml` + Vitest (`npm test`) for race-select / share-link.
-6. **Docs:** AGENTS, README, DEPLOYMENT, HANDOFF, roles/crew handoff notes updated. `usePermission.canEditRaceSettings` aligned with RLS (no crew+edit settings UI).
+1. Env hygiene + `.env.example` + CI (`lint` / `test` / `build`) + Vitest helpers.
+2. Strava OAuth HMAC `state` + sessionStorage check; no `listUsers()`; no Strava tokens in `user_metadata`.
+3. Weather via Edge Function (no client Visual Crossing key).
+4. Share-token lockdown (client `RACE_SELECT` + DB column grants + RPC).
+5. Docs/instructions refreshed: `AGENTS.md`, `README.md`, `DEPLOYMENT.md`, `HANDOFF.md`, roles/crew handoff notes.
+6. `usePermission.canEditRaceSettings` aligned with RLS (owner / director / runner+edit).
 
 ## Open / follow-up
 
-- **Rotate Strava client secret** in the Strava API settings and update Supabase secrets.
+- **Rotate the Strava client secret** (it was previously in git history) and update Supabase `STRAVA_*` secrets.
 - Second-account RBAC/invite E2E verification.
 - Build `/admin` + owner-transfer UI.
 - Offline/PWA Crew View if still prioritized.
