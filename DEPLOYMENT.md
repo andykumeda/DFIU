@@ -11,7 +11,7 @@ This guide explains how to deploy the "Don't F* It Up" (DFIU) application from y
 
 ## Configuration
 
-Add the following variables to your local `.env` file (do not commit this file if it contains secrets):
+Add the following variables to your local `.env` file (never commit this file):
 
 ```bash
 # Deployment Configuration
@@ -22,13 +22,19 @@ DEPLOY_DIR=/var/www/dfiu
 
 If `DEPLOY_USER` is omitted, the deploy script uses the current local username. The current production directory is writable by the `andy` SSH user, not `root`.
 
+Client env vars (also local-only; see `.env.example`):
+
+```bash
+VITE_SUPABASE_URL=...
+VITE_SUPABASE_ANON_KEY=...
+VITE_MAPBOX_TOKEN=...
+```
+
+Do **not** put Strava or Visual Crossing secrets in `VITE_*` vars. Set them as Supabase Edge Function secrets.
+
 ## Deployment Steps
 
 ### 1. Frontend Deployment (Static Files)
-
-We use a script to build the React application locally and `rsync` the files to the remote server.
-
-Run the following command from the project root:
 
 ```bash
 npm run deploy
@@ -39,6 +45,7 @@ npm run deploy
 2.  Builds the project locally (`npm run build`).
 3.  Connects to `DEPLOY_HOST` via SSH.
 4.  Syncs the contents of `dist/` to `DEPLOY_DIR` on the server using `rsync`.
+5.  Normalizes remote permissions (755 dirs / 644 files).
 
 After deploy, compare the app footer/build label with:
 
@@ -46,24 +53,29 @@ After deploy, compare the app footer/build label with:
 git describe --always --dirty --abbrev=7
 ```
 
-### 2. Backend Deployment (Supabase Edge Functions)
+### 2. Backend Deployment (Supabase)
 
-Since the backend logic runs on Supabase Edge Functions, you deploy them directly to Supabase, not your Linux server.
-
-Run these commands when the corresponding function changes:
+Apply new SQL migrations in `supabase/migrations/` to the linked project, then deploy Edge Functions:
 
 ```bash
-supabase functions deploy strava-auth --no-verify-jwt
-supabase functions deploy invite-race-member
+# Secrets (once / when rotating)
+supabase secrets set VISUAL_CROSSING_KEY=...
+supabase secrets set STRAVA_CLIENT_ID=...
+supabase secrets set STRAVA_CLIENT_SECRET=...
+
+# Functions
+supabase functions deploy strava-auth --no-verify-jwt   # OAuth start/callback are pre-session
+supabase functions deploy weather                        # JWT required
+supabase functions deploy invite-race-member             # JWT required
 ```
 
-*Note: Ensure you have logged in via `supabase login` and linked your project.*
+`strava-auth` keeps gateway JWT verification off because login/signup run before a Supabase session exists. CSRF is handled with HMAC-signed OAuth `state`.
 
-Current Supabase-backed features also depend on applying migrations in `supabase/migrations/`, including RBAC memberships, pending invites, DB-backed pace plans, and runner check-ins.
+### 3. CI
+
+GitHub Actions workflow `.github/workflows/ci.yml` runs `npm ci`, lint, vitest, and build on pushes/PRs to `main`.
 
 ## Nginx Configuration (Example)
-
-Your remote server's Nginx config (usually in `/etc/nginx/sites-available/dfiu`) should look something like this to handle client-side routing:
 
 ```nginx
 server {

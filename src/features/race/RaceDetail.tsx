@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Calendar, MapPin, Globe, ArrowUpRight, CloudSun, Trophy, RefreshCw, Settings, Download, Save, CheckCircle2, Trash2, Share2 } from 'lucide-react'
 
 import { supabase } from '@/lib/supabase'
+import { RACE_SELECT } from '@/lib/race-select'
 import { Race, Course, Waypoint, TerrainNode } from '@/types/database'
 import { RaceMembersSection } from './RaceMembersSection'
 import { fetchWeatherForRace, fetchCurrentWeather } from '@/lib/weather-service'
@@ -242,9 +243,9 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   const { data: race, isLoading: raceLoading, isError: raceLoadFailed } = useQuery({
     queryKey: ['race', raceId],
     queryFn: async () => {
-      const { data, error } = await supabase.from('races').select('*').eq('id', raceId).single()
+      const { data, error } = await supabase.from('races').select(RACE_SELECT).eq('id', raceId).single()
       if (error) throw error
-      return data as Race
+      return data as unknown as Race
     }
   })
 

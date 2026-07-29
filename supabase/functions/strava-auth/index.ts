@@ -1,3 +1,13 @@
+// Edge function: strava-auth
+//
+// OAuth start/callback for Strava login/signup. Gateway JWT verification stays
+// off because both actions run before a Supabase session exists. CSRF is
+// mitigated with an HMAC-signed `state` that the client also mirrors in
+// sessionStorage.
+//
+// Secrets: STRAVA_CLIENT_ID, STRAVA_CLIENT_SECRET, SUPABASE_URL,
+// SUPABASE_SERVICE_ROLE_KEY. Optional STRAVA_STATE_SECRET (falls back to
+// service role key for HMAC).
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
@@ -7,26 +17,35 @@ const corsHeaders = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+const STATE_TTL_MS = 15 * 60 * 1000
+
 serve(async (req) => {
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders })
     }
 
     try {
-        const supabaseClient = createClient(
-            Deno.env.get('SUPABASE_URL') ?? '',
-            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-        )
-
-        const { action, redirectUrl, code } = await req.json()
+        const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
+        const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         const clientId = Deno.env.get('STRAVA_CLIENT_ID')
         const clientSecret = Deno.env.get('STRAVA_CLIENT_SECRET')
+        const stateSecret = Deno.env.get('STRAVA_STATE_SECRET') || serviceKey
 
         if (!clientId || !clientSecret) {
             throw new Error('Missing Strava configuration')
         }
+        if (!supabaseUrl || !serviceKey) {
+            throw new Error('Missing Supabase configuration')
+        }
+
+        const supabaseAdmin = createClient(supabaseUrl, serviceKey)
+        const { action, redirectUrl, code, state } = await req.json()
 
         if (action === 'start') {
+            if (!redirectUrl || typeof redirectUrl !== 'string') {
+                throw new Error('redirectUrl required')
+            }
+            const oauthState = await signState(stateSecret, crypto.randomUUID())
             const scope = 'activity:read_all,profile:read_all'
             const params = new URLSearchParams({
                 client_id: clientId,
@@ -34,15 +53,24 @@ serve(async (req) => {
                 redirect_uri: redirectUrl,
                 approval_prompt: 'auto',
                 scope,
+                state: oauthState,
             })
             const url = `https://www.strava.com/oauth/authorize?${params.toString()}`
-            return new Response(JSON.stringify({ url }), {
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            })
+            return json({ url, state: oauthState })
         }
 
         if (action === 'callback') {
-            // Exchange code for token
+            if (!code || typeof code !== 'string') {
+                throw new Error('code required')
+            }
+            if (!state || typeof state !== 'string') {
+                throw new Error('state required')
+            }
+            const stateOk = await verifyState(stateSecret, state)
+            if (!stateOk) {
+                throw new Error('Invalid or expired OAuth state')
+            }
+
             const tokenResp = await fetch('https://www.strava.com/oauth/token', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -55,107 +83,135 @@ serve(async (req) => {
             })
 
             const tokenData = await tokenResp.json()
-            if (tokenData.errors) {
+            if (!tokenResp.ok || tokenData.errors) {
                 throw new Error('Failed to exchange token')
             }
 
-            const { athlete, access_token, refresh_token, expires_at } = tokenData
-
-            // Create or Update User
-            // Note: In a real app we might want to link this to an existing auth user if logged in
-            // For now, we'll try to find a user by strava_id metadata or create a new one via Admin API?
-            // Actually, Supabase Auth doesn't let us easily create a user with custom ID.
-            // Strategy: We will create a "dummy" email for the Strava user if they don't exist: [strava_id]@strava.dfiu.app
-
-            const email = `${athlete.id}@strava.dfiu.app`
-            const password = crypto.randomUUID() // Random password, they won't use it
-
-            // Check if user exists by strava_id first
-            const { data: { users } } = await supabaseClient.auth.admin.listUsers()
-            let user = users.find(u => u.user_metadata?.strava_id === athlete.id) || users.find(u => u.email === email)
-
-            if (!user) {
-                const { data: newUser, error: createError } = await supabaseClient.auth.admin.createUser({
-                    email,
-                    password,
-                    email_confirm: true,
-                    user_metadata: {
-                        name: `${athlete.firstname} ${athlete.lastname}`,
-                        avatar_url: athlete.profile,
-                        strava_id: athlete.id
-                    }
-                })
-                if (createError) throw createError
-                user = newUser.user
-            } else {
-                // Update metadata
-                await supabaseClient.auth.admin.updateUserById(user.id, {
-                    user_metadata: {
-                        name: `${athlete.firstname} ${athlete.lastname}`,
-                        avatar_url: athlete.profile,
-                        strava_id: athlete.id,
-                        strava_access_token: access_token,
-                        strava_refresh_token: refresh_token,
-                        strava_expires_at: expires_at
-                    }
-                })
+            const { athlete } = tokenData
+            if (!athlete?.id) {
+                throw new Error('Strava athlete missing from token response')
             }
 
-            // Create Session
-            // We can't easily "create a session" object to return to client without signing them in.
-            // But verifyOtp or signInWithPassword works.
-            // Easier: Admin create session? No 'createSession' in admin.
-            // Workaround: We return the credentials or custom token?
-            // Better: We rely on the client to sign in? No, we want to sign them in.
+            const email = `${athlete.id}@strava.dfiu.app`
+            const displayName = `${athlete.firstname ?? ''} ${athlete.lastname ?? ''}`.trim() || `Strava ${athlete.id}`
+            const metadata = {
+                name: displayName,
+                avatar_url: athlete.profile ?? null,
+                strava_id: athlete.id,
+            }
 
-            // Let's generate a Magic Link or just sign them in?
-            // Actually, since we know the email, we can generate a session using `signInWithPassword` if we updated the password?
-            // Or `generateLink`.
+            let user = await findAuthUserByEmail(supabaseUrl, serviceKey, email)
 
-            // Alternative: We manually issue a JWT? Hard with Supabase.
+            if (!user) {
+                const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+                    email,
+                    password: crypto.randomUUID(),
+                    email_confirm: true,
+                    user_metadata: metadata,
+                })
+                if (createError) {
+                    // Race: another callback created the user — look up again.
+                    user = await findAuthUserByEmail(supabaseUrl, serviceKey, email)
+                    if (!user) throw createError
+                } else {
+                    user = newUser.user
+                }
+            } else {
+                const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
+                    user_metadata: metadata,
+                })
+                if (updateError) throw updateError
+            }
 
-            // Let's use `signInWithIdToken` if we were an OIDC provider... we aren't.
-
-            // BEST APPROACH for "Custom Auth":
-            // We return a custom access token? No, we want Supabase Auth efficiency.
-
-            // Let's just return the email/password (bad practice?) or specific token.
-            // Wait, we can use `supabaseAdmin.auth.admin.generateLink({ type: 'magiclink', email })`
-            // and return the `action_link`? Then frontend redirects to it?
-
-            // Let's try to just update the user with the tokens in metadata, and then
-            // we need to log them in.
-
-            // Let's return the tokens and let the client save them? No, we want `supabase.auth.user` to be populated.
-
-            // Looked at another way: The reference app uses its OWN session management (FastAPI).
-            // Here we want to use Supabase Auth.
-
-            // Solution: We will use the "Dummy Email" strategy.
-            // We will reset the user's password to a known temporary random string, sign them in on server side, get session, return session.
+            if (!user) throw new Error('Unable to resolve Strava user')
 
             const tempPassword = crypto.randomUUID()
-            await supabaseClient.auth.admin.updateUserById(user!.id, { password: tempPassword })
-
-            const { data: sessionData, error: sessionError } = await supabaseClient.auth.signInWithPassword({
-                email,
-                password: tempPassword
+            const { error: passwordError } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
+                password: tempPassword,
             })
+            if (passwordError) throw passwordError
 
+            const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.signInWithPassword({
+                email,
+                password: tempPassword,
+            })
             if (sessionError) throw sessionError
 
-            return new Response(JSON.stringify({ session: sessionData.session }), {
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            })
+            return json({ session: sessionData.session })
         }
 
         throw new Error('Invalid action')
-
     } catch (err) {
         const message = err instanceof Error ? err.message : 'Unknown Strava authentication error'
-        return new Response(JSON.stringify({ error: message }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        })
+        return json({ error: message }, 400)
     }
 })
+
+function json(body: unknown, status = 200) {
+    return new Response(JSON.stringify(body), {
+        status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+}
+
+async function findAuthUserByEmail(
+    supabaseUrl: string,
+    serviceKey: string,
+    email: string,
+): Promise<{ id: string } | null> {
+    const url = `${supabaseUrl}/auth/v1/admin/users?email=${encodeURIComponent(email)}`
+    const res = await fetch(url, {
+        headers: {
+            Authorization: `Bearer ${serviceKey}`,
+            apikey: serviceKey,
+        },
+    })
+    if (!res.ok) {
+        const text = await res.text()
+        throw new Error(`Auth admin lookup failed (${res.status}): ${text}`)
+    }
+    const payload = await res.json()
+    const users = Array.isArray(payload?.users) ? payload.users : Array.isArray(payload) ? payload : []
+    return users[0] ?? null
+}
+
+async function signState(secret: string, nonce: string): Promise<string> {
+    const payload = btoa(JSON.stringify({ n: nonce, e: Date.now() + STATE_TTL_MS }))
+        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+    const sig = await hmacHex(secret, payload)
+    return `${payload}.${sig}`
+}
+
+async function verifyState(secret: string, state: string): Promise<boolean> {
+    const [payload, sig] = state.split('.')
+    if (!payload || !sig) return false
+    const expected = await hmacHex(secret, payload)
+    if (!timingSafeEqual(sig, expected)) return false
+    try {
+        const padded = payload.replace(/-/g, '+').replace(/_/g, '/')
+        const pad = padded.length % 4 === 0 ? '' : '='.repeat(4 - (padded.length % 4))
+        const parsed = JSON.parse(atob(padded + pad)) as { e?: number }
+        return typeof parsed.e === 'number' && parsed.e >= Date.now()
+    } catch {
+        return false
+    }
+}
+
+async function hmacHex(secret: string, message: string): Promise<string> {
+    const key = await crypto.subtle.importKey(
+        'raw',
+        new TextEncoder().encode(secret),
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign'],
+    )
+    const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(message))
+    return Array.from(new Uint8Array(mac), (b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+function timingSafeEqual(a: string, b: string): boolean {
+    if (a.length !== b.length) return false
+    let out = 0
+    for (let i = 0; i < a.length; i++) out |= a.charCodeAt(i) ^ b.charCodeAt(i)
+    return out === 0
+}

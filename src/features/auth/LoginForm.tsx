@@ -41,6 +41,7 @@ export function LoginForm() {
                 body: { action: 'start', redirectUrl: window.location.origin + '/auth/strava/callback' }
               })
               if (error) throw error
+              if (data?.state) sessionStorage.setItem('strava_oauth_state', data.state)
               if (data?.url) window.location.href = data.url
             } catch (e) {
               console.error('Strava auth error:', e)

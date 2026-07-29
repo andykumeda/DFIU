@@ -4,6 +4,7 @@ import { Trash2, Search, UserPlus, Mail, X, RefreshCw, Link as LinkIcon, Copy, E
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/features/auth/AuthContext'
 import type { Race } from '@/types/database'
+import type { RaceShareSettings } from '@/lib/race-select'
 import { buildShareLink, createShareToken } from './share-link'
 
 type Role = 'crew' | 'pacer'
@@ -65,13 +66,14 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
   const { data: raceAccess } = useQuery<Pick<Race, 'id' | 'public_share_enabled' | 'public_share_token'>>({
     queryKey: ['race-share-access', raceId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('races')
-        .select('id, public_share_enabled, public_share_token')
-        .eq('id', raceId)
-        .single()
+      const { data, error } = await supabase.rpc('get_race_share_settings', { rid: raceId })
       if (error) throw error
-      return data as Pick<Race, 'id' | 'public_share_enabled' | 'public_share_token'>
+      const row = (Array.isArray(data) ? data[0] : data) as RaceShareSettings | null
+      return {
+        id: raceId,
+        public_share_enabled: row?.public_share_enabled ?? false,
+        public_share_token: row?.public_share_token ?? null,
+      }
     },
     enabled: canManage,
   })
@@ -258,7 +260,7 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
       const token = enabled
         ? raceAccess?.public_share_token || createShareToken()
         : null
-      const { data, error } = await (supabase
+      const { error } = await (supabase
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .from('races') as any)
         .update({
@@ -266,10 +268,12 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
           public_share_token: token,
         })
         .eq('id', raceId)
-        .select('id, public_share_enabled, public_share_token')
-        .single()
       if (error) throw error
-      return data as Pick<Race, 'id' | 'public_share_enabled' | 'public_share_token'>
+      return {
+        id: raceId,
+        public_share_enabled: enabled,
+        public_share_token: token,
+      } as Pick<Race, 'id' | 'public_share_enabled' | 'public_share_token'>
     },
     onSuccess: async (data) => {
       setShareStatus(data.public_share_enabled ? 'Private read-only link is enabled.' : 'Private read-only link revoked.')

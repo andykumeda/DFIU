@@ -1256,7 +1256,7 @@ export function CourseMap({
                 !import.meta.env.VITE_MAPBOX_TOKEN && (
                     <div className={styles.noToken}>
                         <p>Mapbox token not configured</p>
-                        <p className={styles.hint}>Add NEXT_PUBLIC_MAPBOX_TOKEN to .env.local</p>
+                        <p className={styles.hint}>Add VITE_MAPBOX_TOKEN to .env.local</p>
                     </div>
                 )
             }

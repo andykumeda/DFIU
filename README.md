@@ -32,9 +32,10 @@ DFIU helps you centralize your course, pace plan, logistics, and crew info in on
 -   **Terrain Segments:** Visualize terrain types (paved, dirt, single track, technical) as colored overlays on the route. Supports map two-click range selection, elevation-profile drag selection, sidebar editing, and out-and-back auto-painting.
 -   **Pace Plans:** Plan A/B/C pacing with terrain, grade, time-of-day, weather, and aid-station-delay factors. Pace plan inputs are stored in Supabase and sync realtime between race members.
 -   **Crew View:** Mobile-first `/race/:id/crew` view with predicted runner location, next crew aid station, Google Maps destination links, drop bag details, and runner arrival check-ins.
--   **Roles & Invites:** Race owners can manage crew/pacer memberships, grant view/edit permissions, add existing users, save no-email pending access for new users, optionally send invite emails, and create private read-only share links for exact-link access.
--   **Weather Integration:** Fetch weather data for race locations.
--   **Settings:** User preferences, runner profile, and Strava integration.
+-   **Live Event:** Live tab with optional livestream + Race Result embeds, runner location map, and followed-runner ETAs.
+-   **Roles & Invites:** Race owners/runners can manage crew/pacer memberships, grant view/edit permissions, add existing users, save no-email pending access for new users, optionally send invite emails, and create private read-only share links for exact-link access.
+-   **Weather Integration:** Race-location weather via the `weather` Supabase Edge Function (Visual Crossing key stays server-side).
+-   **Settings:** User preferences, runner profile, and Strava OAuth.
 
 ## How Pace Is Calculated
 
@@ -92,15 +93,14 @@ me to my goal on this course?"* rather than predicting a finish time from your a
     ```
 
 3.  Configure environment variables:
-    Create a `.env` or `.env.local` file with the following keys:
+    Copy `.env.example` to `.env` / `.env.local` and fill in:
     ```env
     VITE_SUPABASE_URL=your_supabase_url
     VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
     VITE_MAPBOX_TOKEN=your_mapbox_token
-    VITE_VISUAL_CROSSING_KEY=your_visual_crossing_key
     ```
 
-    Security note: `VITE_VISUAL_CROSSING_KEY` is currently bundled client-side. Moving weather calls behind a Supabase Edge Function is the top open security task.
+    Strava and Visual Crossing secrets are **not** client env vars. Set them as Supabase Edge Function secrets (`STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET`, `VISUAL_CROSSING_KEY`). Never commit `.env`.
 
 4.  Start the development server:
     ```bash
@@ -113,31 +113,35 @@ me to my goal on this course?"* rather than predicting a finish time from your a
 -   `npm run build`: TypeScript check + Vite production build.
 -   `npm run deploy`: Build and deploy to `/var/www/dfiu`.
 -   `npm run lint`: Run ESLint.
+-   `npm test`: Run Vitest unit tests.
 -   `npm run preview`: Preview the production build locally.
 
 ## Deployment
 
-The application is deployed as a static site served by Nginx.
+See [`DEPLOYMENT.md`](DEPLOYMENT.md). Short version:
 
-To deploy:
 ```bash
 npm run deploy
 ```
-This script builds the app and copies the `dist/` folder to `/var/www/dfiu`. No restart needed — Nginx picks up changes immediately.
+
+Also apply Supabase migrations and deploy Edge Functions (`strava-auth`, `weather`, `invite-race-member`) when those change.
 
 ## Directory Structure
 
 -   `src/features/auth/` - Authentication, session/profile loading, RBAC permission hook.
 -   `src/features/course/` - Course map, elevation profile, map style switcher.
--   `src/features/race/` - Race detail, overview, resources, waypoint editing, pace plans, members, crew view, check-ins.
+-   `src/features/race/` - Race detail, overview, resources, waypoint editing, pace plans, members, crew view, live tab, check-ins.
 -   `src/features/settings/` - User settings and integrations.
 -   `src/pages/` - Application route pages (Dashboard, Login, Race Detail, etc.).
--   `src/lib/` - Shared utilities (Supabase client, geo-utils, GPX parser, weather service).
+-   `src/lib/` - Shared utilities (Supabase client, geo-utils, GPX parser, weather client, race-select).
+-   `supabase/functions/` - Edge Functions (`strava-auth`, `weather`, `invite-race-member`).
 -   `src/components/ui/` - Shared UI components.
 
 ## Current Open Work
 
+See [`HANDOFF.md`](HANDOFF.md) / [`AGENTS.md`](AGENTS.md). Highlights:
+
 -   Second-account RBAC/invite verification.
--   Supabase Edge Function proxy for Visual Crossing weather.
 -   Admin panel and owner-transfer UI.
--   Offline/PWA support for Crew View.
+-   Offline/PWA support for Crew View (if prioritized).
+-   Finish or retire Pacer View placeholder.

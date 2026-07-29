@@ -1,6 +1,7 @@
 import { Link, Navigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { RACE_SELECT } from '../lib/race-select'
 import { Race } from '../types/database'
 import styles from './SplashPage.module.css'
 import { useAuth } from '../features/auth/AuthContext'
@@ -14,12 +15,12 @@ export default function SplashPage() {
     async function fetchPublicRaces() {
       const { data } = await supabase
         .from('races')
-        .select('*')
+        .select(RACE_SELECT)
         .eq('is_public', true)
         .order('start_datetime', { ascending: true })
 
       if (data) {
-        setPublicRaces(data)
+        setPublicRaces(data as unknown as Race[])
       }
     }
 

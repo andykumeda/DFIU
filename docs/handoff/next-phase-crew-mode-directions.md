@@ -28,7 +28,7 @@
 1. **Routing provider decision.** Keep deep links only, or add Google/Mapbox Directions API for road distance and duration.
 2. **Parking/access metadata.** Decide whether to add `parking_notes` or a separate `crew_accessible` field instead of reusing `crew_allowed`.
 3. **Runner-vs-crew timeline.** If routing durations are added, compare crew travel ETA against runner arrival ETA and flag misses.
-4. **Offline/PWA phase.** Cache race/course/waypoint/terrain/pace/check-in/drop-bag data in IndexedDB, cache app shell, queue check-in writes, and replay on reconnect.
+4. **Offline/PWA phase.** Still open if prioritized: cache race/course/waypoint/terrain/pace/check-in/drop-bag data in IndexedDB, cache app shell, queue check-in writes, and replay on reconnect.
 5. **Tile caching compliance.** Check Mapbox/offline tile terms before implementing downloadable map tiles. Consider MapTiler/Stadia if offline caching terms are better.
 
 ## Key Files

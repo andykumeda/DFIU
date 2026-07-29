@@ -804,6 +804,13 @@ export type Database = {
           created_at: string
         }[]
       }
+      get_race_share_settings: {
+        Args: { rid: string }
+        Returns: {
+          public_share_enabled: boolean
+          public_share_token: string | null
+        }[]
+      }
       sync_official_race_to_clones: { Args: { p_source_race_id: string }; Returns: number }
       user_can_edit_race: { Args: { rid: string }; Returns: boolean }
       user_can_log_race_execution: { Args: { rid: string }; Returns: boolean }

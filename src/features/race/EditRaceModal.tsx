@@ -1,8 +1,10 @@
 
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Race } from '@/types/database'
+import type { RaceShareSettings } from '@/lib/race-select'
+import { RACE_SELECT } from '@/lib/race-select'
 import { buildShareLink, createShareToken } from './share-link'
 import styles from './EditRaceModal.module.css' // We will create this or use inline/global for now if need be, but best to module
 
@@ -46,10 +48,31 @@ export function EditRaceModal({ race, onClose, onUpdate, onDelete }: EditRaceMod
         terrain_type: race.terrain_type || 'trail'
     })
 
+    const [savedShareToken, setSavedShareToken] = useState(race.public_share_token || '')
+    const [savedShareEnabled, setSavedShareEnabled] = useState(race.public_share_enabled || false)
+
+    useEffect(() => {
+        let cancelled = false
+        ;(async () => {
+            const { data, error } = await supabase.rpc('get_race_share_settings', { rid: race.id })
+            if (cancelled || error) return
+            const row = (Array.isArray(data) ? data[0] : data) as RaceShareSettings | null
+            if (!row) return
+            setShareToken(row.public_share_token || '')
+            setSavedShareToken(row.public_share_token || '')
+            setSavedShareEnabled(row.public_share_enabled || false)
+            setFormData((prev) => ({
+                ...prev,
+                public_share_enabled: row.public_share_enabled || false,
+            }))
+        })()
+        return () => { cancelled = true }
+    }, [race.id])
+
     const shareLink = formData.public_share_enabled && shareToken ? buildShareLink(race.id, shareToken) : ''
     const shareLinkNeedsSave = formData.public_share_enabled && (
-        !race.public_share_enabled ||
-        shareToken !== (race.public_share_token || '')
+        !savedShareEnabled ||
+        shareToken !== savedShareToken
     )
 
 
@@ -93,12 +116,15 @@ export function EditRaceModal({ race, onClose, onUpdate, onDelete }: EditRaceMod
                     terrain_type: formData.terrain_type || 'trail'
                 })
                 .eq('id', race.id)
-                .select()
+                .select(RACE_SELECT)
                 .single()
 
             if (error) throw error
 
-            onUpdate(data as Race)
+            onUpdate({
+                ...(data as Race),
+                public_share_token: nextShareToken,
+            })
             onClose()
         } catch (error) {
             console.error('Error updating race:', error)

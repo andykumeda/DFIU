@@ -4,6 +4,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'react-hot-toast'
 
+const STATE_STORAGE_KEY = 'strava_oauth_state'
+
 export default function StravaCallback() {
     const [searchParams] = useSearchParams()
     const navigate = useNavigate()
@@ -11,6 +13,7 @@ export default function StravaCallback() {
 
     useEffect(() => {
         const code = searchParams.get('code')
+        const state = searchParams.get('state')
         const errorParam = searchParams.get('error')
 
         if (errorParam) {
@@ -23,16 +26,29 @@ export default function StravaCallback() {
             return
         }
 
-        handleCallback(code)
+        if (!state) {
+            setError('Missing OAuth state')
+            return
+        }
+
+        const storedState = sessionStorage.getItem(STATE_STORAGE_KEY)
+        if (!storedState || storedState !== state) {
+            setError('OAuth state mismatch — please try signing in again')
+            return
+        }
+
+        handleCallback(code, state)
     }, [searchParams])
 
-    async function handleCallback(code: string) {
+    async function handleCallback(code: string, state: string) {
         try {
             const { data, error } = await supabase.functions.invoke('strava-auth', {
-                body: { action: 'callback', code }
+                body: { action: 'callback', code, state }
             })
 
             if (error) throw error
+
+            sessionStorage.removeItem(STATE_STORAGE_KEY)
 
             if (data?.session) {
                 const { error: sessionError } = await supabase.auth.setSession(data.session)
@@ -40,10 +56,11 @@ export default function StravaCallback() {
                 toast.success('Successfully connected to Strava!')
                 navigate('/dashboard')
             } else {
-                throw new Error('No session returned')
+                throw new Error(data?.error || 'No session returned')
             }
         } catch (e) {
             console.error('Callback error:', e)
+            sessionStorage.removeItem(STATE_STORAGE_KEY)
             const message = e instanceof Error ? e.message : 'Failed to complete authentication'
             setError(message)
         }

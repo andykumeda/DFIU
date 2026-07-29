@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
+import { RACE_SELECT } from '@/lib/race-select'
 import { useAuth } from '@/features/auth/AuthContext'
 import type { Race } from '@/types/database'
 import { formatDate } from '@/lib/utils'
@@ -25,12 +26,12 @@ export function RaceList({ mode = 'user', showSearch = mode === 'public' }: Race
       if (mode === 'public') {
         const { data, error } = await supabase
           .from('races')
-          .select('*')
+          .select(RACE_SELECT)
           .eq('is_public', true)
           .order('start_datetime', { ascending: true })
 
         if (error) throw error
-        return data as Race[]
+        return data as unknown as Race[]
       }
 
       if (!user) return []
@@ -40,24 +41,24 @@ export function RaceList({ mode = 'user', showSearch = mode === 'public' }: Race
       if (membershipRaceIds.length > 0) {
         const { data, error } = await supabase
           .from('races')
-          .select('*')
+          .select(RACE_SELECT)
           .in('id', membershipRaceIds)
           .order('created_at', { ascending: false })
 
         if (error) throw error
-        for (const race of (data ?? []) as Race[]) {
+        for (const race of (data as unknown as Race[] | null) ?? []) {
           raceMap.set(race.id, race)
         }
       }
 
       const { data: ownedRaces, error: ownedError } = await supabase
         .from('races')
-        .select('*')
+        .select(RACE_SELECT)
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
 
       if (ownedError) throw ownedError
-      for (const race of (ownedRaces ?? []) as Race[]) {
+      for (const race of (ownedRaces as unknown as Race[] | null) ?? []) {
         raceMap.set(race.id, race)
       }
 

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, MapPin, Navigation2, Clock, CheckCircle2, AlertCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { supabase } from '@/lib/supabase'
+import { RACE_SELECT } from '@/lib/race-select'
 import { useAuth } from '@/features/auth/AuthContext'
 import { usePermission } from '@/features/auth/usePermission'
 import { usePacePlans, computePlanMinutes } from './usePacePlans'
@@ -63,7 +64,7 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setLoading(true)
         ;(async () => {
-            const { data: r, error: raceError } = await supabase.from('races').select('*').eq('id', raceId).single()
+            const { data: r, error: raceError } = await supabase.from('races').select(RACE_SELECT).eq('id', raceId).single()
             if (cancelled) return
             if (raceError || !r) {
                 setRace(null)
@@ -74,7 +75,7 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
                 if (!embedded) navigate('/events', { replace: true })
                 return
             }
-            setRace(r as Race | null)
+            setRace(r as unknown as Race | null)
 
             const { data: c } = await supabase.from('courses').select('*').eq('race_id', raceId).maybeSingle()
             if (cancelled) return

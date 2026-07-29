@@ -21,6 +21,8 @@ REQUIRED=(
   src/features/race/resources-shared.ts
   src/features/race/pace-chart-columns.ts
   src/components/Markdown.tsx
+  src/lib/race-select.ts
+  src/features/race/share-link.ts
   HANDOFF.md
 )
 

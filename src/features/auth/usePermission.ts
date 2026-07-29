@@ -3,7 +3,7 @@ import { useAuth } from './AuthContext'
 export interface Permission {
   canView: boolean
   canEdit: boolean
-  /** Owner, race director, or any member with edit permission (matches RLS for race-level settings). */
+  /** Owner, race director, or runner/owner with edit (aligned with RLS user_can_edit_race). */
   canEditRaceSettings: boolean
   isOwner: boolean
   isAdmin: boolean
@@ -71,7 +71,7 @@ export function usePermission(raceId: string | undefined, raceDirectorUserId?: s
   return {
     canView: true,
     canEdit: m.permission === 'edit' && (m.role === 'owner' || m.isRunner),
-    canEditRaceSettings: m.role === 'owner' || m.permission === 'edit' || isRaceDirector,
+    canEditRaceSettings: m.role === 'owner' || isRaceDirector || (m.permission === 'edit' && m.isRunner),
     isOwner: m.role === 'owner',
     isAdmin: false,
     isRunner: m.isRunner,

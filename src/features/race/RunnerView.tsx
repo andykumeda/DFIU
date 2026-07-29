@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowLeft, MapPin, Radio, AlertCircle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { RACE_SELECT } from '@/lib/race-select'
 import { useAuth } from '@/features/auth/AuthContext'
 import { usePermission } from '@/features/auth/usePermission'
 import { useRunnerLocationUploader } from './useRunnerLocation'
@@ -21,9 +22,9 @@ export function RunnerView({ raceId }: RunnerViewProps) {
   useEffect(() => {
     let cancelled = false
     ;(async () => {
-      const { data } = await supabase.from('races').select('*').eq('id', raceId).single()
+      const { data } = await supabase.from('races').select(RACE_SELECT).eq('id', raceId).single()
       if (!cancelled) {
-        setRace((data as Race | null) ?? null)
+        setRace((data as unknown as Race | null) ?? null)
         setLoading(false)
       }
     })()
