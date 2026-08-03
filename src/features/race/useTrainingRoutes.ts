@@ -8,6 +8,7 @@ import {
   computeTrainingOverlap,
   extractCoordinates,
   parseOverlapSegments,
+  nameFromGpxFileName,
   type OverlapSegment,
 } from '@/lib/training-overlap'
 
@@ -96,7 +97,7 @@ export function useTrainingRoutes(raceId: string, courseGeometry: unknown) {
     }
   }, [raceId, reload])
 
-  const createFromGpx = async (result: GpxParseResult, rawGpx: string, nameOverride?: string) => {
+  const createFromGpx = async (result: GpxParseResult, rawGpx: string, fileName?: string) => {
     if (!canEdit) return null
     const coords = result.coordinates
     if (coords.length < 2) throw new Error('GPX has no usable track')
@@ -105,10 +106,15 @@ export function useTrainingRoutes(raceId: string, courseGeometry: unknown) {
     const overlap = computeTrainingOverlap(coords, courseCoords)
     const start = coords[0]
     const maxOrder = routes.reduce((m, r) => Math.max(m, r.sort_order), -1)
+    const displayName = (
+      (fileName ? nameFromGpxFileName(fileName) : '') ||
+      result.name?.trim() ||
+      'Training route'
+    ).slice(0, 120)
 
     const row = {
       race_id: raceId,
-      name: (nameOverride?.trim() || result.name || 'Training route').slice(0, 120),
+      name: displayName,
       notes: null as string | null,
       distance_miles: result.stats.totalDistanceMiles,
       elevation_gain_ft: result.stats.totalElevationGainFt,

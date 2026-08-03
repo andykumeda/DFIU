@@ -5,7 +5,7 @@ import { parseGpx, GpxParseResult } from '@/lib/gpx-parser'
 import styles from './GpxUploader.module.css'
 
 interface GpxUploaderProps {
-    onUpload: (result: GpxParseResult, rawGpx: string) => void
+    onUpload: (result: GpxParseResult, rawGpx: string, fileName: string) => void
     disabled?: boolean
     className?: string
 }
@@ -36,7 +36,7 @@ export function GpxUploader({ onUpload, disabled, className }: GpxUploaderProps)
             const text = await file.text()
             const result = parseGpx(text)
 
-            onUpload(result, text)
+            onUpload(result, text, file.name)
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to process GPX file')
             setFileName(null)

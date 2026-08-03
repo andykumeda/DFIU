@@ -9,7 +9,7 @@ import {
   formatOverlapSummary,
 } from '@/lib/training-overlap'
 import { useTrainingRoutes, type TrainingRouteRow } from './useTrainingRoutes'
-import { TrainingRoutePreviewMap } from './TrainingRoutePreviewMap'
+import { TrainingRouteSvgPreview } from './TrainingRoutePreviewMap'
 import { TrainingRouteDetail } from './TrainingRouteDetail'
 
 interface TrainingSectionProps {
@@ -39,11 +39,11 @@ export function TrainingSection({ race, course }: TrainingSectionProps) {
 
   const selected = selectedId ? routes.find(r => r.id === selectedId) ?? null : null
 
-  const handleUpload = async (result: GpxParseResult, rawGpx: string) => {
+  const handleUpload = async (result: GpxParseResult, rawGpx: string, fileName: string) => {
     setError(null)
     setUploading(true)
     try {
-      const created = await createFromGpx(result, rawGpx)
+      const created = await createFromGpx(result, rawGpx, fileName)
       setShowUploader(false)
       if (created) setSelectedId(created.id)
     } catch (e) {
@@ -147,10 +147,7 @@ function TrainingRouteCard({
       <button type="button" onClick={onOpen} className="text-left block w-full">
         <div className="h-36 bg-neutral-950 relative">
           {coords.length >= 2 ? (
-            <TrainingRoutePreviewMap
-              coordinates={coords}
-              className="w-full h-full pointer-events-none"
-            />
+            <TrainingRouteSvgPreview coordinates={coords} className="w-full h-full" />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-neutral-600 text-xs">
               No map

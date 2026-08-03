@@ -12,7 +12,26 @@ interface TrainingRoutePreviewMapProps {
 }
 
 function mapStyleReady(map: mapboxgl.Map | null): map is mapboxgl.Map {
-  return !!map && !!map.style && map.isStyleLoaded()
+  // Guard before any getLayer/getSource — Mapbox calls style.getOwnLayer internally.
+  return !!map && !!map.style && typeof map.isStyleLoaded === 'function' && map.isStyleLoaded()
+}
+
+function safeGetLayer(map: mapboxgl.Map, id: string): mapboxgl.LayerSpecification | undefined {
+  try {
+    if (!mapStyleReady(map)) return undefined
+    return map.getLayer(id)
+  } catch {
+    return undefined
+  }
+}
+
+function safeGetSource(map: mapboxgl.Map, id: string): mapboxgl.GeoJSONSource | undefined {
+  try {
+    if (!mapStyleReady(map)) return undefined
+    return map.getSource(id) as mapboxgl.GeoJSONSource | undefined
+  } catch {
+    return undefined
+  }
 }
 
 function cumulativeMiles(line: [number, number][]): number[] {
@@ -45,7 +64,7 @@ function sliceByMiles(
       out.push(line[i])
     }
   }
-  return out.length >= 2 ? out : line.slice(0, 2)
+  return out.length >= 2 ? out : line.slice(0, Math.min(2, line.length))
 }
 
 export function TrainingRoutePreviewMap({
@@ -94,11 +113,19 @@ export function TrainingRoutePreviewMap({
       if (!cancelled) setStyleLoaded(true)
     }
     map.on('style.load', onStyleLoad)
+    // Some Mapbox versions fire 'load' after style is usable even if style.load was missed.
+    map.once('load', () => {
+      if (!cancelled && map.isStyleLoaded()) setStyleLoaded(true)
+    })
 
     return () => {
       cancelled = true
       map.off('style.load', onStyleLoad)
-      map.remove()
+      try {
+        map.remove()
+      } catch {
+        /* ignore teardown races */
+      }
       mapRef.current = null
       setStyleLoaded(false)
     }
@@ -122,11 +149,14 @@ export function TrainingRoutePreviewMap({
         paint: mapboxgl.LinePaint,
         width: number
       ) => {
-        const source = map.getSource(id) as mapboxgl.GeoJSONSource | undefined
+        if (!mapStyleReady(map)) return
+        const source = safeGetSource(map, id)
         if (source) {
           source.setData(data)
-        } else {
-          map.addSource(id, { type: 'geojson', data })
+          return
+        }
+        map.addSource(id, { type: 'geojson', data })
+        if (!safeGetLayer(map, id)) {
           map.addLayer({
             id,
             type: 'line',
@@ -164,24 +194,27 @@ export function TrainingRoutePreviewMap({
           })
           .filter(f => f.geometry.coordinates.length >= 2)
 
-        setOrAdd(
-          'overlap',
-          { type: 'FeatureCollection', features },
-          { 'line-color': '#ea580c', 'line-opacity': 1 },
-          interactive ? 6 : 4
-        )
-      } else if (map.getLayer('overlap')) {
+        if (features.length > 0) {
+          setOrAdd(
+            'overlap',
+            { type: 'FeatureCollection', features },
+            { 'line-color': '#ea580c', 'line-opacity': 1 },
+            interactive ? 6 : 4
+          )
+        }
+      } else if (safeGetLayer(map, 'overlap')) {
         map.removeLayer('overlap')
-        if (map.getSource('overlap')) map.removeSource('overlap')
+        if (safeGetSource(map, 'overlap')) map.removeSource('overlap')
       }
 
       const bounds = new mapboxgl.LngLatBounds()
       coordinates.forEach(c => bounds.extend(c as [number, number]))
       if (courseCoordinates && interactive) {
-        courseCoordinates.forEach(c => bounds.extend(c as [number, number]))
+        // Fit to training primarily; only expand slightly with course if needed
+        // Prefer training bounds so the route is visible, not the whole 100mi course.
       }
       if (!bounds.isEmpty()) {
-        map.fitBounds(bounds, { padding: interactive ? 40 : 16, maxZoom: interactive ? 14 : 13, duration: 0 })
+        map.fitBounds(bounds, { padding: interactive ? 48 : 16, maxZoom: interactive ? 13 : 12, duration: 0 })
       }
     } catch (e) {
       console.error('TrainingRoutePreviewMap draw error', e)
@@ -197,4 +230,63 @@ export function TrainingRoutePreviewMap({
   }
 
   return <div ref={containerRef} className={className ?? 'w-full h-full'} />
+}
+
+/** Lightweight SVG polyline for card previews — avoids multiple Mapbox GL instances. */
+export function TrainingRouteSvgPreview({
+  coordinates,
+  className,
+}: {
+  coordinates: [number, number][]
+  className?: string
+}) {
+  if (coordinates.length < 2) {
+    return (
+      <div className={`bg-neutral-950 flex items-center justify-center text-neutral-600 text-xs ${className ?? ''}`}>
+        No map
+      </div>
+    )
+  }
+
+  let minLon = Infinity
+  let maxLon = -Infinity
+  let minLat = Infinity
+  let maxLat = -Infinity
+  for (const [lon, lat] of coordinates) {
+    if (lon < minLon) minLon = lon
+    if (lon > maxLon) maxLon = lon
+    if (lat < minLat) minLat = lat
+    if (lat > maxLat) maxLat = lat
+  }
+  const pad = 0.08
+  const w = Math.max(maxLon - minLon, 1e-6)
+  const h = Math.max(maxLat - minLat, 1e-6)
+  const vbW = 100
+  const vbH = 56
+  const points = coordinates
+    .map(([lon, lat]) => {
+      const x = ((lon - minLon) / w) * (1 - 2 * pad) * vbW + pad * vbW
+      const y = (1 - (lat - minLat) / h) * (1 - 2 * pad) * vbH + pad * vbH
+      return `${x.toFixed(2)},${y.toFixed(2)}`
+    })
+    .join(' ')
+
+  return (
+    <svg
+      viewBox={`0 0 ${vbW} ${vbH}`}
+      preserveAspectRatio="xMidYMid meet"
+      className={className ?? 'w-full h-full'}
+      aria-hidden
+    >
+      <rect width={vbW} height={vbH} fill="#0a0a0a" />
+      <polyline
+        points={points}
+        fill="none"
+        stroke="#3b82f6"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
 }

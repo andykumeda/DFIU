@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
@@ -30,6 +30,10 @@ interface CrewMapProps {
     className?: string
 }
 
+function mapStyleReady(map: mapboxgl.Map | null): map is mapboxgl.Map {
+    return !!map && !!map.style && map.isStyleLoaded()
+}
+
 // Read-only Crew map. Aid-station markers intentionally mirror CourseMap so
 // Crew View and Map & Aid Stations show the same station placement/appearance.
 export function CrewMap({
@@ -47,7 +51,7 @@ export function CrewMap({
     const runnerMarkerRef = useRef<mapboxgl.Marker | null>(null)
     const crewMarkerRef = useRef<mapboxgl.Marker | null>(null)
     const wpMarkersRef = useRef<mapboxgl.Marker[]>([])
-    const styleLoadedRef = useRef(false)
+    const [styleLoaded, setStyleLoaded] = useState(false)
 
     useEffect(() => {
         if (!containerRef.current || mapRef.current) return
@@ -57,6 +61,7 @@ export function CrewMap({
         }
         mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN
 
+        let cancelled = false
         const map = new mapboxgl.Map({
             container: containerRef.current,
             style: 'mapbox://styles/mapbox/outdoors-v12',
@@ -68,26 +73,32 @@ export function CrewMap({
 
         map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right')
         map.addControl(new mapboxgl.NavigationControl(), 'top-right')
-        map.on('style.load', () => { styleLoadedRef.current = true })
+        const onStyleLoad = () => {
+            if (!cancelled) setStyleLoaded(true)
+        }
+        map.on('style.load', onStyleLoad)
 
         return () => {
+            cancelled = true
+            map.off('style.load', onStyleLoad)
             wpMarkersRef.current.forEach(marker => marker.remove())
+            wpMarkersRef.current = []
             runnerMarkerRef.current?.remove()
+            runnerMarkerRef.current = null
             crewMarkerRef.current?.remove()
+            crewMarkerRef.current = null
             map.remove()
             mapRef.current = null
-            styleLoadedRef.current = false
+            setStyleLoaded(false)
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     useEffect(() => {
         const map = mapRef.current
-        if (!map) return
+        if (!mapStyleReady(map) || !styleLoaded || coordinates.length === 0) return
 
-        const drawRouteAndWaypoints = () => {
-            if (!styleLoadedRef.current || coordinates.length === 0) return
-
+        try {
             const routeData: GeoJSON.Feature<GeoJSON.LineString> = {
                 type: 'Feature',
                 properties: {},
@@ -128,6 +139,7 @@ export function CrewMap({
                 if (group.length > 1) {
                     markerEl.addEventListener('click', event => {
                         event.stopPropagation()
+                        if (!mapStyleReady(mapRef.current)) return
                         const popupDiv = document.createElement('div')
                         popupDiv.className = 'p-2 min-w-[160px]'
                         popupDiv.innerHTML = '<div class="text-[10px] font-bold text-neutral-400 uppercase mb-2 tracking-wider">Aid Station Visits</div>'
@@ -160,61 +172,68 @@ export function CrewMap({
 
                 wpMarkersRef.current.push(marker)
             })
+        } catch (err) {
+            console.warn('CrewMap route/waypoints update failed', err)
         }
-
-        if (styleLoadedRef.current) drawRouteAndWaypoints()
-        else map.once('style.load', drawRouteAndWaypoints)
-    }, [coordinates, waypoints, nextWaypointId])
-
-    useEffect(() => {
-        const map = mapRef.current
-        if (!map) return
-        if (!runnerLatLon) {
-            runnerMarkerRef.current?.remove()
-            runnerMarkerRef.current = null
-            return
-        }
-        if (!runnerMarkerRef.current) {
-            const el = document.createElement('div')
-            el.style.cssText = `
-                width:18px;height:18px;border-radius:50%;
-                background:#ef4444;border:3px solid #fff;
-                box-shadow:0 0 0 4px rgba(239,68,68,0.4);
-            `
-            el.title = 'Runner'
-            runnerMarkerRef.current = new mapboxgl.Marker({ element: el }).setLngLat(runnerLatLon).addTo(map)
-        } else {
-            runnerMarkerRef.current.setLngLat(runnerLatLon)
-        }
-    }, [runnerLatLon])
+    }, [styleLoaded, coordinates, waypoints, nextWaypointId])
 
     useEffect(() => {
         const map = mapRef.current
-        if (!map) return
-        if (!crewLatLon) {
-            crewMarkerRef.current?.remove()
-            crewMarkerRef.current = null
-            return
+        if (!mapStyleReady(map) || !styleLoaded) return
+        try {
+            if (!runnerLatLon) {
+                runnerMarkerRef.current?.remove()
+                runnerMarkerRef.current = null
+                return
+            }
+            if (!runnerMarkerRef.current) {
+                const el = document.createElement('div')
+                el.style.cssText = `
+                    width:18px;height:18px;border-radius:50%;
+                    background:#ef4444;border:3px solid #fff;
+                    box-shadow:0 0 0 4px rgba(239,68,68,0.4);
+                `
+                el.title = 'Runner'
+                runnerMarkerRef.current = new mapboxgl.Marker({ element: el }).setLngLat(runnerLatLon).addTo(map)
+            } else {
+                runnerMarkerRef.current.setLngLat(runnerLatLon)
+            }
+        } catch (err) {
+            console.warn('CrewMap runner marker update failed', err)
         }
-        if (!crewMarkerRef.current) {
-            const el = document.createElement('div')
-            el.style.cssText = `
-                width:14px;height:14px;border-radius:50%;
-                background:#0ea5e9;border:2px solid #fff;
-                box-shadow:0 0 0 3px rgba(14,165,233,0.4);
-            `
-            el.title = 'You'
-            crewMarkerRef.current = new mapboxgl.Marker({ element: el }).setLngLat(crewLatLon).addTo(map)
-        } else {
-            crewMarkerRef.current.setLngLat(crewLatLon)
-        }
-    }, [crewLatLon])
+    }, [styleLoaded, runnerLatLon])
 
     useEffect(() => {
         const map = mapRef.current
-        if (!map) return
+        if (!mapStyleReady(map) || !styleLoaded) return
+        try {
+            if (!crewLatLon) {
+                crewMarkerRef.current?.remove()
+                crewMarkerRef.current = null
+                return
+            }
+            if (!crewMarkerRef.current) {
+                const el = document.createElement('div')
+                el.style.cssText = `
+                    width:14px;height:14px;border-radius:50%;
+                    background:#0ea5e9;border:2px solid #fff;
+                    box-shadow:0 0 0 3px rgba(14,165,233,0.4);
+                `
+                el.title = 'You'
+                crewMarkerRef.current = new mapboxgl.Marker({ element: el }).setLngLat(crewLatLon).addTo(map)
+            } else {
+                crewMarkerRef.current.setLngLat(crewLatLon)
+            }
+        } catch (err) {
+            console.warn('CrewMap crew marker update failed', err)
+        }
+    }, [styleLoaded, crewLatLon])
 
-        const fit = () => {
+    useEffect(() => {
+        const map = mapRef.current
+        if (!mapStyleReady(map) || !styleLoaded) return
+
+        try {
             const next = waypoints.find(wp => wp.id === nextWaypointId)
             const focusPoints = getFocusCoordinates(coordinates, focusStartMile, focusEndMile)
             const points = [...focusPoints]
@@ -254,11 +273,10 @@ export function CrewMap({
                     [Math.max(...lons), Math.max(...lats)],
                 ], { padding: 32, maxZoom: 12, duration: 400 })
             }
+        } catch (err) {
+            console.warn('CrewMap fitBounds failed', err)
         }
-
-        if (styleLoadedRef.current) fit()
-        else map.once('style.load', fit)
-    }, [coordinates, waypoints, nextWaypointId, runnerLatLon, focusStartMile, focusEndMile])
+    }, [styleLoaded, coordinates, waypoints, nextWaypointId, runnerLatLon, focusStartMile, focusEndMile])
 
     return <div ref={containerRef} className={className} style={{ width: '100%', height: '100%' }} />
 }
