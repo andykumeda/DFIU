@@ -37,6 +37,99 @@ export function getPredictedMile(plan: PacePlanResult | null | undefined, elapse
     return 0
 }
 
+/** Inverse of getPredictedMile: elapsed minutes from start at a course mile. */
+export function getElapsedMinutesAtMile(plan: PacePlanResult | null | undefined, mile: number): number | null {
+    if (!plan) return null
+    const arrivals = plan.waypointArrivals
+    if (arrivals.length === 0) return null
+    if (!Number.isFinite(mile)) return null
+
+    if (mile <= arrivals[0].mile) return arrivals[0].arrivalTime
+    const last = arrivals[arrivals.length - 1]
+    if (mile >= last.mile) return last.arrivalTime
+
+    for (let i = 0; i < arrivals.length - 1; i += 1) {
+        const a = arrivals[i]
+        const b = arrivals[i + 1]
+        if (mile >= a.mile && mile <= b.mile) {
+            const span = b.mile - a.mile
+            const t = span <= 0 ? 0 : (mile - a.mile) / span
+            return a.arrivalTime + t * (b.arrivalTime - a.arrivalTime)
+        }
+    }
+    return null
+}
+
+export function formatPaceMinPerMile(minPerMile: number): string {
+    if (!Number.isFinite(minPerMile) || minPerMile <= 0) return '--'
+    let m = Math.floor(minPerMile)
+    let s = Math.round((minPerMile % 1) * 60)
+    if (s === 60) {
+        s = 0
+        m += 1
+    }
+    return `${m}:${s.toString().padStart(2, '0')}`
+}
+
+export function formatRaceClockTime(
+    minutesFromStart: number,
+    race: Pick<Race, 'start_datetime' | 'timezone'> | null | undefined,
+    clock24h = false
+): string | null {
+    if (!race?.start_datetime || !Number.isFinite(minutesFromStart)) return null
+    const start = new Date(race.start_datetime)
+    if (Number.isNaN(start.getTime())) return null
+    const d = new Date(start.getTime() + minutesFromStart * 60000)
+    return d.toLocaleTimeString([], {
+        hour: 'numeric',
+        minute: '2-digit',
+        timeZone: race.timezone || undefined,
+        hour12: !clock24h,
+    })
+}
+
+export type OverlapRacePace = {
+    paceMinPerMile: number
+    paceLabel: string
+    durationMin: number
+    enterTimeOfDay: string | null
+    exitTimeOfDay: string | null
+}
+
+/** Plan A predicted pace and clock window for a course-mile overlap span. */
+export function getOverlapRacePace(
+    plan: PacePlanResult | null | undefined,
+    courseStartMi: number,
+    courseEndMi: number,
+    race: Pick<Race, 'start_datetime' | 'timezone'> | null | undefined,
+    clock24h = false
+): OverlapRacePace | null {
+    if (!plan) return null
+    const start = Math.min(courseStartMi, courseEndMi)
+    const end = Math.max(courseStartMi, courseEndMi)
+    const span = end - start
+    if (!(span > 0)) return null
+
+    const t0 = getElapsedMinutesAtMile(plan, start)
+    const t1 = getElapsedMinutesAtMile(plan, end)
+    if (t0 == null || t1 == null) return null
+
+    const durationMin = Math.abs(t1 - t0)
+    if (!(durationMin > 0)) return null
+
+    const paceMinPerMile = durationMin / span
+    const enterElapsed = Math.min(t0, t1)
+    const exitElapsed = Math.max(t0, t1)
+
+    return {
+        paceMinPerMile,
+        paceLabel: formatPaceMinPerMile(paceMinPerMile),
+        durationMin,
+        enterTimeOfDay: formatRaceClockTime(enterElapsed, race, clock24h),
+        exitTimeOfDay: formatRaceClockTime(exitElapsed, race, clock24h),
+    }
+}
+
 export function getRunnerLatLonAtMile(course: Course | null | undefined, mile: number): [number, number] | null {
     if (!course?.geometry) return null
     const totalMiles = course.total_distance_miles ?? 0

@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ExternalLink, Mountain, Route as RouteIcon, Upload } from 'lucide-react'
-import type { Course, Race } from '@/types/database'
+import type { Course, Race, TerrainNode, Waypoint } from '@/types/database'
 import { GpxUploader } from '@/features/course/GpxUploader'
 import type { GpxParseResult } from '@/lib/gpx-parser'
 import {
@@ -13,10 +13,18 @@ import {
 import { useTrainingRoutes, type TrainingRouteRow } from './useTrainingRoutes'
 import { TrainingRouteSvgPreview } from './TrainingRouteDetailMap'
 import { TrainingRouteDetail } from './TrainingRouteDetail'
+import { calculatePacePlan, isPaceChartWaypoint, type PacePlanResult } from './pace-utils'
+import { usePacePlans, computePlanMinutes } from './usePacePlans'
+import type { RunnerPacingProfile } from './runner-profile'
+import { getOverlapRacePace } from './race-day-utils'
 
 interface TrainingSectionProps {
   race: Race
   course: Course | null
+  waypoints: Waypoint[]
+  terrainNodes: TerrainNode[]
+  clock24h?: boolean
+  runnerProfile: RunnerPacingProfile
 }
 
 function truncateNotes(notes: string | null, max = 100): string | null {
@@ -25,7 +33,14 @@ function truncateNotes(notes: string | null, max = 100): string | null {
   return t.length > max ? `${t.slice(0, max)}…` : t
 }
 
-export function TrainingSection({ race, course }: TrainingSectionProps) {
+export function TrainingSection({
+  race,
+  course,
+  waypoints,
+  terrainNodes,
+  clock24h = false,
+  runnerProfile,
+}: TrainingSectionProps) {
   const {
     routes,
     loading,
@@ -39,6 +54,47 @@ export function TrainingSection({ race, course }: TrainingSectionProps) {
   const [showUploader, setShowUploader] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const { plans } = usePacePlans(race.id)
+  const { a: planAMinutes } = computePlanMinutes(plans, race.overall_cutoff)
+  const [planA, setPlanA] = useState<PacePlanResult | null>(null)
+
+  useEffect(() => {
+    if (!plans.hasCalculated || !course?.elevation_samples || !(planAMinutes > 0)) {
+      const handle = setTimeout(() => setPlanA(null), 0)
+      return () => clearTimeout(handle)
+    }
+    const handle = setTimeout(() => {
+      const samples = course.elevation_samples as { distance: number; elevation: number }[]
+      const totalDist = course.total_distance_miles || 0
+      const paceWaypoints = waypoints.filter(isPaceChartWaypoint)
+      setPlanA(
+        calculatePacePlan(
+          samples,
+          totalDist,
+          paceWaypoints,
+          terrainNodes,
+          { mode: 'time', value: planAMinutes },
+          race,
+          clock24h,
+          [],
+          runnerProfile,
+          runnerProfile.aidStationDefaultDelay
+        )
+      )
+    }, 0)
+    return () => clearTimeout(handle)
+  }, [
+    plans.hasCalculated,
+    planAMinutes,
+    course,
+    waypoints,
+    terrainNodes,
+    race,
+    clock24h,
+    runnerProfile,
+  ])
+
+  const planAReady = plans.hasCalculated && planA != null
   const selected = selectedId ? routes.find(r => r.id === selectedId) ?? null : null
 
   const handleUpload = async (result: GpxParseResult, rawGpx: string, fileName: string) => {
@@ -61,7 +117,11 @@ export function TrainingSection({ race, course }: TrainingSectionProps) {
         <TrainingRouteDetail
           route={selected}
           course={course}
+          race={race}
           canEdit={canEdit}
+          planA={planA}
+          planAReady={planAReady}
+          clock24h={clock24h}
           onBack={() => setSelectedId(null)}
           onUpdate={updateRoute}
           onDelete={deleteRoute}
@@ -120,6 +180,10 @@ export function TrainingSection({ race, course }: TrainingSectionProps) {
             <TrainingRouteCard
               key={route.id}
               route={route}
+              planA={planA}
+              planAReady={planAReady}
+              race={race}
+              clock24h={clock24h}
               onOpen={() => setSelectedId(route.id)}
             />
           ))}
@@ -131,9 +195,17 @@ export function TrainingSection({ race, course }: TrainingSectionProps) {
 
 function TrainingRouteCard({
   route,
+  planA,
+  planAReady,
+  race,
+  clock24h,
   onOpen,
 }: {
   route: TrainingRouteRow
+  planA: PacePlanResult | null
+  planAReady: boolean
+  race: Race
+  clock24h: boolean
   onOpen: () => void
 }) {
   const coords = extractCoordinates(route.geometry)
@@ -152,6 +224,12 @@ function TrainingRouteCard({
     hasStart &&
     hasFinish &&
     isPointToPointRoute(route.start_lat, route.start_lon, route.finish_lat, route.finish_lon)
+
+  const primarySeg = route.overlapSegments[0]
+  const overlapPace =
+    planAReady && primarySeg
+      ? getOverlapRacePace(planA, primarySeg.courseStartMi, primarySeg.courseEndMi, race, clock24h)
+      : null
 
   return (
     <article className="bg-neutral-900 border border-neutral-800 hover:border-neutral-700 rounded-xl overflow-hidden flex flex-col transition-colors">
@@ -181,6 +259,12 @@ function TrainingRouteCard({
           <p className="text-sm text-orange-300/90">
             {formatOverlapSummary(route.overlap_miles, route.overlapSegments)}
           </p>
+          {overlapPace && (
+            <p className="text-sm text-emerald-400/90">
+              Plan A {overlapPace.paceLabel}/mi
+              {overlapPace.enterTimeOfDay ? ` · ~${overlapPace.enterTimeOfDay}` : ''}
+            </p>
+          )}
           {notesPreview && (
             <p className="text-sm text-neutral-500 line-clamp-2">{notesPreview}</p>
           )}
