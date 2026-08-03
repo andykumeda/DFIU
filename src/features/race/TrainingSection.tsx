@@ -11,7 +11,7 @@ import {
   returnDirectionsUrl,
 } from '@/lib/training-overlap'
 import { useTrainingRoutes, type TrainingRouteRow } from './useTrainingRoutes'
-import { TrainingRouteSvgPreview } from './TrainingRoutePreviewMap'
+import { TrainingRouteSvgPreview } from './TrainingRouteDetailMap'
 import { TrainingRouteDetail } from './TrainingRouteDetail'
 
 interface TrainingSectionProps {
@@ -174,7 +174,7 @@ function TrainingRouteCard({
             <span className="flex items-center gap-1">
               <Mountain className="w-3.5 h-3.5" />
               {route.elevation_gain_ft != null
-                ? `+${Math.round(route.elevation_gain_ft).toLocaleString()} ft gain`
+                ? `+${Math.round(route.elevation_gain_ft).toLocaleString()} ft`
                 : '—'}
             </span>
           </div>

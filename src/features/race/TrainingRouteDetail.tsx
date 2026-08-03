@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ArrowLeft, ExternalLink, MapPin, Mountain, Route as RouteIcon, Trash2 } from 'lucide-react'
 import type { Course } from '@/types/database'
 import type { TrainingRouteRow } from './useTrainingRoutes'
-import { TrainingRoutePreviewMap } from './TrainingRoutePreviewMap'
+import { TrainingRouteDetailMap } from './TrainingRouteDetailMap'
 import {
   directionsUrl,
   extractCoordinates,
@@ -102,11 +102,10 @@ export function TrainingRouteDetail({
       </div>
 
       <div className="rounded-xl overflow-hidden border border-neutral-800 bg-neutral-950 h-[360px] md:h-[420px]">
-        <TrainingRoutePreviewMap
+        <TrainingRouteDetailMap
           coordinates={trainingCoords}
           courseCoordinates={courseCoords.length >= 2 ? courseCoords : undefined}
           overlapSegments={route.overlapSegments}
-          interactive
           className="w-full h-full"
         />
       </div>
@@ -137,13 +136,8 @@ export function TrainingRouteDetail({
             <span className="flex items-center gap-1.5">
               <Mountain className="w-4 h-4 text-neutral-500" />
               {route.elevation_gain_ft != null
-                ? `+${Math.round(route.elevation_gain_ft).toLocaleString()} ft gain`
+                ? `+${Math.round(route.elevation_gain_ft).toLocaleString()} ft`
                 : '—'}
-              {route.elevation_loss_ft != null && (
-                <span className="text-neutral-500">
-                  / −{Math.round(route.elevation_loss_ft).toLocaleString()} ft loss
-                </span>
-              )}
             </span>
           </div>
 

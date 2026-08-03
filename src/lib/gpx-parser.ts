@@ -77,7 +77,7 @@ const ELEVATION_WINDOW_CLEAN_M = 60
 const ELEVATION_WINDOW_NOISY_M = 100
 const ELEVATION_NOISE_RATIO_THRESHOLD = 1.10
 
-function sumSmoothed(profile: { distance: number; elevation: number }[], windowM: number) {
+function sumSmoothed(profile: { distance: number; elevation: number }[], windowM: number, threshFt = 0) {
     const half = (windowM / 1609.344) / 2
     const smoothed = new Array<number>(profile.length)
     let lo = 0, hi = 0, sum = 0
@@ -94,10 +94,13 @@ function sumSmoothed(profile: { distance: number; elevation: number }[], windowM
         smoothed[i] = sum / Math.max(1, hi - lo)
     }
     let gainFt = 0, lossFt = 0
+    let last = smoothed[0]
     for (let i = 1; i < smoothed.length; i++) {
-        const d = smoothed[i] - smoothed[i - 1]
+        const d = smoothed[i] - last
+        if (threshFt > 0 && Math.abs(d) < threshFt) continue
         if (d > 0) gainFt += d
         else if (d < 0) lossFt += -d
+        last = smoothed[i]
     }
     return { gainFt, lossFt }
 }
@@ -108,13 +111,19 @@ function computeElevationStatsFromProfile(
     if (profile.length < 2) return { gainFt: 0, lossFt: 0 }
 
     // Estimate source noise: rawGain / 60m-smoothed gain. DEM-corrected
-    // files sit near 1.03, wearable tracks near 1.43.
+    // files sit near 1.03, noisier wearable/race exports near 1.4+.
     let rawGain = 0
     for (let i = 1; i < profile.length; i++) {
         const d = profile[i].elevation - profile[i - 1].elevation
         if (d > 0) rawGain += d
     }
     const clean = sumSmoothed(profile, ELEVATION_WINDOW_CLEAN_M)
+    const heavy = sumSmoothed(profile, 400)
+    // High-frequency GPS noise: light smoothing still far above a long window
+    // (Routesmith/DEM-style gain). Escalate + apply a small threshold.
+    if (heavy.gainFt > 0 && clean.gainFt > heavy.gainFt * 1.45) {
+        return sumSmoothed(profile, 400, 10)
+    }
     const ratio = rawGain / Math.max(clean.gainFt, 1)
     if (ratio > ELEVATION_NOISE_RATIO_THRESHOLD) {
         return sumSmoothed(profile, ELEVATION_WINDOW_NOISY_M)
