@@ -9,6 +9,7 @@ import {
   extractCoordinates,
   parseOverlapSegments,
   nameFromGpxFileName,
+  nameFromRawGpx,
   type OverlapSegment,
 } from '@/lib/training-overlap'
 
@@ -105,10 +106,12 @@ export function useTrainingRoutes(raceId: string, courseGeometry: unknown) {
     const courseCoords = courseCoordsFromGeometry(courseGeometry)
     const overlap = computeTrainingOverlap(coords, courseCoords)
     const start = coords[0]
+    const finish = coords[coords.length - 1]
     const maxOrder = routes.reduce((m, r) => Math.max(m, r.sort_order), -1)
     const displayName = (
       (fileName ? nameFromGpxFileName(fileName) : '') ||
       result.name?.trim() ||
+      nameFromRawGpx(rawGpx) ||
       'Training route'
     ).slice(0, 120)
 
@@ -124,6 +127,8 @@ export function useTrainingRoutes(raceId: string, courseGeometry: unknown) {
       raw_gpx: rawGpx,
       start_lat: start[1],
       start_lon: start[0],
+      finish_lat: finish[1],
+      finish_lon: finish[0],
       overlap_miles: overlap.overlapMiles,
       overlap_segments: overlap.segments,
       sort_order: maxOrder + 1,

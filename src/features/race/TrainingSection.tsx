@@ -7,6 +7,8 @@ import {
   directionsUrl,
   extractCoordinates,
   formatOverlapSummary,
+  isPointToPointRoute,
+  returnDirectionsUrl,
 } from '@/lib/training-overlap'
 import { useTrainingRoutes, type TrainingRouteRow } from './useTrainingRoutes'
 import { TrainingRouteSvgPreview } from './TrainingRoutePreviewMap'
@@ -141,6 +143,15 @@ function TrainingRouteCard({
     route.start_lon != null &&
     Number.isFinite(route.start_lat) &&
     Number.isFinite(route.start_lon)
+  const hasFinish =
+    route.finish_lat != null &&
+    route.finish_lon != null &&
+    Number.isFinite(route.finish_lat) &&
+    Number.isFinite(route.finish_lon)
+  const isP2P =
+    hasStart &&
+    hasFinish &&
+    isPointToPointRoute(route.start_lat, route.start_lon, route.finish_lat, route.finish_lon)
 
   return (
     <article className="bg-neutral-900 border border-neutral-800 hover:border-neutral-700 rounded-xl overflow-hidden flex flex-col transition-colors">
@@ -163,7 +174,7 @@ function TrainingRouteCard({
             <span className="flex items-center gap-1">
               <Mountain className="w-3.5 h-3.5" />
               {route.elevation_gain_ft != null
-                ? `+${Math.round(route.elevation_gain_ft).toLocaleString()} ft`
+                ? `+${Math.round(route.elevation_gain_ft).toLocaleString()} ft gain`
                 : '—'}
             </span>
           </div>
@@ -175,18 +186,49 @@ function TrainingRouteCard({
           )}
         </div>
       </button>
-      {hasStart && (
-        <div className="px-4 pb-4">
-          <a
-            href={directionsUrl(route.start_lat!, route.start_lon!)}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={e => e.stopPropagation()}
-            className="inline-flex items-center gap-1.5 text-sm text-blue-400 hover:text-blue-300"
-          >
-            <ExternalLink className="w-3.5 h-3.5" />
-            Directions to start
-          </a>
+      {(hasStart || isP2P) && (
+        <div className="px-4 pb-4 flex flex-col gap-1.5">
+          {hasStart && (
+            <a
+              href={directionsUrl(route.start_lat!, route.start_lon!)}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={e => e.stopPropagation()}
+              className="inline-flex items-center gap-1.5 text-sm text-blue-400 hover:text-blue-300"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              Directions to start
+            </a>
+          )}
+          {isP2P && (
+            <>
+              <a
+                href={directionsUrl(route.finish_lat!, route.finish_lon!)}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={e => e.stopPropagation()}
+                className="inline-flex items-center gap-1.5 text-sm text-blue-400 hover:text-blue-300"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                Directions to finish
+              </a>
+              <a
+                href={returnDirectionsUrl(
+                  route.finish_lat!,
+                  route.finish_lon!,
+                  route.start_lat!,
+                  route.start_lon!
+                )}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={e => e.stopPropagation()}
+                className="inline-flex items-center gap-1.5 text-sm text-blue-400 hover:text-blue-300"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                Finish → start (return)
+              </a>
+            </>
+          )}
         </div>
       )}
     </article>

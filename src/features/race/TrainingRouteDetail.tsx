@@ -7,6 +7,8 @@ import {
   directionsUrl,
   extractCoordinates,
   formatOverlapSummary,
+  isPointToPointRoute,
+  returnDirectionsUrl,
 } from '@/lib/training-overlap'
 
 interface TrainingRouteDetailProps {
@@ -38,6 +40,15 @@ export function TrainingRouteDetail({
     route.start_lon != null &&
     Number.isFinite(route.start_lat) &&
     Number.isFinite(route.start_lon)
+  const hasFinish =
+    route.finish_lat != null &&
+    route.finish_lon != null &&
+    Number.isFinite(route.finish_lat) &&
+    Number.isFinite(route.finish_lon)
+  const isP2P =
+    hasStart &&
+    hasFinish &&
+    isPointToPointRoute(route.start_lat, route.start_lon, route.finish_lat, route.finish_lon)
 
   const dirty = name.trim() !== route.name || notes !== (route.notes ?? '')
 
@@ -126,21 +137,57 @@ export function TrainingRouteDetail({
             <span className="flex items-center gap-1.5">
               <Mountain className="w-4 h-4 text-neutral-500" />
               {route.elevation_gain_ft != null
-                ? `+${Math.round(route.elevation_gain_ft).toLocaleString()} ft`
+                ? `+${Math.round(route.elevation_gain_ft).toLocaleString()} ft gain`
                 : '—'}
+              {route.elevation_loss_ft != null && (
+                <span className="text-neutral-500">
+                  / −{Math.round(route.elevation_loss_ft).toLocaleString()} ft loss
+                </span>
+              )}
             </span>
           </div>
 
-          {hasStart && (
-            <a
-              href={directionsUrl(route.start_lat!, route.start_lon!)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300"
-            >
-              <ExternalLink className="w-4 h-4" />
-              Directions to start
-            </a>
+          {(hasStart || isP2P) && (
+            <div className="flex flex-col gap-2">
+              {hasStart && (
+                <a
+                  href={directionsUrl(route.start_lat!, route.start_lon!)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Directions to start
+                </a>
+              )}
+              {isP2P && (
+                <>
+                  <a
+                    href={directionsUrl(route.finish_lat!, route.finish_lon!)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Directions to finish
+                  </a>
+                  <a
+                    href={returnDirectionsUrl(
+                      route.finish_lat!,
+                      route.finish_lon!,
+                      route.start_lat!,
+                      route.start_lon!
+                    )}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Finish → start (return / shuttle)
+                  </a>
+                </>
+              )}
+            </div>
           )}
 
           <div className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-4">

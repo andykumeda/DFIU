@@ -123,11 +123,6 @@ function pickCourseVisit(
       for (const v of visits) {
         if (Math.abs(v.mile - mileHint) < Math.abs(chosen.mile - mileHint)) chosen = v
       }
-    } else if (visits.length > 1) {
-      // No hint yet: prefer the later course mile (finish-area training is common).
-      for (const v of visits) {
-        if (v.mile > chosen.mile) chosen = v
-      }
     }
     return { courseMi: chosen.mile, distance: chosen.distance }
   }
@@ -143,8 +138,11 @@ function pickCourseVisit(
 
 /**
  * Compute where a training route overlaps the race course.
- * Samples the training polyline, snaps each sample to the course within
- * OVERLAP_BUFFER_MI, bridges brief GPS gaps, and merges course mile ranges.
+ *
+ * Out-and-back on the same trail (reverse then forward) is split into
+ * direction streaks; we report the streak that covers the most course miles.
+ * `overlapMiles` is that course span (e.g. 90.4→100.8 ≈ 10.4), not bridged
+ * training length.
  */
 export function computeTrainingOverlap(
   trainingCoords: LonLat[],
@@ -169,9 +167,30 @@ export function computeTrainingOverlap(
   const courseCum = cumulativeMiles(courseCoords)
   const courseTotalMi = courseCum.length ? courseCum[courseCum.length - 1] : 0
 
+  // Pass 1: naive snaps to discover the dominant course cluster.
+  const prelimCourseMiles: number[] = []
+  for (const [lon, lat] of coords) {
+    const snapped = getNearestPointOnLine({ lat, lon }, courseCoords)
+    if (!snapped || snapped.distance > bufferMi) continue
+    prelimCourseMiles.push(
+      getDistanceFromStart(courseCoords, snapped.index, {
+        lat: snapped.lat,
+        lon: snapped.lon,
+      })
+    )
+  }
+  let prelimRanges = clusterMileRanges(prelimCourseMiles, courseMergeMi)
+  prelimRanges = filterStartFinishCollisionRanges(prelimRanges, courseCoords, courseTotalMi)
+  const primaryRange = prelimRanges.reduce<(typeof prelimRanges)[0] | null>((best, r) => {
+    const len = r.end - r.start
+    if (!best || len > best.end - best.start) return r
+    return best
+  }, null)
+  const primaryHint = primaryRange ? (primaryRange.start + primaryRange.end) / 2 : undefined
+
   type Hit = { trainingMi: number; courseMi: number; onCourse: boolean }
   const hits: Hit[] = []
-  let mileHint: number | undefined
+  let mileHint = primaryHint
 
   for (let i = 0; i < coords.length; i++) {
     const [lon, lat] = coords[i]
@@ -180,116 +199,140 @@ export function computeTrainingOverlap(
       hits.push({ trainingMi: miles[i], courseMi: NaN, onCourse: false })
       continue
     }
+    if (
+      primaryRange &&
+      primaryRange.start > courseTotalMi * 0.5 &&
+      visit.courseMi < Math.min(5, courseTotalMi * 0.08)
+    ) {
+      hits.push({ trainingMi: miles[i], courseMi: NaN, onCourse: false })
+      continue
+    }
     mileHint = visit.courseMi
     hits.push({ trainingMi: miles[i], courseMi: visit.courseMi, onCourse: true })
   }
 
-  type Run = {
+  type OnHit = { trainingMi: number; courseMi: number }
+  const onHits: OnHit[] = hits
+    .filter(h => h.onCourse && Number.isFinite(h.courseMi))
+    .map(h => ({ trainingMi: h.trainingMi, courseMi: h.courseMi }))
+
+  if (onHits.length < 2) {
+    return { overlapMiles: 0, segments: [] }
+  }
+
+  type Streak = {
     trainingStart: number
     trainingEnd: number
-    courseMiles: number[]
-    lastOnCourseTrainingMi: number
+    courseStart: number
+    courseEnd: number
+    /** Farthest course mile in the travel direction (min if reverse, max if forward). */
+    courseExtreme: number
+    direction: 1 | -1 | 0
   }
-  const runs: Run[] = []
-  let active: Run | null = null
 
-  const flush = () => {
-    if (!active) return
-    const trainingLen = Math.max(0, active.trainingEnd - active.trainingStart)
-    if (trainingLen >= 0.05 && active.courseMiles.length > 0) {
-      runs.push(active)
+  const streaks: Streak[] = []
+  let cur: Streak | null = null
+  let lastTraining = -Infinity
+
+  const flushStreak = () => {
+    if (!cur) return
+    if (Math.abs(cur.courseEnd - cur.courseStart) >= 0.15 || cur.trainingEnd - cur.trainingStart >= 0.2) {
+      streaks.push(cur)
     }
-    active = null
+    cur = null
   }
 
-  for (const hit of hits) {
-    if (hit.onCourse) {
-      if (!active) {
-        active = {
-          trainingStart: hit.trainingMi,
-          trainingEnd: hit.trainingMi,
-          courseMiles: [hit.courseMi],
-          lastOnCourseTrainingMi: hit.trainingMi,
-        }
-      } else {
-        active.trainingEnd = hit.trainingMi
-        active.courseMiles.push(hit.courseMi)
-        active.lastOnCourseTrainingMi = hit.trainingMi
+  for (const hit of onHits) {
+    if (!cur) {
+      cur = {
+        trainingStart: hit.trainingMi,
+        trainingEnd: hit.trainingMi,
+        courseStart: hit.courseMi,
+        courseEnd: hit.courseMi,
+        courseExtreme: hit.courseMi,
+        direction: 0,
       }
+      lastTraining = hit.trainingMi
       continue
     }
 
-    if (active && hit.trainingMi - active.lastOnCourseTrainingMi <= gapBridgeMi) {
-      active.trainingEnd = hit.trainingMi
+    const delta = hit.courseMi - cur.courseEnd
+    const dir: 1 | -1 | 0 = Math.abs(delta) < 0.08 ? cur.direction : delta > 0 ? 1 : -1
+
+    // Turnaround vs the extreme reached in the established direction (not last point).
+    const reverses =
+      cur.direction === 1
+        ? hit.courseMi < cur.courseExtreme - 0.25
+        : cur.direction === -1
+          ? hit.courseMi > cur.courseExtreme + 0.25
+          : false
+
+    const trainingGap = hit.trainingMi - lastTraining > gapBridgeMi + 0.15
+    const courseContinues =
+      cur.direction === 0 ||
+      (cur.direction === 1 && hit.courseMi >= cur.courseExtreme - 0.35) ||
+      (cur.direction === -1 && hit.courseMi <= cur.courseExtreme + 0.35)
+
+    if (reverses || (trainingGap && !courseContinues)) {
+      flushStreak()
+      cur = {
+        trainingStart: hit.trainingMi,
+        trainingEnd: hit.trainingMi,
+        courseStart: hit.courseMi,
+        courseEnd: hit.courseMi,
+        courseExtreme: hit.courseMi,
+        direction: 0,
+      }
+      lastTraining = hit.trainingMi
       continue
     }
-    flush()
+
+    cur.trainingEnd = hit.trainingMi
+    cur.courseEnd = hit.courseMi
+    if (cur.direction === 0 && dir !== 0) cur.direction = dir
+    if (cur.direction === 1) cur.courseExtreme = Math.max(cur.courseExtreme, hit.courseMi)
+    else if (cur.direction === -1) cur.courseExtreme = Math.min(cur.courseExtreme, hit.courseMi)
+    else cur.courseExtreme = hit.courseMi
+    lastTraining = hit.trainingMi
   }
-  flush()
+  flushStreak()
 
-  const allCourseMiles = runs.flatMap(r => r.courseMiles)
-  let courseRanges = clusterMileRanges(allCourseMiles, courseMergeMi)
-  courseRanges = filterStartFinishCollisionRanges(courseRanges, courseCoords, courseTotalMi)
-
-  if (courseRanges.length === 0 || runs.length === 0) {
+  if (streaks.length === 0) {
     return { overlapMiles: 0, segments: [] }
   }
 
-  const inKeptRange = (courseMi: number) =>
-    courseRanges.some(r => courseMi >= r.start - 0.05 && courseMi <= r.end + 0.05)
+  const best = streaks.reduce((a, b) =>
+    Math.abs(b.courseEnd - b.courseStart) > Math.abs(a.courseEnd - a.courseStart) ? b : a
+  )
 
-  const keptRuns: Run[] = []
-  let keptActive: Run | null = null
-  const flushKept = () => {
-    if (!keptActive) return
-    if (keptActive.trainingEnd - keptActive.trainingStart >= 0.05) keptRuns.push(keptActive)
-    keptActive = null
-  }
+  const courseStartMi = Math.min(best.courseStart, best.courseEnd)
+  const courseEndMi = Math.max(best.courseStart, best.courseEnd)
 
-  for (const hit of hits) {
-    const keep = hit.onCourse && inKeptRange(hit.courseMi)
-    if (keep) {
-      if (!keptActive) {
-        keptActive = {
-          trainingStart: hit.trainingMi,
-          trainingEnd: hit.trainingMi,
-          courseMiles: [hit.courseMi],
-          lastOnCourseTrainingMi: hit.trainingMi,
-        }
-      } else {
-        keptActive.trainingEnd = hit.trainingMi
-        keptActive.courseMiles.push(hit.courseMi)
-        keptActive.lastOnCourseTrainingMi = hit.trainingMi
-      }
-      continue
-    }
-    if (keptActive && hit.trainingMi - keptActive.lastOnCourseTrainingMi <= gapBridgeMi) {
-      keptActive.trainingEnd = hit.trainingMi
-      continue
-    }
-    flushKept()
-  }
-  flushKept()
-
-  if (keptRuns.length === 0) {
+  const filteredRanges = filterStartFinishCollisionRanges(
+    [{ start: courseStartMi, end: courseEndMi }],
+    courseCoords,
+    courseTotalMi
+  )
+  if (filteredRanges.length === 0) {
     return { overlapMiles: 0, segments: [] }
   }
 
-  const trainingStart = Math.min(...keptRuns.map(r => r.trainingStart))
-  const trainingEnd = Math.max(...keptRuns.map(r => r.trainingEnd))
-  const overlapMiles =
-    Math.round(
-      keptRuns.reduce((sum, r) => sum + Math.max(0, r.trainingEnd - r.trainingStart), 0) * 100
-    ) / 100
+  const overlapMiles = Math.round((filteredRanges[0].end - filteredRanges[0].start) * 100) / 100
+  if (overlapMiles < 0.1) {
+    return { overlapMiles: 0, segments: [] }
+  }
 
-  const segments: OverlapSegment[] = courseRanges.map(range => ({
-    courseStartMi: Math.round(range.start * 100) / 100,
-    courseEndMi: Math.round(range.end * 100) / 100,
-    trainingStartMi: Math.round(trainingStart * 100) / 100,
-    trainingEndMi: Math.round(trainingEnd * 100) / 100,
-  }))
-
-  return { overlapMiles, segments }
+  return {
+    overlapMiles,
+    segments: [
+      {
+        courseStartMi: Math.round(filteredRanges[0].start * 100) / 100,
+        courseEndMi: Math.round(filteredRanges[0].end * 100) / 100,
+        trainingStartMi: Math.round(best.trainingStart * 100) / 100,
+        trainingEndMi: Math.round(best.trainingEnd * 100) / 100,
+      },
+    ],
+  }
 }
 
 export function formatOverlapSummary(overlapMiles: number, segments: OverlapSegment[]): string {
@@ -335,7 +378,65 @@ export function directionsUrl(lat: number, lon: number): string {
   return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`
 }
 
+/** Driving directions from finish back to start (shuttle / car spot). */
+export function returnDirectionsUrl(
+  finishLat: number,
+  finishLon: number,
+  startLat: number,
+  startLon: number
+): string {
+  return `https://www.google.com/maps/dir/?api=1&origin=${finishLat},${finishLon}&destination=${startLat},${startLon}`
+}
+
+/** Point-to-point if start and finish are farther apart than this (miles). */
+export const POINT_TO_POINT_MIN_SEPARATION_MI = 0.35
+
+export function isPointToPointRoute(
+  startLat: number | null | undefined,
+  startLon: number | null | undefined,
+  finishLat: number | null | undefined,
+  finishLon: number | null | undefined,
+  minSeparationMi: number = POINT_TO_POINT_MIN_SEPARATION_MI
+): boolean {
+  if (
+    startLat == null ||
+    startLon == null ||
+    finishLat == null ||
+    finishLon == null ||
+    !Number.isFinite(startLat) ||
+    !Number.isFinite(startLon) ||
+    !Number.isFinite(finishLat) ||
+    !Number.isFinite(finishLon)
+  ) {
+    return false
+  }
+  return getDistance(startLat, startLon, finishLat, finishLon) >= minSeparationMi
+}
+
 export function nameFromGpxFileName(fileName: string): string {
   const base = fileName.replace(/^.*[/\\]/, '').replace(/\.gpx$/i, '').trim()
   return base || 'Training route'
+}
+
+/** Best-effort name from raw GPX (metadata/track name). */
+export function nameFromRawGpx(rawGpx: string | null | undefined): string | null {
+  if (!rawGpx) return null
+  try {
+    if (typeof DOMParser !== 'undefined') {
+      const doc = new DOMParser().parseFromString(rawGpx, 'application/xml')
+      if (!doc.querySelector('parsererror')) {
+        const meta = doc.querySelector('gpx > metadata > name, gpx > name')?.textContent?.trim()
+        if (meta) return meta
+        const trk = doc.querySelector('trk > name')?.textContent?.trim()
+        if (trk) return trk
+      }
+    }
+  } catch {
+    /* fall through */
+  }
+  const trk = rawGpx.match(/<trk[^>]*>[\s\S]*?<name>([^<]+)<\/name>/i)
+  if (trk?.[1]?.trim()) return trk[1].trim()
+  const meta = rawGpx.match(/<metadata[^>]*>[\s\S]*?<name>([^<]+)<\/name>/i)
+  if (meta?.[1]?.trim()) return meta[1].trim()
+  return null
 }

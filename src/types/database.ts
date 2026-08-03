@@ -258,6 +258,8 @@ export type Database = {
           raw_gpx: string | null
           start_lat: number | null
           start_lon: number | null
+          finish_lat: number | null
+          finish_lon: number | null
           overlap_miles: number
           overlap_segments: Json
           sort_order: number
@@ -278,6 +280,8 @@ export type Database = {
           raw_gpx?: string | null
           start_lat?: number | null
           start_lon?: number | null
+          finish_lat?: number | null
+          finish_lon?: number | null
           overlap_miles?: number
           overlap_segments?: Json
           sort_order?: number
@@ -298,6 +302,8 @@ export type Database = {
           raw_gpx?: string | null
           start_lat?: number | null
           start_lon?: number | null
+          finish_lat?: number | null
+          finish_lon?: number | null
           overlap_miles?: number
           overlap_segments?: Json
           sort_order?: number

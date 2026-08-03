@@ -263,7 +263,7 @@ export function parseGpx(gpxString: string): GpxParseResult {
     })
 
     return {
-        name: gpxName,
+        name: gpxName || tracks.find(t => t.name)?.name || null,
         tracks,
         bounds,
         stats: {

@@ -83,7 +83,39 @@ describe('computeTrainingOverlap', () => {
     expect(result.segments.length).toBe(1)
     expect(result.segments[0].courseStartMi).toBeGreaterThan(9)
     expect(result.segments[0].courseEndMi).toBeGreaterThan(19)
+    // overlap_miles = course span covered (~10 mi), not bridged training length
     expect(result.overlapMiles).toBeGreaterThan(8)
+    expect(result.overlapMiles).toBeLessThan(12)
+    expect(result.segments[0].trainingEndMi).toBeGreaterThan(result.segments[0].trainingStartMi)
+  })
+
+  it('reports course-covered miles not full training length', () => {
+    const course = makeLine(37, -122, 101, 0.1) // 0–10 mi
+    const onCourse = course.slice(70, 101)
+    const spur = makeLine(37 + 10 / 69, -121.5, 40, 0.1)
+    const training = [...onCourse, ...spur]
+    const result = computeTrainingOverlap(training, course)
+    expect(result.segments.length).toBe(1)
+    expect(result.overlapMiles).toBeGreaterThan(2.5)
+    expect(result.overlapMiles).toBeLessThan(4)
+    expect(result.segments[0].trainingStartMi).toBeLessThan(1)
+    expect(result.segments[0].trainingEndMi).toBeLessThan(4)
+  })
+
+  it('prefers the longest course-direction streak on out-and-back', () => {
+    // Reverse on course miles 8→5, then forward 5→10 (longer streak wins).
+    const course = makeLine(37, -122, 101, 0.1)
+    const reverse = course.slice(50, 81).reverse() // ~8→5
+    const forward = course.slice(50, 101) // ~5→10
+    const training = [...reverse, ...forward]
+    const result = computeTrainingOverlap(training, course)
+    expect(result.segments.length).toBe(1)
+    expect(result.overlapMiles).toBeGreaterThan(4.5)
+    expect(result.overlapMiles).toBeLessThan(6)
+    // Forward leg is longer in course span; training should start near mid-route.
+    expect(result.segments[0].trainingStartMi).toBeGreaterThan(2.5)
+    expect(result.segments[0].courseStartMi).toBeLessThan(6)
+    expect(result.segments[0].courseEndMi).toBeGreaterThan(9)
   })
 
   it('handles empty inputs', () => {
@@ -146,5 +178,16 @@ describe('nameFromGpxFileName', () => {
   it('strips path and extension', () => {
     expect(nameFromGpxFileName('Angeles Crest Finish.gpx')).toBe('Angeles Crest Finish')
     expect(nameFromGpxFileName('/tmp/foo/bar.GPX')).toBe('bar')
+  })
+})
+
+describe('point-to-point directions', () => {
+  it('detects loops vs point-to-point', async () => {
+    const { isPointToPointRoute, returnDirectionsUrl, directionsUrl } = await import('./training-overlap')
+    expect(isPointToPointRoute(34.2, -118.16, 34.2001, -118.1601)).toBe(false)
+    expect(isPointToPointRoute(34.2, -118.16, 34.3, -118.0)).toBe(true)
+    expect(directionsUrl(1, 2)).toContain('destination=1,2')
+    expect(returnDirectionsUrl(3, 4, 1, 2)).toContain('origin=3,4')
+    expect(returnDirectionsUrl(3, 4, 1, 2)).toContain('destination=1,2')
   })
 })
