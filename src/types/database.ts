@@ -244,6 +244,77 @@ export type Database = {
           },
         ]
       }
+      training_routes: {
+        Row: {
+          id: string
+          race_id: string
+          name: string
+          notes: string | null
+          distance_miles: number | null
+          elevation_gain_ft: number | null
+          elevation_loss_ft: number | null
+          geometry: Json
+          elevation_samples: Json | null
+          raw_gpx: string | null
+          start_lat: number | null
+          start_lon: number | null
+          overlap_miles: number
+          overlap_segments: Json
+          sort_order: number
+          created_at: string
+          updated_at: string
+          created_by: string | null
+        }
+        Insert: {
+          id?: string
+          race_id: string
+          name: string
+          notes?: string | null
+          distance_miles?: number | null
+          elevation_gain_ft?: number | null
+          elevation_loss_ft?: number | null
+          geometry: Json
+          elevation_samples?: Json | null
+          raw_gpx?: string | null
+          start_lat?: number | null
+          start_lon?: number | null
+          overlap_miles?: number
+          overlap_segments?: Json
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+        }
+        Update: {
+          id?: string
+          race_id?: string
+          name?: string
+          notes?: string | null
+          distance_miles?: number | null
+          elevation_gain_ft?: number | null
+          elevation_loss_ft?: number | null
+          geometry?: Json
+          elevation_samples?: Json | null
+          raw_gpx?: string | null
+          start_lat?: number | null
+          start_lon?: number | null
+          overlap_miles?: number
+          overlap_segments?: Json
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_routes_race_id_fkey"
+            columns: ["race_id"]
+            isOneToOne: false
+            referencedRelation: "races"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       race_live_configs: {
         Row: {
           bib_number: string | null
@@ -963,6 +1034,7 @@ export type TerrainNode = Tables<"terrain_nodes">
 export type RaceMembership = Tables<"race_memberships">
 export type SiteAdmin = Tables<"site_admins">
 export type RacePacePlan = Tables<"race_pace_plans">
+export type TrainingRoute = Tables<"training_routes">
 export type RaceLiveConfig = Tables<"race_live_configs">
 export type RaceLiveFollowedRunner = Tables<"race_live_followed_runners">
 export type RaceLiveFollowedRunnerCheckin = Tables<"race_live_followed_runner_checkins">

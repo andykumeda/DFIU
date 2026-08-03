@@ -30,6 +30,8 @@ import { parseRunnerProfile } from '@/features/race/runner-profile'
 import { RaceResources } from '@/features/race/RaceResources'
 import { WeatherLocations } from '@/features/race/WeatherLocations'
 import { DropBagsSection } from '@/features/race/DropBagsSection'
+import { TrainingSection } from '@/features/race/TrainingSection'
+import { recomputeTrainingOverlapsForRace } from '@/features/race/useTrainingRoutes'
 
 const CrewView = lazy(() =>
     import('@/features/race/CrewView').then(m => ({ default: m.CrewView }))
@@ -39,7 +41,7 @@ const LiveEventTab = lazy(() =>
     import('@/features/race/LiveEventTab').then(m => ({ default: m.LiveEventTab }))
 )
 
-type Tab = 'live' | 'overview' | 'map' | 'plan' | 'drop_bags' | 'resources' | 'crew' | 'members'
+type Tab = 'live' | 'overview' | 'map' | 'plan' | 'training' | 'drop_bags' | 'resources' | 'crew' | 'members'
 type ExistingRaceClone = Pick<Race, 'id' | 'name' | 'created_at'>
 
 function normalizeRaceName(name: string) {
@@ -203,7 +205,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   const { user, refreshMemberships } = useAuth()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [activeTab, setActiveTab] = useState<Tab>('live')
+  const [activeTab, setActiveTab] = useState<Tab>('overview')
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingWaypoint, setEditingWaypoint] = useState<Partial<Waypoint> | null>(null)
   const [viewingWaypoint, setViewingWaypoint] = useState<Waypoint | null>(null)
@@ -459,6 +461,13 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (supabase.from('races') as any).update({ distance_miles: result.stats.totalDistanceMiles }).eq('id', raceId)
+
+      const newGeometry = { type: 'LineString', coordinates: result.coordinates }
+      try {
+        await recomputeTrainingOverlapsForRace(raceId, newGeometry)
+      } catch (overlapErr) {
+        console.error('Failed to recompute training overlaps:', overlapErr)
+      }
 
       // Import GPX waypoints as aid stations if present
       if (result.waypoints.length > 0 && courseId && result.coordinates.length > 0) {
@@ -1311,13 +1320,14 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     [waypoints]
   )
   const tabs: { id: Tab; label: string }[] = [
-    { id: 'live', label: 'Live' },
     { id: 'overview', label: 'Overview' },
     { id: 'map', label: 'Map & Aid Stations' },
     { id: 'plan', label: 'Pace Plan' },
+    { id: 'training', label: 'Training' },
     { id: 'drop_bags', label: 'Drop Bags' },
     { id: 'resources', label: 'Resources' },
     { id: 'crew', label: 'Crew' },
+    { id: 'live', label: 'Live' },
     ...(canManageTeam ? [{ id: 'members' as Tab, label: 'Members' }] : []),
   ]
 
@@ -1900,6 +1910,12 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                 Please upload a course route first.
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'training' && (
+          <div className="animate-in fade-in duration-500">
+            <TrainingSection race={race} course={course || null} />
           </div>
         )}
 

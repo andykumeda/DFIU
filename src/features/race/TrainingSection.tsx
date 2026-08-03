@@ -1,0 +1,197 @@
+import { useState } from 'react'
+import { ExternalLink, Mountain, Route as RouteIcon, Upload } from 'lucide-react'
+import type { Course, Race } from '@/types/database'
+import { GpxUploader } from '@/features/course/GpxUploader'
+import type { GpxParseResult } from '@/lib/gpx-parser'
+import {
+  directionsUrl,
+  extractCoordinates,
+  formatOverlapSummary,
+} from '@/lib/training-overlap'
+import { useTrainingRoutes, type TrainingRouteRow } from './useTrainingRoutes'
+import { TrainingRoutePreviewMap } from './TrainingRoutePreviewMap'
+import { TrainingRouteDetail } from './TrainingRouteDetail'
+
+interface TrainingSectionProps {
+  race: Race
+  course: Course | null
+}
+
+function truncateNotes(notes: string | null, max = 100): string | null {
+  if (!notes?.trim()) return null
+  const t = notes.trim()
+  return t.length > max ? `${t.slice(0, max)}…` : t
+}
+
+export function TrainingSection({ race, course }: TrainingSectionProps) {
+  const {
+    routes,
+    loading,
+    canEdit,
+    createFromGpx,
+    updateRoute,
+    deleteRoute,
+  } = useTrainingRoutes(race.id, course?.geometry)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [showUploader, setShowUploader] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const selected = selectedId ? routes.find(r => r.id === selectedId) ?? null : null
+
+  const handleUpload = async (result: GpxParseResult, rawGpx: string) => {
+    setError(null)
+    setUploading(true)
+    try {
+      const created = await createFromGpx(result, rawGpx)
+      setShowUploader(false)
+      if (created) setSelectedId(created.id)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save training route')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  if (selected) {
+    return (
+      <div className="p-4 md:p-8 max-w-7xl mx-auto">
+        <TrainingRouteDetail
+          route={selected}
+          course={course}
+          canEdit={canEdit}
+          onBack={() => setSelectedId(null)}
+          onUpdate={updateRoute}
+          onDelete={deleteRoute}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div className="p-4 md:p-8 max-w-7xl mx-auto animate-in fade-in duration-500">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <div>
+          <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+            <RouteIcon className="w-6 h-6 text-blue-400" />
+            Training Routes
+          </h2>
+          <p className="text-sm text-neutral-400 mt-1">
+            GPX routes to prepare for the event, with automatic course-overlap detection.
+          </p>
+        </div>
+        {canEdit && (
+          <button
+            type="button"
+            onClick={() => setShowUploader(v => !v)}
+            className="flex items-center gap-2 bg-neutral-800 hover:bg-neutral-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+          >
+            <Upload className="w-4 h-4" />
+            {showUploader ? 'Cancel' : 'Import GPX'}
+          </button>
+        )}
+      </div>
+
+      {showUploader && canEdit && (
+        <div className="mb-6 rounded-xl border border-neutral-800 bg-neutral-900/40 p-4">
+          <GpxUploader onUpload={handleUpload} disabled={uploading} />
+          {uploading && <p className="text-sm text-neutral-400 mt-2">Saving route…</p>}
+          {error && <p className="text-sm text-red-400 mt-2">{error}</p>}
+        </div>
+      )}
+
+      {loading ? (
+        <p className="text-neutral-400 py-12 text-center">Loading training routes…</p>
+      ) : routes.length === 0 ? (
+        <div className="flex flex-col items-center justify-center p-12 text-center text-neutral-500 border-2 border-dashed border-neutral-800 rounded-xl my-6">
+          <RouteIcon className="w-12 h-12 mb-4 opacity-20" />
+          <h3 className="text-xl font-medium text-white mb-2">No training routes yet</h3>
+          <p className="max-w-md">
+            {canEdit
+              ? 'Import a GPX file to add a training route. Overlap with the race course is calculated automatically.'
+              : 'Race editors can import GPX training routes here.'}
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+          {routes.map(route => (
+            <TrainingRouteCard
+              key={route.id}
+              route={route}
+              onOpen={() => setSelectedId(route.id)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function TrainingRouteCard({
+  route,
+  onOpen,
+}: {
+  route: TrainingRouteRow
+  onOpen: () => void
+}) {
+  const coords = extractCoordinates(route.geometry)
+  const notesPreview = truncateNotes(route.notes)
+  const hasStart =
+    route.start_lat != null &&
+    route.start_lon != null &&
+    Number.isFinite(route.start_lat) &&
+    Number.isFinite(route.start_lon)
+
+  return (
+    <article className="bg-neutral-900 border border-neutral-800 hover:border-neutral-700 rounded-xl overflow-hidden flex flex-col transition-colors">
+      <button type="button" onClick={onOpen} className="text-left block w-full">
+        <div className="h-36 bg-neutral-950 relative">
+          {coords.length >= 2 ? (
+            <TrainingRoutePreviewMap
+              coordinates={coords}
+              className="w-full h-full pointer-events-none"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-neutral-600 text-xs">
+              No map
+            </div>
+          )}
+        </div>
+        <div className="p-4 space-y-2">
+          <h3 className="text-lg font-semibold text-white truncate">{route.name}</h3>
+          <div className="flex flex-wrap gap-3 text-sm text-neutral-400">
+            <span>
+              {route.distance_miles != null ? `${route.distance_miles.toFixed(1)} mi` : '—'}
+            </span>
+            <span className="flex items-center gap-1">
+              <Mountain className="w-3.5 h-3.5" />
+              {route.elevation_gain_ft != null
+                ? `+${Math.round(route.elevation_gain_ft).toLocaleString()} ft`
+                : '—'}
+            </span>
+          </div>
+          <p className="text-sm text-orange-300/90">
+            {formatOverlapSummary(route.overlap_miles, route.overlapSegments)}
+          </p>
+          {notesPreview && (
+            <p className="text-sm text-neutral-500 line-clamp-2">{notesPreview}</p>
+          )}
+        </div>
+      </button>
+      {hasStart && (
+        <div className="px-4 pb-4">
+          <a
+            href={directionsUrl(route.start_lat!, route.start_lon!)}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={e => e.stopPropagation()}
+            className="inline-flex items-center gap-1.5 text-sm text-blue-400 hover:text-blue-300"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            Directions to start
+          </a>
+        </div>
+      )}
+    </article>
+  )
+}

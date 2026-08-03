@@ -1,38 +1,30 @@
 # Handoff Document
 
-**Date:** 2026-07-28  
-**Branch:** `main` @ `eaf73d3` (pushed, clean-deployed)  
-**Status:** Security hardening + docs refresh complete.
+**Date:** 2026-08-03  
+**Branch:** `main` (Training Routes tab shipped)  
+**Status:** Training tab live; prior Live/chunk-deploy file dirty work may still be uncommitted beside this batch.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Frontend clean-deployed; footer/hash: `eaf73d3`.
-- Supabase project: `nyjgyyuoscgekavheeqi`.
-- Edge Functions deployed: `weather` (JWT on), `strava-auth` (`--no-verify-jwt`, OAuth state hardened).
-- Secret set: `VISUAL_CROSSING_KEY`.
-- Migration applied: `20260728_restrict_public_share_token` — `get_race_share_settings` exists; `anon`/`authenticated` cannot SELECT `public_share_token` (verified).
-- `.env` untracked; use `.env.example`. Local `.env` should remain on disk for deploy vars.
+- Frontend deployed with Training Routes tab; compare footer via `git describe --always --dirty --abbrev=7`.
+- Supabase: `training_routes` table + RLS applied; `clone_race` copies training routes.
+- Edge Functions unchanged: `weather` (JWT on), `strava-auth` (`--no-verify-jwt`).
 - Extra worktree (unchanged): `/Users/andy/.codex/worktrees/9dfe/DFIU` on `codex/fix-vite-chunk-deploy`.
 
-## Shipped this batch
+## Just finished
 
-1. Env hygiene + `.env.example` + CI (`lint` / `test` / `build`) + Vitest helpers.
-2. Strava OAuth HMAC `state` + sessionStorage check; no `listUsers()`; no Strava tokens in `user_metadata`.
-3. Weather via Edge Function (no client Visual Crossing key).
-4. Share-token lockdown (client `RACE_SELECT` + DB column grants + RPC).
-5. Docs/instructions refreshed: `AGENTS.md`, `README.md`, `DEPLOYMENT.md`, `HANDOFF.md`, roles/crew handoff notes.
-6. `usePermission.canEditRaceSettings` aligned with RLS (owner / director / runner+edit).
+Training Routes tab (between Pace Plan and Drop Bags):
+- GPX import, card list + detail map, Google Maps directions to start
+- Automatic course-overlap computation; free-text notes
+- Race editors write; viewers read; overlaps recomputed on course GPX replace
 
 ## Open / follow-up
 
-- **Rotate the Strava client secret** (it was previously in git history) and update Supabase `STRAVA_*` secrets.
-- Second-account RBAC/invite E2E verification.
-- Build `/admin` + owner-transfer UI.
-- Offline/PWA Crew View if still prioritized.
-- Finish or retire Pacer View placeholder.
-- Decide whether to port remaining ideas from `codex/fix-vite-chunk-deploy` before deleting that branch/worktree.
+- Commit remaining prior Live/chunk files if still dirty (`ErrorBoundary`, `CrewMap`, deploy scripts) when asked.
+- Rotate Strava client secret; second-account RBAC E2E; `/admin` + owner transfer; Pacer View; offline Crew PWA.
+- Amenity map pins for water/restrooms (deferred).
 
 ## Workflow reminders
 
