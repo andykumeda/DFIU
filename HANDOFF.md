@@ -1,8 +1,8 @@
 # Handoff Document
 
-**Date:** 2026-08-03  
-**Branch:** `main` @ `e5ba884`  
-**Status:** Training Mapbox detail + Wilson overlap fix deployed.
+**Date:** 2026-08-03
+**Branch:** `main` @ `d56f550`
+**Status:** Cleaning stale repository state, then fixing Training detail-map rendering and Wilson Loop overlap accuracy.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -16,6 +16,12 @@
 
 - Lazy Mapbox Training detail map (ResizeObserver + SVG fallback).
 - Overlap uses unique course-mile coverage; DB recomputed.
+
+## Active task
+
+- Remove superseded local/worktree artifacts after preserving useful deployment safeguards.
+- Reproduce Wilson Loop against the stored training/course GPX geometry.
+- Fix the detailed route map and course-mile overlap calculation with regression coverage.
 
 ## Open / follow-up
 

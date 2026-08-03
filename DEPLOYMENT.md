@@ -41,11 +41,15 @@ npm run deploy
 ```
 
 **What this does:**
-1.  Installs exact dependencies with `npm ci`.
-2.  Builds the project locally (`npm run build`).
-3.  Connects to `DEPLOY_HOST` via SSH.
-4.  Syncs the contents of `dist/` to `DEPLOY_DIR` on the server using `rsync`.
-5.  Normalizes remote permissions (755 dirs / 644 files).
+1.  Validates the required Supabase and Mapbox client build values.
+2.  Installs exact dependencies with `npm ci`.
+3.  Builds the project locally (`npm run build`).
+4.  Connects to `DEPLOY_HOST` via SSH.
+5.  Uploads new hashed Vite assets to `DEPLOY_DIR/assets` **without deleting older assets**, so already-open tabs can still lazy-load chunks from their current app version.
+6.  Syncs non-asset app-shell files from `dist/` to `DEPLOY_DIR` (with deletion for stale shell files).
+7.  Normalizes remote permissions (755 dirs / 644 files).
+
+If a user still hits `Failed to fetch dynamically imported module`, the app ErrorBoundary auto-reloads once (hard refresh also fixes it).
 
 After deploy, compare the app footer/build label with:
 
