@@ -1,20 +1,22 @@
 # Handoff Document
 
 **Date:** 2026-08-03  
-**Branch:** `main`  
-**Status:** In progress — Training overlap Plan A pace + description under name.
+**Branch:** `main` @ `661e95a` (dirty until commit)  
+**Status:** Training overlap Plan A pace + description deployed.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Compare footer via `git describe --always --dirty --abbrev=7` after deploy.
+- Frontend deployed; compare footer via `git describe --always --dirty --abbrev=7`.
+- Training detail: Description under name; Plan A pace + TOD on overlap segments.
 - Extra worktree (unchanged): `/Users/andy/.codex/worktrees/9dfe/DFIU` on `codex/fix-vite-chunk-deploy`.
 
-## In progress
+## Just finished
 
-- Show Plan A predicted pace + time-of-day for training/course overlap segments
-- Move notes under Name as Description on training route detail
+- `getElapsedMinutesAtMile` / `getOverlapRacePace` helpers + tests
+- Training tab computes Plan A (Drop Bags pattern) and shows pace + enter–exit clock on overlap
+- Notes UI moved under Name as Description
 
 ## Open / follow-up
 
