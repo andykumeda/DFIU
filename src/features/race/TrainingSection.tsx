@@ -226,9 +226,17 @@ function TrainingRouteCard({
     isPointToPointRoute(route.start_lat, route.start_lon, route.finish_lat, route.finish_lon)
 
   const primarySeg = route.overlapSegments[0]
+  const courseStartMi =
+    route.overlapSegments.length > 0
+      ? Math.min(...route.overlapSegments.map(s => Math.min(s.courseStartMi, s.courseEndMi)))
+      : 0
+  const courseEndMi =
+    route.overlapSegments.length > 0
+      ? Math.max(...route.overlapSegments.map(s => Math.max(s.courseStartMi, s.courseEndMi)))
+      : 0
   const overlapPace =
     planAReady && primarySeg
-      ? getOverlapRacePace(planA, primarySeg.courseStartMi, primarySeg.courseEndMi, race, clock24h)
+      ? getOverlapRacePace(planA, courseStartMi, courseEndMi, race, clock24h)
       : null
 
   return (

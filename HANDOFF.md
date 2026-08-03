@@ -1,25 +1,23 @@
 # Handoff Document
 
 **Date:** 2026-08-03  
-**Branch:** `main` @ `ec5e8fc`  
-**Status:** Strava elev gain fix deployed.
+**Branch:** `main`  
+**Status:** Training Mapbox detail + Wilson overlap fix ready to ship.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Frontend: `ec5e8fc` (hard-refresh; compare footer via `git describe --always --dirty --abbrev=7`).
-- Wilson Loop elev updated in DB to **3868 ft** (was 4073); Routesmith lap still **3742**.
 - Extra worktree (unchanged): `/Users/andy/.codex/worktrees/9dfe/DFIU` on `codex/fix-vite-chunk-deploy`.
 
-## Just finished
+## Just finished (local)
 
-- Dense StravaGPX elev escalate threshold 1.45 → 1.05 so residual jitter uses 400m+10ft smoothing (~−200 ft on Wilson Loop).
+- Training detail: lazy Mapbox basemap (`TrainingRouteMapbox`) with ResizeObserver + SVG fallback; cards stay SVG.
+- Overlap: unique course-mile coverage (not one direction streak). Wilson Loop **~9.9 mi (74.9–84.9)** with two training legs; lap finish **~10.4 mi (90.4–100.8)**.
+- DB overlaps recomputed for test race.
 
 ## Open / follow-up
 
-- Training detail Mapbox basemap.
-- Overlap accuracy (Wilson Loop).
 - Pace copy: duration + `(pace/mi)` only.
 - Dirty `DEPLOYMENT.md` / `scripts/deploy-remote.sh` still uncommitted.
 - Rotate Strava client secret; RBAC E2E; `/admin`; Pacer View; offline Crew PWA.

@@ -1,4 +1,6 @@
-/** Detail / card route drawings without Mapbox (avoids blank interactive maps). */
+import { lazy, Suspense, useState } from 'react'
+
+/** Card previews stay SVG-only (no Mapbox in the main bundle). */
 
 function downsample(line: [number, number][], maxPoints: number): [number, number][] {
   if (line.length <= maxPoints) return line
@@ -115,8 +117,26 @@ interface TrainingRouteDetailMapProps {
   className?: string
 }
 
-/** Large SVG detail map — training + optional course/overlap. No Mapbox. */
-export function TrainingRouteDetailMap({
+const TrainingRouteMapbox = lazy(() =>
+  import('./TrainingRouteMapbox').then(m => ({ default: m.TrainingRouteMapbox }))
+)
+
+/** Detail map: Mapbox basemap (lazy) with SVG fallback. */
+export function TrainingRouteDetailMap(props: TrainingRouteDetailMapProps) {
+  const [useSvg, setUseSvg] = useState(!import.meta.env.VITE_MAPBOX_TOKEN)
+
+  if (useSvg) {
+    return <TrainingRouteSvgDetail {...props} />
+  }
+
+  return (
+    <Suspense fallback={<TrainingRouteSvgDetail {...props} />}>
+      <TrainingRouteMapbox {...props} onFail={() => setUseSvg(true)} />
+    </Suspense>
+  )
+}
+
+function TrainingRouteSvgDetail({
   coordinates,
   courseCoordinates,
   overlapSegments,
@@ -143,7 +163,6 @@ export function TrainingRouteDetailMap({
     if (lat < minLat) minLat = lat
     if (lat > maxLat) maxLat = lat
   }
-  // Pad bbox ~8%
   const lonPad = (maxLon - minLon) * 0.08 || 0.01
   const latPad = (maxLat - minLat) * 0.08 || 0.01
   minLon -= lonPad
@@ -154,7 +173,6 @@ export function TrainingRouteDetailMap({
   const vbW = 800
   const vbH = 420
   const pad = 0.04
-
   const inView = (c: [number, number]) =>
     c[0] >= minLon && c[0] <= maxLon && c[1] >= minLat && c[1] <= maxLat
 
@@ -165,16 +183,15 @@ export function TrainingRouteDetailMap({
 
   const trainingPoints = project(training, minLon, maxLon, minLat, maxLat, vbW, vbH, pad)
   const coursePoints =
-    coursePts.length >= 2
-      ? project(coursePts, minLon, maxLon, minLat, maxLat, vbW, vbH, pad)
-      : null
-
+    coursePts.length >= 2 ? project(coursePts, minLon, maxLon, minLat, maxLat, vbW, vbH, pad) : null
   const overlapPolylines =
-    overlapSegments?.map(seg => {
-      const slice = downsample(sliceByMiles(coordinates, seg.trainingStartMi, seg.trainingEndMi), 1500)
-      if (slice.length < 2) return null
-      return project(slice, minLon, maxLon, minLat, maxLat, vbW, vbH, pad)
-    }).filter((p): p is string => !!p) ?? []
+    overlapSegments
+      ?.map(seg => {
+        const slice = downsample(sliceByMiles(coordinates, seg.trainingStartMi, seg.trainingEndMi), 1500)
+        if (slice.length < 2) return null
+        return project(slice, minLon, maxLon, minLat, maxLat, vbW, vbH, pad)
+      })
+      .filter((p): p is string => !!p) ?? []
 
   return (
     <svg

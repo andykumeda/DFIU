@@ -80,13 +80,14 @@ describe('computeTrainingOverlap', () => {
     const onB = course.slice(135, 201) // ~mi 13.5–20
     const training = [...onA, ...blip, ...onB]
     const result = computeTrainingOverlap(training, course)
-    expect(result.segments.length).toBe(1)
-    expect(result.segments[0].courseStartMi).toBeGreaterThan(9)
-    expect(result.segments[0].courseEndMi).toBeGreaterThan(19)
-    // overlap_miles = course span covered (~10 mi), not bridged training length
+    expect(result.segments.length).toBeGreaterThanOrEqual(1)
+    const courseStart = Math.min(...result.segments.map(s => s.courseStartMi))
+    const courseEnd = Math.max(...result.segments.map(s => s.courseEndMi))
+    expect(courseStart).toBeGreaterThan(9)
+    expect(courseEnd).toBeGreaterThan(19)
+    // overlap_miles = unique course span covered (~10 mi), not bridged training length
     expect(result.overlapMiles).toBeGreaterThan(8)
     expect(result.overlapMiles).toBeLessThan(12)
-    expect(result.segments[0].trainingEndMi).toBeGreaterThan(result.segments[0].trainingStartMi)
   })
 
   it('reports course-covered miles not full training length', () => {
@@ -102,20 +103,20 @@ describe('computeTrainingOverlap', () => {
     expect(result.segments[0].trainingEndMi).toBeLessThan(4)
   })
 
-  it('prefers the longest course-direction streak on out-and-back', () => {
-    // Reverse on course miles 8→5, then forward 5→10 (longer streak wins).
+  it('counts unique course coverage on out-and-back (not one short leg)', () => {
+    // Reverse on course miles 8→5, then forward 5→10 — unique coverage ~5 mi.
     const course = makeLine(37, -122, 101, 0.1)
     const reverse = course.slice(50, 81).reverse() // ~8→5
     const forward = course.slice(50, 101) // ~5→10
     const training = [...reverse, ...forward]
     const result = computeTrainingOverlap(training, course)
-    expect(result.segments.length).toBe(1)
+    expect(result.segments.length).toBeGreaterThanOrEqual(1)
     expect(result.overlapMiles).toBeGreaterThan(4.5)
     expect(result.overlapMiles).toBeLessThan(6)
-    // Forward leg is longer in course span; training should start near mid-route.
-    expect(result.segments[0].trainingStartMi).toBeGreaterThan(2.5)
-    expect(result.segments[0].courseStartMi).toBeLessThan(6)
-    expect(result.segments[0].courseEndMi).toBeGreaterThan(9)
+    const courseStart = Math.min(...result.segments.map(s => s.courseStartMi))
+    const courseEnd = Math.max(...result.segments.map(s => s.courseEndMi))
+    expect(courseStart).toBeLessThan(6)
+    expect(courseEnd).toBeGreaterThan(9)
   })
 
   it('handles empty inputs', () => {
@@ -138,6 +139,16 @@ describe('formatOverlapSummary', () => {
     ])
     expect(s).toContain('4.2 mi on course')
     expect(s).toContain('12.1–16.3')
+  })
+
+  it('merges abutting course spans for display', () => {
+    const s = formatOverlapSummary(9.9, [
+      { courseStartMi: 78.8, courseEndMi: 84.9, trainingStartMi: 0, trainingEndMi: 7 },
+      { courseStartMi: 74.9, courseEndMi: 78.6, trainingStartMi: 10, trainingEndMi: 14 },
+    ])
+    expect(s).toContain('9.9 mi on course')
+    expect(s).toContain('74.9–84.9')
+    expect(s).not.toContain('78.8')
   })
 })
 

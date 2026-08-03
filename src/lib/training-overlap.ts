@@ -1,4 +1,4 @@
-import { getDistance, getDistanceFromStart, getAllVisitsOnLine, getNearestPointOnLine } from './geo-utils'
+import { getDistance, getDistanceFromStart, getNearestPointOnLine } from './geo-utils'
 
 /** Max snap distance (miles) to count a training point as on-course. ~200 m — trail GPS drifts. */
 export const OVERLAP_BUFFER_MI = 0.12
@@ -109,40 +109,17 @@ export function filterStartFinishCollisionRanges(
   })
 }
 
-function pickCourseVisit(
-  lat: number,
-  lon: number,
-  courseCoords: LonLat[],
-  bufferMi: number,
-  mileHint: number | undefined
-): { courseMi: number; distance: number } | null {
-  const visits = getAllVisitsOnLine({ lat, lon }, courseCoords, bufferMi, 0.5)
-  if (visits.length > 0) {
-    let chosen = visits[0]
-    if (mileHint !== undefined) {
-      for (const v of visits) {
-        if (Math.abs(v.mile - mileHint) < Math.abs(chosen.mile - mileHint)) chosen = v
-      }
-    }
-    return { courseMi: chosen.mile, distance: chosen.distance }
-  }
-
-  const snapped = getNearestPointOnLine({ lat, lon }, courseCoords, mileHint)
-  if (!snapped || snapped.distance > bufferMi) return null
-  const courseMi = getDistanceFromStart(courseCoords, snapped.index, {
-    lat: snapped.lat,
-    lon: snapped.lon,
-  })
-  return { courseMi, distance: snapped.distance }
+function round2(n: number): number {
+  return Math.round(n * 100) / 100
 }
 
 /**
  * Compute where a training route overlaps the race course.
  *
- * Out-and-back on the same trail (reverse then forward) is split into
- * direction streaks; we report the streak that covers the most course miles.
- * `overlapMiles` is that course span (e.g. 90.4→100.8 ≈ 10.4), not bridged
- * training length.
+ * Uses unique course-mile coverage (not a single direction streak), so
+ * out-and-backs that cover ~10 mi of trail report ~10 mi — not a short
+ * fragment from one leg. `overlapMiles` is the sum of merged course ranges.
+ * Segments are contiguous on-course stretches along the training route.
  */
 export function computeTrainingOverlap(
   trainingCoords: LonLat[],
@@ -167,182 +144,134 @@ export function computeTrainingOverlap(
   const courseCum = cumulativeMiles(courseCoords)
   const courseTotalMi = courseCum.length ? courseCum[courseCum.length - 1] : 0
 
-  // Pass 1: naive snaps to discover the dominant course cluster.
-  const prelimCourseMiles: number[] = []
-  for (const [lon, lat] of coords) {
-    const snapped = getNearestPointOnLine({ lat, lon }, courseCoords)
-    if (!snapped || snapped.distance > bufferMi) continue
-    prelimCourseMiles.push(
-      getDistanceFromStart(courseCoords, snapped.index, {
-        lat: snapped.lat,
-        lon: snapped.lon,
-      })
-    )
-  }
-  let prelimRanges = clusterMileRanges(prelimCourseMiles, courseMergeMi)
-  prelimRanges = filterStartFinishCollisionRanges(prelimRanges, courseCoords, courseTotalMi)
-  const primaryRange = prelimRanges.reduce<(typeof prelimRanges)[0] | null>((best, r) => {
-    const len = r.end - r.start
-    if (!best || len > best.end - best.start) return r
-    return best
-  }, null)
-  const primaryHint = primaryRange ? (primaryRange.start + primaryRange.end) / 2 : undefined
-
-  type Hit = { trainingMi: number; courseMi: number; onCourse: boolean }
-  const hits: Hit[] = []
-  let mileHint = primaryHint
+  type OnHit = { trainingMi: number; courseMi: number }
+  const onHits: OnHit[] = []
 
   for (let i = 0; i < coords.length; i++) {
     const [lon, lat] = coords[i]
-    const visit = pickCourseVisit(lat, lon, courseCoords, bufferMi, mileHint)
-    if (!visit) {
-      hits.push({ trainingMi: miles[i], courseMi: NaN, onCourse: false })
-      continue
-    }
-    if (
-      primaryRange &&
-      primaryRange.start > courseTotalMi * 0.5 &&
-      visit.courseMi < Math.min(5, courseTotalMi * 0.08)
-    ) {
-      hits.push({ trainingMi: miles[i], courseMi: NaN, onCourse: false })
-      continue
-    }
-    mileHint = visit.courseMi
-    hits.push({ trainingMi: miles[i], courseMi: visit.courseMi, onCourse: true })
+    const snapped = getNearestPointOnLine({ lat, lon }, courseCoords)
+    if (!snapped || snapped.distance > bufferMi) continue
+    const courseMi = getDistanceFromStart(courseCoords, snapped.index, {
+      lat: snapped.lat,
+      lon: snapped.lon,
+    })
+    onHits.push({ trainingMi: miles[i], courseMi })
   }
-
-  type OnHit = { trainingMi: number; courseMi: number }
-  const onHits: OnHit[] = hits
-    .filter(h => h.onCourse && Number.isFinite(h.courseMi))
-    .map(h => ({ trainingMi: h.trainingMi, courseMi: h.courseMi }))
 
   if (onHits.length < 2) {
     return { overlapMiles: 0, segments: [] }
   }
 
+  let courseRanges = clusterMileRanges(
+    onHits.map(h => h.courseMi),
+    courseMergeMi
+  )
+  courseRanges = filterStartFinishCollisionRanges(courseRanges, courseCoords, courseTotalMi)
+  if (courseRanges.length === 0) {
+    return { overlapMiles: 0, segments: [] }
+  }
+
+  const inKeptCourse = (courseMi: number) =>
+    courseRanges.some(r => courseMi >= r.start - 0.15 && courseMi <= r.end + 0.15)
+
+  const keptHits = onHits.filter(h => inKeptCourse(h.courseMi))
+  if (keptHits.length < 2) {
+    return { overlapMiles: 0, segments: [] }
+  }
+
+  // Contiguous on-course stretches along the training route.
   type Streak = {
     trainingStart: number
     trainingEnd: number
     courseStart: number
     courseEnd: number
-    /** Farthest course mile in the travel direction (min if reverse, max if forward). */
-    courseExtreme: number
-    direction: 1 | -1 | 0
   }
-
   const streaks: Streak[] = []
   let cur: Streak | null = null
   let lastTraining = -Infinity
 
-  const flushStreak = () => {
+  const flush = () => {
     if (!cur) return
-    if (Math.abs(cur.courseEnd - cur.courseStart) >= 0.15 || cur.trainingEnd - cur.trainingStart >= 0.2) {
+    const courseSpan = cur.courseEnd - cur.courseStart
+    const trainingSpan = cur.trainingEnd - cur.trainingStart
+    if (courseSpan >= 0.15 || trainingSpan >= 0.2) {
       streaks.push(cur)
     }
     cur = null
   }
 
-  for (const hit of onHits) {
+  for (const hit of keptHits) {
     if (!cur) {
       cur = {
         trainingStart: hit.trainingMi,
         trainingEnd: hit.trainingMi,
         courseStart: hit.courseMi,
         courseEnd: hit.courseMi,
-        courseExtreme: hit.courseMi,
-        direction: 0,
       }
       lastTraining = hit.trainingMi
       continue
     }
-
-    const delta = hit.courseMi - cur.courseEnd
-    const dir: 1 | -1 | 0 = Math.abs(delta) < 0.08 ? cur.direction : delta > 0 ? 1 : -1
-
-    // Turnaround vs the extreme reached in the established direction (not last point).
-    const reverses =
-      cur.direction === 1
-        ? hit.courseMi < cur.courseExtreme - 0.25
-        : cur.direction === -1
-          ? hit.courseMi > cur.courseExtreme + 0.25
-          : false
-
-    const trainingGap = hit.trainingMi - lastTraining > gapBridgeMi + 0.15
-    const courseContinues =
-      cur.direction === 0 ||
-      (cur.direction === 1 && hit.courseMi >= cur.courseExtreme - 0.35) ||
-      (cur.direction === -1 && hit.courseMi <= cur.courseExtreme + 0.35)
-
-    if (reverses || (trainingGap && !courseContinues)) {
-      flushStreak()
+    if (hit.trainingMi - lastTraining > gapBridgeMi + 0.15) {
+      flush()
       cur = {
         trainingStart: hit.trainingMi,
         trainingEnd: hit.trainingMi,
         courseStart: hit.courseMi,
         courseEnd: hit.courseMi,
-        courseExtreme: hit.courseMi,
-        direction: 0,
       }
       lastTraining = hit.trainingMi
       continue
     }
-
     cur.trainingEnd = hit.trainingMi
-    cur.courseEnd = hit.courseMi
-    if (cur.direction === 0 && dir !== 0) cur.direction = dir
-    if (cur.direction === 1) cur.courseExtreme = Math.max(cur.courseExtreme, hit.courseMi)
-    else if (cur.direction === -1) cur.courseExtreme = Math.min(cur.courseExtreme, hit.courseMi)
-    else cur.courseExtreme = hit.courseMi
+    cur.courseStart = Math.min(cur.courseStart, hit.courseMi)
+    cur.courseEnd = Math.max(cur.courseEnd, hit.courseMi)
     lastTraining = hit.trainingMi
   }
-  flushStreak()
+  flush()
 
   if (streaks.length === 0) {
     return { overlapMiles: 0, segments: [] }
   }
 
-  const best = streaks.reduce((a, b) =>
-    Math.abs(b.courseEnd - b.courseStart) > Math.abs(a.courseEnd - a.courseStart) ? b : a
+  const overlapMiles = round2(
+    courseRanges.reduce((sum, r) => sum + Math.max(0, r.end - r.start), 0)
   )
-
-  const courseStartMi = Math.min(best.courseStart, best.courseEnd)
-  const courseEndMi = Math.max(best.courseStart, best.courseEnd)
-
-  const filteredRanges = filterStartFinishCollisionRanges(
-    [{ start: courseStartMi, end: courseEndMi }],
-    courseCoords,
-    courseTotalMi
-  )
-  if (filteredRanges.length === 0) {
-    return { overlapMiles: 0, segments: [] }
-  }
-
-  const overlapMiles = Math.round((filteredRanges[0].end - filteredRanges[0].start) * 100) / 100
   if (overlapMiles < 0.1) {
     return { overlapMiles: 0, segments: [] }
   }
 
-  return {
-    overlapMiles,
-    segments: [
-      {
-        courseStartMi: Math.round(filteredRanges[0].start * 100) / 100,
-        courseEndMi: Math.round(filteredRanges[0].end * 100) / 100,
-        trainingStartMi: Math.round(best.trainingStart * 100) / 100,
-        trainingEndMi: Math.round(best.trainingEnd * 100) / 100,
-      },
-    ],
-  }
+  const segments: OverlapSegment[] = streaks.map(s => ({
+    courseStartMi: round2(s.courseStart),
+    courseEndMi: round2(s.courseEnd),
+    trainingStartMi: round2(s.trainingStart),
+    trainingEndMi: round2(s.trainingEnd),
+  }))
+
+  return { overlapMiles, segments }
 }
 
 export function formatOverlapSummary(overlapMiles: number, segments: OverlapSegment[]): string {
   if (!overlapMiles || segments.length === 0) return 'No overlap with race course'
-  const ranges = segments
+  // Merge abutting/nearby course spans so out-and-backs read as one range.
+  const sorted = segments
+    .map(s => ({
+      start: Math.min(s.courseStartMi, s.courseEndMi),
+      end: Math.max(s.courseStartMi, s.courseEndMi),
+    }))
+    .sort((a, b) => a.start - b.start)
+  const merged: { start: number; end: number }[] = []
+  for (const r of sorted) {
+    const cur = merged[merged.length - 1]
+    if (!cur || r.start > cur.end + COURSE_RANGE_MERGE_MI) {
+      merged.push({ ...r })
+    } else {
+      cur.end = Math.max(cur.end, r.end)
+    }
+  }
+  const ranges = merged
     .map(s => {
-      if (Math.abs(s.courseEndMi - s.courseStartMi) < 0.05) {
-        return `mi ${s.courseStartMi.toFixed(1)}`
-      }
-      return `mi ${s.courseStartMi.toFixed(1)}–${s.courseEndMi.toFixed(1)}`
+      if (Math.abs(s.end - s.start) < 0.05) return `mi ${s.start.toFixed(1)}`
+      return `mi ${s.start.toFixed(1)}–${s.end.toFixed(1)}`
     })
     .join(', ')
   return `${overlapMiles.toFixed(1)} mi on course (${ranges})`
