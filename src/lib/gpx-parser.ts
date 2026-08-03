@@ -69,13 +69,21 @@ function metersToFeet(meters: number): number {
 // Distance-window smoothing before summation neutralizes elevation noise
 // regardless of GPX point density. Window size depends on noise level:
 // clean DEM-corrected StravaGPX exports use 60m; noisier wearable/race
-// exports use 100m. Validated against Strava ground-truth:
-//   Bay Area 100 (StravaGPX)   −1.6%
+// exports use 100m; DEM/route builders with residual jitter escalate to
+// 400m + a small threshold. Validated against ground-truth:
+//   Bay Area 100 (StravaGPX)   −1.6% (60m path)
 //   Leona Divide (RubyGem)     −0.4%
 //   Cocodona 250  (COROS)      +1.3%
+//   Routesmith lap             ~+2.5% vs +3652 ft (400m+10ft)
+//   StravaGPX Wilson Loop      ~aligned after escalate (was ~+200 ft)
 const ELEVATION_WINDOW_CLEAN_M = 60
 const ELEVATION_WINDOW_NOISY_M = 100
+const ELEVATION_WINDOW_HEAVY_M = 400
+const ELEVATION_HEAVY_THRESH_FT = 10
 const ELEVATION_NOISE_RATIO_THRESHOLD = 1.10
+// When 60m gain still exceeds a long-window gain by this factor, treat as
+// residual high-frequency noise (dense StravaGPX / Routesmith DEM).
+const ELEVATION_HEAVY_ESCALATE_RATIO = 1.05
 
 function sumSmoothed(profile: { distance: number; elevation: number }[], windowM: number, threshFt = 0) {
     const half = (windowM / 1609.344) / 2
@@ -118,11 +126,11 @@ function computeElevationStatsFromProfile(
         if (d > 0) rawGain += d
     }
     const clean = sumSmoothed(profile, ELEVATION_WINDOW_CLEAN_M)
-    const heavy = sumSmoothed(profile, 400)
-    // High-frequency GPS noise: light smoothing still far above a long window
-    // (Routesmith/DEM-style gain). Escalate + apply a small threshold.
-    if (heavy.gainFt > 0 && clean.gainFt > heavy.gainFt * 1.45) {
-        return sumSmoothed(profile, 400, 10)
+    const heavy = sumSmoothed(profile, ELEVATION_WINDOW_HEAVY_M)
+    // Residual high-frequency noise: light smoothing still above a long
+    // window (dense StravaGPX ~+200 ft; Routesmith/DEM much higher).
+    if (heavy.gainFt > 0 && clean.gainFt > heavy.gainFt * ELEVATION_HEAVY_ESCALATE_RATIO) {
+        return sumSmoothed(profile, ELEVATION_WINDOW_HEAVY_M, ELEVATION_HEAVY_THRESH_FT)
     }
     const ratio = rawGain / Math.max(clean.gainFt, 1)
     if (ratio > ELEVATION_NOISE_RATIO_THRESHOLD) {

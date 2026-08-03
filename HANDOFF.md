@@ -1,25 +1,25 @@
 # Handoff Document
 
 **Date:** 2026-08-03  
-**Branch:** `main` @ `6b3ecbb`  
-**Status:** Training overlap Plan A pace + description deployed and pushed.
+**Branch:** `main`  
+**Status:** Training Strava elev gain fix (dense GPX ~−200 ft) ready; ship next.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Frontend: `6b3ecbb` (compare footer via `git describe --always --dirty --abbrev=7`).
-- Training detail: Description under name; Plan A pace + enter–exit TOD on overlap segments.
 - Extra worktree (unchanged): `/Users/andy/.codex/worktrees/9dfe/DFIU` on `codex/fix-vite-chunk-deploy`.
 
-## Just finished
+## Just finished (local)
 
-- `getElapsedMinutesAtMile` / `getOverlapRacePace` helpers + tests
-- Training tab computes Plan A (Drop Bags pattern) and shows pace + clock window on overlap
-- Notes UI moved under Name as Description
+- Elev escalate when 60m gain > 400m×1.05 → 400m+10ft (was 1.45, which skipped dense StravaGPX).
+- Wilson Loop DB updated **4073 → 3868 ft**; Routesmith lap unchanged at **3742**.
 
 ## Open / follow-up
 
+- Training detail Mapbox basemap.
+- Overlap accuracy (Wilson Loop).
+- Pace copy: duration + `(pace/mi)` only.
 - Dirty `DEPLOYMENT.md` / `scripts/deploy-remote.sh` still uncommitted.
 - Rotate Strava client secret; RBAC E2E; `/admin`; Pacer View; offline Crew PWA.
 
