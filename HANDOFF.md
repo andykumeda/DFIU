@@ -1,19 +1,20 @@
 # Handoff Document
 
 **Date:** 2026-08-03  
-**Branch:** `main`  
-**Status:** Training Strava elev gain fix (dense GPX ~−200 ft) ready; ship next.
+**Branch:** `main` @ `ec5e8fc`  
+**Status:** Strava elev gain fix deployed.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
+- Frontend: `ec5e8fc` (hard-refresh; compare footer via `git describe --always --dirty --abbrev=7`).
+- Wilson Loop elev updated in DB to **3868 ft** (was 4073); Routesmith lap still **3742**.
 - Extra worktree (unchanged): `/Users/andy/.codex/worktrees/9dfe/DFIU` on `codex/fix-vite-chunk-deploy`.
 
-## Just finished (local)
+## Just finished
 
-- Elev escalate when 60m gain > 400m×1.05 → 400m+10ft (was 1.45, which skipped dense StravaGPX).
-- Wilson Loop DB updated **4073 → 3868 ft**; Routesmith lap unchanged at **3742**.
+- Dense StravaGPX elev escalate threshold 1.45 → 1.05 so residual jitter uses 400m+10ft smoothing (~−200 ft on Wilson Loop).
 
 ## Open / follow-up
 
