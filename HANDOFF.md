@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-04
 **Branch:** `main` @ `528a3aa`
-**Status:** Investigating a Mapbox `getOwnLayer` runtime error and implementing the current Resources, Pace Plan, Map, Training, Crew, and Overview refinements.
+**Status:** Current race-planning refinements are deployed (`4b66013`).
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -13,6 +13,13 @@
 - Repository: `main` only; no extra worktrees or stale feature branches remain.
 
 ## Just finished
+
+- Hardened the Training detail Mapbox layer lifecycle against a source/layer mismatch that can surface as `getOwnLayer` undefined; the SVG fallback remains available.
+- Resources now support editable link or text entries, selectable icons, and titles that directly open link resources.
+- Pace Plans now recalculate automatically from a valid edited goal time; the separate Generate Plan button is removed.
+- Replaced landmark camera glyphs with mountains, limited Crew and Live crew maps to aid stations, and moved Strava Training Analysis into each selected training route.
+- Overview weather samples now use a chosen aid station, show only high/low temperatures, and show all Plan A arrival times for repeated station visits.
+- Verified build, 30 tests, and lint (0 errors; 31 existing warnings); deployed frontend `4b66013`.
 
 - Removed stale generated/review artifacts, an obsolete one-off migration script, and superseded handoff notes.
 - Reconciled and removed `codex/fix-vite-chunk-deploy`; retained its useful deploy safeguards on `main` (`c372a00`).
