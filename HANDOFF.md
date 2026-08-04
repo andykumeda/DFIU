@@ -1,18 +1,20 @@
 # Handoff Document
 
 **Date:** 2026-08-04
-**Branch:** `main` @ `652d9e7`
-**Status:** Fixing custom resource Markdown rendering, printing layout, and icon choices.
+**Branch:** `main` @ `5e4e3cd`
+**Status:** Custom resource Markdown rendering, printing layout, and icon choices deployed.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Frontend: `652d9e7` (deployed; hard-refresh and compare the footer hash).
+- Frontend: `5e4e3cd` (deployed; hard-refresh and compare the footer hash).
 - Wilson Loop: **9.95 unique on-course miles**, displayed as **74.9–84.9**. Its start snaps to race mile **78.78**.
 - Repository: `main` only; no extra worktrees or stale feature branches remain.
 
 ## Just finished
+
+- Custom text resources now render Markdown exactly like Lodging and Schedule of Events. Their print action is in the upper-right header and prints the rendered Markdown, including headings, lists, links, and tables. Bed and calendar choices are now available in the resource-icon menu. Verified 35 tests, production build, lint (0 errors; 31 existing warnings), and deployed frontend `5e4e3cd`.
 
 - Terrain classification now detects continuous reverse-direction course overlap, avoiding ordinary crossings and nearby same-direction trail sections. The map’s terrain dialog previews every detected out-and-back counterpart with an enabled-by-default checkbox. Sidebar type changes, range edits, and deletes propagate to reverse passes as well. Verified 35 tests, production build, lint (0 errors; 31 existing warnings), and deployed frontend `652d9e7`.
 
