@@ -8,13 +8,13 @@
 
 ## Current production snapshot
 
-- Frontend: see `git describe` after deploy (hard-refresh and compare the footer hash).
+- Frontend: `92df8dd` (deployed; hard-refresh and compare the footer hash).
 - Wilson Loop: **9.95 unique on-course miles**, displayed as **74.9–84.9**. Its start snaps to race mile **78.78**.
 - Repository: `main` only; no extra worktrees or stale feature branches remain.
 
 ## Just finished
 
-- Guest try-before-signup demo (`?demo=1`): anonymous users edit a public event into an IndexedDB overlay, then claim into a private `clone_race` on signup/login. Official clones no longer auto-sync; owners get a merge/dismiss banner when `official_revision` advances. Migration `20260805120000_opt_in_official_merge` applied on DFIU.
+- Guest try-before-signup demo (`?demo=1`): anonymous users edit a public event into an IndexedDB overlay, then claim into a private `clone_race` on signup/login. Official clones no longer auto-sync; owners get a merge/dismiss banner when `official_revision` advances. Migration `20260805120000_opt_in_official_merge` applied on DFIU. Verified 39 tests, production build, lint (0 errors), deployed frontend `92df8dd`.
 
 - Added a complete documentation set: `docs/USER_GUIDE.md` for race owners/runners/crew, `docs/ALGORITHMS.md` for pace/prediction/terrain/training methods and limits, and `docs/DEVELOPER_GUIDE.md` for architecture and release practices. Refreshed README, deployment safeguards, and stale terrain/history handoff notes. Documentation-only change; no production application deploy required.
 
