@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-04
 **Branch:** `main` @ `528a3aa`
-**Status:** Mapbox, Resources, and Crew follow-up is deployed (`b03754a`).
+**Status:** CourseMap tab-switch teardown fix is deployed (`9708ce4`).
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -13,6 +13,9 @@
 - Repository: `main` only; no extra worktrees or stale feature branches remain.
 
 ## Just finished
+
+- Fixed the reproducible Map & Aid Stations → any-tab crash: CourseMap now clears its map reference before disposing Mapbox, and waypoint-label cleanup skips a disposed style. This prevents `getOwnLayer` from being read during React unmount cleanup.
+- Verified build and 30 tests; deployed frontend `9708ce4`.
 
 - Fixed a remaining Map & Aid Stations Mapbox lifecycle bug: terrain cleanup now checks layers and sources independently, preventing the unsafe `getOwnLayer` removal path after style changes.
 - Custom Resource now begins with a Link/Text-box picker. Text boxes are full-width sections below links, can be ordered, have icon selection, and can opt into printing.
