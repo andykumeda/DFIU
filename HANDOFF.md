@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-04
 **Branch:** `main` @ `f66f45d`
-**Status:** Persistent terrain-segment selection highlighting deployed.
+**Status:** Adding reviewed, linked terrain application for out-and-back course sections.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 

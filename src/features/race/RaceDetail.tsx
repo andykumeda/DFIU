@@ -222,6 +222,8 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   // nodeId is set when editing an existing segment (vs defining a new range).
   const [pendingSegment, setPendingSegment] = useState<{ startMile: number; endMile: number; nodeId?: string } | null>(null)
   const [pendingType, setPendingType] = useState<TerrainTypeValue>('single_track')
+  const [pendingLinkedRanges, setPendingLinkedRanges] = useState<[number, number][]>([])
+  const [selectedLinkedRangeKeys, setSelectedLinkedRangeKeys] = useState<Set<string>>(new Set())
 
   const [showMileMarkers, setShowMileMarkers] = useState(true)
   const [fetchingWeather, setFetchingWeather] = useState(false)
@@ -808,6 +810,8 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     setPendingSegment(null)
     setHoveredTerrainId(null)
     setSelectedTerrainId(null)
+    setPendingLinkedRanges([])
+    setSelectedLinkedRangeKeys(new Set())
   }
 
   const getRoutePointForMile = (mile: number) => {
@@ -849,7 +853,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     if (endMile <= node.mile) return
 
     setPendingType((node.type === 'other' ? 'single_track' : node.type) as TerrainTypeValue)
-    setPendingSegment({ startMile: node.mile, endMile, nodeId: node.id })
+    openTerrainSelection(node.mile, endMile, node.id)
     setHoveredTerrainId(node.id)
     setSelectedTerrainId(node.id)
   }
@@ -953,6 +957,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     const endMile = sorted[index + 1]?.mile ?? course?.total_distance_miles ?? node.mile
     if (endMile <= node.mile) return
 
+    const linkedRanges = findParallelMileRanges(node.mile, endMile)
     clearPendingTerrainSegment()
     await handleDeleteTerrainSegmentRange({
       startNodeId: id,
@@ -960,6 +965,9 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       startMile: node.mile,
       endMile,
     })
+    for (const [startMile, endMile] of linkedRanges) {
+      await handleSaveTerrainSegment(startMile, endMile, 'other', 100)
+    }
   }
 
   // Handle saving a range/segment of terrain
@@ -1075,9 +1083,12 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     }
   }
 
-  // For a picked mile range, find OTHER physical passes of the same trail
-  // (out-and-backs, lollipop stems, repeated loops). Returns mile ranges that
-  // should also be painted with the same terrain.
+  const terrainRangeKey = ([start, end]: [number, number]) => `${start.toFixed(3)}:${end.toFixed(3)}`
+
+  // For a picked mile range, find the reverse-direction passes of the same
+  // physical trail. The continuity threshold rejects simple crossings and
+  // nearby switchbacks, while the direction test avoids duplicating a nearby
+  // same-direction section.
   const findParallelMileRanges = (startMile: number, endMile: number): [number, number][] => {
     if (coordinates.length < 2) return []
     const lo = Math.min(startMile, endMile)
@@ -1102,20 +1113,42 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     const TOL_DEG_SQ = TOL_DEG * TOL_DEG
 
     const matched = new Set<number>()
-    for (let i = iLo; i <= iHi; i++) {
+    const sourceMatched = new Set<number>()
+    for (let i = iLo; i < iHi; i++) {
       const [loni, lati] = coordinates[i]
+      const [nextLoni, nextLati] = coordinates[i + 1]
+      const sourceDx = (nextLoni - loni) * Math.cos(lati * Math.PI / 180)
+      const sourceDy = nextLati - lati
+      const sourceLength = Math.hypot(sourceDx, sourceDy)
+      if (sourceLength === 0) continue
       const cosLat = Math.cos(lati * Math.PI / 180)
-      for (let j = 0; j < coordinates.length; j++) {
-        if (j >= iLo && j <= iHi) continue
+      for (let j = 0; j < coordinates.length - 1; j++) {
+        if (j >= iLo - 1 && j <= iHi) continue
         if (matched.has(j)) continue
         const [lonj, latj] = coordinates[j]
         const dy = lati - latj
         const dx = (loni - lonj) * cosLat
-        if (dx * dx + dy * dy <= TOL_DEG_SQ) matched.add(j)
+        if (dx * dx + dy * dy > TOL_DEG_SQ) continue
+
+        const [nextLonj, nextLatj] = coordinates[j + 1]
+        const targetDx = (nextLonj - lonj) * Math.cos(latj * Math.PI / 180)
+        const targetDy = nextLatj - latj
+        const targetLength = Math.hypot(targetDx, targetDy)
+        if (targetLength === 0) continue
+
+        // Cosine < -0.5 means the trail is traveled in a substantially
+        // opposite direction, as it should be for an out-and-back counterpart.
+        const directionCosine = (sourceDx * targetDx + sourceDy * targetDy) / (sourceLength * targetLength)
+        if (directionCosine < -0.5) {
+          matched.add(j)
+          sourceMatched.add(i)
+          break
+        }
       }
     }
 
-    if (matched.size === 0) return []
+    const sourceCount = Math.max(1, iHi - iLo)
+    if (matched.size === 0 || sourceMatched.size / sourceCount < 0.7) return []
 
     // Group contiguous matched indices, bridge small gaps.
     const arr = Array.from(matched).sort((a, b) => a - b)
@@ -1135,18 +1168,31 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     }).filter(([a, b]) => b - a >= 0.05)
   }
 
+  function openTerrainSelection(startMile: number, endMile: number, nodeId?: string) {
+    const linkedRanges = findParallelMileRanges(startMile, endMile)
+    setPendingSegment({ startMile, endMile, nodeId })
+    setPendingLinkedRanges(linkedRanges)
+    setSelectedLinkedRangeKeys(new Set(linkedRanges.map(terrainRangeKey)))
+  }
+
+  const saveTerrainAcrossLinkedPasses = async (startMile: number, endMile: number, type: string, difficulty: number) => {
+    await handleSaveTerrainSegment(startMile, endMile, type, difficulty)
+    for (const [parallelStart, parallelEnd] of findParallelMileRanges(startMile, endMile)) {
+      await handleSaveTerrainSegment(parallelStart, parallelEnd, type, difficulty)
+    }
+  }
+
   // Confirm the pending segment popup → paint primary range + any parallel passes.
   const confirmPendingSegment = async () => {
     if (!pendingSegment) return
     const { startMile, endMile } = pendingSegment
     const t = pendingType
     const diff = getTerrainDefaultDifficulty(t)
+    const linkedRanges = pendingLinkedRanges.filter(range => selectedLinkedRangeKeys.has(terrainRangeKey(range)))
     clearPendingTerrainSegment()
 
     await handleSaveTerrainSegment(startMile, endMile, t, diff)
-
-    const parallels = findParallelMileRanges(startMile, endMile)
-    for (const [a, b] of parallels) {
+    for (const [a, b] of linkedRanges) {
       await handleSaveTerrainSegment(a, b, t, diff)
     }
   }
@@ -1638,7 +1684,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                         onTerrainNodeClick={isOwner && isTerrainEditMode ? handleEditTerrainSegment : undefined}
                         onSegmentDefined={isOwner && isTerrainEditMode ? (lo, hi) => {
                           setHoveredTerrainId(null)
-                          setPendingSegment({ startMile: lo, endMile: hi })
+                          openTerrainSelection(lo, hi)
                         } : undefined}
                       />
                     </Suspense>
@@ -1673,6 +1719,38 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                             )
                           })}
                         </div>
+
+                        {pendingLinkedRanges.length > 0 && (
+                          <fieldset className="mb-3 rounded border border-amber-200 bg-amber-50 px-2.5 py-2">
+                            <legend className="px-1 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
+                              Linked out-and-back pass{pendingLinkedRanges.length === 1 ? '' : 'es'}
+                            </legend>
+                            <p className="mb-1.5 text-[11px] leading-snug text-amber-900">
+                              Apply this terrain to the reverse-direction section{pendingLinkedRanges.length === 1 ? '' : 's'} too.
+                            </p>
+                            <div className="space-y-1">
+                              {pendingLinkedRanges.map(range => {
+                                const key = terrainRangeKey(range)
+                                const selected = selectedLinkedRangeKeys.has(key)
+                                return (
+                                  <label key={key} className="flex cursor-pointer items-center gap-1.5 text-xs text-amber-950">
+                                    <input
+                                      type="checkbox"
+                                      checked={selected}
+                                      onChange={() => setSelectedLinkedRangeKeys(current => {
+                                        const next = new Set(current)
+                                        if (next.has(key)) next.delete(key)
+                                        else next.add(key)
+                                        return next
+                                      })}
+                                    />
+                                    <span className="font-mono">{range[0].toFixed(2)}–{range[1].toFixed(2)} mi</span>
+                                  </label>
+                                )
+                              })}
+                            </div>
+                          </fieldset>
+                        )}
 
                         <div className="flex gap-2">
                           {pendingSegment.nodeId && (
@@ -1712,7 +1790,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                       terrainNodes={isOwner ? terrainNodes : []}
                       onRangeDefined={isOwner && isTerrainEditMode ? (lo, hi) => {
                         setHoveredTerrainId(null)
-                        setPendingSegment({ startMile: lo, endMile: hi })
+                        openTerrainSelection(lo, hi)
                       } : undefined}
                     />
                   </div>
@@ -1882,9 +1960,19 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                       highlightedTerrainId={pendingSegment?.nodeId ?? selectedTerrainId ?? hoveredTerrainId}
                       onHoverNode={setHoveredTerrainId}
                       onSelectNode={setSelectedTerrainId}
-                      onSaveSegment={handleSaveTerrainSegment}
-                      onDeleteSegment={handleDeleteTerrainSegmentRange}
-                      onUpdateSegment={handleUpdateTerrainSegment}
+                      onSaveSegment={saveTerrainAcrossLinkedPasses}
+                      onDeleteSegment={async segment => {
+                        await handleDeleteTerrainSegmentRange(segment)
+                        for (const [startMile, endMile] of findParallelMileRanges(segment.startMile, segment.endMile)) {
+                          await handleSaveTerrainSegment(startMile, endMile, 'other', 100)
+                        }
+                      }}
+                      onUpdateSegment={async (segment, startMile, endMile, type, difficulty) => {
+                        await handleUpdateTerrainSegment(segment, startMile, endMile, type, difficulty)
+                        for (const [parallelStart, parallelEnd] of findParallelMileRanges(startMile, endMile)) {
+                          await handleSaveTerrainSegment(parallelStart, parallelEnd, type, difficulty)
+                        }
+                      }}
                     />
                   )}
                 </div>
