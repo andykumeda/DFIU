@@ -59,7 +59,7 @@ git describe --always --dirty --abbrev=7
 
 ### 2. Backend Deployment (Supabase)
 
-Apply new SQL migrations in `supabase/migrations/` to the linked project, then deploy Edge Functions:
+Apply new SQL migrations in `supabase/migrations/` to the linked project, then deploy the Edge Functions that changed:
 
 ```bash
 # Secrets (once / when rotating)
@@ -69,11 +69,18 @@ supabase secrets set STRAVA_CLIENT_SECRET=...
 
 # Functions
 supabase functions deploy strava-auth --no-verify-jwt   # OAuth start/callback are pre-session
+supabase functions deploy strava-activity                # JWT required
 supabase functions deploy weather                        # JWT required
 supabase functions deploy invite-race-member             # JWT required
 ```
 
 `strava-auth` keeps gateway JWT verification off because login/signup run before a Supabase session exists. CSRF is handled with HMAC-signed OAuth `state`.
+
+### Database-change safeguard
+
+The hosted migration history has diverged from this checkout. Do **not** run a blind
+`supabase db push`. Apply a reviewed, scoped migration directly to the linked production
+project, verify the affected schema/query, and record the action in `HANDOFF.md`.
 
 ### 3. CI
 

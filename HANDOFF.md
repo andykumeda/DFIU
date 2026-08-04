@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-04
 **Branch:** `main` @ `5733e15`
-**Status:** Repeated-course-pass terrain rendering fixed and deployed.
+**Status:** Documentation audit complete; user, algorithm, developer, deployment, and handoff documentation refreshed.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -13,6 +13,8 @@
 - Repository: `main` only; no extra worktrees or stale feature branches remain.
 
 ## Just finished
+
+- Added a complete documentation set: `docs/USER_GUIDE.md` for race owners/runners/crew, `docs/ALGORITHMS.md` for pace/prediction/terrain/training methods and limits, and `docs/DEVELOPER_GUIDE.md` for architecture and release practices. Refreshed README, deployment safeguards, and stale terrain/history handoff notes. Documentation-only change; no production application deploy required.
 
 - Fixed an out-and-back map rendering error where a terrain boundary could snap to a later visit of the same physical trail. Production data for AC100 correctly held paved 49.10–49.40; CourseMap now supplies the intended mile when resolving the endpoint, so it stays on that visit rather than extending visually toward mile 52.8. Verified 35 tests, production build, lint (0 errors; 31 existing warnings), and deployed frontend `5733e15`.
 

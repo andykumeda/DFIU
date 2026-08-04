@@ -1,6 +1,6 @@
 # Next Phase - History-Based Pacing
 
-**Status:** Planned. No implementation has started.
+**Status:** Implemented as a transparent, optional hybrid predictor. This note now records the remaining calibration work.
 
 ## Distributor vs. Predictor (architecture decision to revisit)
 
@@ -10,71 +10,69 @@ grade/terrain/fatigue/night/heat/cold/altitude/runner-profile/aid-station factor
 that goal — then distributes the time across the course so each split reflects real
 section difficulty. It answers *"what pace plan gets me to my goal on this course?"*
 
-A **finish-time predictor** would instead answer *"given this runner, what finish time
-results?"* That is a meaningfully bigger lift, and the gating cost is **data, not math**:
+A **finish-time predictor** now answers *"given this runner, what finish time range does
+the current model estimate?"* It remains separate from the target-time distributor. The
+gating cost is still **data, not math**:
 
-- It needs a calibrated ability anchor the app doesn't store today — e.g. a flat-ground
-  threshold/baseline pace, or a known recent result — plus, ideally, per-runner
-  coefficients (climbing, heat, altitude) learned from past data.
+- It needs a calibrated ability anchor — a flat-ground baseline pace and/or known recent
+  result — plus, ideally, per-runner coefficients (climbing, heat, altitude) learned
+  from enough past data.
 - Without that anchor, a predictor just compounds guesses into a confident-looking
   number that can be hours off on a 100-miler — worse UX than an honest goal-based plan.
 
-**Recommendation (revisit in this phase):**
-1. Keep the distributor as the core model.
-2. Get predictive value *cheaply* first by leaning on the existing check-in
-   re-extrapolation (`applyActualCheckins` in `pace-utils.ts`): once a runner logs a few
-   real splits, the remaining plan re-anchors to observed pace — a grounded "live
-   predicted finish" with no new ability model.
-3. Only build a true pre-race predictor once `runner_history` (below) exists to supply
-   the baseline. Lowest-risk path: add a single "baseline flat pace" input, treat the
-   current factor stack as the multiplier, and **validate against 2–3 known finishes**
-   before trusting it.
+**Implemented approach:**
+1. The target-time distributor remains the core Plan A/B/C engine.
+2. A manual flat baseline plus optional runner history produces a separate P10/P50/P90
+   estimate (`pace-prediction.ts`). History is distance/elevation adjusted, recency
+   weighted, and blended with bounded influence.
+3. Course simulation applies grade, terrain, night, heat, altitude, technical downhill,
+   runner-profile, and stop-time factors. Check-ins still re-anchor the live plan.
 
-Effort: moderate code, high data/validation cost. Defer the standalone predictor; invest
-first in tuning the current factor magnitudes and in check-in-based live prediction.
+See `docs/ALGORITHMS.md` for the user-facing explanation and limitations.
 
-## Goal
+## Remaining calibration work
 
-Use a runner's prior race results to seed or adjust the existing pace-plan model. Current pacing is based on course distance, terrain, grade, night, temperature, weather, and aid-station delays. This phase would add personal history as another input.
+Validate the predictor against known finishes before increasing its influence or presenting
+its bands as more than transparent planning scenarios.
 
 ## Open Decisions
 
-1. **History source:** Strava activities, manual entry, UltraSignup import, or a combination.
-2. **Race matching:** how users confirm that a past activity/result corresponds to a DFIU race.
-3. **Similarity model:** which factors matter most for "similar race" matching: distance, gain/loss, terrain mix, altitude, heat, or date recency.
-4. **Blending behavior:** whether history acts as a solver seed, a weighted adjustment, or a user-controlled confidence slider.
-5. **Privacy:** whether crew/pacer members can see the runner's historical results or only the derived pace plan.
+1. **History source:** manual entry is available; decide whether to add a reviewed Strava/import path.
+2. **Validation set:** collect known finishes across varied course profiles.
+3. **Similarity model:** decide whether terrain mix, altitude, and weather should receive explicit history weighting.
+4. **Privacy:** retain user-scoped history; decide whether to expose only derived predictions to crew/pacers.
 
-## Likely Data Model
+## Current data model
 
 ```sql
 create table runner_history (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id) on delete cascade not null,
-  source text not null check (source in ('strava', 'manual', 'import')),
-  external_id text,
   race_name text not null,
-  race_date date,
-  distance_mi numeric,
+  raced_at date,
+  distance_mi numeric not null,
   elevation_gain_ft integer,
-  elevation_loss_ft integer,
-  finish_time_sec integer,
-  terrain_profile jsonb,
-  linked_race_id uuid references races(id) on delete set null,
-  created_at timestamptz default now() not null
+  finish_minutes numeric not null,
+  moving_minutes numeric,
+  terrain_difficulty integer,
+  altitude_ft integer,
+  created_at timestamptz default now() not null,
+  updated_at timestamptz default now() not null
 );
 ```
 
-## Implementation Sketch
+History is RLS-scoped to its owning user. `race_pace_plans.pace_model_snapshot` stores a
+non-sensitive input/result snapshot so a plan remains explainable after its source inputs
+change.
 
-1. Add `runner_history` storage and RLS scoped to the owning user.
-2. Add manual history entry first; add Strava import later if needed.
-3. Add a history matcher that suggests exact and similar races.
-4. Extend `calculatePacePlan` with an optional history prior while preserving the current no-history behavior.
-5. Show which history rows influenced the plan and allow users to disable history weighting.
+## Follow-up implementation options
+
+1. Add a reviewed Strava/import path only if it can preserve user control and history privacy.
+2. Add a history matcher that suggests exact and similar races.
+3. Surface the contributing history entries and allow users to exclude an entry from a prediction.
 
 ## Success Criteria
 
-- A runner with a prior finish for the same race sees a pace plan influenced by that result.
-- A runner with similar races sees a transparent blended estimate.
-- A runner with no history gets the same output as today's model.
+- A runner with a prior finish can see a transparent independent prediction influenced by that result.
+- A runner with no history receives a wide, explicitly low-confidence prediction rather than a silently precise estimate.
+- The target-time Plan A/B/C distributor remains unchanged by history unless the user changes its target.
