@@ -1,18 +1,20 @@
 # Handoff Document
 
 **Date:** 2026-08-04
-**Branch:** `main` @ `172862c`
-**Status:** Adding persistent terrain-segment selection highlighting to the map.
+**Branch:** `main` @ `f66f45d`
+**Status:** Persistent terrain-segment selection highlighting deployed.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Frontend: `172862c` (deployed; hard-refresh and compare the footer hash).
+- Frontend: `f66f45d` (deployed; hard-refresh and compare the footer hash).
 - Wilson Loop: **9.95 unique on-course miles**, displayed as **74.9–84.9**. Its start snaps to race mile **78.78**.
 - Repository: `main` only; no extra worktrees or stale feature branches remain.
 
 ## Just finished
+
+- Selecting a terrain segment from its mileage range now keeps it selected after leaving the side panel and adds a bright white outline around its colored course line. Verified 35 tests, production build, lint (0 errors; 31 existing warnings), and deployed frontend `f66f45d`.
 
 - Added a compact lower-right terrain legend showing every terrain color and label. The upper-left map menu now has an eye toggle that hides/shows landmarks while retaining aid stations and all other waypoint types. Verified 35 tests, production build, lint (0 errors; 31 existing warnings), and deployed frontend `172862c`.
 
