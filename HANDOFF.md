@@ -1,18 +1,20 @@
 # Handoff Document
 
 **Date:** 2026-08-04
-**Branch:** `main` @ `c5ae764`
-**Status:** Fixing the terrain-node constraint for new pacing terrain labels.
+**Branch:** `main` @ `2096266`
+**Status:** Terrain labels constraint fix deployed.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Frontend: `c5ae764` (deployed; hard-refresh and compare the footer hash).
+- Frontend: `2096266` (deployed; hard-refresh and compare the footer hash).
 - Wilson Loop: **9.95 unique on-course miles**, displayed as **74.9–84.9**. Its start snaps to race mile **78.78**.
 - Repository: `main` only; no extra worktrees or stale feature branches remain.
 
 ## Just finished
+
+- Fixed production terrain saves after the new five-level terrain UI: `terrain_nodes_type_check` now accepts smooth dirt/gravel, runnable trail, and highly technical alongside all legacy terrain values. Verified 35 tests, build, lint (0 errors; 31 existing warnings), and deployed frontend `2096266`.
 
 - Added the hybrid pace predictor: a personal flat baseline plus recency-weighted past finishes produces P10/P50/P90 finish estimates, expected stop time, confidence, and factor attribution while leaving Plan A/B/C target-time calculations intact.
 - Pace Plans now accepts private manual race history and shows the independent prediction plus a goal-outside-range warning. Prediction input/output snapshots are stored with the plan for reproducibility.
