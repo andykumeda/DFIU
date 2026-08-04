@@ -1,18 +1,20 @@
 # Handoff Document
 
 **Date:** 2026-08-04
-**Branch:** `main` @ `f66f45d`
-**Status:** Adding reviewed, linked terrain application for out-and-back course sections.
+**Branch:** `main` @ `652d9e7`
+**Status:** Reviewed, linked terrain application for out-and-back course sections deployed.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Frontend: `f66f45d` (deployed; hard-refresh and compare the footer hash).
+- Frontend: `652d9e7` (deployed; hard-refresh and compare the footer hash).
 - Wilson Loop: **9.95 unique on-course miles**, displayed as **74.9–84.9**. Its start snaps to race mile **78.78**.
 - Repository: `main` only; no extra worktrees or stale feature branches remain.
 
 ## Just finished
+
+- Terrain classification now detects continuous reverse-direction course overlap, avoiding ordinary crossings and nearby same-direction trail sections. The map’s terrain dialog previews every detected out-and-back counterpart with an enabled-by-default checkbox. Sidebar type changes, range edits, and deletes propagate to reverse passes as well. Verified 35 tests, production build, lint (0 errors; 31 existing warnings), and deployed frontend `652d9e7`.
 
 - Selecting a terrain segment from its mileage range now keeps it selected after leaving the side panel and adds a bright white outline around its colored course line. Verified 35 tests, production build, lint (0 errors; 31 existing warnings), and deployed frontend `f66f45d`.
 
