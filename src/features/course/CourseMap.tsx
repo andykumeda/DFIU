@@ -214,8 +214,18 @@ export function CourseMap({
         })
 
         return () => {
-            map.current?.remove()
+            const currentMap = map.current
+            // In React's effect cleanup order, dependent cleanups (labels,
+            // listeners) can run after this one. Clearing the ref first lets
+            // them skip a destroyed Mapbox style instead of calling getLayer.
             map.current = null
+            if (currentMap) {
+                try {
+                    currentMap.remove()
+                } catch (error) {
+                    console.warn('CourseMap cleanup failed', error)
+                }
+            }
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
@@ -786,6 +796,7 @@ export function CourseMap({
         const sourceId = 'waypoint-labels'
         const layerId = 'waypoint-labels-text'
         const removeLabels = () => {
+            if (map.current !== m || !m.isStyleLoaded()) return
             if (m.getLayer(layerId)) m.removeLayer(layerId)
             if (m.getSource(sourceId)) m.removeSource(sourceId)
         }
@@ -881,7 +892,7 @@ export function CourseMap({
                 })
             }
             if (!m.getLayer('terrain-selection-line')) {
-                if (!m.getLayer('base-route')) m.addLayer({
+                m.addLayer({
                     id: 'terrain-selection-line',
                     type: 'line',
                     source: 'terrain-selection',
