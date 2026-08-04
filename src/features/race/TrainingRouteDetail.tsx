@@ -45,6 +45,7 @@ export function TrainingRouteDetail({
   const [notes, setNotes] = useState(route.notes ?? '')
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [showCourseRoute, setShowCourseRoute] = useState(true)
 
   const trainingCoords = useMemo(() => extractCoordinates(route.geometry), [route.geometry])
   const courseCoords = useMemo(
@@ -129,13 +130,19 @@ export function TrainingRouteDetail({
         </div>
       </div>
 
-      <div className="rounded-xl overflow-hidden border border-neutral-800 bg-neutral-950 h-[360px] md:h-[420px]">
+      <div className="space-y-2">
+        <label className="inline-flex items-center gap-2 text-sm text-neutral-300 cursor-pointer">
+          <input type="checkbox" checked={showCourseRoute} onChange={event => setShowCourseRoute(event.target.checked)} className="accent-blue-500" />
+          Show race course
+        </label>
+        <div className="rounded-xl overflow-hidden border border-neutral-800 bg-neutral-950 h-[360px] md:h-[420px]">
         <TrainingRouteDetailMap
           coordinates={trainingCoords}
-          courseCoordinates={courseCoords.length >= 2 ? courseCoords : undefined}
+          courseCoordinates={showCourseRoute && courseCoords.length >= 2 ? courseCoords : undefined}
           overlapSegments={route.overlapSegments}
           className="w-full h-full"
         />
+        </div>
       </div>
 
       <div className="space-y-4 max-w-3xl">

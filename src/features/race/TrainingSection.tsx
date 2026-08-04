@@ -62,6 +62,7 @@ export function TrainingSection({
   const [showCreator, setShowCreator] = useState(false)
   const [draftName, setDraftName] = useState('')
   const [draftCoordinates, setDraftCoordinates] = useState<[number, number][]>([])
+  const [draftRouteHistory, setDraftRouteHistory] = useState<[number, number][][]>([])
   const [showCourseReference, setShowCourseReference] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -142,6 +143,7 @@ export function TrainingSection({
     try {
       const created = await createManualRoute(draftName, draftCoordinates)
       setDraftCoordinates([])
+      setDraftRouteHistory([])
       setDraftName('')
       setShowCreator(false)
       if (created) setSelectedId(created.id)
@@ -150,6 +152,21 @@ export function TrainingSection({
     } finally {
       setUploading(false)
     }
+  }
+
+  const handleDraftRouteChange = (nextCoordinates: [number, number][]) => {
+    setDraftCoordinates(current => {
+      setDraftRouteHistory(history => [...history, current])
+      return nextCoordinates
+    })
+  }
+
+  const undoDraftLeg = () => {
+    setDraftRouteHistory(history => {
+      const previous = history[history.length - 1]
+      if (previous) setDraftCoordinates(previous)
+      return history.slice(0, -1)
+    })
   }
 
   if (selected) {
@@ -210,9 +227,9 @@ export function TrainingSection({
           </div>
           <p className="text-sm text-neutral-400">Click to set the start, then click each destination. Each new section snaps to the walking and trail network. The blue line is your route; gray is the race course and green markers are aid stations.</p>
           <Suspense fallback={<div className="h-80 md:h-[420px] rounded-lg bg-neutral-950 grid place-items-center text-sm text-neutral-500">Loading route editor…</div>}>
-            <TrainingRouteCreatorMap coordinates={draftCoordinates} courseCoordinates={courseCoordinates} aidStations={aidStationReferences} showCourse={showCourseReference} onChange={setDraftCoordinates} />
+            <TrainingRouteCreatorMap coordinates={draftCoordinates} courseCoordinates={courseCoordinates} aidStations={aidStationReferences} showCourse={showCourseReference} onChange={handleDraftRouteChange} />
           </Suspense>
-          <div className="flex flex-wrap items-center justify-between gap-3"><span className="text-sm text-neutral-400">{draftCoordinates.length} point{draftCoordinates.length === 1 ? '' : 's'} added</span><div className="flex gap-2"><button type="button" onClick={() => setDraftCoordinates(points => points.slice(0, -1))} disabled={!draftCoordinates.length || uploading} className="px-3 py-2 rounded-lg text-sm text-neutral-300 hover:text-white disabled:opacity-50">Undo point</button><button type="button" onClick={() => setDraftCoordinates([])} disabled={!draftCoordinates.length || uploading} className="px-3 py-2 rounded-lg text-sm text-neutral-300 hover:text-white disabled:opacity-50">Clear</button><button type="button" onClick={() => void handleCreate()} disabled={draftCoordinates.length < 2 || uploading} className="px-3 py-2 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white">{uploading ? 'Creating…' : 'Save route'}</button></div></div>
+          <div className="flex flex-wrap justify-end gap-2"><button type="button" onClick={undoDraftLeg} disabled={!draftRouteHistory.length || uploading} className="px-3 py-2 rounded-lg text-sm text-neutral-300 hover:text-white disabled:opacity-50">Undo leg</button><button type="button" onClick={() => { setDraftCoordinates([]); setDraftRouteHistory([]) }} disabled={!draftCoordinates.length || uploading} className="px-3 py-2 rounded-lg text-sm text-neutral-300 hover:text-white disabled:opacity-50">Clear</button><button type="button" onClick={() => void handleCreate()} disabled={draftCoordinates.length < 2 || uploading} className="px-3 py-2 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white">{uploading ? 'Creating…' : 'Save route'}</button></div>
           {error && <p className="text-sm text-red-400">{error}</p>}
         </div>
       )}

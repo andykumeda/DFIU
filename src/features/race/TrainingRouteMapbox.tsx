@@ -107,6 +107,9 @@ function drawRouteData(map: mapboxgl.Map, data: MapData) {
       { 'line-color': '#737373', 'line-opacity': 0.55 },
       3
     )
+  } else {
+    const source = map.getSource(SOURCE_IDS.course) as mapboxgl.GeoJSONSource | undefined
+    if (source) source.setData(lineFeature([]))
   }
 
   setOrAddLine(
