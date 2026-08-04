@@ -1,18 +1,22 @@
 # Handoff Document
 
 **Date:** 2026-08-04
-**Branch:** `main` @ `02199a6`
-**Status:** Persistent Training results and manual route creation deployed.
+**Branch:** `main` @ `d01b41d`
+**Status:** Snapped Training route creation and restored card summaries deployed.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Frontend: `02199a6` (deployed; hard-refresh and compare the footer hash).
+- Frontend: `d01b41d` (deployed; hard-refresh and compare the footer hash).
 - Wilson Loop: **9.95 unique on-course miles**, displayed as **74.9–84.9**. Its start snaps to race mile **78.78**.
 - Repository: `main` only; no extra worktrees or stale feature branches remain.
 
 ## Just finished
+
+- Training preview cards again show the detailed Plan A segment summary (race segment miles/time and training miles); only the standalone green pace/time line is removed.
+- Create Route now requests Mapbox walking directions between successive clicks, producing a network-snapped route instead of straight lines. It also displays labeled green aid-station markers with the optional race-course reference layer.
+- Verified 32 tests, production build, lint (0 errors; 31 existing warnings), and deployed frontend `d01b41d`.
 
 - Training Analysis now saves completed result cards—not only pasted Strava links—so a route reopens with its prior comparisons intact.
 - Re-selecting the active Training tab returns from route detail to the preview-card list, matching “All training routes.”
