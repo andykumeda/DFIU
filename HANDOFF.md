@@ -1,14 +1,14 @@
 # Handoff Document
 
 **Date:** 2026-08-03
-**Branch:** `main` @ `977bea3`
-**Status:** Training Analysis Strava connection repair is deployed.
+**Branch:** `main` @ `eb49576`
+**Status:** Participant-scoped Strava authorization and safe athlete-based sign-in resolution are deployed.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Frontend: `977bea3` (deployed; hard-refresh and compare the footer hash).
+- Frontend: `eb49576` (deployed; hard-refresh and compare the footer hash).
 - Wilson Loop: **9.95 unique on-course miles**, displayed as **74.9–84.9**. Its start snaps to race mile **78.78**.
 - Repository: `main` only; no extra worktrees or stale feature branches remain.
 
@@ -28,9 +28,11 @@
 - Verified 29 tests, TypeScript production build, lint (0 errors; 31 existing warnings), production deployment, and live Training UI with no browser-console warnings/errors.
 - Fixed the Strava callback session failure. Training Analysis now binds a Strava authorization to the currently signed-in participant's DFIU account and keeps it separate from the event owner; activity lookup only ever uses that participant's token.
 - Replaced the fragile temporary-password handoff, deployed both Strava functions, and added a regression test so Edge Function responses show their real error message. Verified 30 tests, both Deno Edge Function checks, lint (0 errors; 31 existing warnings), and production deployment.
+- Removed the legacy Strava sign-in user-list lookup, which did not reliably filter by email. Sign-in now resolves only through the unique Strava athlete-to-DFIU-user mapping; a Strava account already attached to another user is rejected rather than reassigned.
 
 ## Open / follow-up
 
+- **Priority follow-up:** the failed legacy callback updated one real DFIU account before it failed, so that account's prior password may have been replaced. Do not reset or delete it without confirming the account owner; use the normal password-recovery flow with that person if needed.
 - Rotate the previously tracked Strava client secret and confirm Supabase function secrets.
 - Reconcile Supabase migration history before the next `db push`: the new `strava_connections` schema was applied directly because the remote history already contains migrations absent locally. The tracked migration is `20260804012144_strava_activity_connections.sql`; do not run migration repair blindly.
 - Apply the share-token migration and deploy the `weather` Edge Function.
