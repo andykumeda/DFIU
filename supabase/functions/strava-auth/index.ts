@@ -130,7 +130,7 @@ serve(async (req) => {
             if (oauthState.mode === 'connect') {
                 const user = await requestUser(supabaseAdmin, req)
                 if (!user) throw new Error('Sign in to DFIU before connecting Strava.')
-                await saveStravaConnection(supabaseAdmin, user.id, athlete.id, tokenData, expiresAt)
+                await transferStravaConnection(supabaseAdmin, user.id, athlete.id, tokenData, expiresAt)
                 return json({ connected: true })
             }
 
@@ -200,6 +200,37 @@ async function saveStravaConnection(
         }
         throw error
     }
+}
+
+async function transferStravaConnection(
+    supabaseAdmin: SupabaseAdmin,
+    userId: string,
+    athleteId: number,
+    tokenData: { access_token: string; refresh_token: string; scope?: unknown },
+    expiresAt: number,
+) {
+    // The current caller has completed Strava OAuth, proving control of this
+    // athlete. This replaces only their prior connection and moves the athlete
+    // mapping server-side; event ownership is not part of this operation.
+    const { error: releaseError } = await supabaseAdmin
+        .from('strava_connections')
+        .delete()
+        .eq('user_id', userId)
+        .neq('athlete_id', athleteId)
+    if (releaseError) throw releaseError
+
+    const { error } = await supabaseAdmin
+        .from('strava_connections')
+        .upsert({
+            user_id: userId,
+            athlete_id: athleteId,
+            access_token: tokenData.access_token,
+            refresh_token: tokenData.refresh_token,
+            expires_at: new Date(expiresAt * 1000).toISOString(),
+            scope: typeof tokenData.scope === 'string' ? tokenData.scope : null,
+            updated_at: new Date().toISOString(),
+        }, { onConflict: 'athlete_id' })
+    if (error) throw error
 }
 
 async function resolveStravaLoginUser(
