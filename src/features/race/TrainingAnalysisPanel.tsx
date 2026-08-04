@@ -10,6 +10,7 @@ import {
   buildTrainingPlanSummary,
   formatDurationWords,
   getTrainingAnalysisDelta,
+  getOverlappingMovingMinutes,
 } from './training-analysis'
 
 interface StravaActivity {
@@ -40,7 +41,7 @@ export function TrainingAnalysisPanel({
 }: TrainingAnalysisPanelProps) {
   const [routeId, setRouteId] = useState(routes[0]?.id ?? '')
   const [activityInput, setActivityInput] = useState('')
-  const [activity, setActivity] = useState<StravaActivity | null>(null)
+  const [activities, setActivities] = useState<StravaActivity[]>([])
   const [loading, setLoading] = useState(false)
   const [connecting, setConnecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -53,11 +54,6 @@ export function TrainingAnalysisPanel({
         : null,
     [selectedRoute, planA, race, clock24h]
   )
-  const comparison =
-    activity && summary?.raceDurationMinutes != null
-      ? getTrainingAnalysisDelta(activity.elapsedSeconds / 60, summary.raceDurationMinutes)
-      : null
-
   const analyzeActivity = async () => {
     if (!activityInput.trim()) {
       setError('Paste a Strava activity link or enter its numeric activity ID.')
@@ -71,14 +67,19 @@ export function TrainingAnalysisPanel({
     setLoading(true)
     setError(null)
     try {
-      const { data, error: invokeError } = await supabase.functions.invoke('strava-activity', {
-        body: { activity: activityInput.trim() },
-      })
-      if (invokeError) throw invokeError
-      if (!data?.elapsedSeconds) throw new Error(data?.error || 'Strava activity has no elapsed time')
-      setActivity(data as StravaActivity)
+      const requestedActivities = activityInput.split(/\r?\n/).map(value => value.trim()).filter(Boolean)
+      const results: StravaActivity[] = []
+      for (const requestedActivity of requestedActivities) {
+        const { data, error: invokeError } = await supabase.functions.invoke('strava-activity', {
+          body: { activity: requestedActivity },
+        })
+        if (invokeError) throw invokeError
+        if (!data?.movingSeconds || !data?.distanceMiles) throw new Error(data?.error || 'Strava activity needs moving time and distance')
+        results.push(data as StravaActivity)
+      }
+      setActivities(results)
     } catch (caught) {
-      setActivity(null)
+      setActivities([])
       setError(await messageFromFunctionError(caught, 'Unable to load Strava activity'))
     } finally {
       setLoading(false)
@@ -136,7 +137,7 @@ export function TrainingAnalysisPanel({
               value={selectedRoute?.id ?? ''}
               onChange={event => {
                 setRouteId(event.target.value)
-                setActivity(null)
+                setActivities([])
                 setError(null)
               }}
               className="w-full bg-neutral-950 border border-neutral-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-orange-400"
@@ -153,14 +154,15 @@ export function TrainingAnalysisPanel({
             <span className="block text-xs uppercase tracking-wide text-neutral-500 mb-1.5">Strava run</span>
             <div className="relative">
               <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" aria-hidden />
-              <input
+              <textarea
                 value={activityInput}
                 onChange={event => setActivityInput(event.target.value)}
                 onKeyDown={event => {
-                  if (event.key === 'Enter') void analyzeActivity()
+                  if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) void analyzeActivity()
                 }}
-                placeholder="Paste a Strava activity link or ID"
-                className="w-full bg-neutral-950 border border-neutral-700 rounded-lg pl-9 pr-3 py-2.5 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-orange-400"
+                rows={3}
+                placeholder="Paste one Strava activity link or ID per line"
+                className="w-full bg-neutral-950 border border-neutral-700 rounded-lg pl-9 pr-3 py-2.5 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-orange-400 resize-y"
               />
             </div>
           </label>
@@ -172,7 +174,7 @@ export function TrainingAnalysisPanel({
             className="inline-flex items-center justify-center gap-2 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-lg text-sm font-medium"
           >
             {loading && <LoaderCircle className="w-4 h-4 animate-spin" aria-hidden />}
-            Analyze run
+            Analyze runs
           </button>
         </div>
 
@@ -230,12 +232,19 @@ export function TrainingAnalysisPanel({
           </div>
         )}
 
-        {activity && comparison && summary && (
-          <div className="mt-5 rounded-lg border border-neutral-700 bg-neutral-950/70 p-4">
+        {activities.map(activity => {
+          const overlapMovingMinutes = summary
+            ? getOverlappingMovingMinutes(activity.movingSeconds, activity.distanceMiles, summary.trainingMilesTotal)
+            : null
+          const comparison = overlapMovingMinutes != null && summary?.raceDurationMinutes != null
+            ? getTrainingAnalysisDelta(overlapMovingMinutes, summary.raceDurationMinutes)
+            : null
+          if (!comparison || !summary) return null
+          return <div key={activity.id} className="mt-5 rounded-lg border border-neutral-700 bg-neutral-950/70 p-4">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <div>
                 <p className="text-sm font-medium text-white">{activity.name}</p>
-                <p className="text-xs text-neutral-500 mt-1">Strava elapsed time is used so stops are included.</p>
+                <p className="text-xs text-neutral-500 mt-1">Uses moving time, weighted to this route&apos;s overlapping training miles only.</p>
               </div>
               <p
                 className={
@@ -250,12 +259,12 @@ export function TrainingAnalysisPanel({
               </p>
             </div>
             <dl className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
-              <SummaryMetric label="Training elapsed" value={formatDurationWords(activity.elapsedSeconds / 60)} />
-              <SummaryMetric label="Plan A segment" value={summary.raceDurationLabel ?? '—'} />
+              <SummaryMetric label="Overlap moving time" value={overlapMovingMinutes != null ? formatDurationWords(overlapMovingMinutes) : '—'} />
+              <SummaryMetric label="Plan A overlap" value={summary.raceDurationLabel ?? '—'} />
               <SummaryMetric label="Delta" value={comparison.label} />
             </dl>
           </div>
-        )}
+        })}
       </div>
     </section>
   )

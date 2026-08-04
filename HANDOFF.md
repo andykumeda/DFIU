@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-04
 **Branch:** `main` @ `528a3aa`
-**Status:** CourseMap tab-switch teardown fix is deployed (`9708ce4`).
+**Status:** Correcting Training Analysis to compare all overlapping segments using Strava moving time.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 

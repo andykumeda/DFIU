@@ -4,7 +4,6 @@ import type { PacePlanResult } from './pace-utils'
 import { getOverlapRacePace } from './race-day-utils'
 
 export interface TrainingPlanSummary {
-  primarySegment: OverlapSegment
   raceMilesLabel: string
   raceMilesTotal: number
   raceTimeLabel: string | null
@@ -34,8 +33,8 @@ export function formatDurationWords(minutes: number): string {
 }
 
 /**
- * Summarize a training route for comparison. The longest continuous race segment
- * provides the Plan A time goal; all on-course training ranges remain visible.
+ * Summarize a training route for comparison. Every detected overlapping segment
+ * contributes to the Plan A goal; no non-overlap portion is included.
  */
 export function buildTrainingPlanSummary(
   segments: OverlapSegment[],
@@ -45,39 +44,48 @@ export function buildTrainingPlanSummary(
 ): TrainingPlanSummary | null {
   if (segments.length === 0) return null
 
-  const primarySegment = segments.reduce((best, segment) => {
-    const bestSpan = Math.abs(best.courseEndMi - best.courseStartMi)
-    const segmentSpan = Math.abs(segment.courseEndMi - segment.courseStartMi)
-    return segmentSpan > bestSpan ? segment : best
-  })
-  const raceMilesTotal = Math.abs(primarySegment.courseEndMi - primarySegment.courseStartMi)
+  const raceMilesTotal = segments.reduce(
+    (total, segment) => total + Math.abs(segment.courseEndMi - segment.courseStartMi),
+    0
+  )
   const trainingMilesTotal = segments.reduce(
     (total, segment) => total + Math.abs(segment.trainingEndMi - segment.trainingStartMi),
     0
   )
-  const pace = getOverlapRacePace(
-    plan,
-    primarySegment.courseStartMi,
-    primarySegment.courseEndMi,
-    race,
-    clock24h
-  )
+  const paces = segments.map(segment => getOverlapRacePace(plan, segment.courseStartMi, segment.courseEndMi, race, clock24h))
+  const availablePaces = paces.filter((pace): pace is NonNullable<typeof pace> => pace != null)
+  const raceDurationMinutes = availablePaces.length === segments.length
+    ? availablePaces.reduce((total, pace) => total + pace.durationMin, 0)
+    : null
 
   return {
-    primarySegment,
-    raceMilesLabel: `${formatMile(primarySegment.courseStartMi)}–${formatMile(primarySegment.courseEndMi)}`,
+    raceMilesLabel: segments.map(segment => `${formatMile(segment.courseStartMi)}–${formatMile(segment.courseEndMi)}`).join(', '),
     raceMilesTotal,
-    raceTimeLabel:
-      pace?.enterTimeOfDay && pace.exitTimeOfDay
-        ? `${pace.enterTimeOfDay}–${pace.exitTimeOfDay}`
-        : null,
-    raceDurationMinutes: pace?.durationMin ?? null,
-    raceDurationLabel: pace ? formatDurationWords(pace.durationMin) : null,
+    raceTimeLabel: availablePaces.length === segments.length
+      ? availablePaces.map(pace => pace.enterTimeOfDay && pace.exitTimeOfDay ? `${pace.enterTimeOfDay}–${pace.exitTimeOfDay}` : '').filter(Boolean).join(', ') || null
+      : null,
+    raceDurationMinutes,
+    raceDurationLabel: raceDurationMinutes != null ? formatDurationWords(raceDurationMinutes) : null,
     trainingMilesLabel: segments
       .map(segment => `${formatMile(segment.trainingStartMi)}–${formatMile(segment.trainingEndMi)}`)
       .join(', '),
     trainingMilesTotal,
   }
+}
+
+/**
+ * Estimate moving time for just the matched training portions. A selected
+ * activity is the full imported route, so its moving time is weighted by the
+ * route's overlapping miles rather than counting approach/return miles.
+ */
+export function getOverlappingMovingMinutes(
+  movingSeconds: number,
+  activityMiles: number | null,
+  overlappingTrainingMiles: number
+): number | null {
+  if (!(movingSeconds > 0) || !(overlappingTrainingMiles > 0)) return null
+  if (!activityMiles || activityMiles <= 0) return null
+  return (movingSeconds / 60) * Math.min(1, overlappingTrainingMiles / activityMiles)
 }
 
 export function getTrainingAnalysisDelta(

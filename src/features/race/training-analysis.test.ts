@@ -3,6 +3,7 @@ import type { PacePlanResult } from './pace-utils'
 import {
   buildTrainingPlanSummary,
   getTrainingAnalysisDelta,
+  getOverlappingMovingMinutes,
 } from './training-analysis'
 
 function makePlan(
@@ -31,7 +32,7 @@ function makePlan(
 }
 
 describe('buildTrainingPlanSummary', () => {
-  it('uses the longest race segment for Plan A and all training segments for the training total', () => {
+  it('sums every overlapping race segment for the Plan A goal', () => {
     const summary = buildTrainingPlanSummary(
       [
         { courseStartMi: 78.7, courseEndMi: 84.8, trainingStartMi: 0, trainingEndMi: 6.1 },
@@ -47,10 +48,9 @@ describe('buildTrainingPlanSummary', () => {
     )
 
     expect(summary).not.toBeNull()
-    expect(summary!.raceMilesLabel).toBe('78.7–84.8')
-    expect(summary!.raceMilesTotal).toBeCloseTo(6.1, 4)
-    expect(summary!.raceTimeLabel).toBe('3:41 AM–7:01 AM')
-    expect(summary!.raceDurationLabel).toBe('3 hours 20 mins')
+    expect(summary!.raceMilesLabel).toBe('78.7–84.8, 74.8–78.6')
+    expect(summary!.raceMilesTotal).toBeCloseTo(9.9, 4)
+    expect(summary!.raceDurationLabel).toBe('3 hours 50 mins')
     expect(summary!.trainingMilesLabel).toBe('0–6.1, 10–14')
     expect(summary!.trainingMilesTotal).toBeCloseTo(10.1, 4)
   })
@@ -63,5 +63,11 @@ describe('getTrainingAnalysisDelta', () => {
     expect(delta.deltaMinutes).toBe(40)
     expect(delta.label).toBe('40 mins slower than Plan A')
     expect(delta.tone).toBe('slower')
+  })
+})
+
+describe('getOverlappingMovingMinutes', () => {
+  it('uses moving time and excludes non-overlapping training miles', () => {
+    expect(getOverlappingMovingMinutes(120 * 60, 20, 5)).toBe(30)
   })
 })
