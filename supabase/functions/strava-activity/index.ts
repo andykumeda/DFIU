@@ -16,6 +16,7 @@ const corsHeaders = {
 type StravaConnectionRow = {
     user_id: string
     athlete_id: number
+    athlete_name: string | null
     access_token: string
     refresh_token: string
     expires_at: string
@@ -67,13 +68,11 @@ serve(async (req) => {
         const { data: userResult, error: userError } = await supabaseAdmin.auth.getUser(jwt)
         if (userError || !userResult.user) throw new HttpError('Authentication required', 401)
 
-        const { activity } = await req.json()
-        const activityId = parseActivityId(activity)
-        if (!activityId) throw new HttpError('Enter a valid Strava activity link or ID', 400)
+        const { activity, action } = await req.json()
 
         const { data: connection, error: connectionError } = await supabaseAdmin
             .from('strava_connections')
-            .select('access_token, refresh_token, expires_at')
+            .select('athlete_id, athlete_name, access_token, refresh_token, expires_at')
             .eq('user_id', userResult.user.id)
             .maybeSingle()
         if (connectionError) throw connectionError
@@ -90,6 +89,24 @@ serve(async (req) => {
             clientId,
             clientSecret,
         })
+
+        if (action === 'connection') {
+            let athleteName = connection.athlete_name
+            if (!athleteName) {
+                const athleteResponse = await fetch('https://www.strava.com/api/v3/athlete', { headers: { Authorization: `Bearer ${accessToken}` } })
+                if (athleteResponse.ok) {
+                    const athlete = await athleteResponse.json()
+                    athleteName = typeof athlete.username === 'string' && athlete.username.trim()
+                        ? athlete.username.trim()
+                        : `${athlete.firstname ?? ''} ${athlete.lastname ?? ''}`.trim() || null
+                    if (athleteName) await supabaseAdmin.from('strava_connections').update({ athlete_name: athleteName }).eq('user_id', userResult.user.id)
+                }
+            }
+            return json({ connected: true, athleteName: athleteName ?? `Strava athlete ${connection.athlete_id}` })
+        }
+
+        const activityId = parseActivityId(activity)
+        if (!activityId) throw new HttpError('Enter a valid Strava activity link or ID', 400)
 
         const activityResponse = await fetch(`https://www.strava.com/api/v3/activities/${activityId}`, {
             headers: { Authorization: `Bearer ${accessToken}` },

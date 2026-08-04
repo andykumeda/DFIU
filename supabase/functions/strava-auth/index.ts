@@ -24,6 +24,7 @@ type OAuthState = { mode: OAuthMode }
 type StravaConnectionInsert = {
     user_id: string
     athlete_id: number
+    athlete_name: string | null
     access_token: string
     refresh_token: string
     expires_at: string
@@ -126,15 +127,17 @@ serve(async (req) => {
             if (!tokenData.access_token || !tokenData.refresh_token || !Number.isFinite(expiresAt)) {
                 throw new Error('Strava token response missing activity access')
             }
+            const displayName = typeof athlete.username === 'string' && athlete.username.trim()
+                ? athlete.username.trim()
+                : `${athlete.firstname ?? ''} ${athlete.lastname ?? ''}`.trim() || `Strava ${athlete.id}`
 
             if (oauthState.mode === 'connect') {
                 const user = await requestUser(supabaseAdmin, req)
                 if (!user) throw new Error('Sign in to DFIU before connecting Strava.')
-                await transferStravaConnection(supabaseAdmin, user.id, athlete.id, tokenData, expiresAt)
+                await transferStravaConnection(supabaseAdmin, user.id, athlete.id, displayName, tokenData, expiresAt)
                 return json({ connected: true })
             }
 
-            const displayName = `${athlete.firstname ?? ''} ${athlete.lastname ?? ''}`.trim() || `Strava ${athlete.id}`
             const metadata = {
                 name: displayName,
                 avatar_url: athlete.profile ?? null,
@@ -142,7 +145,7 @@ serve(async (req) => {
             }
             const user = await resolveStravaLoginUser(supabaseAdmin, athlete.id, metadata)
 
-            await saveStravaConnection(supabaseAdmin, user.id, athlete.id, tokenData, expiresAt)
+            await saveStravaConnection(supabaseAdmin, user.id, athlete.id, displayName, tokenData, expiresAt)
 
             const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
                 type: 'magiclink',
@@ -180,6 +183,7 @@ async function saveStravaConnection(
     supabaseAdmin: SupabaseAdmin,
     userId: string,
     athleteId: number,
+    athleteName: string,
     tokenData: { access_token: string; refresh_token: string; scope?: unknown },
     expiresAt: number,
 ) {
@@ -188,6 +192,7 @@ async function saveStravaConnection(
         .upsert({
             user_id: userId,
             athlete_id: athleteId,
+            athlete_name: athleteName,
             access_token: tokenData.access_token,
             refresh_token: tokenData.refresh_token,
             expires_at: new Date(expiresAt * 1000).toISOString(),
@@ -206,6 +211,7 @@ async function transferStravaConnection(
     supabaseAdmin: SupabaseAdmin,
     userId: string,
     athleteId: number,
+    athleteName: string,
     tokenData: { access_token: string; refresh_token: string; scope?: unknown },
     expiresAt: number,
 ) {
@@ -224,6 +230,7 @@ async function transferStravaConnection(
         .upsert({
             user_id: userId,
             athlete_id: athleteId,
+            athlete_name: athleteName,
             access_token: tokenData.access_token,
             refresh_token: tokenData.refresh_token,
             expires_at: new Date(expiresAt * 1000).toISOString(),

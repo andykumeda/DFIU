@@ -147,7 +147,7 @@ export function useTrainingRoutes(raceId: string, courseGeometry: unknown) {
 
   const updateRoute = async (
     id: string,
-    patch: Partial<Pick<TrainingRoute, 'name' | 'notes' | 'sort_order'>>
+    patch: Partial<Pick<TrainingRoute, 'name' | 'notes' | 'sort_order' | 'strava_activity_inputs'>>
   ) => {
     if (!canEdit) return
     const payload = { ...patch, updated_at: new Date().toISOString() }

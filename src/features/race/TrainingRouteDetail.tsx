@@ -24,7 +24,7 @@ interface TrainingRouteDetailProps {
   planAGoalMinutes: number
   clock24h?: boolean
   onBack: () => void
-  onUpdate: (id: string, patch: { name?: string; notes?: string | null }) => Promise<void>
+  onUpdate: (id: string, patch: { name?: string; notes?: string | null; strava_activity_inputs?: string[] }) => Promise<void>
   onDelete: (id: string) => Promise<void>
 }
 
@@ -289,6 +289,8 @@ export function TrainingRouteDetail({
           race={race}
           clock24h={clock24h}
           hideRoutePicker
+          savedActivityInputs={Array.isArray(route.strava_activity_inputs) ? route.strava_activity_inputs.filter((value): value is string => typeof value === 'string') : []}
+          onSaveActivityInputs={inputs => onUpdate(route.id, { strava_activity_inputs: inputs })}
         />
       </div>
     </div>

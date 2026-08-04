@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Activity, BarChart3, Link2, LoaderCircle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { STRAVA_RETURN_TO_STORAGE_KEY } from '@/features/auth/StravaCallback'
@@ -22,6 +22,11 @@ interface StravaActivity {
   startDate: string | null
 }
 
+interface StravaConnectionStatus {
+  connected: boolean
+  athleteName?: string
+}
+
 interface TrainingAnalysisPanelProps {
   routes: TrainingRouteRow[]
   planA: PacePlanResult | null
@@ -29,6 +34,8 @@ interface TrainingAnalysisPanelProps {
   race: Race
   clock24h: boolean
   hideRoutePicker?: boolean
+  savedActivityInputs?: string[]
+  onSaveActivityInputs?: (inputs: string[]) => Promise<void>
 }
 
 export function TrainingAnalysisPanel({
@@ -38,13 +45,33 @@ export function TrainingAnalysisPanel({
   race,
   clock24h,
   hideRoutePicker = false,
+  savedActivityInputs = [],
+  onSaveActivityInputs,
 }: TrainingAnalysisPanelProps) {
+  const savedActivityInputValue = savedActivityInputs.join('\n')
   const [routeId, setRouteId] = useState(routes[0]?.id ?? '')
-  const [activityInput, setActivityInput] = useState('')
+  const [activityInput, setActivityInput] = useState(savedActivityInputValue)
   const [activities, setActivities] = useState<StravaActivity[]>([])
   const [loading, setLoading] = useState(false)
   const [connecting, setConnecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [connectionStatus, setConnectionStatus] = useState<StravaConnectionStatus | null>(null)
+
+  useEffect(() => {
+    setActivityInput(savedActivityInputValue)
+    setActivities([])
+  }, [savedActivityInputValue])
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const { data, error: invokeError } = await supabase.functions.invoke('strava-activity', {
+        body: { action: 'connection' },
+      })
+      if (!cancelled) setConnectionStatus(!invokeError && data?.connected ? data as StravaConnectionStatus : { connected: false })
+    })()
+    return () => { cancelled = true }
+  }, [])
 
   const selectedRoute = routes.find(route => route.id === routeId) ?? routes[0] ?? null
   const summary = useMemo(
@@ -68,6 +95,7 @@ export function TrainingAnalysisPanel({
     setError(null)
     try {
       const requestedActivities = activityInput.split(/\r?\n/).map(value => value.trim()).filter(Boolean)
+      if (onSaveActivityInputs) await onSaveActivityInputs(requestedActivities)
       const results: StravaActivity[] = []
       for (const requestedActivity of requestedActivities) {
         const { data, error: invokeError } = await supabase.functions.invoke('strava-activity', {
@@ -179,7 +207,12 @@ export function TrainingAnalysisPanel({
         </div>
 
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-500">
-          <p>Your Strava account is connected only to your signed-in DFIU account; it is never shared with this event&apos;s owner.</p>
+          <p>
+            {connectionStatus?.connected
+              ? <>Connected as <span className="font-medium text-emerald-300">{connectionStatus.athleteName}</span> on Strava.</>
+              : connectionStatus ? 'No Strava account connected.' : 'Checking Strava connection…'}
+            {' '}Your account is connected only to your signed-in DFIU account; it is never shared with this event&apos;s owner.
+          </p>
           <button
             type="button"
             onClick={() => void connectStrava()}
