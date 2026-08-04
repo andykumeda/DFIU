@@ -190,8 +190,9 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
         return getCourseCoordinates(course)
     }, [course])
 
+    const isCrewAccessible = (waypoint: Waypoint) => waypoint.crew_allowed || waypoint.type === 'start' || waypoint.type === 'finish'
     const mapWaypoints = useMemo(() => {
-        return waypoints.filter(w => w.type === 'aid_station').map(w => {
+        return waypoints.filter(w => w.type === 'aid_station' || w.type === 'start' || w.type === 'finish').map(w => {
             const bagKind = getBagKind(w)
             const showBagIcon = !!bagKind && (bagKind !== 'crew' || hasSavedBagPlan(w))
             return {
@@ -202,7 +203,7 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
                 mile: w.mile,
                 type: w.type,
                 has_drop_bag: w.has_drop_bag,
-                crew_allowed: w.crew_allowed,
+                crew_allowed: isCrewAccessible(w),
                 pacer_allowed: w.pacer_allowed,
                 bag_kind: showBagIcon ? bagKind : null,
             }
@@ -211,13 +212,13 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
 
     // "Next" = first waypoint past predicted mile (epsilon to avoid hitching on the current AS).
     const nextWaypoint: Waypoint | null = useMemo(() => {
-        const sorted = [...waypoints].sort((a, b) => a.mile - b.mile)
+        const sorted = waypoints.filter(w => w.type !== 'landmark').sort((a, b) => a.mile - b.mile)
         return sorted.find(w => w.mile > predictedMile + 0.05) ?? null
     }, [waypoints, predictedMile])
 
     const nextCrewWaypoint: Waypoint | null = useMemo(() => {
         const sorted = [...waypoints].sort((a, b) => a.mile - b.mile)
-        return sorted.find(w => w.mile > predictedMile + 0.05 && !!w.crew_allowed) ?? null
+        return sorted.find(w => w.mile > predictedMile + 0.05 && isCrewAccessible(w)) ?? null
     }, [waypoints, predictedMile])
 
     const mapFocus = useMemo(() => {
@@ -253,7 +254,7 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
     // Next crew-accessible aid station after a given station (for leg directions).
     const nextCrewAfter = (wp: Waypoint): Waypoint | null => {
         const sorted = [...waypoints].sort((a, b) => a.mile - b.mile)
-        return sorted.find(w => w.mile > wp.mile + 0.001 && !!w.crew_allowed) ?? null
+        return sorted.find(w => w.mile > wp.mile + 0.001 && isCrewAccessible(w)) ?? null
     }
 
     const openCheckin = (wp: Waypoint) => {
@@ -544,21 +545,22 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
                         <div className='text-sm font-semibold'>All aid stations</div>
                     </div>
                     <div className='divide-y divide-neutral-800'>
-                        {waypoints.sort((a, b) => a.mile - b.mile).map(wp => {
+                        {waypoints.filter(w => w.type === 'aid_station' || w.type === 'start' || w.type === 'finish').sort((a, b) => a.mile - b.mile).map(wp => {
                             const arrival = pacePlan?.waypointArrivals.find(x => x.waypointId === wp.id)
                             const past = arrival ? arrival.arrivalTime <= elapsedMin : false
                             const checked = checkins.some(c => c.waypoint_id === wp.id)
                             const bagKind = getBagKind(wp)
-                            const showBagButton = wp.crew_allowed && !!bagKind && (bagKind !== 'crew' || hasSavedBagPlan(wp))
+                            const crewAccessible = isCrewAccessible(wp)
+                            const showBagButton = crewAccessible && !!bagKind && (bagKind !== 'crew' || hasSavedBagPlan(wp))
                             return (
                                 <div key={wp.id} className='py-2 flex items-center gap-2'>
                                     <div className={`w-2 h-2 rounded-full ${
-                                        checked ? 'bg-emerald-400' : past ? 'bg-neutral-500' : wp.crew_allowed ? planAColor.dot : 'bg-neutral-600'
+                                        checked ? 'bg-emerald-400' : past ? 'bg-neutral-500' : crewAccessible ? planAColor.dot : 'bg-neutral-600'
                                     }`} />
                                     <div className='min-w-0 flex-1'>
                                         <div className='text-sm font-medium truncate'>
                                             {wp.name}
-                                            {wp.crew_allowed && <span className='ml-1 text-[10px] text-emerald-400'>crew</span>}
+                                            {crewAccessible && <span className='ml-1 inline-flex rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] font-semibold text-white'>Crew accessible</span>}
                                             {checked && <span className='ml-1 text-[10px] text-emerald-400'>✓</span>}
                                         </div>
                                         <div className='text-xs text-neutral-500'>
@@ -577,7 +579,7 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
                                                 <span aria-hidden>{bagKind === 'crew' ? '📦' : '🎒'}</span>
                                             </button>
                                         )}
-                                        {wp.crew_allowed && (() => {
+                                        {crewAccessible && (() => {
                                             const dest = nextCrewAfter(wp)
                                             if (!dest) return null
                                             return (

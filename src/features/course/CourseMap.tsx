@@ -243,7 +243,10 @@ export function CourseMap({
                 'type': 'geojson',
                 'data': sourceData
             })
-
+        }
+        // A style reload can retain a source while dropping its layer. Mapbox's
+        // internal removal path then throws `getOwnLayer` if we assume both exist.
+        if (!m.getLayer('route')) {
             m.addLayer({
                 'id': 'route',
                 'type': 'line',
@@ -378,10 +381,8 @@ export function CourseMap({
             }
 
 
-            if (m.getSource('terrain-segments')) {
-                m.removeLayer('terrain-segments')
-                m.removeSource('terrain-segments')
-            }
+            if (m.getLayer('terrain-segments')) m.removeLayer('terrain-segments')
+            if (m.getSource('terrain-segments')) m.removeSource('terrain-segments')
 
             if (terrainNodes.length === 0) return
 
@@ -880,7 +881,7 @@ export function CourseMap({
                 })
             }
             if (!m.getLayer('terrain-selection-line')) {
-                m.addLayer({
+                if (!m.getLayer('base-route')) m.addLayer({
                     id: 'terrain-selection-line',
                     type: 'line',
                     source: 'terrain-selection',

@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-04
 **Branch:** `main` @ `528a3aa`
-**Status:** Current race-planning refinements are deployed (`4b66013`).
+**Status:** Investigating a remaining Mapbox `getOwnLayer` error and refining Resources and Crew behavior.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
