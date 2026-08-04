@@ -16,6 +16,7 @@ import { TrainingRouteDetail } from './TrainingRouteDetail'
 import { calculatePacePlan, isPaceChartWaypoint, type PacePlanResult } from './pace-utils'
 import { usePacePlans, computePlanMinutes } from './usePacePlans'
 import type { RunnerPacingProfile } from './runner-profile'
+import { buildTrainingPlanSummary, formatDurationWords } from './training-analysis'
 
 const TrainingRouteCreatorMap = lazy(() =>
   import('./TrainingRouteCreatorMap').then(module => ({ default: module.TrainingRouteCreatorMap }))
@@ -110,6 +111,12 @@ export function TrainingSection({
     () => (course ? extractCoordinates(course.geometry) : []),
     [course]
   )
+  const aidStationReferences = useMemo(
+    () => waypoints
+      .filter(waypoint => waypoint.type === 'aid_station')
+      .map(waypoint => ({ coordinates: [waypoint.lon, waypoint.lat] as [number, number], name: waypoint.name })),
+    [waypoints]
+  )
 
   useEffect(() => {
     setSelectedId(null)
@@ -199,11 +206,11 @@ export function TrainingSection({
         <div className="mb-6 rounded-xl border border-neutral-800 bg-neutral-900/40 p-4 space-y-4">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <label className="block flex-1 min-w-52"><span className="text-xs uppercase tracking-wide text-neutral-500">Route name</span><input value={draftName} onChange={event => setDraftName(event.target.value)} placeholder="Morning trail loop" className="mt-1 w-full bg-neutral-950 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-white" /></label>
-            <label className="flex items-center gap-2 text-sm text-neutral-300"><input type="checkbox" checked={showCourseReference} onChange={event => setShowCourseReference(event.target.checked)} className="accent-blue-500" />Show race course</label>
+            <label className="flex items-center gap-2 text-sm text-neutral-300"><input type="checkbox" checked={showCourseReference} onChange={event => setShowCourseReference(event.target.checked)} className="accent-blue-500" />Show course & aid stations</label>
           </div>
-          <p className="text-sm text-neutral-400">Click the map to add route points. The blue line is your new training route; the gray line is the optional race-course reference.</p>
+          <p className="text-sm text-neutral-400">Click to set the start, then click each destination. Each new section snaps to the walking and trail network. The blue line is your route; gray is the race course and green markers are aid stations.</p>
           <Suspense fallback={<div className="h-80 md:h-[420px] rounded-lg bg-neutral-950 grid place-items-center text-sm text-neutral-500">Loading route editor…</div>}>
-            <TrainingRouteCreatorMap coordinates={draftCoordinates} courseCoordinates={courseCoordinates} showCourse={showCourseReference} onChange={setDraftCoordinates} />
+            <TrainingRouteCreatorMap coordinates={draftCoordinates} courseCoordinates={courseCoordinates} aidStations={aidStationReferences} showCourse={showCourseReference} onChange={setDraftCoordinates} />
           </Suspense>
           <div className="flex flex-wrap items-center justify-between gap-3"><span className="text-sm text-neutral-400">{draftCoordinates.length} point{draftCoordinates.length === 1 ? '' : 's'} added</span><div className="flex gap-2"><button type="button" onClick={() => setDraftCoordinates(points => points.slice(0, -1))} disabled={!draftCoordinates.length || uploading} className="px-3 py-2 rounded-lg text-sm text-neutral-300 hover:text-white disabled:opacity-50">Undo point</button><button type="button" onClick={() => setDraftCoordinates([])} disabled={!draftCoordinates.length || uploading} className="px-3 py-2 rounded-lg text-sm text-neutral-300 hover:text-white disabled:opacity-50">Clear</button><button type="button" onClick={() => void handleCreate()} disabled={draftCoordinates.length < 2 || uploading} className="px-3 py-2 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white">{uploading ? 'Creating…' : 'Save route'}</button></div></div>
           {error && <p className="text-sm text-red-400">{error}</p>}
@@ -229,6 +236,10 @@ export function TrainingSection({
               <TrainingRouteCard
                 key={route.id}
                 route={route}
+                planA={planA}
+                planAGoalMinutes={planAMinutes}
+                race={race}
+                clock24h={clock24h}
                 courseCoordinates={courseCoordinates}
                 onOpen={() => setSelectedId(route.id)}
               />
@@ -242,10 +253,18 @@ export function TrainingSection({
 
 function TrainingRouteCard({
   route,
+  planA,
+  planAGoalMinutes,
+  race,
+  clock24h,
   courseCoordinates,
   onOpen,
 }: {
   route: TrainingRouteRow
+  planA: PacePlanResult | null
+  planAGoalMinutes: number
+  race: Race
+  clock24h: boolean
   courseCoordinates: [number, number][]
   onOpen: () => void
 }) {
@@ -265,6 +284,8 @@ function TrainingRouteCard({
     hasStart &&
     hasFinish &&
     isPointToPointRoute(route.start_lat, route.start_lon, route.finish_lat, route.finish_lon)
+  const planSummary = buildTrainingPlanSummary(route.overlapSegments, planA, race, clock24h)
+  const planGoalLabel = planAGoalMinutes > 0 ? ` (${formatDurationWords(planAGoalMinutes)} goal)` : ''
 
   return (
     <article className="bg-neutral-900 border border-neutral-800 hover:border-neutral-700 rounded-xl overflow-hidden flex flex-col transition-colors">
@@ -303,6 +324,16 @@ function TrainingRouteCard({
           <p className="text-sm text-orange-300/90">
             {formatOverlapSummary(route.overlap_miles, route.overlapSegments)}
           </p>
+          {planSummary && (
+            <section className="pt-3 mt-3 border-t border-neutral-800 space-y-2" aria-label="Plan A segment">
+              <h4 className="text-sm font-medium text-emerald-300">Plan A{planGoalLabel}</h4>
+              <dl className="space-y-1.5 text-xs leading-5">
+                <div className="flex justify-between gap-3 text-neutral-400"><dt>Race Segment Miles</dt><dd className="text-right text-neutral-200">{planSummary.raceMilesLabel} <span className="text-neutral-500">(Total: {planSummary.raceMilesTotal.toFixed(1)} mi)</span></dd></div>
+                <div className="flex justify-between gap-3 text-neutral-400"><dt>Race Segment Time</dt><dd className="text-right text-neutral-200">{planSummary.raceTimeLabel ?? 'Generate Plan A'}{planSummary.raceDurationLabel && <span className="text-neutral-500"> (Total: {planSummary.raceDurationLabel})</span>}</dd></div>
+                <div className="flex justify-between gap-3 text-neutral-400"><dt>Training Miles</dt><dd className="text-right text-neutral-200">{planSummary.trainingMilesLabel} <span className="text-neutral-500">(Total: {planSummary.trainingMilesTotal.toFixed(1)} mi)</span></dd></div>
+              </dl>
+            </section>
+          )}
           {notesPreview && (
             <p className="text-sm text-neutral-500 line-clamp-2">{notesPreview}</p>
           )}
