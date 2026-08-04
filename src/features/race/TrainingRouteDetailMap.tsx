@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react'
+import { lazy, Suspense, useCallback, useState } from 'react'
 
 /** Card previews stay SVG-only (no Mapbox in the main bundle). */
 
@@ -124,6 +124,7 @@ const TrainingRouteMapbox = lazy(() =>
 /** Detail map: Mapbox basemap (lazy) with SVG fallback. */
 export function TrainingRouteDetailMap(props: TrainingRouteDetailMapProps) {
   const [useSvg, setUseSvg] = useState(!import.meta.env.VITE_MAPBOX_TOKEN)
+  const handleMapFailure = useCallback(() => setUseSvg(true), [])
 
   if (useSvg) {
     return <TrainingRouteSvgDetail {...props} />
@@ -131,7 +132,7 @@ export function TrainingRouteDetailMap(props: TrainingRouteDetailMapProps) {
 
   return (
     <Suspense fallback={<TrainingRouteSvgDetail {...props} />}>
-      <TrainingRouteMapbox {...props} onFail={() => setUseSvg(true)} />
+      <TrainingRouteMapbox {...props} onFail={handleMapFailure} />
     </Suspense>
   )
 }

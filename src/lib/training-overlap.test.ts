@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  buildTrainingOverlapUpdates,
   clusterMileRanges,
   computeTrainingOverlap,
   downsampleByDistance,
@@ -125,6 +126,33 @@ describe('computeTrainingOverlap', () => {
       overlapMiles: 0,
       segments: [],
     })
+  })
+})
+
+describe('buildTrainingOverlapUpdates', () => {
+  it('recomputes persisted values from route geometry instead of retaining stale overlap data', () => {
+    const course = makeLine(37, -122, 101, 0.1)
+    const training = course.slice(20, 81)
+
+    const updates = buildTrainingOverlapUpdates(
+      [
+        {
+          id: 'wilson-loop',
+          geometry: { type: 'LineString', coordinates: training },
+          overlap_miles: 3.65,
+          overlap_segments: [
+            { courseStartMi: 75.13, courseEndMi: 78.78, trainingStartMi: 0, trainingEndMi: 10.62 },
+          ],
+        },
+      ],
+      { type: 'LineString', coordinates: course }
+    )
+
+    expect(updates).toHaveLength(1)
+    expect(updates[0].id).toBe('wilson-loop')
+    expect(updates[0].overlap_miles).toBeGreaterThan(5)
+    expect(updates[0].overlap_segments[0].courseStartMi).toBeLessThan(3)
+    expect(updates[0].overlap_segments[0].courseEndMi).toBeGreaterThan(7)
   })
 })
 

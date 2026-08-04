@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { ArrowLeft, ExternalLink, MapPin, Mountain, Route as RouteIcon, Trash2 } from 'lucide-react'
 import type { Course, Race } from '@/types/database'
 import type { TrainingRouteRow } from './useTrainingRoutes'
@@ -43,8 +43,11 @@ export function TrainingRouteDetail({
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
-  const trainingCoords = extractCoordinates(route.geometry)
-  const courseCoords = course ? extractCoordinates(course.geometry) : []
+  const trainingCoords = useMemo(() => extractCoordinates(route.geometry), [route.geometry])
+  const courseCoords = useMemo(
+    () => (course ? extractCoordinates(course.geometry) : []),
+    [course]
+  )
   const hasStart =
     route.start_lat != null &&
     route.start_lon != null &&

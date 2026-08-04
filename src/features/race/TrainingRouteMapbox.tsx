@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
@@ -37,16 +37,111 @@ function sliceByMiles(line: [number, number][], startMi: number, endMi: number):
   return out.length >= 2 ? out : line.slice(0, Math.min(2, line.length))
 }
 
-function mapStyleReady(map: mapboxgl.Map | null): map is mapboxgl.Map {
-  return !!map && !!map.style && map.isStyleLoaded()
-}
-
 export interface TrainingRouteMapboxProps {
   coordinates: [number, number][]
   courseCoordinates?: [number, number][]
   overlapSegments?: { trainingStartMi: number; trainingEndMi: number }[]
   className?: string
   onFail?: () => void
+}
+
+type MapData = Pick<
+  TrainingRouteMapboxProps,
+  'coordinates' | 'courseCoordinates' | 'overlapSegments'
+>
+
+const SOURCE_IDS = {
+  course: 'training-detail-course',
+  training: 'training-detail-route',
+  overlap: 'training-detail-overlap',
+} as const
+
+function lineFeature(coordinates: [number, number][]): GeoJSON.Feature<GeoJSON.LineString> {
+  return {
+    type: 'Feature',
+    properties: {},
+    geometry: { type: 'LineString', coordinates },
+  }
+}
+
+function setOrAddLine(
+  map: mapboxgl.Map,
+  id: string,
+  data: GeoJSON.Feature | GeoJSON.FeatureCollection,
+  paint: mapboxgl.LinePaint,
+  width: number
+) {
+  const source = map.getSource(id) as mapboxgl.GeoJSONSource | undefined
+  if (source) {
+    source.setData(data)
+    return
+  }
+  map.addSource(id, { type: 'geojson', data })
+  map.addLayer({
+    id,
+    type: 'line',
+    source: id,
+    layout: { 'line-join': 'round', 'line-cap': 'round' },
+    paint: { ...paint, 'line-width': width },
+  })
+}
+
+function drawRouteData(map: mapboxgl.Map, data: MapData) {
+  if (data.coordinates.length < 2) return
+
+  const training = downsample(data.coordinates, 4000)
+  const course =
+    data.courseCoordinates && data.courseCoordinates.length >= 2
+      ? downsample(data.courseCoordinates, 5000)
+      : null
+
+  if (course) {
+    setOrAddLine(
+      map,
+      SOURCE_IDS.course,
+      lineFeature(course),
+      { 'line-color': '#737373', 'line-opacity': 0.55 },
+      3
+    )
+  }
+
+  setOrAddLine(
+    map,
+    SOURCE_IDS.training,
+    lineFeature(training),
+    { 'line-color': '#2563eb', 'line-opacity': 0.95 },
+    4
+  )
+
+  if (data.overlapSegments && data.overlapSegments.length > 0) {
+    const features: GeoJSON.Feature<GeoJSON.LineString>[] = data.overlapSegments
+      .map(segment =>
+        lineFeature(
+          downsample(
+            sliceByMiles(data.coordinates, segment.trainingStartMi, segment.trainingEndMi),
+            2000
+          )
+        )
+      )
+      .filter(feature => feature.geometry.coordinates.length >= 2)
+
+    if (features.length > 0) {
+      setOrAddLine(
+        map,
+        SOURCE_IDS.overlap,
+        { type: 'FeatureCollection', features },
+        { 'line-color': '#ea580c', 'line-opacity': 1 },
+        6
+      )
+    }
+  }
+
+  const bounds = new mapboxgl.LngLatBounds()
+  training.forEach(coordinate => bounds.extend(coordinate))
+  if (!bounds.isEmpty()) {
+    map.resize()
+    map.fitBounds(bounds, { padding: 48, maxZoom: 14, duration: 0 })
+  }
 }
 
 /** Interactive Mapbox detail map — loaded only when Training detail is opened. */
@@ -59,148 +154,100 @@ export function TrainingRouteMapbox({
 }: TrainingRouteMapboxProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<mapboxgl.Map | null>(null)
-  const [styleLoaded, setStyleLoaded] = useState(false)
+  const styleReadyRef = useRef(false)
+  const dataRef = useRef<MapData>({ coordinates, courseCoordinates, overlapSegments })
+  const onFailRef = useRef(onFail)
+
+  useEffect(() => {
+    dataRef.current = { coordinates, courseCoordinates, overlapSegments }
+    onFailRef.current = onFail
+  }, [coordinates, courseCoordinates, overlapSegments, onFail])
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
     if (!import.meta.env.VITE_MAPBOX_TOKEN) {
       console.error('Mapbox token missing')
-      onFail?.()
+      onFailRef.current?.()
       return
     }
     mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN
 
-    let cancelled = false
-    const map = new mapboxgl.Map({
-      container: containerRef.current,
-      style: 'mapbox://styles/mapbox/outdoors-v12',
-      center: coordinates[0] ?? [-118.2, 34.3],
-      zoom: 11,
-      attributionControl: false,
-    })
+    let disposed = false
+    let map: mapboxgl.Map
+    try {
+      map = new mapboxgl.Map({
+        container: containerRef.current,
+        style: 'mapbox://styles/mapbox/outdoors-v12',
+        center: dataRef.current.coordinates[0] ?? [-118.2, 34.3],
+        zoom: 11,
+        attributionControl: false,
+      })
+    } catch (error) {
+      console.warn('TrainingRouteMapbox initialization failed', error)
+      onFailRef.current?.()
+      return
+    }
     mapRef.current = map
+    let initialDrawFrame: number | null = null
 
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right')
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right')
 
-    const onStyleLoad = () => {
-      if (cancelled) return
-      map.resize()
-      setStyleLoaded(true)
+    const handleStyleLoad = () => {
+      styleReadyRef.current = true
+      if (initialDrawFrame !== null) cancelAnimationFrame(initialDrawFrame)
+      initialDrawFrame = requestAnimationFrame(() => {
+        if (disposed || mapRef.current !== map) return
+        initialDrawFrame = null
+        try {
+          drawRouteData(map, dataRef.current)
+        } catch (error) {
+          console.warn('TrainingRouteMapbox initial draw failed', error)
+          onFailRef.current?.()
+        }
+      })
     }
-    map.on('style.load', onStyleLoad)
-    map.on('error', e => {
-      console.warn('TrainingRouteMapbox error', e)
-    })
+    const handleError = (event: mapboxgl.ErrorEvent) =>
+      console.warn('TrainingRouteMapbox error', event.error)
+    map.on('style.load', handleStyleLoad)
+    map.on('error', handleError)
 
     const ro = new ResizeObserver(() => {
-      if (mapStyleReady(mapRef.current)) mapRef.current.resize()
+      if (!disposed && mapRef.current === map && styleReadyRef.current) map.resize()
     })
     ro.observe(containerRef.current)
 
     return () => {
-      cancelled = true
+      disposed = true
+      styleReadyRef.current = false
+      if (initialDrawFrame !== null) cancelAnimationFrame(initialDrawFrame)
       ro.disconnect()
-      map.off('style.load', onStyleLoad)
-      map.remove()
-      mapRef.current = null
-      setStyleLoaded(false)
+      map.off('style.load', handleStyleLoad)
+      map.off('error', handleError)
+      if (mapRef.current === map) mapRef.current = null
+      try {
+        map.remove()
+      } catch (error) {
+        console.warn('TrainingRouteMapbox cleanup failed', error)
+      }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
     const map = mapRef.current
-    if (!mapStyleReady(map) || !styleLoaded || coordinates.length < 2) return
+    if (!map || !styleReadyRef.current || coordinates.length < 2) return
 
-    try {
-      const training = downsample(coordinates, 4000)
-      const course =
-        courseCoordinates && courseCoordinates.length >= 2
-          ? downsample(courseCoordinates, 5000)
-          : null
-
-      const setOrAddLine = (
-        id: string,
-        data: GeoJSON.Feature | GeoJSON.FeatureCollection,
-        paint: mapboxgl.LinePaint,
-        width: number
-      ) => {
-        const source = map.getSource(id) as mapboxgl.GeoJSONSource | undefined
-        if (source) {
-          source.setData(data)
-          return
-        }
-        map.addSource(id, { type: 'geojson', data })
-        map.addLayer({
-          id,
-          type: 'line',
-          source: id,
-          layout: { 'line-join': 'round', 'line-cap': 'round' },
-          paint: { ...paint, 'line-width': width },
-        })
+    const frame = requestAnimationFrame(() => {
+      if (mapRef.current !== map) return
+      try {
+        drawRouteData(map, dataRef.current)
+      } catch (error) {
+        console.warn('TrainingRouteMapbox update draw failed', error)
+        onFailRef.current?.()
       }
-
-      if (course) {
-        setOrAddLine(
-          'course',
-          {
-            type: 'Feature',
-            properties: {},
-            geometry: { type: 'LineString', coordinates: course },
-          },
-          { 'line-color': '#737373', 'line-opacity': 0.55 },
-          3
-        )
-      }
-
-      setOrAddLine(
-        'training',
-        {
-          type: 'Feature',
-          properties: {},
-          geometry: { type: 'LineString', coordinates: training },
-        },
-        { 'line-color': '#2563eb', 'line-opacity': 0.95 },
-        4
-      )
-
-      if (overlapSegments && overlapSegments.length > 0) {
-        const features: GeoJSON.Feature<GeoJSON.LineString>[] = overlapSegments
-          .map(seg => {
-            const slice = downsample(
-              sliceByMiles(coordinates, seg.trainingStartMi, seg.trainingEndMi),
-              2000
-            )
-            return {
-              type: 'Feature' as const,
-              properties: {},
-              geometry: { type: 'LineString' as const, coordinates: slice },
-            }
-          })
-          .filter(f => f.geometry.coordinates.length >= 2)
-
-        if (features.length > 0) {
-          setOrAddLine(
-            'overlap',
-            { type: 'FeatureCollection', features },
-            { 'line-color': '#ea580c', 'line-opacity': 1 },
-            6
-          )
-        }
-      }
-
-      const bounds = new mapboxgl.LngLatBounds()
-      training.forEach(c => bounds.extend(c as [number, number]))
-      if (!bounds.isEmpty()) {
-        map.resize()
-        map.fitBounds(bounds, { padding: 48, maxZoom: 14, duration: 0 })
-      }
-    } catch (err) {
-      console.warn('TrainingRouteMapbox draw failed', err)
-      onFail?.()
-    }
-  }, [coordinates, courseCoordinates, overlapSegments, styleLoaded, onFail])
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [coordinates, courseCoordinates, overlapSegments])
 
   return <div ref={containerRef} className={className ?? 'w-full h-full'} />
 }

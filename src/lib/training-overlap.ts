@@ -303,6 +303,30 @@ export function extractCoordinates(geometry: unknown): LonLat[] {
   )
 }
 
+export interface TrainingOverlapUpdate {
+  id: string
+  overlap_miles: number
+  overlap_segments: OverlapSegment[]
+}
+
+/** Build database updates from route geometry; persisted overlap values are never reused. */
+export function buildTrainingOverlapUpdates<TRoute extends { id: string; geometry: unknown }>(
+  routes: ReadonlyArray<TRoute>,
+  courseGeometry: unknown
+): TrainingOverlapUpdate[] {
+  const courseCoords = extractCoordinates(courseGeometry)
+  if (courseCoords.length < 2) return []
+
+  return routes.map(route => {
+    const overlap = computeTrainingOverlap(extractCoordinates(route.geometry), courseCoords)
+    return {
+      id: route.id,
+      overlap_miles: overlap.overlapMiles,
+      overlap_segments: overlap.segments,
+    }
+  })
+}
+
 export function directionsUrl(lat: number, lon: number): string {
   return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`
 }

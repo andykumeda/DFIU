@@ -5,6 +5,7 @@ import { usePermission } from '@/features/auth/usePermission'
 import type { TrainingRoute } from '@/types/database'
 import type { GpxParseResult } from '@/lib/gpx-parser'
 import {
+  buildTrainingOverlapUpdates,
   computeTrainingOverlap,
   extractCoordinates,
   parseOverlapSegments,
@@ -33,26 +34,26 @@ export async function recomputeTrainingOverlapsForRace(
   raceId: string,
   newCourseGeometry: unknown
 ): Promise<void> {
-  const courseCoords = courseCoordsFromGeometry(newCourseGeometry)
-  if (courseCoords.length < 2) return
-
-  const { data } = await supabase
+  const { data, error: selectError } = await supabase
     .from('training_routes')
-    .select('*')
+    .select('id, geometry')
     .eq('race_id', raceId)
+  if (selectError) throw selectError
 
-  const rows = (data as TrainingRoute[] | null) ?? []
-  for (const row of rows) {
-    const trainingCoords = extractCoordinates(row.geometry)
-    const overlap = computeTrainingOverlap(trainingCoords, courseCoords)
+  const updates = buildTrainingOverlapUpdates(
+    (data as Pick<TrainingRoute, 'id' | 'geometry'>[] | null) ?? [],
+    newCourseGeometry
+  )
+  for (const update of updates) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from('training_routes') as any)
+    const { error: updateError } = await (supabase.from('training_routes') as any)
       .update({
-        overlap_miles: overlap.overlapMiles,
-        overlap_segments: overlap.segments,
+        overlap_miles: update.overlap_miles,
+        overlap_segments: update.overlap_segments,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', row.id)
+      .eq('id', update.id)
+    if (updateError) throw updateError
   }
 }
 
