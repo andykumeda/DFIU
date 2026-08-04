@@ -1,18 +1,23 @@
 # Handoff Document
 
 **Date:** 2026-08-04
-**Branch:** `main` @ `528a3aa`
-**Status:** Training Analysis overlap and multi-run update is deployed (`53b665a`).
+**Branch:** `main` @ `723fad5`
+**Status:** Persistent Training Analysis and Strava connection status deployed.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Frontend: `e6bbfc0` (deployed; hard-refresh and compare the footer hash).
+- Frontend: `723fad5` (deployed; hard-refresh and compare the footer hash).
 - Wilson Loop: **9.95 unique on-course miles**, displayed as **74.9–84.9**. Its start snaps to race mile **78.78**.
 - Repository: `main` only; no extra worktrees or stale feature branches remain.
 
 ## Just finished
+
+- Training Analysis now saves each route's entered Strava links/IDs and restores them after later visits and sessions. It continues to accept one run per line.
+- The Training Analysis connection area now clearly shows “Connected as [Strava username]”; existing connections are backfilled from Strava when needed, while new/reconnected accounts save their display name immediately.
+- Applied the scoped `training_routes.strava_activity_inputs` and `strava_connections.athlete_name` schema additions, verified both fields in production, deployed `strava-activity` v3 and `strava-auth` v16, and deployed frontend `723fad5`.
+- Verified 31 tests, TypeScript production build, lint (0 errors; 31 existing warnings), and both Strava Edge Function checks.
 
 - Training Analysis now sums every detected race overlap, weights each Strava activity's moving time to only its matching training miles, and accepts multiple activity links/IDs (one per line) with separate comparisons.
 - Added regression coverage for multi-segment Plan A totals and moving-time overlap weighting; verified 31 tests, build, lint (0 errors; 31 existing warnings), and deployed frontend `53b665a`.
