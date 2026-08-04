@@ -3,14 +3,15 @@
 // OAuth start/callback for Strava login/signup. Gateway JWT verification stays
 // off because both actions run before a Supabase session exists. CSRF is
 // mitigated with an HMAC-signed `state` that the client also mirrors in
-// sessionStorage.
+// sessionStorage. The signed `connect` mode binds a Strava account to the
+// current DFIU user only; it never uses the event owner's identity.
 //
 // Secrets: STRAVA_CLIENT_ID, STRAVA_CLIENT_SECRET, SUPABASE_URL,
 // SUPABASE_SERVICE_ROLE_KEY. Optional STRAVA_STATE_SECRET (falls back to
 // service role key for HMAC).
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -18,6 +19,34 @@ const corsHeaders = {
 }
 
 const STATE_TTL_MS = 15 * 60 * 1000
+type OAuthMode = 'connect' | 'login'
+type OAuthState = { mode: OAuthMode }
+type StravaConnectionInsert = {
+    user_id: string
+    athlete_id: number
+    access_token: string
+    refresh_token: string
+    expires_at: string
+    scope: string | null
+    updated_at: string
+}
+type Database = {
+    public: {
+        Tables: {
+            strava_connections: {
+                Row: StravaConnectionInsert
+                Insert: StravaConnectionInsert
+                Update: Partial<StravaConnectionInsert>
+                Relationships: []
+            }
+        }
+        Views: Record<never, never>
+        Functions: Record<never, never>
+        Enums: Record<never, never>
+        CompositeTypes: Record<never, never>
+    }
+}
+type SupabaseAdmin = SupabaseClient<Database>
 
 serve(async (req) => {
     if (req.method === 'OPTIONS') {
@@ -38,14 +67,15 @@ serve(async (req) => {
             throw new Error('Missing Supabase configuration')
         }
 
-        const supabaseAdmin = createClient(supabaseUrl, serviceKey)
-        const { action, redirectUrl, code, state } = await req.json()
+        const supabaseAdmin = createClient<Database>(supabaseUrl, serviceKey)
+        const { action, redirectUrl, code, state, mode } = await req.json()
 
         if (action === 'start') {
             if (!redirectUrl || typeof redirectUrl !== 'string') {
                 throw new Error('redirectUrl required')
             }
-            const oauthState = await signState(stateSecret, crypto.randomUUID())
+            const oauthMode: OAuthMode = mode === 'connect' ? 'connect' : 'login'
+            const oauthState = await signState(stateSecret, crypto.randomUUID(), oauthMode)
             const scope = 'activity:read_all,profile:read_all'
             const params = new URLSearchParams({
                 client_id: clientId,
@@ -66,8 +96,8 @@ serve(async (req) => {
             if (!state || typeof state !== 'string') {
                 throw new Error('state required')
             }
-            const stateOk = await verifyState(stateSecret, state)
-            if (!stateOk) {
+            const oauthState = await verifyState(stateSecret, state)
+            if (!oauthState) {
                 throw new Error('Invalid or expired OAuth state')
             }
 
@@ -90,6 +120,18 @@ serve(async (req) => {
             const { athlete } = tokenData
             if (!athlete?.id) {
                 throw new Error('Strava athlete missing from token response')
+            }
+
+            const expiresAt = Number(tokenData.expires_at)
+            if (!tokenData.access_token || !tokenData.refresh_token || !Number.isFinite(expiresAt)) {
+                throw new Error('Strava token response missing activity access')
+            }
+
+            if (oauthState.mode === 'connect') {
+                const user = await requestUser(supabaseAdmin, req)
+                if (!user) throw new Error('Sign in to DFIU before connecting Strava.')
+                await saveStravaConnection(supabaseAdmin, user.id, athlete.id, tokenData, expiresAt)
+                return json({ connected: true })
             }
 
             const email = `${athlete.id}@strava.dfiu.app`
@@ -125,32 +167,19 @@ serve(async (req) => {
 
             if (!user) throw new Error('Unable to resolve Strava user')
 
-            const expiresAt = Number(tokenData.expires_at)
-            if (!tokenData.access_token || !tokenData.refresh_token || !Number.isFinite(expiresAt)) {
-                throw new Error('Strava token response missing activity access')
-            }
-            const { error: connectionError } = await supabaseAdmin
-                .from('strava_connections')
-                .upsert({
-                    user_id: user.id,
-                    athlete_id: athlete.id,
-                    access_token: tokenData.access_token,
-                    refresh_token: tokenData.refresh_token,
-                    expires_at: new Date(expiresAt * 1000).toISOString(),
-                    scope: typeof tokenData.scope === 'string' ? tokenData.scope : null,
-                    updated_at: new Date().toISOString(),
-                }, { onConflict: 'user_id' })
-            if (connectionError) throw connectionError
+            await saveStravaConnection(supabaseAdmin, user.id, athlete.id, tokenData, expiresAt)
 
-            const tempPassword = crypto.randomUUID()
-            const { error: passwordError } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
-                password: tempPassword,
-            })
-            if (passwordError) throw passwordError
-
-            const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.signInWithPassword({
+            const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+                type: 'magiclink',
                 email,
-                password: tempPassword,
+            })
+            if (linkError) throw linkError
+            const tokenHash = linkData.properties.hashed_token
+            if (!tokenHash) throw new Error('Unable to create Strava login session')
+
+            const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.verifyOtp({
+                token_hash: tokenHash,
+                type: 'email',
             })
             if (sessionError) throw sessionError
 
@@ -163,6 +192,35 @@ serve(async (req) => {
         return json({ error: message }, 400)
     }
 })
+
+async function requestUser(supabaseAdmin: SupabaseAdmin, req: Request): Promise<{ id: string } | null> {
+    const authorization = req.headers.get('Authorization')
+    if (!authorization?.startsWith('Bearer ')) return null
+    const { data, error } = await supabaseAdmin.auth.getUser(authorization.slice('Bearer '.length))
+    if (error || !data.user) return null
+    return { id: data.user.id }
+}
+
+async function saveStravaConnection(
+    supabaseAdmin: SupabaseAdmin,
+    userId: string,
+    athleteId: number,
+    tokenData: { access_token: string; refresh_token: string; scope?: unknown },
+    expiresAt: number,
+) {
+    const { error } = await supabaseAdmin
+        .from('strava_connections')
+        .upsert({
+            user_id: userId,
+            athlete_id: athleteId,
+            access_token: tokenData.access_token,
+            refresh_token: tokenData.refresh_token,
+            expires_at: new Date(expiresAt * 1000).toISOString(),
+            scope: typeof tokenData.scope === 'string' ? tokenData.scope : null,
+            updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' })
+    if (error) throw error
+}
 
 function json(body: unknown, status = 200) {
     return new Response(JSON.stringify(body), {
@@ -192,25 +250,26 @@ async function findAuthUserByEmail(
     return users[0] ?? null
 }
 
-async function signState(secret: string, nonce: string): Promise<string> {
-    const payload = btoa(JSON.stringify({ n: nonce, e: Date.now() + STATE_TTL_MS }))
+async function signState(secret: string, nonce: string, mode: OAuthMode): Promise<string> {
+    const payload = btoa(JSON.stringify({ n: nonce, e: Date.now() + STATE_TTL_MS, m: mode }))
         .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
     const sig = await hmacHex(secret, payload)
     return `${payload}.${sig}`
 }
 
-async function verifyState(secret: string, state: string): Promise<boolean> {
+async function verifyState(secret: string, state: string): Promise<OAuthState | null> {
     const [payload, sig] = state.split('.')
-    if (!payload || !sig) return false
+    if (!payload || !sig) return null
     const expected = await hmacHex(secret, payload)
-    if (!timingSafeEqual(sig, expected)) return false
+    if (!timingSafeEqual(sig, expected)) return null
     try {
         const padded = payload.replace(/-/g, '+').replace(/_/g, '/')
         const pad = padded.length % 4 === 0 ? '' : '='.repeat(4 - (padded.length % 4))
-        const parsed = JSON.parse(atob(padded + pad)) as { e?: number }
-        return typeof parsed.e === 'number' && parsed.e >= Date.now()
+        const parsed = JSON.parse(atob(padded + pad)) as { e?: number; m?: unknown }
+        if (typeof parsed.e !== 'number' || parsed.e < Date.now()) return null
+        return { mode: parsed.m === 'connect' ? 'connect' : 'login' }
     } catch {
-        return false
+        return null
     }
 }
 

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Activity, BarChart3, Link2, LoaderCircle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { STRAVA_RETURN_TO_STORAGE_KEY } from '@/features/auth/StravaCallback'
+import { messageFromFunctionError } from '@/features/auth/strava-function-error'
 import type { Race } from '@/types/database'
 import type { PacePlanResult } from './pace-utils'
 import type { TrainingRouteRow } from './useTrainingRoutes'
@@ -26,21 +27,6 @@ interface TrainingAnalysisPanelProps {
   planAGoalMinutes: number
   race: Race
   clock24h: boolean
-}
-
-async function messageFromFunctionError(error: unknown): Promise<string> {
-  if (error && typeof error === 'object' && 'context' in error) {
-    const context = (error as { context?: unknown }).context
-    if (context instanceof Response) {
-      try {
-        const body = (await context.clone().json()) as { error?: unknown }
-        if (typeof body.error === 'string') return body.error
-      } catch {
-        // Fall back to the generic function error below.
-      }
-    }
-  }
-  return error instanceof Error ? error.message : 'Unable to load Strava activity'
 }
 
 export function TrainingAnalysisPanel({
@@ -91,7 +77,7 @@ export function TrainingAnalysisPanel({
       setActivity(data as StravaActivity)
     } catch (caught) {
       setActivity(null)
-      setError(await messageFromFunctionError(caught))
+      setError(await messageFromFunctionError(caught, 'Unable to load Strava activity'))
     } finally {
       setLoading(false)
     }
@@ -104,6 +90,7 @@ export function TrainingAnalysisPanel({
       const { data, error: invokeError } = await supabase.functions.invoke('strava-auth', {
         body: {
           action: 'start',
+          mode: 'connect',
           redirectUrl: `${window.location.origin}/auth/strava/callback`,
         },
       })
@@ -116,7 +103,7 @@ export function TrainingAnalysisPanel({
       )
       window.location.assign(data.url)
     } catch (caught) {
-      setError(await messageFromFunctionError(caught))
+      setError(await messageFromFunctionError(caught, 'Unable to start Strava connection'))
       setConnecting(false)
     }
   }
@@ -134,7 +121,7 @@ export function TrainingAnalysisPanel({
             Training Analysis
           </h2>
           <p className="text-sm text-neutral-400 mt-1">
-            Compare a completed Strava run with the Plan A goal for its matching race segment.
+            Compare your completed Strava run with the Plan A goal for its matching race segment.
           </p>
         </div>
       </div>
@@ -188,7 +175,7 @@ export function TrainingAnalysisPanel({
         </div>
 
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-500">
-          <p>First time here? Connect Strava once so DFIU can read the activity you choose.</p>
+          <p>Your Strava account is connected only to your signed-in DFIU account; it is never shared with this event&apos;s owner.</p>
           <button
             type="button"
             onClick={() => void connectStrava()}

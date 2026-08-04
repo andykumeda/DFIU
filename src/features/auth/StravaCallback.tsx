@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'react-hot-toast'
+import { messageFromFunctionError } from './strava-function-error'
 
 const STATE_STORAGE_KEY = 'strava_oauth_state'
 export const STRAVA_RETURN_TO_STORAGE_KEY = 'strava_oauth_return_to'
@@ -51,7 +52,12 @@ export default function StravaCallback() {
 
             sessionStorage.removeItem(STATE_STORAGE_KEY)
 
-            if (data?.session) {
+            if (data?.connected) {
+                toast.success('Strava is connected!')
+                const returnTo = sessionStorage.getItem(STRAVA_RETURN_TO_STORAGE_KEY)
+                sessionStorage.removeItem(STRAVA_RETURN_TO_STORAGE_KEY)
+                navigate(returnTo && returnTo.startsWith('/race/') ? returnTo : '/dashboard')
+            } else if (data?.session) {
                 const { error: sessionError } = await supabase.auth.setSession(data.session)
                 if (sessionError) throw sessionError
                 toast.success('Successfully connected to Strava!')
@@ -65,8 +71,7 @@ export default function StravaCallback() {
             console.error('Callback error:', e)
             sessionStorage.removeItem(STATE_STORAGE_KEY)
             sessionStorage.removeItem(STRAVA_RETURN_TO_STORAGE_KEY)
-            const message = e instanceof Error ? e.message : 'Failed to complete authentication'
-            setError(message)
+            setError(await messageFromFunctionError(e, 'Failed to complete authentication'))
         }
     }
 

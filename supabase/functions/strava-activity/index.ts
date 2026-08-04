@@ -1,15 +1,42 @@
 // Edge function: strava-activity
 //
 // Fetches a single Strava activity for the authenticated DFIU user. OAuth
-// access/refresh tokens are stored server-side in public.strava_connections
-// with RLS and client privileges disabled; they are never returned to the app.
+// access/refresh tokens are stored per DFIU user (not per race or race owner)
+// in public.strava_connections with RLS and client privileges disabled; they
+// are never returned to the app.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+type StravaConnectionRow = {
+    user_id: string
+    athlete_id: number
+    access_token: string
+    refresh_token: string
+    expires_at: string
+    scope: string | null
+    updated_at: string
+}
+type Database = {
+    public: {
+        Tables: {
+            strava_connections: {
+                Row: StravaConnectionRow
+                Insert: StravaConnectionRow
+                Update: Partial<StravaConnectionRow>
+                Relationships: []
+            }
+        }
+        Views: Record<never, never>
+        Functions: Record<never, never>
+        Enums: Record<never, never>
+        CompositeTypes: Record<never, never>
+    }
 }
 
 class HttpError extends Error {
@@ -36,7 +63,7 @@ serve(async (req) => {
         const jwt = authHeader.replace(/^Bearer\s+/i, '')
         if (!jwt || jwt === authHeader) throw new HttpError('Authentication required', 401)
 
-        const supabaseAdmin = createClient(supabaseUrl, serviceKey)
+        const supabaseAdmin = createClient<Database>(supabaseUrl, serviceKey)
         const { data: userResult, error: userError } = await supabaseAdmin.auth.getUser(jwt)
         if (userError || !userResult.user) throw new HttpError('Authentication required', 401)
 
@@ -98,7 +125,7 @@ function parseActivityId(value: unknown): string | null {
 }
 
 async function getValidAccessToken(input: {
-    supabaseAdmin: ReturnType<typeof createClient>
+    supabaseAdmin: SupabaseClient<Database>
     userId: string
     accessToken: string
     refreshToken: string
