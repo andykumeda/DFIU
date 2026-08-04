@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import along from '@turf/along'
@@ -9,7 +9,7 @@ import { X, Trash2, MapPin } from 'lucide-react'
 import MapStyleSwitcher from './MapStyleSwitcher'
 import { getNearestPointOnLine, getDistanceFromStart, getCoordinateAtDistance, getDistanceAtCoordinate } from '@/lib/geo-utils'
 import styles from './CourseMap.module.css'
-import { getTerrainColor } from './terrain-constants'
+import { getTerrainColor, TERRAIN_TYPES } from './terrain-constants'
 
 type TerrainPoint = { lat: number, lon: number, mile: number }
 const TERRAIN_START_PICK_DISTANCE_MILES = 0.5
@@ -95,7 +95,12 @@ export function CourseMap({
         end: { lat: number, lon: number, mile: number } | null
     }>({ start: null, end: null })
     const [isDeleteMode, setIsDeleteMode] = useState(false)
+    const [showLandmarks, setShowLandmarks] = useState(true)
     const [viewState, setViewState] = useState({ zoom: 12, lat: 0, lng: 0 })
+    const visibleWaypoints = useMemo(
+        () => showLandmarks ? waypoints : waypoints.filter(waypoint => waypoint.type !== 'landmark'),
+        [showLandmarks, waypoints],
+    )
 
     // Restore missing refs/state
     const markersRef = useRef<mapboxgl.Marker[]>([])
@@ -533,8 +538,8 @@ export function CourseMap({
         if (isTerrainMode) return
 
         // Group waypoints
-        const groups: typeof waypoints[] = []
-        waypoints.forEach(wp => {
+        const groups: typeof visibleWaypoints[] = []
+        visibleWaypoints.forEach(wp => {
             const existingGroup = groups.find(g =>
                 Math.abs(g[0].lat - wp.lat) < 0.0001 &&
                 Math.abs(g[0].lon - wp.lon) < 0.0001
@@ -785,7 +790,7 @@ export function CourseMap({
             markersRef.current.forEach(m => m.remove())
             markersRef.current = []
         }
-    }, [waypoints, mapLoaded, coordinates, terrainNodes, isTerrainMode, highlightedWaypointId, canMoveWaypoints])
+    }, [visibleWaypoints, mapLoaded, coordinates, terrainNodes, isTerrainMode, highlightedWaypointId, canMoveWaypoints])
 
     // Waypoint labels for the main Map view. This uses a Mapbox symbol layer
     // so labels do not catch marker clicks and can avoid each other naturally.
@@ -801,13 +806,13 @@ export function CourseMap({
             if (m.getSource(sourceId)) m.removeSource(sourceId)
         }
 
-        if (!showWaypointLabels || isTerrainMode || waypoints.length === 0) {
+        if (!showWaypointLabels || isTerrainMode || visibleWaypoints.length === 0) {
             removeLabels()
             return
         }
 
-        const groups: typeof waypoints[] = []
-        waypoints.forEach(wp => {
+        const groups: typeof visibleWaypoints[] = []
+        visibleWaypoints.forEach(wp => {
             const existingGroup = groups.find(g =>
                 Math.abs(g[0].lat - wp.lat) < 0.0001 &&
                 Math.abs(g[0].lon - wp.lon) < 0.0001
@@ -867,7 +872,7 @@ export function CourseMap({
         m.addLayer(layer)
 
         return removeLabels
-    }, [showWaypointLabels, styleLoaded, waypoints, isTerrainMode])
+    }, [showWaypointLabels, styleLoaded, visibleWaypoints, isTerrainMode])
 
     // Terrain Selection Visuals (Markers & Line)
     useEffect(() => {
@@ -1212,6 +1217,8 @@ export function CourseMap({
                 onStyleChange={handleStyleChange as any}
                 showMileMarkers={showMileMarkers}
                 onToggleMileMarkers={onToggleMileMarkers}
+                showLandmarks={showLandmarks}
+                onToggleLandmarks={() => setShowLandmarks(current => !current)}
             />
 
             <div
@@ -1285,6 +1292,18 @@ export function CourseMap({
                 ) : (
                     <>{totalDistance ? `${totalDistance.toFixed(2)} miles` : `${viewState.lat.toFixed(4)}, ${viewState.lng.toFixed(4)}`}</>
                 )}
+            </div>
+
+            <div className="absolute bottom-8 right-3 z-10 rounded-md border border-neutral-700 bg-neutral-950/90 px-3 py-2 text-[11px] text-neutral-200 shadow-lg backdrop-blur-sm pointer-events-none">
+                <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">Terrain</div>
+                <div className="space-y-1">
+                    {TERRAIN_TYPES.map(terrain => (
+                        <div key={terrain.value} className="flex items-center gap-1.5 whitespace-nowrap">
+                            <span className="h-2.5 w-2.5 rounded-full ring-1 ring-white/30" style={{ backgroundColor: terrain.color }} />
+                            <span>{terrain.label}</span>
+                        </div>
+                    ))}
+                </div>
             </div>
         </div >
     )

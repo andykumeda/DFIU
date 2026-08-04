@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-04
 **Branch:** `main` @ `2096266`
-**Status:** Terrain labels constraint fix deployed.
+**Status:** Adding map terrain legend and landmark visibility toggle.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 

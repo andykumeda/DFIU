@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { Mountain, Map as MapIcon, Satellite, Milestone } from 'lucide-react'
+import { Mountain, Map as MapIcon, Satellite, Milestone, Eye, EyeOff } from 'lucide-react'
 
 export type MapStyle = 'outdoors' | 'streets' | 'satellite'
 
@@ -10,6 +10,8 @@ interface MapStyleSwitcherProps {
     onStyleChange: (style: MapStyle) => void
     showMileMarkers?: boolean
     onToggleMileMarkers?: () => void
+    showLandmarks?: boolean
+    onToggleLandmarks?: () => void
 }
 
 const MapStyleSwitcher: React.FC<MapStyleSwitcherProps> = ({
@@ -17,6 +19,8 @@ const MapStyleSwitcher: React.FC<MapStyleSwitcherProps> = ({
     onStyleChange,
     showMileMarkers,
     onToggleMileMarkers,
+    showLandmarks,
+    onToggleLandmarks,
 }) => {
     const styles: { id: MapStyle; name: string; icon: React.ReactNode }[] = [
         { id: 'outdoors', name: 'Outdoors', icon: <Mountain size={16} /> },
@@ -57,6 +61,21 @@ const MapStyleSwitcher: React.FC<MapStyleSwitcherProps> = ({
                         <span className="sr-only">Mile Markers</span>
                     </button>
                 </>
+            )}
+
+            {onToggleLandmarks && (
+                <button
+                    onClick={onToggleLandmarks}
+                    className={`
+            p-1.5 sm:p-2 rounded hover:bg-gray-100 flex items-center gap-2 transition-colors
+            ${showLandmarks ? 'bg-blue-50 text-blue-600' : 'text-gray-700'}
+          `}
+                    title={showLandmarks ? 'Hide Landmarks' : 'Show Landmarks'}
+                    type="button"
+                >
+                    {showLandmarks ? <Eye size={16} /> : <EyeOff size={16} />}
+                    <span className="sr-only">{showLandmarks ? 'Hide Landmarks' : 'Show Landmarks'}</span>
+                </button>
             )}
         </div>
     )
