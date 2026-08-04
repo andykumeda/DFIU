@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-04
 **Branch:** `main` @ `652d9e7`
-**Status:** Reviewed, linked terrain application for out-and-back course sections deployed.
+**Status:** Fixing custom resource Markdown rendering, printing layout, and icon choices.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 

@@ -96,14 +96,15 @@ ${body}
         win.focus()
         win.print()
     }
-    const handlePrintTextResource = (title: string, content: string) => {
-        const escapeHtml = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+    const handlePrintTextResource = (title: string, elementId: string) => {
+        const escapeHtml = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&quot;')
+        const body = document.getElementById(elementId)?.innerHTML ?? ''
         const win = window.open('', '_blank', 'width=800,height=900')
         if (!win) {
             alert('Unable to open the print window. Please allow pop-ups for this site.')
             return
         }
-        win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8" /><title>${escapeHtml(title)}</title><style>body { font-family: ui-sans-serif, system-ui, sans-serif; color: #111; line-height: 1.5; max-width: 720px; margin: 0 auto; padding: 40px 32px; } h1 { font-size: 1.35rem; } @media print { body { padding: 0; } }</style></head><body><h1>${escapeHtml(title)}</h1><div>${escapeHtml(content).replace(/\n/g, '<br>')}</div></body></html>`)
+        win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8" /><title>${escapeHtml(title)}</title><style>body { font-family: ui-sans-serif, system-ui, sans-serif; color: #111; line-height: 1.5; max-width: 720px; margin: 0 auto; padding: 40px 32px; } h1 { font-size: 1.35rem; } h2 { font-size: 1.15rem; } h3 { font-size: 1rem; } h1, h2, h3, h4 { margin: 1.1em 0 .4em; } ul, ol { padding-left: 1.4em; } li { margin: .2em 0; } a { color: #1d4ed8; } table { border-collapse: collapse; width: 100%; } th, td { border: 1px solid #ccc; padding: 5px 9px; text-align: left; } @media print { body { padding: 0; } }</style></head><body><h1>${escapeHtml(title)}</h1><div>${body}</div></body></html>`)
         win.document.close()
         win.focus()
         win.print()
@@ -443,9 +444,17 @@ ${body}
                                 <label className="inline-flex items-center gap-1.5 text-xs text-neutral-300 whitespace-nowrap"><input type="checkbox" checked={!!link.print_enabled} onChange={e => updateLink(link.id, { print_enabled: e.target.checked })} /> Allow printing</label>
                                 <button onClick={() => updateLink(link.id, { enabled: !link.enabled })} className="text-neutral-500 hover:text-white p-1">{link.enabled ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}</button>
                                 <button onClick={() => removeLink(link.id)} className="text-neutral-500 hover:text-red-400 p-1"><Trash2 className="w-4 h-4" /></button></div>
-                            </div> : <h3 className="text-lg font-bold text-white">{link.label}</h3>}
+                            </div> : <>
+                                <h3 className="flex-1 text-lg font-bold text-white">{link.label}</h3>
+                                {link.print_enabled && (
+                                    <button onClick={() => handlePrintTextResource(link.label, `text-resource-${link.id}`)} className="ml-auto flex items-center gap-2 bg-neutral-800 hover:bg-neutral-700 text-white px-3 py-1.5 rounded-lg transition-colors text-sm font-medium border border-neutral-700">
+                                        <Printer className="w-4 h-4" />
+                                        Print
+                                    </button>
+                                )}
+                            </>}
                         </div>
-                        {isEditing ? <textarea value={link.content ?? ''} onChange={e => updateLink(link.id, { content: e.target.value })} placeholder="Resource details" className="w-full h-64 bg-neutral-950 border border-neutral-800 rounded-lg p-4 text-white font-mono text-sm resize-y" /> : <><p className="text-neutral-300 whitespace-pre-wrap">{link.content || 'No details provided yet.'}</p>{link.print_enabled && <button onClick={() => handlePrintTextResource(link.label, link.content ?? '')} className="mt-4 flex items-center gap-2 bg-neutral-800 hover:bg-neutral-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium border border-neutral-700"><Printer className="w-4 h-4" /> Print</button>}</>}
+                        {isEditing ? <textarea value={link.content ?? ''} onChange={e => updateLink(link.id, { content: e.target.value })} placeholder="Resource details" className="w-full h-64 bg-neutral-950 border border-neutral-800 rounded-lg p-4 text-white font-mono text-sm resize-y" /> : <div id={`text-resource-${link.id}`}>{link.content ? <Markdown>{link.content}</Markdown> : <p className="text-neutral-600 italic">No details provided yet.</p>}</div>}
                     </div>
                 )
             })}

@@ -1,11 +1,11 @@
 import { Race } from '@/types/database'
 import {
-    FileText, Mic, MapPin, Trophy, Camera, Users, Radio, Link as LinkIcon,
+    BedDouble, CalendarDays, FileText, Mic, MapPin, Trophy, Camera, Users, Radio, Link as LinkIcon,
     type LucideIcon,
 } from 'lucide-react'
 
 export type ResourceIconId =
-    | 'file-text' | 'mic' | 'map-pin' | 'trophy' | 'camera' | 'users' | 'radio' | 'link'
+    | 'bed-double' | 'calendar-days' | 'file-text' | 'mic' | 'map-pin' | 'trophy' | 'camera' | 'users' | 'radio' | 'link'
 
 export interface ResourceLinkEntry {
     id: string
@@ -31,6 +31,8 @@ export interface ResourcesConfig {
 }
 
 export const RESOURCE_ICON_MAP: Record<ResourceIconId, LucideIcon> = {
+    'bed-double': BedDouble,
+    'calendar-days': CalendarDays,
     'file-text': FileText,
     mic: Mic,
     'map-pin': MapPin,
