@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-04
 **Branch:** `main` @ `528a3aa`
-**Status:** Investigating a remaining Mapbox `getOwnLayer` error and refining Resources and Crew behavior.
+**Status:** Mapbox, Resources, and Crew follow-up is deployed (`b03754a`).
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -13,6 +13,11 @@
 - Repository: `main` only; no extra worktrees or stale feature branches remain.
 
 ## Just finished
+
+- Fixed a remaining Map & Aid Stations Mapbox lifecycle bug: terrain cleanup now checks layers and sources independently, preventing the unsafe `getOwnLayer` removal path after style changes.
+- Custom Resource now begins with a Link/Text-box picker. Text boxes are full-width sections below links, can be ordered, have icon selection, and can opt into printing.
+- Crew omits landmarks everywhere, treats Start and Finish as crew-accessible, visually labels them in green, and offers directions from the final crew aid station to Finish.
+- Verified build, 30 tests, and lint (0 errors; 31 existing warnings); deployed frontend `b03754a`.
 
 - Hardened the Training detail Mapbox layer lifecycle against a source/layer mismatch that can surface as `getOwnLayer` undefined; the SVG fallback remains available.
 - Resources now support editable link or text entries, selectable icons, and titles that directly open link resources.
