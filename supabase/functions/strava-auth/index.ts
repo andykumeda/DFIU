@@ -125,6 +125,23 @@ serve(async (req) => {
 
             if (!user) throw new Error('Unable to resolve Strava user')
 
+            const expiresAt = Number(tokenData.expires_at)
+            if (!tokenData.access_token || !tokenData.refresh_token || !Number.isFinite(expiresAt)) {
+                throw new Error('Strava token response missing activity access')
+            }
+            const { error: connectionError } = await supabaseAdmin
+                .from('strava_connections')
+                .upsert({
+                    user_id: user.id,
+                    athlete_id: athlete.id,
+                    access_token: tokenData.access_token,
+                    refresh_token: tokenData.refresh_token,
+                    expires_at: new Date(expiresAt * 1000).toISOString(),
+                    scope: typeof tokenData.scope === 'string' ? tokenData.scope : null,
+                    updated_at: new Date().toISOString(),
+                }, { onConflict: 'user_id' })
+            if (connectionError) throw connectionError
+
             const tempPassword = crypto.randomUUID()
             const { error: passwordError } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
                 password: tempPassword,

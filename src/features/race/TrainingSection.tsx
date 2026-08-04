@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ExternalLink, Mountain, Route as RouteIcon, Upload } from 'lucide-react'
 import type { Course, Race, TerrainNode, Waypoint } from '@/types/database'
 import { GpxUploader } from '@/features/course/GpxUploader'
@@ -11,12 +11,14 @@ import {
   returnDirectionsUrl,
 } from '@/lib/training-overlap'
 import { useTrainingRoutes, type TrainingRouteRow } from './useTrainingRoutes'
-import { TrainingRouteSvgPreview } from './TrainingRouteDetailMap'
+import { TrainingRouteDetailMap } from './TrainingRouteDetailMap'
 import { TrainingRouteDetail } from './TrainingRouteDetail'
 import { calculatePacePlan, isPaceChartWaypoint, type PacePlanResult } from './pace-utils'
 import { usePacePlans, computePlanMinutes } from './usePacePlans'
 import type { RunnerPacingProfile } from './runner-profile'
 import { getOverlapRacePace } from './race-day-utils'
+import { buildTrainingPlanSummary, formatDurationWords } from './training-analysis'
+import { TrainingAnalysisPanel } from './TrainingAnalysisPanel'
 
 interface TrainingSectionProps {
   race: Race
@@ -96,6 +98,10 @@ export function TrainingSection({
 
   const planAReady = plans.hasCalculated && planA != null
   const selected = selectedId ? routes.find(r => r.id === selectedId) ?? null : null
+  const courseCoordinates = useMemo(
+    () => (course ? extractCoordinates(course.geometry) : []),
+    [course]
+  )
 
   const handleUpload = async (result: GpxParseResult, rawGpx: string, fileName: string) => {
     setError(null)
@@ -175,19 +181,30 @@ export function TrainingSection({
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-          {routes.map(route => (
-            <TrainingRouteCard
-              key={route.id}
-              route={route}
-              planA={planA}
-              planAReady={planAReady}
-              race={race}
-              clock24h={clock24h}
-              onOpen={() => setSelectedId(route.id)}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+            {routes.map(route => (
+              <TrainingRouteCard
+                key={route.id}
+                route={route}
+                planA={planA}
+                planAReady={planAReady}
+                planAGoalMinutes={planAMinutes}
+                race={race}
+                clock24h={clock24h}
+                courseCoordinates={courseCoordinates}
+                onOpen={() => setSelectedId(route.id)}
+              />
+            ))}
+          </div>
+          <TrainingAnalysisPanel
+            routes={routes}
+            planA={planA}
+            planAGoalMinutes={planAMinutes}
+            race={race}
+            clock24h={clock24h}
+          />
+        </>
       )}
     </div>
   )
@@ -197,15 +214,19 @@ function TrainingRouteCard({
   route,
   planA,
   planAReady,
+  planAGoalMinutes,
   race,
   clock24h,
+  courseCoordinates,
   onOpen,
 }: {
   route: TrainingRouteRow
   planA: PacePlanResult | null
   planAReady: boolean
+  planAGoalMinutes: number
   race: Race
   clock24h: boolean
+  courseCoordinates: [number, number][]
   onOpen: () => void
 }) {
   const coords = extractCoordinates(route.geometry)
@@ -238,21 +259,32 @@ function TrainingRouteCard({
     planAReady && primarySeg
       ? getOverlapRacePace(planA, courseStartMi, courseEndMi, race, clock24h)
       : null
+  const planSummary = buildTrainingPlanSummary(route.overlapSegments, planA, race, clock24h)
+  const planGoalLabel = planAGoalMinutes > 0 ? ` (${formatDurationWords(planAGoalMinutes)} goal)` : ''
 
   return (
     <article className="bg-neutral-900 border border-neutral-800 hover:border-neutral-700 rounded-xl overflow-hidden flex flex-col transition-colors">
       <button type="button" onClick={onOpen} className="text-left block w-full">
-        <div className="h-36 bg-neutral-950 relative">
+        <div className="h-44 bg-neutral-950 relative overflow-hidden">
           {coords.length >= 2 ? (
-            <TrainingRouteSvgPreview coordinates={coords} className="w-full h-full" />
+            <TrainingRouteDetailMap
+              coordinates={coords}
+              courseCoordinates={courseCoordinates.length >= 2 ? courseCoordinates : undefined}
+              overlapSegments={route.overlapSegments}
+              interactive={false}
+              showControls={false}
+              className="absolute inset-0 h-full w-full pointer-events-none"
+            />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-neutral-600 text-xs">
               No map
             </div>
           )}
+          <div className="absolute inset-x-0 top-0 bg-gradient-to-b from-neutral-950 via-neutral-950/70 to-transparent px-4 pt-3 pb-10 pointer-events-none">
+            <h3 className="text-lg font-semibold text-white truncate">{route.name}</h3>
+          </div>
         </div>
         <div className="p-4 space-y-2">
-          <h3 className="text-lg font-semibold text-white truncate">{route.name}</h3>
           <div className="flex flex-wrap gap-3 text-sm text-neutral-400">
             <span>
               {route.distance_miles != null ? `${route.distance_miles.toFixed(1)} mi` : '—'}
@@ -272,6 +304,35 @@ function TrainingRouteCard({
               Plan A {overlapPace.paceLabel}/mi
               {overlapPace.enterTimeOfDay ? ` · ~${overlapPace.enterTimeOfDay}` : ''}
             </p>
+          )}
+          {planSummary && (
+            <section className="pt-3 mt-3 border-t border-neutral-800 space-y-2" aria-label="Plan A segment">
+              <h4 className="text-sm font-medium text-emerald-300">Plan A{planGoalLabel}</h4>
+              <dl className="space-y-1.5 text-xs leading-5">
+                <div className="flex justify-between gap-3 text-neutral-400">
+                  <dt>Race Segment Miles</dt>
+                  <dd className="text-right text-neutral-200">
+                    {planSummary.raceMilesLabel} <span className="text-neutral-500">(Total: {planSummary.raceMilesTotal.toFixed(1)} mi)</span>
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-3 text-neutral-400">
+                  <dt>Race Segment Time</dt>
+                  <dd className="text-right text-neutral-200">
+                    {planSummary.raceTimeLabel ?? 'Generate Plan A'}
+                    {planSummary.raceDurationLabel && (
+                      <span className="text-neutral-500"> (Total: {planSummary.raceDurationLabel})</span>
+                    )}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-3 text-neutral-400">
+                  <dt>Training Miles</dt>
+                  <dd className="text-right text-neutral-200">
+                    {planSummary.trainingMilesLabel}{' '}
+                    <span className="text-neutral-500">(Total: {planSummary.trainingMilesTotal.toFixed(1)} mi)</span>
+                  </dd>
+                </div>
+              </dl>
+            </section>
           )}
           {notesPreview && (
             <p className="text-sm text-neutral-500 line-clamp-2">{notesPreview}</p>

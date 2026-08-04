@@ -115,6 +115,8 @@ interface TrainingRouteDetailMapProps {
   courseCoordinates?: [number, number][]
   overlapSegments?: { trainingStartMi: number; trainingEndMi: number }[]
   className?: string
+  interactive?: boolean
+  showControls?: boolean
 }
 
 const TrainingRouteMapbox = lazy(() =>

@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-03
 **Branch:** `main` @ `4a737c0`
-**Status:** Training detail map and Wilson Loop overlap are fixed, deployed, and production data is corrected.
+**Status:** Adding map-backed Training cards, Plan A segment summaries, and authenticated Strava activity analysis.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -24,7 +24,9 @@
 
 ## Active task
 
-- None.
+- Put a Mapbox basemap behind the overview-card route lines.
+- Format each route's Plan A race/training segment information for quick comparison.
+- Persist Strava OAuth activity access securely and add a Training Analysis panel that compares a selected activity's elapsed time with the Plan A goal.
 
 ## Open / follow-up
 

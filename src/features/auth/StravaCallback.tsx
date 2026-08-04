@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { toast } from 'react-hot-toast'
 
 const STATE_STORAGE_KEY = 'strava_oauth_state'
+export const STRAVA_RETURN_TO_STORAGE_KEY = 'strava_oauth_return_to'
 
 export default function StravaCallback() {
     const [searchParams] = useSearchParams()
@@ -54,13 +55,16 @@ export default function StravaCallback() {
                 const { error: sessionError } = await supabase.auth.setSession(data.session)
                 if (sessionError) throw sessionError
                 toast.success('Successfully connected to Strava!')
-                navigate('/dashboard')
+                const returnTo = sessionStorage.getItem(STRAVA_RETURN_TO_STORAGE_KEY)
+                sessionStorage.removeItem(STRAVA_RETURN_TO_STORAGE_KEY)
+                navigate(returnTo && returnTo.startsWith('/race/') ? returnTo : '/dashboard')
             } else {
                 throw new Error(data?.error || 'No session returned')
             }
         } catch (e) {
             console.error('Callback error:', e)
             sessionStorage.removeItem(STATE_STORAGE_KEY)
+            sessionStorage.removeItem(STRAVA_RETURN_TO_STORAGE_KEY)
             const message = e instanceof Error ? e.message : 'Failed to complete authentication'
             setError(message)
         }

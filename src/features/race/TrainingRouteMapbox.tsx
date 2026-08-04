@@ -43,6 +43,8 @@ export interface TrainingRouteMapboxProps {
   overlapSegments?: { trainingStartMi: number; trainingEndMi: number }[]
   className?: string
   onFail?: () => void
+  interactive?: boolean
+  showControls?: boolean
 }
 
 type MapData = Pick<
@@ -151,6 +153,8 @@ export function TrainingRouteMapbox({
   overlapSegments,
   className,
   onFail,
+  interactive = true,
+  showControls = true,
 }: TrainingRouteMapboxProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<mapboxgl.Map | null>(null)
@@ -181,6 +185,7 @@ export function TrainingRouteMapbox({
         center: dataRef.current.coordinates[0] ?? [-118.2, 34.3],
         zoom: 11,
         attributionControl: false,
+        interactive,
       })
     } catch (error) {
       console.warn('TrainingRouteMapbox initialization failed', error)
@@ -190,8 +195,10 @@ export function TrainingRouteMapbox({
     mapRef.current = map
     let initialDrawFrame: number | null = null
 
-    map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right')
-    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right')
+    if (showControls) {
+      map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right')
+      map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right')
+    }
 
     const handleStyleLoad = () => {
       styleReadyRef.current = true
@@ -231,7 +238,7 @@ export function TrainingRouteMapbox({
         console.warn('TrainingRouteMapbox cleanup failed', error)
       }
     }
-  }, [])
+  }, [interactive, showControls])
 
   useEffect(() => {
     const map = mapRef.current
