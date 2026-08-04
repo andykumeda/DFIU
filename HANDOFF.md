@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-04
 **Branch:** `main` @ `5e4e3cd`
-**Status:** Custom resource Markdown rendering, printing layout, and icon choices deployed.
+**Status:** Fixing repeated-course-pass terrain rendering for exact selected mileage.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 

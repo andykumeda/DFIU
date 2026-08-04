@@ -415,7 +415,10 @@ export function CourseMap({
             const getIndexAtMile = (m: number) => {
                 const coord = getCoordinateAtDistance(geoJson, m * 1609.34)
                 if (!coord) return coordinates.length - 1
-                const nearest = getNearestPointOnLine({ lat: coord[1], lon: coord[0] }, coordinates)
+                // Courses can revisit the same physical trail. Keep the route-mile
+                // hint here so an endpoint such as mile 49.40 does not snap to a
+                // later out-and-back visit and visually extend its terrain type.
+                const nearest = getNearestPointOnLine({ lat: coord[1], lon: coord[0] }, coordinates, m)
                 return nearest ? nearest.index : coordinates.length - 1
             }
 
