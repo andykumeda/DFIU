@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-04
 **Branch:** `main` @ `528a3aa`
-**Status:** Correcting Training Analysis to compare all overlapping segments using Strava moving time.
+**Status:** Training Analysis overlap and multi-run update is deployed (`53b665a`).
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -13,6 +13,9 @@
 - Repository: `main` only; no extra worktrees or stale feature branches remain.
 
 ## Just finished
+
+- Training Analysis now sums every detected race overlap, weights each Strava activity's moving time to only its matching training miles, and accepts multiple activity links/IDs (one per line) with separate comparisons.
+- Added regression coverage for multi-segment Plan A totals and moving-time overlap weighting; verified 31 tests, build, lint (0 errors; 31 existing warnings), and deployed frontend `53b665a`.
 
 - Fixed the reproducible Map & Aid Stations → any-tab crash: CourseMap now clears its map reference before disposing Mapbox, and waypoint-label cleanup skips a disposed style. This prevents `getOwnLayer` from being read during React unmount cleanup.
 - Verified build and 30 tests; deployed frontend `9708ce4`.
