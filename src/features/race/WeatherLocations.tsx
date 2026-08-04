@@ -1,12 +1,15 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { MapPin, Plus, Trash2, RefreshCw, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { fetchWeatherForRace } from '@/lib/weather-service'
-import { getCoordinateAtDistance } from '@/lib/geo-utils'
 import { formatStoredClockTime } from '@/lib/utils'
 import { useAuth } from '@/features/auth/AuthContext'
 import type { Race, Course } from '@/types/database'
+import type { Waypoint, TerrainNode } from '@/types/database'
+import { calculatePacePlan, isPaceChartWaypoint, type PacePlanResult } from './pace-utils'
+import { usePacePlans, computePlanMinutes } from './usePacePlans'
+import type { RunnerPacingProfile } from './runner-profile'
 
 export interface WeatherLocationEntry {
     id: string
@@ -19,6 +22,7 @@ export interface WeatherLocationEntry {
     sunset_time: string
     moon_phase: string
     weather_notes: string
+    waypoint_name?: string
 }
 
 export function parseWeatherLocations(value: unknown): WeatherLocationEntry[] {
@@ -36,38 +40,40 @@ export function parseWeatherLocations(value: unknown): WeatherLocationEntry[] {
             sunset_time: String(v.sunset_time ?? '--'),
             moon_phase: String(v.moon_phase ?? ''),
             weather_notes: String(v.weather_notes ?? ''),
+            waypoint_name: typeof v.waypoint_name === 'string' ? v.waypoint_name : undefined,
         }))
 }
 
 interface WeatherLocationsProps {
     race: Race
     course: Course | null
+    waypoints: Waypoint[]
+    terrainNodes: TerrainNode[]
+    runnerProfile: RunnerPacingProfile
     canEdit: boolean
 }
 
-export function WeatherLocations({ race, course, canEdit }: WeatherLocationsProps) {
+export function WeatherLocations({ race, course, waypoints, terrainNodes, runnerProfile, canEdit }: WeatherLocationsProps) {
     const { profile } = useAuth() as { profile: { clock_24h?: boolean } | null }
     const clock24h = !!profile?.clock_24h
     const queryClient = useQueryClient()
     const locations = useMemo(() => parseWeatherLocations(race.weather_locations), [race.weather_locations])
 
     const [adding, setAdding] = useState(false)
-    const [label, setLabel] = useState('')
-    const [query, setQuery] = useState('')
+    const [waypointId, setWaypointId] = useState('')
     const [busyId, setBusyId] = useState<string | null>(null)
     const [error, setError] = useState<string | null>(null)
 
-    // Coordinate at the course midway point — used as a sensible default sample
-    // since conditions mid-course often differ from the start/finish location.
-    const midpoint = useMemo(() => {
-        if (!course?.geometry) return null
-        const totalMiles = course.total_distance_miles || race.distance_miles || 0
-        if (!totalMiles) return null
-        const coord = getCoordinateAtDistance(course.geometry as never, (totalMiles * 1609.34) / 2)
-        if (!coord) return null
-        const [lon, lat] = coord
-        return { lat, lon, query: `${lat.toFixed(5)},${lon.toFixed(5)}` }
-    }, [course?.geometry, course?.total_distance_miles, race.distance_miles])
+    const aidStations = useMemo(() => waypoints.filter(w => w.type === 'aid_station'), [waypoints])
+    const { plans } = usePacePlans(race.id)
+    const { a: planAMinutes } = computePlanMinutes(plans, race.overall_cutoff)
+    const [planA, setPlanA] = useState<PacePlanResult | null>(null)
+    useEffect(() => {
+        if (!course?.elevation_samples || !(planAMinutes > 0)) { setPlanA(null); return }
+        try {
+            setPlanA(calculatePacePlan(course.elevation_samples as { distance: number; elevation: number }[], course.total_distance_miles || 0, waypoints.filter(isPaceChartWaypoint), terrainNodes, { mode: 'time', value: planAMinutes }, race, clock24h, [], runnerProfile, runnerProfile.aidStationDefaultDelay))
+        } catch { setPlanA(null) }
+    }, [course, planAMinutes, waypoints, terrainNodes, race, clock24h, runnerProfile])
 
     const persist = async (next: WeatherLocationEntry[]) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -81,16 +87,7 @@ export function WeatherLocations({ race, course, canEdit }: WeatherLocationsProp
     const startAdd = () => {
         setError(null)
         setAdding(true)
-        if (!label && !query && midpoint) {
-            setLabel('Midway Point')
-            setQuery(midpoint.query)
-        }
-    }
-
-    const useMidway = () => {
-        if (!midpoint) return
-        if (!label) setLabel('Midway Point')
-        setQuery(midpoint.query)
+        if (!waypointId) setWaypointId(aidStations[0]?.id ?? '')
     }
 
     const addLocation = async () => {
@@ -98,19 +95,20 @@ export function WeatherLocations({ race, course, canEdit }: WeatherLocationsProp
             setError('Set a race date first to fetch weather.')
             return
         }
-        const trimmedQuery = query.trim()
-        if (!trimmedQuery) {
-            setError('Enter a location (place name or "lat,lon").')
+        const station = aidStations.find(w => w.id === waypointId)
+        if (!station) {
+            setError('Choose an aid station.')
             return
         }
         setBusyId('new')
         setError(null)
         try {
-            const result = await fetchWeatherForRace(trimmedQuery, race.start_datetime)
+            const query = `${station.lat.toFixed(5)},${station.lon.toFixed(5)}`
+            const result = await fetchWeatherForRace(query, race.start_datetime)
             const entry: WeatherLocationEntry = {
                 id: crypto.randomUUID(),
-                label: label.trim() || trimmedQuery,
-                query: trimmedQuery,
+                label: station.name,
+                query,
                 avg_temp_high: result.current.avg_temp_high,
                 avg_temp_low: result.current.avg_temp_low,
                 precip_chance: result.current.precip_chance,
@@ -118,11 +116,11 @@ export function WeatherLocations({ race, course, canEdit }: WeatherLocationsProp
                 sunset_time: result.current.sunset_time,
                 moon_phase: result.current.moon_phase,
                 weather_notes: result.current.weather_notes,
+                waypoint_name: station.name,
             }
             await persist([...locations, entry])
             setAdding(false)
-            setLabel('')
-            setQuery('')
+            setWaypointId('')
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to fetch weather for that location.')
         } finally {
@@ -223,13 +221,13 @@ export function WeatherLocations({ race, course, canEdit }: WeatherLocationsProp
                                 )}
                             </div>
                         </div>
-                        {(loc.sunrise_time !== '--' || loc.weather_notes) && (
-                            <div className="flex items-center gap-4 mt-1 text-xs text-neutral-500">
-                                {loc.sunrise_time !== '--' && <span>↑ {formatStoredClockTime(loc.sunrise_time, clock24h)}</span>}
-                                {loc.sunset_time !== '--' && <span>↓ {formatStoredClockTime(loc.sunset_time, clock24h)}</span>}
-                                {loc.weather_notes && <span className="truncate">{loc.weather_notes}</span>}
-                            </div>
-                        )}
+                        {loc.waypoint_name && planA && (() => {
+                            const visitTimes = planA.waypointArrivals
+                                .filter(arrival => aidStations.some(station => station.name === loc.waypoint_name && station.id === arrival.waypointId))
+                                .map(arrival => formatStoredClockTime(arrival.timeOfDay, clock24h))
+                                .filter(Boolean)
+                            return visitTimes.length > 0 ? <div className="mt-1 text-xs text-neutral-500">Plan A arrival: {visitTimes.join(' · ')}</div> : null
+                        })()}
                     </div>
                 ))}
             </div>
@@ -246,27 +244,18 @@ export function WeatherLocations({ race, course, canEdit }: WeatherLocationsProp
                             <X className="w-4 h-4" />
                         </button>
                     </div>
-                    <input
-                        value={label}
-                        onChange={(e) => setLabel(e.target.value)}
-                        placeholder="Label (e.g. Midway Point, Summit)"
-                        className="w-full bg-neutral-900 border border-neutral-700 rounded px-3 py-1.5 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-orange-500"
-                    />
-                    <input
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        placeholder='Location: place name or "lat,lon"'
-                        className="w-full bg-neutral-900 border border-neutral-700 rounded px-3 py-1.5 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-orange-500"
-                    />
+                    <select
+                        value={waypointId}
+                        onChange={(e) => setWaypointId(e.target.value)}
+                        className="w-full bg-neutral-900 border border-neutral-700 rounded px-3 py-1.5 text-sm text-white focus:outline-none focus:border-orange-500"
+                    >
+                        <option value="">Choose an aid station</option>
+                        {aidStations.map(station => <option key={station.id} value={station.id}>{station.name} · mi {station.mile.toFixed(1)}</option>)}
+                    </select>
+                    <p className="text-xs text-neutral-500">
+                        Weather samples use this aid station&apos;s course coordinates.
+                    </p>
                     <div className="flex items-center gap-2">
-                        {midpoint && (
-                            <button
-                                onClick={useMidway}
-                                className="text-xs text-neutral-400 hover:text-white border border-neutral-700 rounded px-2 py-1"
-                            >
-                                Use course midpoint
-                            </button>
-                        )}
                         <button
                             onClick={addLocation}
                             disabled={busyId === 'new'}

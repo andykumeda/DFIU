@@ -428,7 +428,7 @@ export function ElevationProfile({
                                 case 'pacer': content = '🏃'; bg = '#f59e0b'; break;
                                 case 'drop_bag': content = '🎒'; bg = '#10b981'; break;
                                 case 'medical': content = '🏥'; bg = '#ef4444'; break;
-                                case 'landmark': content = '📸'; break;
+                                case 'landmark': content = '⛰️'; break;
                                 default: content = '📍'; break;
                             }
                         }

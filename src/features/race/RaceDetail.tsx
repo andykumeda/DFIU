@@ -122,7 +122,7 @@ function getWaypointIcon(type: string): string {
     case 'pacer': return '🏃'
     case 'drop_bag': return '🎒'
     case 'medical': return '🏥'
-    case 'landmark': return '📸'
+    case 'landmark': return '⛰️'
     default: return '📍'
   }
 }
@@ -2125,7 +2125,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                   )
                 })()}
 
-                {race && <WeatherLocations race={race} course={course ?? null} canEdit={canEdit} />}
+                {race && <WeatherLocations race={race} course={course ?? null} waypoints={waypoints} terrainNodes={terrainNodes} runnerProfile={userRunnerProfile} canEdit={canEdit} />}
               </div>
 
               <div className="bg-neutral-900/30 rounded-xl p-6 border border-neutral-800/50">

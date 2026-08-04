@@ -142,6 +142,8 @@ ${body}
                     id: `custom_${Date.now()}`,
                     label: 'Custom Link',
                     url: '',
+                    kind: 'link',
+                    content: '',
                     datetime: null,
                     icon: 'link',
                     enabled: true,
@@ -292,13 +294,41 @@ ${body}
                                                     </button>
                                                 )}
                                             </div>
-                                            <input
-                                                type="text"
-                                                className="w-full bg-neutral-950 border border-neutral-800 rounded px-3 py-2 text-sm text-white placeholder-neutral-700 focus:ring-1 focus:ring-blue-500 outline-none"
-                                                placeholder="URL"
-                                                value={link.url}
-                                                onChange={e => updateLink(link.id, { url: e.target.value })}
-                                            />
+                                            <div className="grid grid-cols-[120px_1fr] gap-2">
+                                                <select
+                                                    aria-label="Resource type"
+                                                    value={link.kind ?? 'link'}
+                                                    onChange={e => updateLink(link.id, { kind: e.target.value as 'link' | 'text' })}
+                                                    className="bg-neutral-950 border border-neutral-800 rounded px-2 py-2 text-sm text-white focus:ring-1 focus:ring-blue-500 outline-none"
+                                                >
+                                                    <option value="link">Link</option>
+                                                    <option value="text">Text</option>
+                                                </select>
+                                                <select
+                                                    aria-label="Resource icon"
+                                                    value={link.icon}
+                                                    onChange={e => updateLink(link.id, { icon: e.target.value as ResourceLinkEntry['icon'] })}
+                                                    className="bg-neutral-950 border border-neutral-800 rounded px-2 py-2 text-sm text-white focus:ring-1 focus:ring-blue-500 outline-none"
+                                                >
+                                                    {Object.keys(RESOURCE_ICON_MAP).map(icon => <option key={icon} value={icon}>{icon.replace('-', ' ')}</option>)}
+                                                </select>
+                                            </div>
+                                            {link.kind === 'text' ? (
+                                                <textarea
+                                                    className="w-full min-h-24 bg-neutral-950 border border-neutral-800 rounded px-3 py-2 text-sm text-white placeholder-neutral-700 focus:ring-1 focus:ring-blue-500 outline-none resize-y"
+                                                    placeholder="Resource details"
+                                                    value={link.content ?? ''}
+                                                    onChange={e => updateLink(link.id, { content: e.target.value })}
+                                                />
+                                            ) : (
+                                                <input
+                                                    type="url"
+                                                    className="w-full bg-neutral-950 border border-neutral-800 rounded px-3 py-2 text-sm text-white placeholder-neutral-700 focus:ring-1 focus:ring-blue-500 outline-none"
+                                                    placeholder="URL"
+                                                    value={link.url}
+                                                    onChange={e => updateLink(link.id, { url: e.target.value })}
+                                                />
+                                            )}
                                             {(link.id === 'tracking_url' || link.id === 'live_results_url') && (
                                                 <input
                                                     type="text"
@@ -328,26 +358,25 @@ ${body}
                                         </div>
                                     ) : (
                                         <>
-                                            <label className="text-sm font-medium text-neutral-300 block mb-1">
-                                                {link.label}
-                                                {link.id === 'racebook_url' && race.racebook_last_updated && (
-                                                    <span className="ml-2 text-xs text-neutral-500 font-normal">
-                                                        Updated {new Date(race.racebook_last_updated).toLocaleDateString()}
-                                                    </span>
-                                                )}
-                                            </label>
+                                            {link.kind === 'link' && link.url ? (
+                                                <a href={link.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm font-medium text-blue-300 hover:text-blue-200 mb-1 group">
+                                                    <span>{link.label}</span><ExternalLink className="w-3.5 h-3.5 opacity-70 group-hover:opacity-100" />
+                                                </a>
+                                            ) : (
+                                                <div className="text-sm font-medium text-neutral-300 block mb-1">
+                                                    {link.label}
+                                                </div>
+                                            )}
+                                            {link.id === 'racebook_url' && race.racebook_last_updated && (
+                                                <span className="ml-2 text-xs text-neutral-500 font-normal">
+                                                    Updated {new Date(race.racebook_last_updated).toLocaleDateString()}
+                                                </span>
+                                            )}
+                                            {link.kind === 'text' ? (
+                                                <p className="text-sm text-neutral-300 whitespace-pre-wrap">{link.content || 'Not provided'}</p>
+                                            ) : (
                                             <div className="flex flex-col gap-1">
-                                                {link.url ? (
-                                                    <a
-                                                        href={link.url}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="text-sm text-blue-400 hover:text-blue-300 truncate block flex items-center gap-1 group"
-                                                    >
-                                                        <span className="truncate">{link.url}</span>
-                                                        <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                                                    </a>
-                                                ) : (
+                                                {link.url ? null : (
                                                     <span className="text-sm text-neutral-600 italic">Not provided</span>
                                                 )}
                                                 {link.hasDate && link.datetime && (
@@ -356,6 +385,7 @@ ${body}
                                                     </div>
                                                 )}
                                             </div>
+                                            )}
                                         </>
                                     )}
                                 </div>

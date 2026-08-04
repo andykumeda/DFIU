@@ -18,7 +18,6 @@ import { usePacePlans, computePlanMinutes } from './usePacePlans'
 import type { RunnerPacingProfile } from './runner-profile'
 import { getOverlapRacePace } from './race-day-utils'
 import { buildTrainingPlanSummary, formatDurationWords } from './training-analysis'
-import { TrainingAnalysisPanel } from './TrainingAnalysisPanel'
 
 interface TrainingSectionProps {
   race: Race
@@ -127,6 +126,7 @@ export function TrainingSection({
           canEdit={canEdit}
           planA={planA}
           planAReady={planAReady}
+          planAGoalMinutes={planAMinutes}
           clock24h={clock24h}
           onBack={() => setSelectedId(null)}
           onUpdate={updateRoute}
@@ -197,13 +197,6 @@ export function TrainingSection({
               />
             ))}
           </div>
-          <TrainingAnalysisPanel
-            routes={routes}
-            planA={planA}
-            planAGoalMinutes={planAMinutes}
-            race={race}
-            clock24h={clock24h}
-          />
         </>
       )}
     </div>

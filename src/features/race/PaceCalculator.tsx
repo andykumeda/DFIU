@@ -157,6 +157,16 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [plansLoading, plans.hasCalculated])
 
+    // A valid goal time is sufficient to calculate a plan; requiring a second
+    // button press made the pace chart easy to leave stale after an edit.
+    useEffect(() => {
+        if (plansLoading || !getStrategyValue()) return
+        const handle = window.setTimeout(() => runCalculation(), 250)
+        return () => window.clearTimeout(handle)
+        // The calculation intentionally follows every meaningful input change.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [plansLoading, strategyMode, planATimeStr, planBTimeStr, planCBufferStr, course, waypoints, terrainNodes, race, clock24h, runnerProfile])
+
     // When aid-station stop times change (inline edits in the Stop column), re-run
     // the already-displayed plan so downstream splits reflect the new dwell time.
     useEffect(() => {
@@ -561,15 +571,6 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                             </div>
                         )}
                     </div>
-
-
-
-                    <button
-                        onClick={() => runCalculation()}
-                        className={`w-full text-white font-bold py-3 rounded-lg transition-colors shadow-lg ${currentStrategy.button}`}
-                    >
-                        Generate Plan
-                    </button>
                 </div>
 
                 {plan && (

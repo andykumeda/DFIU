@@ -12,6 +12,7 @@ import {
 } from '@/lib/training-overlap'
 import type { PacePlanResult } from './pace-utils'
 import { getOverlapRacePace } from './race-day-utils'
+import { TrainingAnalysisPanel } from './TrainingAnalysisPanel'
 
 interface TrainingRouteDetailProps {
   route: TrainingRouteRow
@@ -20,6 +21,7 @@ interface TrainingRouteDetailProps {
   canEdit: boolean
   planA: PacePlanResult | null
   planAReady: boolean
+  planAGoalMinutes: number
   clock24h?: boolean
   onBack: () => void
   onUpdate: (id: string, patch: { name?: string; notes?: string | null }) => Promise<void>
@@ -33,6 +35,7 @@ export function TrainingRouteDetail({
   canEdit,
   planA,
   planAReady,
+  planAGoalMinutes,
   clock24h = false,
   onBack,
   onUpdate,
@@ -269,7 +272,7 @@ export function TrainingRouteDetail({
           )}
           {route.overlapSegments.length > 0 && !planAReady && (
             <p className="mt-3 text-xs text-neutral-500">
-              Generate Plan A on the Pace tab to see predicted race pace and time of day for this
+              Set a valid Plan A goal on the Pace tab to see predicted race pace and time of day for this
               overlap.
             </p>
           )}
@@ -279,6 +282,14 @@ export function TrainingRouteDetail({
             <span className="inline-block w-3 h-1 rounded bg-orange-500" /> overlap
           </p>
         </div>
+        <TrainingAnalysisPanel
+          routes={[route]}
+          planA={planA}
+          planAGoalMinutes={planAGoalMinutes}
+          race={race}
+          clock24h={clock24h}
+          hideRoutePicker
+        />
       </div>
     </div>
   )

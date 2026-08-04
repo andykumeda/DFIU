@@ -194,7 +194,7 @@ export function LiveEventTab({
         : predictedRunnerLatLon
     const mapFocus = useMemo(() => getRunnerMapFocus(course?.total_distance_miles, predictedMile, 4), [course?.total_distance_miles, predictedMile])
     const mapWaypoints = useMemo(() => {
-        return waypoints.map(w => {
+        return waypoints.filter(w => w.type === 'aid_station').map(w => {
             const bagKind = getBagKind(w)
             const showBagIcon = !!bagKind && (bagKind !== 'crew' || hasSavedBagPlan(w))
             return {

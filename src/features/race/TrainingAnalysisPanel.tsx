@@ -27,6 +27,7 @@ interface TrainingAnalysisPanelProps {
   planAGoalMinutes: number
   race: Race
   clock24h: boolean
+  hideRoutePicker?: boolean
 }
 
 export function TrainingAnalysisPanel({
@@ -35,6 +36,7 @@ export function TrainingAnalysisPanel({
   planAGoalMinutes,
   race,
   clock24h,
+  hideRoutePicker = false,
 }: TrainingAnalysisPanelProps) {
   const [routeId, setRouteId] = useState(routes[0]?.id ?? '')
   const [activityInput, setActivityInput] = useState('')
@@ -62,7 +64,7 @@ export function TrainingAnalysisPanel({
       return
     }
     if (!summary?.raceDurationMinutes) {
-      setError('Generate Plan A before comparing a training activity.')
+      setError('Set a valid Plan A goal before comparing a training activity.')
       return
     }
 
@@ -127,8 +129,8 @@ export function TrainingAnalysisPanel({
       </div>
 
       <div className="rounded-xl border border-neutral-800 bg-neutral-900/50 p-4 md:p-5">
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)_auto] gap-3 items-end">
-          <label className="block">
+        <div className={`grid grid-cols-1 ${hideRoutePicker ? 'lg:grid-cols-[minmax(0,1fr)_auto]' : 'lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)_auto]'} gap-3 items-end`}>
+          {!hideRoutePicker && <label className="block">
             <span className="block text-xs uppercase tracking-wide text-neutral-500 mb-1.5">Training route</span>
             <select
               value={selectedRoute?.id ?? ''}
@@ -145,7 +147,7 @@ export function TrainingAnalysisPanel({
                 </option>
               ))}
             </select>
-          </label>
+          </label>}
 
           <label className="block">
             <span className="block text-xs uppercase tracking-wide text-neutral-500 mb-1.5">Strava run</span>

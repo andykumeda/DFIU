@@ -23,7 +23,7 @@ function getWaypointIcon(type: string): string {
         case 'pacer': return '🏃'
         case 'drop_bag': return '🎒'
         case 'medical': return '🏥'
-        case 'landmark': return '📸'
+        case 'landmark': return '⛰️'
         default: return '📍'
     }
 }

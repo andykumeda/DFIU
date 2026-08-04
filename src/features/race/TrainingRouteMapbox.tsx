@@ -76,16 +76,18 @@ function setOrAddLine(
   const source = map.getSource(id) as mapboxgl.GeoJSONSource | undefined
   if (source) {
     source.setData(data)
-    return
+  } else {
+    map.addSource(id, { type: 'geojson', data })
   }
-  map.addSource(id, { type: 'geojson', data })
-  map.addLayer({
-    id,
-    type: 'line',
-    source: id,
-    layout: { 'line-join': 'round', 'line-cap': 'round' },
-    paint: { ...paint, 'line-width': width },
-  })
+  if (!map.getLayer(id)) {
+    map.addLayer({
+      id,
+      type: 'line',
+      source: id,
+      layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: { ...paint, 'line-width': width },
+    })
+  }
 }
 
 function drawRouteData(map: mapboxgl.Map, data: MapData) {

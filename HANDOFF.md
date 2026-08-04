@@ -1,8 +1,8 @@
 # Handoff Document
 
-**Date:** 2026-08-03
-**Branch:** `main` @ `e6bbfc0`
-**Status:** Approved OAuth-proven Strava connection transfer is deployed.
+**Date:** 2026-08-04
+**Branch:** `main` @ `528a3aa`
+**Status:** Investigating a Mapbox `getOwnLayer` runtime error and implementing the current Resources, Pace Plan, Map, Training, Crew, and Overview refinements.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 

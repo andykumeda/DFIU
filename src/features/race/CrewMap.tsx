@@ -34,8 +34,7 @@ function mapStyleReady(map: mapboxgl.Map | null): map is mapboxgl.Map {
     return !!map && !!map.style && map.isStyleLoaded()
 }
 
-// Read-only Crew map. Aid-station markers intentionally mirror CourseMap so
-// Crew View and Map & Aid Stations show the same station placement/appearance.
+// Read-only Crew map intentionally receives only aid stations from its callers.
 export function CrewMap({
     coordinates,
     waypoints,
