@@ -1,16 +1,14 @@
 # Handoff Document
 
 **Date:** 2026-08-04
-**Branch:** `main` @ `d01b41d`
-**Status:** Terrain-aware hybrid pace prediction implemented locally; deployment is blocked pending Supabase migration-history reconciliation.
-
-**Deployment hold:** `supabase migration list` confirms the remote migration history still diverges from this checkout. Do not use a blind `db push`. First reconcile the history, then apply `20260805000100_terrain_hybrid_pace_prediction.sql` before deploying the frontend; it adds the `runner_history` table and the new plan/terrain fields the UI reads.
+**Branch:** `main` @ `c5ae764`
+**Status:** Terrain-aware hybrid pace prediction and Training fixes deployed.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Frontend: `d01b41d` (deployed; hard-refresh and compare the footer hash).
+- Frontend: `c5ae764` (deployed; hard-refresh and compare the footer hash).
 - Wilson Loop: **9.95 unique on-course miles**, displayed as **74.9–84.9**. Its start snaps to race mile **78.78**.
 - Repository: `main` only; no extra worktrees or stale feature branches remain.
 
@@ -19,7 +17,7 @@
 - Added the hybrid pace predictor: a personal flat baseline plus recency-weighted past finishes produces P10/P50/P90 finish estimates, expected stop time, confidence, and factor attribution while leaving Plan A/B/C target-time calculations intact.
 - Pace Plans now accepts private manual race history and shows the independent prediction plus a goal-outside-range warning. Prediction input/output snapshots are stored with the plan for reproducibility.
 - Terrain selection now uses five pacing levels—Paved, Smooth Dirt/Gravel, Runnable Trail, Technical Trail, Highly Technical—while legacy double/single-track segments retain their existing visual and pace behavior.
-- Added `runner_history`, terrain metadata, and pace-model snapshot schema migration. Verified 35 tests, production build, and lint (0 errors; 31 existing warnings). Not deployed because migration history must be reconciled first.
+- Applied the scoped runner-history, terrain-metadata, and pace-model schema migration directly (the remote migration history remains divergent, so do not run a blind `db push`). Verified 35 tests, production build, and lint (0 errors; 31 existing warnings); deployed frontend `c5ae764`.
 
 - Training preview cards again show the detailed Plan A segment summary (race segment miles/time and training miles); only the standalone green pace/time line is removed.
 - Create Route now requests Mapbox walking directions between successive clicks, producing a network-snapped route instead of straight lines. It also displays labeled green aid-station markers with the optional race-course reference layer.
