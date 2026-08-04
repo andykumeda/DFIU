@@ -1,18 +1,23 @@
 # Handoff Document
 
 **Date:** 2026-08-04
-**Branch:** `main` @ `9e50ec5`
-**Status:** Per-section Training Analysis deployed.
+**Branch:** `main` @ `02199a6`
+**Status:** Persistent Training results and manual route creation deployed.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Frontend: `9e50ec5` (deployed; hard-refresh and compare the footer hash).
+- Frontend: `02199a6` (deployed; hard-refresh and compare the footer hash).
 - Wilson Loop: **9.95 unique on-course miles**, displayed as **74.9–84.9**. Its start snaps to race mile **78.78**.
 - Repository: `main` only; no extra worktrees or stale feature branches remain.
 
 ## Just finished
+
+- Training Analysis now saves completed result cards—not only pasted Strava links—so a route reopens with its prior comparisons intact.
+- Re-selecting the active Training tab returns from route detail to the preview-card list, matching “All training routes.”
+- Training now offers Create Route alongside GPX import: click to draw a route, undo/clear points, save it with automatic overlap detection, and toggle the gray race-course reference layer. Manually drawn routes calculate distance; elevation remains unavailable until a GPX-backed route is used.
+- Simplified preview-card details by removing Plan A pace and duration content. Applied the scoped saved-analysis schema field, verified 32 tests, build, lint (0 errors; 31 existing warnings), and deployed frontend `02199a6`.
 
 - Training Analysis now compares every overlap pair independently—no combined training-run total. For example, Wilson Loop's race 78.8–84.9 / training 0–7.1 and race 74.9–78.6 / training 10.2–14.4 show distinct Plan A, moving-time, and delta results.
 - `strava-activity` now retrieves Strava's distance, time, and moving streams so each section uses its own recorded moving time. Activities without stream data retain a clearly labeled moving-time-only fallback.
