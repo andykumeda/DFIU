@@ -1,18 +1,20 @@
 # Handoff Document
 
 **Date:** 2026-08-04
-**Branch:** `main` @ `5e4e3cd`
-**Status:** Fixing repeated-course-pass terrain rendering for exact selected mileage.
+**Branch:** `main` @ `5733e15`
+**Status:** Repeated-course-pass terrain rendering fixed and deployed.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Frontend: `5e4e3cd` (deployed; hard-refresh and compare the footer hash).
+- Frontend: `5733e15` (deployed; hard-refresh and compare the footer hash).
 - Wilson Loop: **9.95 unique on-course miles**, displayed as **74.9–84.9**. Its start snaps to race mile **78.78**.
 - Repository: `main` only; no extra worktrees or stale feature branches remain.
 
 ## Just finished
+
+- Fixed an out-and-back map rendering error where a terrain boundary could snap to a later visit of the same physical trail. Production data for AC100 correctly held paved 49.10–49.40; CourseMap now supplies the intended mile when resolving the endpoint, so it stays on that visit rather than extending visually toward mile 52.8. Verified 35 tests, production build, lint (0 errors; 31 existing warnings), and deployed frontend `5733e15`.
 
 - Custom text resources now render Markdown exactly like Lodging and Schedule of Events. Their print action is in the upper-right header and prints the rendered Markdown, including headings, lists, links, and tables. Bed and calendar choices are now available in the resource-icon menu. Verified 35 tests, production build, lint (0 errors; 31 existing warnings), and deployed frontend `5e4e3cd`.
 
