@@ -1,14 +1,14 @@
 # Handoff Document
 
 **Date:** 2026-08-03
-**Branch:** `main` @ `4a737c0`
-**Status:** Adding map-backed Training cards, Plan A segment summaries, and authenticated Strava activity analysis.
+**Branch:** `main` @ `c7cc033`
+**Status:** Training overview maps, Plan A summaries, and Strava activity analysis are deployed.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Frontend: `4a737c0` (deployed; hard-refresh and compare the footer hash).
+- Frontend: `c7cc033` (deployed; hard-refresh and compare the footer hash).
 - Wilson Loop: **9.95 unique on-course miles**, displayed as **74.9–84.9**. Its start snaps to race mile **78.78**.
 - Repository: `main` only; no extra worktrees or stale feature branches remain.
 
@@ -21,17 +21,17 @@
 - Fixed overlap recomputation so it always derives updates from current geometries and surfaces database read/write failures instead of silently leaving stale values.
 - Backfilled the production Wilson Loop row from its current GPX and the current Angeles Crest 100 GPX.
 - Verified 27 tests, TypeScript production build, lint (0 errors; 31 existing warnings), WebGL rendering, SVG fallback, repeated map mount/unmount, and production deployment.
-
-## Active task
-
-- Put a Mapbox basemap behind the overview-card route lines.
-- Format each route's Plan A race/training segment information for quick comparison.
-- Persist Strava OAuth activity access securely and add a Training Analysis panel that compares a selected activity's elapsed time with the Plan A goal.
+- Added Mapbox terrain backgrounds behind overview-card routes, while keeping those card maps deliberately non-interactive.
+- Added concise Plan A race segment miles, target time, and all training portions to every route card.
+- Added a Training Analysis panel: connect Strava once, paste an activity link or ID, and compare actual elapsed time with the selected route's Plan A segment goal and delta.
+- Stored Strava activity tokens only in a server-only, user-scoped connection table; deployed the updated `strava-auth` and new `strava-activity` Edge Functions.
+- Verified 29 tests, TypeScript production build, lint (0 errors; 31 existing warnings), production deployment, and live Training UI with no browser-console warnings/errors.
 
 ## Open / follow-up
 
 - Rotate the previously tracked Strava client secret and confirm Supabase function secrets.
-- Apply the share-token migration and deploy the `weather` / updated `strava-auth` Edge Functions.
+- Reconcile Supabase migration history before the next `db push`: the new `strava_connections` schema was applied directly because the remote history already contains migrations absent locally. The tracked migration is `20260804012144_strava_activity_connections.sql`; do not run migration repair blindly.
+- Apply the share-token migration and deploy the `weather` Edge Function.
 - Verify RBAC and invite flows end-to-end with a second account.
 - Build `/admin` and owner-transfer UI.
 - Finish or retire Pacer View; decide whether offline/PWA Crew View remains a priority.
