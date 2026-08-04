@@ -1,9 +1,12 @@
 export type TerrainTypeValue =
     | 'paved'
     | 'dirt'
+    | 'runnable_trail'
+    | 'technical'
+    | 'highly_technical'
+    // Legacy values remain readable so older courses retain their exact pacing.
     | 'double_track'
     | 'single_track'
-    | 'technical'
     | 'other'
 
 export interface TerrainTypeDef {
@@ -14,17 +17,23 @@ export interface TerrainTypeDef {
 }
 
 export const TERRAIN_TYPES: readonly TerrainTypeDef[] = [
-    { value: 'paved',        label: 'Paved / Road',  defaultDifficulty: 100, color: '#3b82f6' },
-    { value: 'dirt',         label: 'Dirt Road',     defaultDifficulty: 104, color: '#eab308' },
-    { value: 'double_track', label: 'Double Track',  defaultDifficulty: 108, color: '#f97316' },
-    { value: 'single_track', label: 'Single Track',  defaultDifficulty: 115, color: '#ef4444' },
-    { value: 'technical',    label: 'Technical',     defaultDifficulty: 130, color: '#7f1d1d' },
+    { value: 'paved',            label: 'Paved / Road',       defaultDifficulty: 100, color: '#3b82f6' },
+    { value: 'dirt',             label: 'Smooth Dirt / Gravel', defaultDifficulty: 104, color: '#eab308' },
+    { value: 'runnable_trail',   label: 'Runnable Trail',     defaultDifficulty: 110, color: '#f97316' },
+    { value: 'technical',        label: 'Technical Trail',    defaultDifficulty: 118, color: '#ef4444' },
+    { value: 'highly_technical', label: 'Highly Technical',   defaultDifficulty: 130, color: '#7f1d1d' },
     { value: 'other',        label: 'Other',         defaultDifficulty: 100, color: '#9ca3af' },
 ]
 
 const TERRAIN_BY_VALUE: Record<string, TerrainTypeDef> = Object.fromEntries(
     TERRAIN_TYPES.map(t => [t.value, t])
 )
+
+// Courses saved before the five-level vocabulary keep their original values.
+// These aliases preserve their visual meaning without exposing legacy choices
+// for new segments.
+TERRAIN_BY_VALUE.double_track = TERRAIN_BY_VALUE.runnable_trail
+TERRAIN_BY_VALUE.single_track = TERRAIN_BY_VALUE.technical
 
 export const DEFAULT_BASE_LAYER_COLOR = '#4b5563'
 export const FALLBACK_TERRAIN_COLOR = '#9ca3af'

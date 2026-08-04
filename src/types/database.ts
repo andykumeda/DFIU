@@ -202,6 +202,7 @@ export type Database = {
           aid_station_default_delay: number
           has_calculated: boolean
           pace_chart_columns: Json | null
+          pace_model_snapshot: Json | null
           plan_a_time: string
           plan_b_time: string | null
           plan_c_buffer: string
@@ -214,6 +215,7 @@ export type Database = {
           aid_station_default_delay?: number
           has_calculated?: boolean
           pace_chart_columns?: Json | null
+          pace_model_snapshot?: Json | null
           plan_a_time?: string
           plan_b_time?: string | null
           plan_c_buffer?: string
@@ -226,6 +228,7 @@ export type Database = {
           aid_station_default_delay?: number
           has_calculated?: boolean
           pace_chart_columns?: Json | null
+          pace_model_snapshot?: Json | null
           plan_a_time?: string
           plan_b_time?: string | null
           plan_c_buffer?: string
@@ -705,6 +708,51 @@ export type Database = {
           },
         ]
       }
+      runner_history: {
+        Row: {
+          id: string
+          user_id: string
+          race_name: string
+          raced_at: string | null
+          distance_mi: number
+          elevation_gain_ft: number | null
+          finish_minutes: number
+          moving_minutes: number | null
+          terrain_difficulty: number | null
+          altitude_ft: number | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          race_name: string
+          raced_at?: string | null
+          distance_mi: number
+          elevation_gain_ft?: number | null
+          finish_minutes: number
+          moving_minutes?: number | null
+          terrain_difficulty?: number | null
+          altitude_ft?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          race_name?: string
+          raced_at?: string | null
+          distance_mi?: number
+          elevation_gain_ft?: number | null
+          finish_minutes?: number
+          moving_minutes?: number | null
+          terrain_difficulty?: number | null
+          altitude_ft?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       site_admins: {
         Row: {
           granted_at: string
@@ -722,6 +770,7 @@ export type Database = {
       }
       terrain_nodes: {
         Row: {
+          attributes: Json
           course_id: string
           created_at: string
           difficulty: number
@@ -733,6 +782,7 @@ export type Database = {
           type: string
         }
         Insert: {
+          attributes?: Json
           course_id: string
           created_at?: string
           difficulty?: number
@@ -744,6 +794,7 @@ export type Database = {
           type?: string
         }
         Update: {
+          attributes?: Json
           course_id?: string
           created_at?: string
           difficulty?: number

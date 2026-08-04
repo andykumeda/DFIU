@@ -14,6 +14,7 @@ export interface PacePlans {
     planCBufferStr: string // HH:MM, default '00:30'
     hasCalculated: boolean
     paceChartColumns: PaceChartColumnsConfig
+    paceModelSnapshot: unknown | null
 }
 
 const DEFAULTS: PacePlans = {
@@ -22,6 +23,7 @@ const DEFAULTS: PacePlans = {
     planCBufferStr: '00:30',
     hasCalculated: false,
     paceChartColumns: { ...DEFAULT_PACE_CHART_COLUMNS, order: [...DEFAULT_PACE_CHART_COLUMNS.order], hidden: [], labels: {} },
+    paceModelSnapshot: null,
 }
 
 const legacyKey = (raceId: string) => `pace_plans_${raceId}`
@@ -54,6 +56,7 @@ type Row = {
     plan_c_buffer: string
     has_calculated: boolean
     pace_chart_columns: unknown
+    pace_model_snapshot?: unknown
 }
 
 function rowToPlans(row: Row): PacePlans {
@@ -63,6 +66,7 @@ function rowToPlans(row: Row): PacePlans {
         planCBufferStr: row.plan_c_buffer || DEFAULTS.planCBufferStr,
         hasCalculated: !!row.has_calculated,
         paceChartColumns: parsePaceChartColumns(row.pace_chart_columns),
+        paceModelSnapshot: row.pace_model_snapshot ?? null,
     }
 }
 
@@ -74,6 +78,7 @@ function plansToRow(p: PacePlans, raceId: string, userId: string | null) {
         plan_c_buffer: p.planCBufferStr,
         has_calculated: p.hasCalculated,
         pace_chart_columns: p.paceChartColumns,
+        pace_model_snapshot: p.paceModelSnapshot,
         updated_by: userId,
         updated_at: new Date().toISOString(),
     }
@@ -92,7 +97,7 @@ export function usePacePlans(raceId: string) {
         ;(async () => {
             const { data, error } = await supabase
                 .from('race_pace_plans')
-                .select('plan_a_time, plan_b_time, plan_c_buffer, has_calculated, pace_chart_columns')
+                .select('plan_a_time, plan_b_time, plan_c_buffer, has_calculated, pace_chart_columns, pace_model_snapshot')
                 .eq('race_id', raceId)
                 .maybeSingle()
 
@@ -159,7 +164,7 @@ export function usePacePlans(raceId: string) {
         setPlanA: (v: string) => update({ planATimeStr: v, planBTimeStr: '' }),
         setPlanB: (v: string) => update({ planBTimeStr: v }),
         setPlanCBuffer: (v: string) => update({ planCBufferStr: v, planBTimeStr: '' }),
-        markCalculated: () => update({ hasCalculated: true }),
+        markCalculated: (paceModelSnapshot?: unknown) => update({ hasCalculated: true, ...(paceModelSnapshot === undefined ? {} : { paceModelSnapshot }) }),
         setPaceChartColumns: (v: PaceChartColumnsConfig) => update({ paceChartColumns: v }),
     }
 }
