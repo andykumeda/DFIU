@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { ExternalLink, Mountain, Route as RouteIcon, Upload } from 'lucide-react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { ExternalLink, Mountain, PencilLine, Route as RouteIcon, Upload } from 'lucide-react'
 import type { Course, Race, TerrainNode, Waypoint } from '@/types/database'
 import { GpxUploader } from '@/features/course/GpxUploader'
 import type { GpxParseResult } from '@/lib/gpx-parser'
@@ -16,8 +16,10 @@ import { TrainingRouteDetail } from './TrainingRouteDetail'
 import { calculatePacePlan, isPaceChartWaypoint, type PacePlanResult } from './pace-utils'
 import { usePacePlans, computePlanMinutes } from './usePacePlans'
 import type { RunnerPacingProfile } from './runner-profile'
-import { getOverlapRacePace } from './race-day-utils'
-import { buildTrainingPlanSummary, formatDurationWords } from './training-analysis'
+
+const TrainingRouteCreatorMap = lazy(() =>
+  import('./TrainingRouteCreatorMap').then(module => ({ default: module.TrainingRouteCreatorMap }))
+)
 
 interface TrainingSectionProps {
   race: Race
@@ -26,6 +28,7 @@ interface TrainingSectionProps {
   terrainNodes: TerrainNode[]
   clock24h?: boolean
   runnerProfile: RunnerPacingProfile
+  resetToken?: number
 }
 
 function truncateNotes(notes: string | null, max = 100): string | null {
@@ -41,18 +44,24 @@ export function TrainingSection({
   terrainNodes,
   clock24h = false,
   runnerProfile,
+  resetToken = 0,
 }: TrainingSectionProps) {
   const {
     routes,
     loading,
     canEdit,
     createFromGpx,
+    createManualRoute,
     updateRoute,
     deleteRoute,
   } = useTrainingRoutes(race.id, course?.geometry)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [showUploader, setShowUploader] = useState(false)
+  const [showCreator, setShowCreator] = useState(false)
+  const [draftName, setDraftName] = useState('')
+  const [draftCoordinates, setDraftCoordinates] = useState<[number, number][]>([])
+  const [showCourseReference, setShowCourseReference] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const { plans } = usePacePlans(race.id)
@@ -102,6 +111,10 @@ export function TrainingSection({
     [course]
   )
 
+  useEffect(() => {
+    setSelectedId(null)
+  }, [resetToken])
+
   const handleUpload = async (result: GpxParseResult, rawGpx: string, fileName: string) => {
     setError(null)
     setUploading(true)
@@ -111,6 +124,22 @@ export function TrainingSection({
       if (created) setSelectedId(created.id)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save training route')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleCreate = async () => {
+    setError(null)
+    setUploading(true)
+    try {
+      const created = await createManualRoute(draftName, draftCoordinates)
+      setDraftCoordinates([])
+      setDraftName('')
+      setShowCreator(false)
+      if (created) setSelectedId(created.id)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to create training route')
     } finally {
       setUploading(false)
     }
@@ -148,16 +177,14 @@ export function TrainingSection({
             GPX routes to prepare for the event, with automatic course-overlap detection.
           </p>
         </div>
-        {canEdit && (
-          <button
-            type="button"
-            onClick={() => setShowUploader(v => !v)}
-            className="flex items-center gap-2 bg-neutral-800 hover:bg-neutral-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
-          >
-            <Upload className="w-4 h-4" />
-            {showUploader ? 'Cancel' : 'Import GPX'}
+        {canEdit && <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => { setShowUploader(v => !v); setShowCreator(false) }} className="flex items-center gap-2 bg-neutral-800 hover:bg-neutral-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+            <Upload className="w-4 h-4" />{showUploader ? 'Cancel import' : 'Import GPX'}
           </button>
-        )}
+          <button type="button" onClick={() => { setShowCreator(v => !v); setShowUploader(false) }} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium">
+            <PencilLine className="w-4 h-4" />{showCreator ? 'Cancel creation' : 'Create Route'}
+          </button>
+        </div>}
       </div>
 
       {showUploader && canEdit && (
@@ -165,6 +192,21 @@ export function TrainingSection({
           <GpxUploader onUpload={handleUpload} disabled={uploading} />
           {uploading && <p className="text-sm text-neutral-400 mt-2">Saving route…</p>}
           {error && <p className="text-sm text-red-400 mt-2">{error}</p>}
+        </div>
+      )}
+
+      {showCreator && canEdit && (
+        <div className="mb-6 rounded-xl border border-neutral-800 bg-neutral-900/40 p-4 space-y-4">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <label className="block flex-1 min-w-52"><span className="text-xs uppercase tracking-wide text-neutral-500">Route name</span><input value={draftName} onChange={event => setDraftName(event.target.value)} placeholder="Morning trail loop" className="mt-1 w-full bg-neutral-950 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-white" /></label>
+            <label className="flex items-center gap-2 text-sm text-neutral-300"><input type="checkbox" checked={showCourseReference} onChange={event => setShowCourseReference(event.target.checked)} className="accent-blue-500" />Show race course</label>
+          </div>
+          <p className="text-sm text-neutral-400">Click the map to add route points. The blue line is your new training route; the gray line is the optional race-course reference.</p>
+          <Suspense fallback={<div className="h-80 md:h-[420px] rounded-lg bg-neutral-950 grid place-items-center text-sm text-neutral-500">Loading route editor…</div>}>
+            <TrainingRouteCreatorMap coordinates={draftCoordinates} courseCoordinates={courseCoordinates} showCourse={showCourseReference} onChange={setDraftCoordinates} />
+          </Suspense>
+          <div className="flex flex-wrap items-center justify-between gap-3"><span className="text-sm text-neutral-400">{draftCoordinates.length} point{draftCoordinates.length === 1 ? '' : 's'} added</span><div className="flex gap-2"><button type="button" onClick={() => setDraftCoordinates(points => points.slice(0, -1))} disabled={!draftCoordinates.length || uploading} className="px-3 py-2 rounded-lg text-sm text-neutral-300 hover:text-white disabled:opacity-50">Undo point</button><button type="button" onClick={() => setDraftCoordinates([])} disabled={!draftCoordinates.length || uploading} className="px-3 py-2 rounded-lg text-sm text-neutral-300 hover:text-white disabled:opacity-50">Clear</button><button type="button" onClick={() => void handleCreate()} disabled={draftCoordinates.length < 2 || uploading} className="px-3 py-2 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white">{uploading ? 'Creating…' : 'Save route'}</button></div></div>
+          {error && <p className="text-sm text-red-400">{error}</p>}
         </div>
       )}
 
@@ -176,8 +218,8 @@ export function TrainingSection({
           <h3 className="text-xl font-medium text-white mb-2">No training routes yet</h3>
           <p className="max-w-md">
             {canEdit
-              ? 'Import a GPX file to add a training route. Overlap with the race course is calculated automatically.'
-              : 'Race editors can import GPX training routes here.'}
+              ? 'Import a GPX file or create a route on the map. Overlap with the race course is calculated automatically.'
+              : 'Race editors can add training routes here.'}
           </p>
         </div>
       ) : (
@@ -187,11 +229,6 @@ export function TrainingSection({
               <TrainingRouteCard
                 key={route.id}
                 route={route}
-                planA={planA}
-                planAReady={planAReady}
-                planAGoalMinutes={planAMinutes}
-                race={race}
-                clock24h={clock24h}
                 courseCoordinates={courseCoordinates}
                 onOpen={() => setSelectedId(route.id)}
               />
@@ -205,20 +242,10 @@ export function TrainingSection({
 
 function TrainingRouteCard({
   route,
-  planA,
-  planAReady,
-  planAGoalMinutes,
-  race,
-  clock24h,
   courseCoordinates,
   onOpen,
 }: {
   route: TrainingRouteRow
-  planA: PacePlanResult | null
-  planAReady: boolean
-  planAGoalMinutes: number
-  race: Race
-  clock24h: boolean
   courseCoordinates: [number, number][]
   onOpen: () => void
 }) {
@@ -238,22 +265,6 @@ function TrainingRouteCard({
     hasStart &&
     hasFinish &&
     isPointToPointRoute(route.start_lat, route.start_lon, route.finish_lat, route.finish_lon)
-
-  const primarySeg = route.overlapSegments[0]
-  const courseStartMi =
-    route.overlapSegments.length > 0
-      ? Math.min(...route.overlapSegments.map(s => Math.min(s.courseStartMi, s.courseEndMi)))
-      : 0
-  const courseEndMi =
-    route.overlapSegments.length > 0
-      ? Math.max(...route.overlapSegments.map(s => Math.max(s.courseStartMi, s.courseEndMi)))
-      : 0
-  const overlapPace =
-    planAReady && primarySeg
-      ? getOverlapRacePace(planA, courseStartMi, courseEndMi, race, clock24h)
-      : null
-  const planSummary = buildTrainingPlanSummary(route.overlapSegments, planA, race, clock24h)
-  const planGoalLabel = planAGoalMinutes > 0 ? ` (${formatDurationWords(planAGoalMinutes)} goal)` : ''
 
   return (
     <article className="bg-neutral-900 border border-neutral-800 hover:border-neutral-700 rounded-xl overflow-hidden flex flex-col transition-colors">
@@ -292,41 +303,6 @@ function TrainingRouteCard({
           <p className="text-sm text-orange-300/90">
             {formatOverlapSummary(route.overlap_miles, route.overlapSegments)}
           </p>
-          {overlapPace && (
-            <p className="text-sm text-emerald-400/90">
-              Plan A {overlapPace.paceLabel}/mi
-              {overlapPace.enterTimeOfDay ? ` · ~${overlapPace.enterTimeOfDay}` : ''}
-            </p>
-          )}
-          {planSummary && (
-            <section className="pt-3 mt-3 border-t border-neutral-800 space-y-2" aria-label="Plan A segment">
-              <h4 className="text-sm font-medium text-emerald-300">Plan A{planGoalLabel}</h4>
-              <dl className="space-y-1.5 text-xs leading-5">
-                <div className="flex justify-between gap-3 text-neutral-400">
-                  <dt>Race Segment Miles</dt>
-                  <dd className="text-right text-neutral-200">
-                    {planSummary.raceMilesLabel} <span className="text-neutral-500">(Total: {planSummary.raceMilesTotal.toFixed(1)} mi)</span>
-                  </dd>
-                </div>
-                <div className="flex justify-between gap-3 text-neutral-400">
-                  <dt>Race Segment Time</dt>
-                  <dd className="text-right text-neutral-200">
-                    {planSummary.raceTimeLabel ?? 'Generate Plan A'}
-                    {planSummary.raceDurationLabel && (
-                      <span className="text-neutral-500"> (Total: {planSummary.raceDurationLabel})</span>
-                    )}
-                  </dd>
-                </div>
-                <div className="flex justify-between gap-3 text-neutral-400">
-                  <dt>Training Miles</dt>
-                  <dd className="text-right text-neutral-200">
-                    {planSummary.trainingMilesLabel}{' '}
-                    <span className="text-neutral-500">(Total: {planSummary.trainingMilesTotal.toFixed(1)} mi)</span>
-                  </dd>
-                </div>
-              </dl>
-            </section>
-          )}
           {notesPreview && (
             <p className="text-sm text-neutral-500 line-clamp-2">{notesPreview}</p>
           )}

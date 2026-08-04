@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { ArrowLeft, ExternalLink, MapPin, Mountain, Route as RouteIcon, Trash2 } from 'lucide-react'
-import type { Course, Race } from '@/types/database'
+import type { Course, Json, Race } from '@/types/database'
 import type { TrainingRouteRow } from './useTrainingRoutes'
 import { TrainingRouteDetailMap } from './TrainingRouteDetailMap'
 import {
@@ -12,7 +12,7 @@ import {
 } from '@/lib/training-overlap'
 import type { PacePlanResult } from './pace-utils'
 import { getOverlapRacePace } from './race-day-utils'
-import { TrainingAnalysisPanel } from './TrainingAnalysisPanel'
+import { TrainingAnalysisPanel, type StravaActivity } from './TrainingAnalysisPanel'
 
 interface TrainingRouteDetailProps {
   route: TrainingRouteRow
@@ -24,7 +24,7 @@ interface TrainingRouteDetailProps {
   planAGoalMinutes: number
   clock24h?: boolean
   onBack: () => void
-  onUpdate: (id: string, patch: { name?: string; notes?: string | null; strava_activity_inputs?: string[] }) => Promise<void>
+  onUpdate: (id: string, patch: { name?: string; notes?: string | null; strava_activity_inputs?: string[]; strava_activity_results?: Json }) => Promise<void>
   onDelete: (id: string) => Promise<void>
 }
 
@@ -290,7 +290,9 @@ export function TrainingRouteDetail({
           clock24h={clock24h}
           hideRoutePicker
           savedActivityInputs={Array.isArray(route.strava_activity_inputs) ? route.strava_activity_inputs.filter((value): value is string => typeof value === 'string') : []}
+          savedActivityResults={Array.isArray(route.strava_activity_results) ? route.strava_activity_results as unknown as StravaActivity[] : []}
           onSaveActivityInputs={inputs => onUpdate(route.id, { strava_activity_inputs: inputs })}
+          onSaveActivityResults={results => onUpdate(route.id, { strava_activity_results: results as unknown as Json })}
         />
       </div>
     </div>

@@ -206,6 +206,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState<Tab>('overview')
+  const [trainingResetToken, setTrainingResetToken] = useState(0)
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingWaypoint, setEditingWaypoint] = useState<Partial<Waypoint> | null>(null)
   const [viewingWaypoint, setViewingWaypoint] = useState<Waypoint | null>(null)
@@ -1552,7 +1553,10 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                     type='button'
                     role='tab'
                     aria-selected={isActive}
-                    onClick={() => setActiveTab(tab.id)}
+                    onClick={() => {
+                      if (tab.id === 'training' && activeTab === 'training') setTrainingResetToken(token => token + 1)
+                      setActiveTab(tab.id)
+                    }}
                     className={`shrink-0 rounded-md border px-3.5 py-2 text-[15px] sm:text-sm font-semibold transition-colors ${isActive ? 'border-blue-400 bg-blue-600 text-white shadow-sm shadow-blue-950/60' : 'border-neutral-700 bg-neutral-800/70 text-neutral-100 hover:border-neutral-500 hover:bg-neutral-800 hover:text-white'}`}
                   >
                     {tab.label}
@@ -1922,6 +1926,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
               terrainNodes={terrainNodes}
               clock24h={clock24h}
               runnerProfile={userRunnerProfile}
+              resetToken={trainingResetToken}
             />
           </div>
         )}

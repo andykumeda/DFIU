@@ -13,6 +13,7 @@ import {
   nameFromRawGpx,
   type OverlapSegment,
 } from '@/lib/training-overlap'
+import { getDistance } from '@/lib/geo-utils'
 
 export type TrainingRouteRow = TrainingRoute & {
   overlapSegments: OverlapSegment[]
@@ -145,9 +146,45 @@ export function useTrainingRoutes(raceId: string, courseGeometry: unknown) {
     return created
   }
 
+  const createManualRoute = async (name: string, coords: [number, number][]) => {
+    if (!canEdit) return null
+    if (coords.length < 2) throw new Error('Add at least two points to create a training route')
+    const courseCoords = courseCoordsFromGeometry(courseGeometry)
+    const overlap = computeTrainingOverlap(coords, courseCoords)
+    const distanceMiles = coords.slice(1).reduce(
+      (total, point, index) => total + getDistance(coords[index][1], coords[index][0], point[1], point[0]),
+      0
+    )
+    const maxOrder = routes.reduce((m, route) => Math.max(m, route.sort_order), -1)
+    const row = {
+      race_id: raceId,
+      name: name.trim().slice(0, 120) || 'Training route',
+      notes: null as string | null,
+      distance_miles: distanceMiles,
+      elevation_gain_ft: null,
+      elevation_loss_ft: null,
+      geometry: { type: 'LineString', coordinates: coords },
+      elevation_samples: null,
+      raw_gpx: null,
+      start_lat: coords[0][1], start_lon: coords[0][0],
+      finish_lat: coords[coords.length - 1][1], finish_lon: coords[coords.length - 1][0],
+      overlap_miles: overlap.overlapMiles,
+      overlap_segments: overlap.segments,
+      sort_order: maxOrder + 1,
+      created_by: user?.id ?? null,
+      updated_at: new Date().toISOString(),
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.from('training_routes') as any).insert(row).select('*').single()
+    if (error) throw error
+    const created = toRow(data as TrainingRoute)
+    setRoutes(prev => [...prev, created])
+    return created
+  }
+
   const updateRoute = async (
     id: string,
-    patch: Partial<Pick<TrainingRoute, 'name' | 'notes' | 'sort_order' | 'strava_activity_inputs'>>
+    patch: Partial<Pick<TrainingRoute, 'name' | 'notes' | 'sort_order' | 'strava_activity_inputs' | 'strava_activity_results'>>
   ) => {
     if (!canEdit) return
     const payload = { ...patch, updated_at: new Date().toISOString() }
@@ -181,6 +218,7 @@ export function useTrainingRoutes(raceId: string, courseGeometry: unknown) {
     canEdit,
     reload,
     createFromGpx,
+    createManualRoute,
     updateRoute,
     deleteRoute,
     recomputeOverlaps,

@@ -263,6 +263,7 @@ export type Database = {
           overlap_miles: number
           overlap_segments: Json
           strava_activity_inputs: Json
+          strava_activity_results: Json
           sort_order: number
           created_at: string
           updated_at: string
@@ -286,6 +287,7 @@ export type Database = {
           overlap_miles?: number
           overlap_segments?: Json
           strava_activity_inputs?: Json
+          strava_activity_results?: Json
           sort_order?: number
           created_at?: string
           updated_at?: string
@@ -309,6 +311,7 @@ export type Database = {
           overlap_miles?: number
           overlap_segments?: Json
           strava_activity_inputs?: Json
+          strava_activity_results?: Json
           sort_order?: number
           created_at?: string
           updated_at?: string

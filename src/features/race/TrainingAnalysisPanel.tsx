@@ -13,7 +13,7 @@ import {
   getTrainingSegmentMovingMinutes,
 } from './training-analysis'
 
-interface StravaActivity {
+export interface StravaActivity {
   id: number
   name: string
   elapsedSeconds: number
@@ -40,7 +40,9 @@ interface TrainingAnalysisPanelProps {
   clock24h: boolean
   hideRoutePicker?: boolean
   savedActivityInputs?: string[]
+  savedActivityResults?: StravaActivity[]
   onSaveActivityInputs?: (inputs: string[]) => Promise<void>
+  onSaveActivityResults?: (results: StravaActivity[]) => Promise<void>
 }
 
 export function TrainingAnalysisPanel({
@@ -50,9 +52,12 @@ export function TrainingAnalysisPanel({
   clock24h,
   hideRoutePicker = false,
   savedActivityInputs = [],
+  savedActivityResults = [],
   onSaveActivityInputs,
+  onSaveActivityResults,
 }: TrainingAnalysisPanelProps) {
   const savedActivityInputValue = savedActivityInputs.join('\n')
+  const savedActivityResultsValue = JSON.stringify(savedActivityResults)
   const [routeId, setRouteId] = useState(routes[0]?.id ?? '')
   const [activityInput, setActivityInput] = useState(savedActivityInputValue)
   const [activities, setActivities] = useState<StravaActivity[]>([])
@@ -63,8 +68,8 @@ export function TrainingAnalysisPanel({
 
   useEffect(() => {
     setActivityInput(savedActivityInputValue)
-    setActivities([])
-  }, [savedActivityInputValue])
+    setActivities(JSON.parse(savedActivityResultsValue) as StravaActivity[])
+  }, [savedActivityInputValue, savedActivityResultsValue])
 
   useEffect(() => {
     let cancelled = false
@@ -109,6 +114,7 @@ export function TrainingAnalysisPanel({
         if (!data?.movingSeconds || !data?.distanceMiles) throw new Error(data?.error || 'Strava activity needs moving time and distance')
         results.push(data as StravaActivity)
       }
+      if (onSaveActivityResults) await onSaveActivityResults(results)
       setActivities(results)
     } catch (caught) {
       setActivities([])
