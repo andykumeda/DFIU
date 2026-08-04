@@ -134,44 +134,19 @@ serve(async (req) => {
                 return json({ connected: true })
             }
 
-            const email = `${athlete.id}@strava.dfiu.app`
             const displayName = `${athlete.firstname ?? ''} ${athlete.lastname ?? ''}`.trim() || `Strava ${athlete.id}`
             const metadata = {
                 name: displayName,
                 avatar_url: athlete.profile ?? null,
                 strava_id: athlete.id,
             }
-
-            let user = await findAuthUserByEmail(supabaseUrl, serviceKey, email)
-
-            if (!user) {
-                const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-                    email,
-                    password: crypto.randomUUID(),
-                    email_confirm: true,
-                    user_metadata: metadata,
-                })
-                if (createError) {
-                    // Race: another callback created the user — look up again.
-                    user = await findAuthUserByEmail(supabaseUrl, serviceKey, email)
-                    if (!user) throw createError
-                } else {
-                    user = newUser.user
-                }
-            } else {
-                const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
-                    user_metadata: metadata,
-                })
-                if (updateError) throw updateError
-            }
-
-            if (!user) throw new Error('Unable to resolve Strava user')
+            const user = await resolveStravaLoginUser(supabaseAdmin, athlete.id, metadata)
 
             await saveStravaConnection(supabaseAdmin, user.id, athlete.id, tokenData, expiresAt)
 
             const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
                 type: 'magiclink',
-                email,
+                email: user.email,
             })
             if (linkError) throw linkError
             const tokenHash = linkData.properties.hashed_token
@@ -219,7 +194,45 @@ async function saveStravaConnection(
             scope: typeof tokenData.scope === 'string' ? tokenData.scope : null,
             updated_at: new Date().toISOString(),
         }, { onConflict: 'user_id' })
-    if (error) throw error
+    if (error) {
+        if (error.code === '23505') {
+            throw new Error('This Strava account is already connected to another DFIU account.')
+        }
+        throw error
+    }
+}
+
+async function resolveStravaLoginUser(
+    supabaseAdmin: SupabaseAdmin,
+    athleteId: number,
+    metadata: { name: string; avatar_url: string | null; strava_id: number },
+): Promise<{ id: string; email: string }> {
+    const { data: connection, error: connectionError } = await supabaseAdmin
+        .from('strava_connections')
+        .select('user_id')
+        .eq('athlete_id', athleteId)
+        .maybeSingle()
+    if (connectionError) throw connectionError
+
+    if (connection) {
+        const { data, error } = await supabaseAdmin.auth.admin.getUserById(connection.user_id)
+        if (error || !data.user?.email) throw new Error('Unable to resolve the DFIU account connected to Strava.')
+        const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(data.user.id, {
+            user_metadata: metadata,
+        })
+        if (updateError) throw updateError
+        return { id: data.user.id, email: data.user.email }
+    }
+
+    const email = `${athleteId}@strava.dfiu.app`
+    const { data, error } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password: crypto.randomUUID(),
+        email_confirm: true,
+        user_metadata: metadata,
+    })
+    if (error || !data.user?.email) throw error ?? new Error('Unable to create a DFIU account for Strava sign-in.')
+    return { id: data.user.id, email: data.user.email }
 }
 
 function json(body: unknown, status = 200) {
@@ -227,27 +240,6 @@ function json(body: unknown, status = 200) {
         status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
-}
-
-async function findAuthUserByEmail(
-    supabaseUrl: string,
-    serviceKey: string,
-    email: string,
-): Promise<{ id: string } | null> {
-    const url = `${supabaseUrl}/auth/v1/admin/users?email=${encodeURIComponent(email)}`
-    const res = await fetch(url, {
-        headers: {
-            Authorization: `Bearer ${serviceKey}`,
-            apikey: serviceKey,
-        },
-    })
-    if (!res.ok) {
-        const text = await res.text()
-        throw new Error(`Auth admin lookup failed (${res.status}): ${text}`)
-    }
-    const payload = await res.json()
-    const users = Array.isArray(payload?.users) ? payload.users : Array.isArray(payload) ? payload : []
-    return users[0] ?? null
 }
 
 async function signState(secret: string, nonce: string, mode: OAuthMode): Promise<string> {
