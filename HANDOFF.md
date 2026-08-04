@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-03
 **Branch:** `main` @ `eb49576`
-**Status:** Participant-scoped Strava authorization and safe athlete-based sign-in resolution are deployed.
+**Status:** Strava connection transfer is pending explicit approval because it would displace another DFIU user's existing link.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -32,6 +32,7 @@
 
 ## Open / follow-up
 
+- Pending approval: a participant can prove control of a Strava account via OAuth, but transferring its existing link would displace another DFIU user's connection. Do not deploy that behavior without explicit user approval.
 - **Priority follow-up:** the failed legacy callback updated one real DFIU account before it failed, so that account's prior password may have been replaced. Do not reset or delete it without confirming the account owner; use the normal password-recovery flow with that person if needed.
 - Rotate the previously tracked Strava client secret and confirm Supabase function secrets.
 - Reconcile Supabase migration history before the next `db push`: the new `strava_connections` schema was applied directly because the remote history already contains migrations absent locally. The tracked migration is `20260804012144_strava_activity_connections.sql`; do not run migration repair blindly.
