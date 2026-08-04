@@ -8,6 +8,11 @@ describe('RACE_SELECT', () => {
     expect(RACE_SELECT.includes('public_share_enabled')).toBe(true)
     expect(RACE_SELECT.includes('id')).toBe(true)
   })
+
+  it('includes official merge revision columns', () => {
+    expect(RACE_SELECT.includes('official_revision')).toBe(true)
+    expect(RACE_SELECT.includes('merged_official_revision')).toBe(true)
+  })
 })
 
 describe('share-link', () => {

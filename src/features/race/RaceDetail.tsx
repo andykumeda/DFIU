@@ -14,6 +14,11 @@ import { sampleElevationProfile, type GpxParseResult } from '@/lib/gpx-parser'
 import { getCoordinateAtDistance, getNearestPointOnLine, getDistanceFromStart, getAllVisitsOnLine, getDistance } from '@/lib/geo-utils'
 import { formatDate, formatStoredClockTime } from '@/lib/utils'
 import SunCalc from 'suncalc'
+import { useDemoMode } from '@/features/demo/DemoModeContext'
+import { useDemoRacePersist } from '@/features/demo/useDemoRacePersist'
+import { DemoModeBanner } from '@/features/demo/DemoModeBanner'
+import { OfficialUpdateBanner } from '@/features/demo/OfficialUpdateBanner'
+import { useCloneUpdateStatus, useOfficialUpdateActions } from '@/features/demo/useCloneUpdates'
 
 const CourseMap = lazy(() =>
     import('@/features/course/CourseMap').then(m => ({ default: m.CourseMap }))
@@ -205,11 +210,16 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   const { user, refreshMemberships } = useAuth()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { isDemoMode, overlay, overlayReady, overlayTooLarge } = useDemoMode()
+  const { saveWaypoints, saveTerrain } = useDemoRacePersist(raceId)
   const [activeTab, setActiveTab] = useState<Tab>('overview')
   const [trainingResetToken, setTrainingResetToken] = useState(0)
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingWaypoint, setEditingWaypoint] = useState<Partial<Waypoint> | null>(null)
   const [viewingWaypoint, setViewingWaypoint] = useState<Waypoint | null>(null)
+  const [officialUpdateBusy, setOfficialUpdateBusy] = useState(false)
+  const [demoHydrated, setDemoHydrated] = useState(false)
+  const [terrainPersistReady, setTerrainPersistReady] = useState(false)
 
   // Terrain State
   const [terrainNodes, setTerrainNodes] = useState<TerrainNode[]>([])
@@ -265,7 +275,10 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     canManageTeam,
     availableRoleViews,
   } = usePermission(raceId, race?.race_director_user_id)
-  const canDeleteRace = hasOwnerMembership || isAdmin || (!!user && race?.user_id === user.id)
+  const canDeleteRace = !isDemoMode && (hasOwnerMembership || isAdmin || (!!user && race?.user_id === user.id))
+  const showOfficialUpdateBanner = !isDemoMode && !!user && !!race?.official_source_race_id && canEdit
+  const { data: cloneUpdateStatus } = useCloneUpdateStatus(raceId, showOfficialUpdateBanner)
+  const { merge: mergeOfficialUpdate, dismiss: dismissOfficialUpdate } = useOfficialUpdateActions(raceId)
 
   useEffect(() => {
     if (!raceLoading && raceLoadFailed) {
@@ -273,9 +286,18 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     }
   }, [raceLoading, raceLoadFailed, navigate])
 
+  // Hydrate demo overlay into caches once master data is loaded.
+  useEffect(() => {
+    if (!isDemoMode || !overlayReady || demoHydrated || !race) return
+    if (overlay?.race) {
+      queryClient.setQueryData(['race', raceId], { ...race, ...overlay.race, id: raceId })
+    }
+    setDemoHydrated(true)
+  }, [isDemoMode, overlayReady, demoHydrated, race, overlay, queryClient, raceId])
+
   // Auto-fetch weather if missing — edit-perm only to avoid races and unauthorized writes
   useEffect(() => {
-    if (!user || !canEdit) return
+    if (isDemoMode || !user || !canEdit) return
     if (race?.location && race?.start_datetime && !race.avg_temp_high && !fetchingWeather) {
       const loc = race.location!
       const date = race.start_datetime!
@@ -298,7 +320,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       }
       autoFetch()
     }
-  }, [race?.location, race?.start_datetime, race?.avg_temp_high, canEdit, raceId, user, fetchingWeather, queryClient])
+  }, [race?.location, race?.start_datetime, race?.avg_temp_high, canEdit, raceId, user, fetchingWeather, queryClient, isDemoMode])
 
   const { data: profile } = useQuery({
     queryKey: ['profile'],
@@ -323,6 +345,22 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       return data as Course | null
     }
   })
+
+  useEffect(() => {
+    if (!isDemoMode || !overlayReady || !course?.id || !overlay?.waypoints) return
+    queryClient.setQueryData(['waypoints', course.id], overlay.waypoints)
+  }, [isDemoMode, overlayReady, course?.id, overlay?.waypoints, queryClient])
+
+  useEffect(() => {
+    if (!isDemoMode || !overlayReady || !overlay?.terrainNodes || !demoHydrated) return
+    setTerrainNodes(overlay.terrainNodes)
+    setTerrainPersistReady(true)
+  }, [isDemoMode, overlayReady, overlay?.terrainNodes, demoHydrated])
+
+  useEffect(() => {
+    if (!isDemoMode || !terrainPersistReady) return
+    void saveTerrain(terrainNodes)
+  }, [terrainNodes, isDemoMode, terrainPersistReady, saveTerrain])
 
   // Today's weather at the race location (refetched hourly). Kept separate from the
   // race-day forecast so users can compare current conditions to race day.
@@ -355,7 +393,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   // bag, crew, pacer) for them.
   useEffect(() => {
     if (waypointsLoading || !course?.id || !course.geometry || !user) return
-    if (!canEdit) return
+    if (isDemoMode || !canEdit) return
     const coords = (course.geometry as { coordinates: [number, number][] }).coordinates
     if (!coords || coords.length < 2) return
 
@@ -389,22 +427,26 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       if (error) { console.error('Failed to backfill Start/Finish waypoints:', error); return }
       queryClient.invalidateQueries({ queryKey: ['waypoints', course.id] })
     })
-  }, [waypointsLoading, course?.id, course?.geometry, course?.total_distance_miles, waypoints, user, canEdit, queryClient])
+  }, [waypointsLoading, course?.id, course?.geometry, course?.total_distance_miles, waypoints, user, canEdit, queryClient, isDemoMode])
 
   // Fetch Terrain Nodes
   useEffect(() => {
     if (!course?.id) return
+    if (isDemoMode && overlay?.terrainNodes) return
     const fetchTerrain = async () => {
       const { data } = await supabase.from('terrain_nodes').select('*').eq('course_id', course.id).order('mile')
-      if (data) setTerrainNodes(data)
+      if (data) {
+        setTerrainNodes(data)
+        if (isDemoMode) setTerrainPersistReady(true)
+      }
     }
     fetchTerrain()
-  }, [course?.id])
+  }, [course?.id, isDemoMode, overlay?.terrainNodes])
 
   // Merge redundant adjacent same-type terrain nodes in the DB so the course
   // shows single combined segments instead of many short adjacent ones.
   useEffect(() => {
-    if (!course?.id || !canEdit || terrainNodes.length === 0) return
+    if (isDemoMode || !course?.id || !canEdit || terrainNodes.length === 0) return
     const compactableIds = getCompactableTerrainNodeIds(terrainNodes)
     if (compactableIds.length === 0) return
 
@@ -420,9 +462,13 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     }
     compactTerrain()
     return () => { cancelled = true }
-  }, [course?.id, canEdit, terrainNodes])
+  }, [course?.id, canEdit, terrainNodes, isDemoMode])
 
   const handleGpxUpload = async (result: GpxParseResult, rawGpx: string) => {
+    if (isDemoMode) {
+      alert('GPX updates are not available in demo mode. Save to an account to replace the course file.')
+      return
+    }
     try {
 
       // Check for missing elevation data
@@ -625,14 +671,14 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
   const handleSaveWaypoint = async (data: Partial<Waypoint>) => {
     try {
-      if (data.id) {
-        // Recalculate lat/lon if mile was changed
-        let lat = data.lat
-        let lon = data.lon
-        const existingWp = waypoints.find(w => w.id === data.id)
-        if (existingWp && data.mile !== undefined && data.mile !== existingWp.mile && course?.geometry) {
+      if (!course?.id) throw new Error('Course is required')
+
+      const resolveLatLon = (mile: number | undefined, fallbackLat?: number | null, fallbackLon?: number | null) => {
+        let lat = fallbackLat ?? undefined
+        let lon = fallbackLon ?? undefined
+        if (mile !== undefined && course.geometry) {
           const coords = (course.geometry as { coordinates: [number, number][] }).coordinates
-          const coord = getCoordinateAtDistance(course.geometry as any, data.mile * 1609.34)
+          const coord = getCoordinateAtDistance(course.geometry as any, mile * 1609.34)
           if (coord) {
             const snapped = getNearestPointOnLine({ lat: coord[1], lon: coord[0] }, coords)
             if (snapped) {
@@ -644,9 +690,17 @@ export function RaceDetail({ raceId }: { raceId: string }) {
             }
           }
         }
+        return { lat, lon }
+      }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error } = await (supabase.from('waypoints') as any).update({
+      if (data.id) {
+        const existingWp = waypoints.find(w => w.id === data.id)
+        const { lat, lon } = resolveLatLon(
+          data.mile !== undefined && existingWp && data.mile !== existingWp.mile ? data.mile : undefined,
+          data.lat,
+          data.lon
+        )
+        const patch = {
           name: data.name,
           type: data.type,
           mile: data.mile,
@@ -660,41 +714,28 @@ export function RaceDetail({ raceId }: { raceId: string }) {
           drop_bag_notes: data.drop_bag_notes || null,
           crew_relay_notes: data.crew_relay_notes || null,
           runner_next_leg_notes: data.runner_next_leg_notes || null
-        }).eq('id', data.id)
+        }
+
+        if (isDemoMode) {
+          const next = waypoints.map(wp => wp.id === data.id ? { ...wp, ...patch } as Waypoint : wp)
+          await saveWaypoints(course.id, next)
+          setEditingWaypoint(null)
+          return
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error } = await (supabase.from('waypoints') as any).update(patch).eq('id', data.id)
         if (error) throw error
       } else {
         const maxOrder = Math.max(...waypoints.map(w => w.order_index), 0)
-
-        // If we have a mile, calculate lat/lon from the course geometry
-        let lat = data.lat
-        let lon = data.lon
-
-        if (data.mile !== undefined && course?.geometry) {
-          const coords = (course.geometry as { coordinates: [number, number][] }).coordinates
-          // Use turf/along to get approximate position at target mile
-          const coord = getCoordinateAtDistance(course.geometry as any, data.mile * 1609.34)
-          if (coord) {
-            // Snap to nearest point on the actual route line for exact positioning
-            const snapped = getNearestPointOnLine({ lat: coord[1], lon: coord[0] }, coords)
-            if (snapped) {
-              lon = snapped.lon
-              lat = snapped.lat
-            } else {
-              lon = coord[0]
-              lat = coord[1]
-            }
-          } else {
-            throw new Error(`Could not calculate location for mile ${data.mile}. Ensure it is within the course distance.`)
-          }
-        }
+        const { lat, lon } = resolveLatLon(data.mile, data.lat, data.lon)
 
         if (lat === undefined || lon === undefined) {
           throw new Error('Latitude and Longitude are required. Please enter a valid mile or click on the map.')
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error } = await (supabase.from('waypoints') as any).insert({
-          course_id: course?.id,
+        const insertRow = {
+          course_id: course.id,
           name: data.name,
           type: data.type,
           lat: lat,
@@ -709,7 +750,31 @@ export function RaceDetail({ raceId }: { raceId: string }) {
           drop_bag_notes: data.drop_bag_notes || null,
           crew_relay_notes: data.crew_relay_notes || null,
           runner_next_leg_notes: data.runner_next_leg_notes || null
-        })
+        }
+
+        if (isDemoMode) {
+          const demoId = `demo-wp-${crypto.randomUUID()}`
+          const next = [
+            ...waypoints,
+            {
+              ...insertRow,
+              id: demoId,
+              official_source_waypoint_id: null,
+              elevation_ft: null,
+              delay: null,
+              drop_bag_items: null,
+              drop_bag_name: null,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            } as Waypoint,
+          ]
+          await saveWaypoints(course.id, next)
+          setEditingWaypoint(null)
+          return
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error } = await (supabase.from('waypoints') as any).insert(insertRow)
         if (error) throw error
       }
       setEditingWaypoint(null)
@@ -723,6 +788,12 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   const handleDeleteWaypoint = async (id: string) => {
     if (!confirm('Are you sure you want to delete this waypoint?')) return
     try {
+      if (isDemoMode && course?.id) {
+        const next = waypoints.filter(wp => wp.id !== id)
+        await saveWaypoints(course.id, next)
+        setEditingWaypoint(null)
+        return
+      }
       const { error } = await supabase.from('waypoints').delete().eq('id', id)
       if (error) throw error
       setEditingWaypoint(null)
@@ -768,6 +839,11 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     })
 
     try {
+      if (isDemoMode && course?.id) {
+        const next = (queryClient.getQueryData<Waypoint[]>(['waypoints', course.id]) ?? waypoints)
+        await saveWaypoints(course.id, next)
+        return
+      }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase.from('waypoints') as any)
         .update({ lat, lon, mile })
@@ -795,6 +871,11 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       old ? old.map(wp => wp.id === id ? { ...wp, delay } : wp) : old
     )
     try {
+      if (isDemoMode && course?.id) {
+        const next = (queryClient.getQueryData<Waypoint[]>(['waypoints', course.id]) ?? waypoints)
+        await saveWaypoints(course.id, next)
+        return
+      }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase.from('waypoints') as any).update({ delay }).eq('id', id)
       if (error) throw error
@@ -828,8 +909,15 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     return { lat, lon }
   }
 
-  const refreshAndCompactTerrainNodes = async () => {
+  const refreshAndCompactTerrainNodes = async (localNodes?: TerrainNode[]) => {
     if (!course?.id) return
+
+    if (isDemoMode) {
+      const source = localNodes ?? terrainNodes
+      const compactableIds = new Set(getCompactableTerrainNodeIds(source))
+      setTerrainNodes(source.filter(n => !compactableIds.has(n.id)))
+      return
+    }
 
     const { data: savedNodes } = await supabase.from('terrain_nodes').select('*').eq('course_id', course.id).order('mile')
     const compactableIds = savedNodes ? getCompactableTerrainNodeIds(savedNodes as TerrainNode[]) : []
@@ -872,14 +960,19 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       throw new Error('Invalid segment mileage')
     }
 
-    const { data, error: loadError } = await supabase
-      .from('terrain_nodes')
-      .select('*')
-      .eq('course_id', course.id)
-      .order('mile')
-    if (loadError) throw loadError
+    let latestNodes: TerrainNode[]
+    if (isDemoMode) {
+      latestNodes = terrainNodes
+    } else {
+      const { data, error: loadError } = await supabase
+        .from('terrain_nodes')
+        .select('*')
+        .eq('course_id', course.id)
+        .order('mile')
+      if (loadError) throw loadError
+      latestNodes = (data ?? []) as TerrainNode[]
+    }
 
-    const latestNodes = (data ?? []) as TerrainNode[]
     const sorted = [...latestNodes].sort((a, b) => a.mile - b.mile)
     const EPS = 0.005
 
@@ -908,35 +1001,55 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       if (insideNewRange || onNewStart || onNewEnd) idsToDelete.add(node.id)
     }
 
-    if (idsToDelete.size > 0) {
-      const { error } = await supabase.from('terrain_nodes').delete().in('id', Array.from(idsToDelete))
-      if (error) throw error
-    }
-
     const startPoint = getRoutePointForMile(startMile)
-    const rows = [{
+    const rows: TerrainNode[] = [{
+      id: `demo-tn-${crypto.randomUUID()}`,
       course_id: course.id,
       mile: startMile,
       type,
       difficulty,
       lat: startPoint.lat,
       lon: startPoint.lon,
+      official_source_terrain_node_id: null,
+      created_at: new Date().toISOString(),
+      attributes: {},
     }]
 
     if (endMile < totalDistance - EPS) {
       const endPoint = getRoutePointForMile(endMile)
       rows.push({
+        id: `demo-tn-${crypto.randomUUID()}`,
         course_id: course.id,
         mile: endMile,
         type: restoreAtEnd.type as TerrainTypeValue,
         difficulty: restoreAtEnd.difficulty,
         lat: endPoint.lat,
         lon: endPoint.lon,
+        official_source_terrain_node_id: null,
+        created_at: new Date().toISOString(),
+        attributes: {},
       })
     }
 
+    if (isDemoMode) {
+      const next = [
+        ...latestNodes.filter(n => !idsToDelete.has(n.id)),
+        ...rows,
+      ]
+      await refreshAndCompactTerrainNodes(next)
+      clearPendingTerrainSegment()
+      return
+    }
+
+    if (idsToDelete.size > 0) {
+      const { error } = await supabase.from('terrain_nodes').delete().in('id', Array.from(idsToDelete))
+      if (error) throw error
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: insertError } = await (supabase.from('terrain_nodes') as any).insert(rows)
+    const { error: insertError } = await (supabase.from('terrain_nodes') as any).insert(
+      rows.map(({ id: _id, created_at: _c, official_source_terrain_node_id: _o, attributes: _a, ...rest }) => rest)
+    )
     if (insertError) throw insertError
 
     await refreshAndCompactTerrainNodes()
@@ -975,46 +1088,39 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     try {
       if (!course?.id) return
 
-      const helperInsert = async (mile: number, t: string, d: number) => {
-        let lat = 0, lon = 0
-        if (course.geometry) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const coord = getCoordinateAtDistance(course.geometry as any, mile * 1609.34)
-          if (coord) {
-            lat = coord[1]
-            lon = coord[0]
-          }
+      const makeNode = (mile: number, t: string, d: number): TerrainNode => {
+        const point = getRoutePointForMile(mile)
+        return {
+          id: `demo-tn-${crypto.randomUUID()}`,
+          course_id: course.id,
+          mile,
+          type: t,
+          difficulty: d,
+          lat: point.lat,
+          lon: point.lon,
+          official_source_terrain_node_id: null,
+          created_at: new Date().toISOString(),
+          attributes: {},
         }
+      }
+
+      const helperInsert = async (mile: number, t: string, d: number) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { error } = await (supabase.from('terrain_nodes') as any).insert({
           course_id: course.id,
           mile,
           type: t,
           difficulty: d,
-          lat,
-          lon
+          lat: getRoutePointForMile(mile).lat,
+          lon: getRoutePointForMile(mile).lon,
         })
         if (error) throw error
       }
 
-      // Logic:
-      // 1. We are defining the segment [start, end) as 'type'.
-      // 2. We need a Node at 'start' with 'type'.
-      // 3. We need to preserve the terrain type that comes AFTER 'end'.
-      //    This means we need a Node at 'end' with 'typeAtEnd'.
-      //    'typeAtEnd' is whatever type covers the 'end' mile currently.
-
-      // Helper to find current type at a given mile
       const getTerrainAt = (m: number) => {
         const sorted = [...terrainNodes].sort((a, b) => a.mile - b.mile)
-        // Find last node <= m
-        // Canvas Logic: If no node is before m, or the last node before m is 'other' (Undefined),
-        // then the terrain at m is 'Undefined'.
         let active = sorted[0]
-
-        // If course starts with explicit node at 0, use it. Otherwise default is Undefined (other).
         if (!active || active.mile > m) return { type: 'other', difficulty: 100 }
-
         for (const node of sorted) {
           if (node.mile <= m + 0.01) active = node
           else break
@@ -1022,23 +1128,27 @@ export function RaceDetail({ raceId }: { raceId: string }) {
         return { type: active.type, difficulty: active.difficulty }
       }
 
-      // Logic:
-      // We are painting a segment [start, end) with 'type'.
-      // 1. Set Start Node = type.
-      // 2. Set End Node = ???
-      //    - If getTerrainAt(endMile) returns a Type != Paved, it means we are inside a segment.
-      //      We should probably restore THAT type to maintain continuity of the *other* segment.
-      //    - If getTerrainAt(endMile) returns Paved, we restore Paved.
-
       const prevAtEnd = getTerrainAt(endMile)
-
       const typeAtEnd = prevAtEnd.type
       const diffAtEnd = prevAtEnd.difficulty
-
-
-      // Snap tolerance: ~0.1mi (~160m). Wider than insert dedupe so adjacent
-      // paints bridge automatically (no thin "default" sliver between segments).
       const SNAP_TOL = 0.1
+
+      if (isDemoMode) {
+        let next = [...terrainNodes]
+        const existingStart = next.find(n => Math.abs(n.mile - startMile) < SNAP_TOL)
+        if (existingStart) {
+          next = next.map(n => n.id === existingStart.id ? { ...n, type, difficulty } : n)
+        } else {
+          next.push(makeNode(startMile, type, difficulty))
+        }
+        if (endMile < (course.total_distance_miles || 100)) {
+          const existingEnd = next.find(n => Math.abs(n.mile - endMile) < SNAP_TOL)
+          if (!existingEnd) next.push(makeNode(endMile, typeAtEnd, diffAtEnd ?? 100))
+        }
+        next = next.filter(n => !(n.mile > (startMile + SNAP_TOL) && n.mile < (endMile - SNAP_TOL)))
+        await refreshAndCompactTerrainNodes(next)
+        return
+      }
 
       // A. Insert/Update Start Node
       const existingStart = terrainNodes.find(n => Math.abs(n.mile - startMile) < SNAP_TOL)
@@ -1058,24 +1168,12 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       }
 
       // C. Delete Intermediate Nodes (they are overridden by this new segment)
-      // Nodes strictly between start and end (outside snap tolerance of either)
       const nodesToDelete = terrainNodes.filter(n => n.mile > (startMile + SNAP_TOL) && n.mile < (endMile - SNAP_TOL))
       if (nodesToDelete.length > 0) {
         await supabase.from('terrain_nodes').delete().in('id', nodesToDelete.map(n => n.id))
       }
 
-      // Refresh and compact redundant same-type boundaries so adjacent matching
-      // segments collapse into one. Unknown gaps only collapse when they are
-      // 0.1 mi or shorter between matching terrain types.
-      const { data: savedNodes } = await supabase.from('terrain_nodes').select('*').eq('course_id', course.id).order('mile')
-      const compactableIds = savedNodes ? getCompactableTerrainNodeIds(savedNodes as TerrainNode[]) : []
-      if (compactableIds.length > 0) {
-        const { error } = await supabase.from('terrain_nodes').delete().in('id', compactableIds)
-        if (error) throw error
-      }
-
-      const { data: tNodes } = await supabase.from('terrain_nodes').select('*').eq('course_id', course.id).order('mile')
-      if (tNodes) setTerrainNodes(tNodes)
+      await refreshAndCompactTerrainNodes()
 
     } catch (err: any) {
       console.error('Error saving terrain segment:', err)
@@ -1530,6 +1628,58 @@ export function RaceDetail({ raceId }: { raceId: string }) {
           </div>
         </div>
       </header>
+
+      {isDemoMode && (
+        <DemoModeBanner sourceRaceId={raceId} tooLarge={overlayTooLarge} />
+      )}
+
+      {!isDemoMode && !user && race.is_public && (
+        <div className='print:hidden border-b border-blue-800/50 bg-blue-950/30'>
+          <div className='max-w-7xl mx-auto px-3 sm:px-4 py-2.5 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4'>
+            <p className='text-sm text-blue-100 flex-1'>
+              Try this event without an account — edit plans locally, then save when you are ready.
+            </p>
+            <Link
+              to={`/race/${raceId}?demo=1`}
+              className='shrink-0 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold text-center'
+            >
+              Try without account
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {cloneUpdateStatus?.has_updates && showOfficialUpdateBanner && (
+        <OfficialUpdateBanner
+          busy={officialUpdateBusy}
+          onMerge={async () => {
+            setOfficialUpdateBusy(true)
+            try {
+              await mergeOfficialUpdate()
+              if (course?.id) {
+                const { data } = await supabase.from('terrain_nodes').select('*').eq('course_id', course.id).order('mile')
+                if (data) setTerrainNodes(data)
+              }
+            } catch (err) {
+              console.error(err)
+              alert(`Failed to merge updates: ${getErrorMessage(err)}`)
+            } finally {
+              setOfficialUpdateBusy(false)
+            }
+          }}
+          onDismiss={async () => {
+            setOfficialUpdateBusy(true)
+            try {
+              await dismissOfficialUpdate()
+            } catch (err) {
+              console.error(err)
+              alert(`Failed to dismiss update: ${getErrorMessage(err)}`)
+            } finally {
+              setOfficialUpdateBusy(false)
+            }
+          }}
+        />
+      )}
 
       {/* Modals */}
       {showEditModal && (

@@ -3,10 +3,12 @@ import { useAuth } from '@/features/auth/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { RaceList } from '@/features/race/RaceList'
 import { Settings } from 'lucide-react'
+import { useClaimDemoOnAuth } from '@/features/demo/useClaimDemoOnAuth'
 
 export default function DashboardPage() {
   const { user, profile } = useAuth()
   const navigate = useNavigate()
+  useClaimDemoOnAuth()
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()

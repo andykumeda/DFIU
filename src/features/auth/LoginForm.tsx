@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
+import { setClaimDemoIntent } from '@/features/demo/demoStore'
 
 export function LoginForm() {
   const [email, setEmail] = useState('')
@@ -8,11 +9,14 @@ export function LoginForm() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const claimDemo = searchParams.get('claim_demo')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
     setLoading(true)
+    if (claimDemo) setClaimDemoIntent(claimDemo)
 
     const { error } = await supabase.auth.signInWithPassword({
       email,
@@ -23,7 +27,7 @@ export function LoginForm() {
       setError(error.message)
       setLoading(false)
     } else {
-      navigate('/dashboard')
+      navigate(claimDemo ? `/dashboard?claim_demo=${encodeURIComponent(claimDemo)}` : '/dashboard')
     }
   }
 
@@ -37,6 +41,7 @@ export function LoginForm() {
           onClick={async () => {
             try {
               setLoading(true)
+              if (claimDemo) setClaimDemoIntent(claimDemo)
               const { data, error } = await supabase.functions.invoke('strava-auth', {
                 body: { action: 'start', redirectUrl: window.location.origin + '/auth/strava/callback' }
               })

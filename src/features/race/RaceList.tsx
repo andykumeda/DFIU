@@ -155,40 +155,49 @@ export function RaceList({ mode = 'user', showSearch = mode === 'public' }: Race
       ) : (
         <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
           {visibleRaces.map((race) => (
-            <Link
+            <div
               key={race.id}
-              to={`/race/${race.id}`}
-              className='bg-neutral-900 border border-neutral-800 rounded-xl p-6 hover:border-blue-600 transition-colors group block'
+              className='bg-neutral-900 border border-neutral-800 rounded-xl p-6 hover:border-blue-600 transition-colors group'
             >
-              <div className='flex items-start gap-2 mb-2'>
-                <h3 className='text-lg font-semibold text-white group-hover:text-blue-500 transition-colors min-w-0 flex-1'>
-                  {race.name}
-                </h3>
-                {race.is_official && (
-                  <CheckCircle2 className='w-5 h-5 text-blue-400 shrink-0' aria-label='Official event' />
+              <Link to={`/race/${race.id}`} className='block'>
+                <div className='flex items-start gap-2 mb-2'>
+                  <h3 className='text-lg font-semibold text-white group-hover:text-blue-500 transition-colors min-w-0 flex-1'>
+                    {race.name}
+                  </h3>
+                  {race.is_official && (
+                    <CheckCircle2 className='w-5 h-5 text-blue-400 shrink-0' aria-label='Official event' />
+                  )}
+                </div>
+                {race.location && (
+                  <p className='text-neutral-400 text-sm mb-4'>{race.location}</p>
                 )}
-              </div>
-              {race.location && (
-                <p className='text-neutral-400 text-sm mb-4'>{race.location}</p>
+                <div className='flex items-center gap-3 flex-wrap'>
+                  {race.distance_miles && (
+                    <span className='bg-blue-900/20 text-blue-500 px-3 py-1 rounded-full text-xs font-medium'>
+                      {race.distance_miles} miles
+                    </span>
+                  )}
+                  {race.start_datetime && (
+                    <span className='text-neutral-500 text-xs'>
+                      {formatDate(race.start_datetime, 'PPP')}
+                    </span>
+                  )}
+                  {race.is_public && (
+                    <span className='text-neutral-500 text-xs'>
+                      Public
+                    </span>
+                  )}
+                </div>
+              </Link>
+              {mode === 'public' && !user && (
+                <Link
+                  to={`/race/${race.id}?demo=1`}
+                  className='mt-4 inline-flex text-sm font-semibold text-blue-400 hover:text-blue-300'
+                >
+                  Try without account
+                </Link>
               )}
-              <div className='flex items-center gap-3 flex-wrap'>
-                {race.distance_miles && (
-                  <span className='bg-blue-900/20 text-blue-500 px-3 py-1 rounded-full text-xs font-medium'>
-                    {race.distance_miles} miles
-                  </span>
-                )}
-                {race.start_datetime && (
-                  <span className='text-neutral-500 text-xs'>
-                    {formatDate(race.start_datetime, 'PPP')}
-                  </span>
-                )}
-                {race.is_public && (
-                  <span className='text-neutral-500 text-xs'>
-                    Public
-                  </span>
-                )}
-              </div>
-            </Link>
+            </div>
           ))}
         </div>
       )}

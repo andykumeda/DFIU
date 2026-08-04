@@ -1,9 +1,8 @@
-'use client'
-
 import { useRef, useState } from 'react'
 import { Race } from '@/types/database'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/features/auth/AuthContext'
+import { useDemoRacePersist } from '@/features/demo/useDemoRacePersist'
 import {
     BedDouble, CalendarDays, Edit2, Save, X, ExternalLink, Plus, Trash2,
     ChevronUp, ChevronDown, Eye, EyeOff, Printer,
@@ -55,6 +54,7 @@ function parseLocalDateDraft(draft: ResourceDateDraft): string | null {
 
 export function RaceResources({ race, canEdit = false, onUpdate }: RaceResourcesProps) {
     const { profile } = useAuth() as { profile: { clock_24h?: boolean } | null }
+    const { isDemoMode, saveRacePatch } = useDemoRacePersist(race.id)
     const clock24h = !!profile?.clock_24h
     const [isEditing, setIsEditing] = useState(false)
     const [loading, setLoading] = useState(false)
@@ -206,16 +206,26 @@ ${body}
             }))
             const nextConfig = { ...config, links: linksWithDates }
             const legacyPatch = resourcesConfigToRacePatch(nextConfig)
+            const racebookLastUpdated = linksWithDates.find(l => l.id === 'racebook_url')?.url !== race.racebook_url
+                ? new Date().toISOString()
+                : race.racebook_last_updated
+            const patch = {
+                ...legacyPatch,
+                lodging_info: lodgingInfo || null,
+                resources_config: nextConfig,
+                racebook_last_updated: racebookLastUpdated,
+            }
+
+            if (isDemoMode) {
+                await saveRacePatch(patch)
+                setConfig(nextConfig)
+                onUpdate()
+                setIsEditing(false)
+                return
+            }
 
             const { error } = await (supabase.from('races') as any)
-                .update({
-                    ...legacyPatch,
-                    lodging_info: lodgingInfo || null,
-                    resources_config: nextConfig,
-                    racebook_last_updated: linksWithDates.find(l => l.id === 'racebook_url')?.url !== race.racebook_url
-                        ? new Date().toISOString()
-                        : race.racebook_last_updated,
-                })
+                .update(patch)
                 .eq('id', race.id)
 
             if (error) throw error

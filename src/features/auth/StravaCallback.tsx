@@ -63,7 +63,12 @@ export default function StravaCallback() {
                 toast.success('Successfully connected to Strava!')
                 const returnTo = sessionStorage.getItem(STRAVA_RETURN_TO_STORAGE_KEY)
                 sessionStorage.removeItem(STRAVA_RETURN_TO_STORAGE_KEY)
-                navigate(returnTo && returnTo.startsWith('/race/') ? returnTo : '/dashboard')
+                const claimDemo = sessionStorage.getItem('dfiu_claim_demo_race_id')
+                if (claimDemo) {
+                    navigate(`/dashboard?claim_demo=${encodeURIComponent(claimDemo)}`)
+                } else {
+                    navigate(returnTo && returnTo.startsWith('/race/') ? returnTo : '/dashboard')
+                }
             } else {
                 throw new Error(data?.error || 'No session returned')
             }

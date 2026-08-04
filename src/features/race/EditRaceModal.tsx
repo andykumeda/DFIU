@@ -6,6 +6,8 @@ import { Race } from '@/types/database'
 import type { RaceShareSettings } from '@/lib/race-select'
 import { RACE_SELECT } from '@/lib/race-select'
 import { buildShareLink, createShareToken } from './share-link'
+import { useDemoMode } from '@/features/demo/DemoModeContext'
+import { useDemoRacePersist } from '@/features/demo/useDemoRacePersist'
 import styles from './EditRaceModal.module.css' // We will create this or use inline/global for now if need be, but best to module
 
 interface EditRaceModalProps {
@@ -16,6 +18,8 @@ interface EditRaceModalProps {
 }
 
 export function EditRaceModal({ race, onClose, onUpdate, onDelete }: EditRaceModalProps) {
+    const { isDemoMode } = useDemoMode()
+    const { saveRacePatch } = useDemoRacePersist(race.id)
     const [isLoading, setIsLoading] = useState(false)
     const [isDeleting, setIsDeleting] = useState(false)
     const [shareToken, setShareToken] = useState(race.public_share_token || '')
@@ -52,6 +56,7 @@ export function EditRaceModal({ race, onClose, onUpdate, onDelete }: EditRaceMod
     const [savedShareEnabled, setSavedShareEnabled] = useState(race.public_share_enabled || false)
 
     useEffect(() => {
+        if (isDemoMode) return
         let cancelled = false
         ;(async () => {
             const { data, error } = await supabase.rpc('get_race_share_settings', { rid: race.id })
@@ -67,10 +72,10 @@ export function EditRaceModal({ race, onClose, onUpdate, onDelete }: EditRaceMod
             }))
         })()
         return () => { cancelled = true }
-    }, [race.id])
+    }, [race.id, isDemoMode])
 
-    const shareLink = formData.public_share_enabled && shareToken ? buildShareLink(race.id, shareToken) : ''
-    const shareLinkNeedsSave = formData.public_share_enabled && (
+    const shareLink = !isDemoMode && formData.public_share_enabled && shareToken ? buildShareLink(race.id, shareToken) : ''
+    const shareLinkNeedsSave = !isDemoMode && formData.public_share_enabled && (
         !savedShareEnabled ||
         shareToken !== savedShareToken
     )
@@ -82,6 +87,36 @@ export function EditRaceModal({ race, onClose, onUpdate, onDelete }: EditRaceMod
         setIsLoading(true)
 
         try {
+            const racePatch = {
+                name: formData.name,
+                location: formData.location || null,
+                start_datetime: formData.start_datetime ? new Date(formData.start_datetime).toISOString() : null,
+                website_url: formData.website_url || null,
+                is_public: isDemoMode ? false : formData.is_public,
+                public_share_enabled: isDemoMode ? false : formData.public_share_enabled,
+                registration_url: formData.registration_url || null,
+                avg_temp_high: formData.avg_temp_high || null,
+                avg_temp_low: formData.avg_temp_low || null,
+                precip_chance: formData.precip_chance || null,
+                weather_notes: formData.weather_notes || null,
+                moon_phase: formData.moon_phase || null,
+                sunrise_time: formData.sunrise_time || null,
+                sunset_time: formData.sunset_time || null,
+                overall_cutoff: formData.overall_cutoff || null,
+                course_record_male: formData.course_record_male || null,
+                course_record_female: formData.course_record_female || null,
+                qualifies_for: formData.qualifies_for || null,
+                course_type: formData.course_type || null,
+                terrain_type: formData.terrain_type || 'trail'
+            }
+
+            if (isDemoMode) {
+                await saveRacePatch(racePatch)
+                onUpdate({ ...race, ...racePatch })
+                onClose()
+                return
+            }
+
             const nextShareToken = formData.public_share_enabled
                 ? shareToken || createShareToken()
                 : null
@@ -93,27 +128,8 @@ export function EditRaceModal({ race, onClose, onUpdate, onDelete }: EditRaceMod
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 .from('races') as any)
                 .update({
-                    name: formData.name,
-                    location: formData.location || null,
-                    start_datetime: formData.start_datetime ? new Date(formData.start_datetime).toISOString() : null,
-                    website_url: formData.website_url || null,
-                    is_public: formData.is_public,
-                    public_share_enabled: formData.public_share_enabled,
+                    ...racePatch,
                     public_share_token: nextShareToken,
-                    registration_url: formData.registration_url || null,
-                    avg_temp_high: formData.avg_temp_high || null,
-                    avg_temp_low: formData.avg_temp_low || null,
-                    precip_chance: formData.precip_chance || null,
-                    weather_notes: formData.weather_notes || null,
-                    moon_phase: formData.moon_phase || null,
-                    sunrise_time: formData.sunrise_time || null,
-                    sunset_time: formData.sunset_time || null,
-                    overall_cutoff: formData.overall_cutoff || null,
-                    course_record_male: formData.course_record_male || null,
-                    course_record_female: formData.course_record_female || null,
-                    qualifies_for: formData.qualifies_for || null,
-                    course_type: formData.course_type || null,
-                    terrain_type: formData.terrain_type || 'trail'
                 })
                 .eq('id', race.id)
                 .select(RACE_SELECT)

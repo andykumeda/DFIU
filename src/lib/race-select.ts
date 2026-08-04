@@ -46,6 +46,8 @@ export const RACE_SELECT = [
   'is_official',
   'official_at',
   'official_source_race_id',
+  'official_revision',
+  'merged_official_revision',
   'race_director_user_id',
   'public_share_enabled',
   'created_at',

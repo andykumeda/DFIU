@@ -2,6 +2,8 @@ import React from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/features/auth/AuthContext'
 import { usePermission } from '@/features/auth/usePermission'
+import { useDemoMode } from '@/features/demo/DemoModeContext'
+import { useDemoRacePersist } from '@/features/demo/useDemoRacePersist'
 import {
     DEFAULT_PACE_CHART_COLUMNS,
     parsePaceChartColumns,
@@ -87,14 +89,27 @@ function plansToRow(p: PacePlans, raceId: string, userId: string | null) {
 export function usePacePlans(raceId: string) {
     const { user } = useAuth()
     const { canEdit } = usePermission(raceId)
+    const { isDemoMode, overlay, overlayReady } = useDemoMode()
+    const { savePacePlans } = useDemoRacePersist(raceId)
     const [plans, setPlans] = React.useState<PacePlans>(() => ({ ...DEFAULTS }))
     const [loading, setLoading] = React.useState(true)
 
-    // Initial load: SELECT row → fall back to legacy localStorage (one-shot migrate) → defaults.
+    // Initial load: demo overlay → SELECT row → fall back to legacy localStorage → defaults.
     React.useEffect(() => {
         let cancelled = false
         setLoading(true)
         ;(async () => {
+            if (isDemoMode) {
+                if (!overlayReady) return
+                if (overlay?.pacePlans) {
+                    if (!cancelled) {
+                        setPlans(overlay.pacePlans)
+                        setLoading(false)
+                    }
+                    return
+                }
+            }
+
             const { data, error } = await supabase
                 .from('race_pace_plans')
                 .select('plan_a_time, plan_b_time, plan_c_buffer, has_calculated, pace_chart_columns, pace_model_snapshot')
@@ -111,7 +126,7 @@ export function usePacePlans(raceId: string) {
 
             // No DB row. Try legacy localStorage migrate (only if editor; viewers read-only).
             const legacy = readLegacyLocal(raceId)
-            if (legacy && canEdit) {
+            if (legacy && canEdit && !isDemoMode) {
                 const row = plansToRow(legacy, raceId, user?.id ?? null)
                 const { error: upErr } = await (supabase.from('race_pace_plans') as any).upsert(row)
                 if (cancelled) return
@@ -125,10 +140,11 @@ export function usePacePlans(raceId: string) {
             setLoading(false)
         })()
         return () => { cancelled = true }
-    }, [raceId, canEdit, user?.id])
+    }, [raceId, canEdit, user?.id, isDemoMode, overlayReady, overlay?.pacePlans])
 
     // Realtime: refetch on remote change so crew sees runner's edits (and vice-versa).
     React.useEffect(() => {
+        if (isDemoMode) return
         const channel = supabase
             .channel(`race_pace_plans:${raceId}`)
             .on(
@@ -141,10 +157,14 @@ export function usePacePlans(raceId: string) {
             )
             .subscribe()
         return () => { supabase.removeChannel(channel) }
-    }, [raceId])
+    }, [raceId, isDemoMode])
 
     const persist = async (next: PacePlans) => {
         if (!canEdit) return
+        if (isDemoMode) {
+            await savePacePlans(next)
+            return
+        }
         const row = plansToRow(next, raceId, user?.id ?? null)
         await (supabase.from('race_pace_plans') as any).upsert(row)
     }

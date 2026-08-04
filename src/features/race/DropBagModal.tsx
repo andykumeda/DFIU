@@ -3,6 +3,7 @@ import { Race, Waypoint, type Json } from '@/types/database'
 import { X, Save, Plus, Trash2, Clock, Sun, Moon, Info, CheckCircle2, Circle } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { useDemoRacePersist } from '@/features/demo/useDemoRacePersist'
 import {
     DROP_BAG_CATEGORIES,
     DropBagItem,
@@ -45,6 +46,7 @@ export interface DropBagCoverageRow {
 
 export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], isNight, canEdit = true, contentsOnly = false, onClose }: DropBagModalProps) {
     const queryClient = useQueryClient()
+    const { isDemoMode, saveWaypoints } = useDemoRacePersist(race.id)
     const [items, setItems] = useState<DropBagItem[]>([])
     const [newItemText, setNewItemText] = useState('')
     const [saving, setSaving] = useState(false)
@@ -109,13 +111,22 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], i
             return acc
         }, [])
         try {
+            const patch = {
+                drop_bag_items: itemsToSave as unknown as Json,
+                drop_bag_name: bagName,
+                drop_bag_notes: bagNotes
+            }
+            if (isDemoMode) {
+                const current = queryClient.getQueryData<Waypoint[]>(['waypoints', waypoint.course_id]) ?? []
+                const next = current.map(wp => wp.id === waypoint.id ? { ...wp, ...patch } : wp)
+                await saveWaypoints(waypoint.course_id, next)
+                setItems(itemsToSave)
+                onClose()
+                return
+            }
             const { error } = await supabase
                 .from('waypoints')
-                .update({
-                    drop_bag_items: itemsToSave as unknown as Json,
-                    drop_bag_name: bagName,
-                    drop_bag_notes: bagNotes
-                })
+                .update(patch)
                 .eq('id', waypoint.id)
                 .select('id')
                 .single()

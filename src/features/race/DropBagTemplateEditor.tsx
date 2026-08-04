@@ -8,6 +8,7 @@ import {
     DropBagTemplateItem,
     parseDropBagTemplate,
 } from './drop-bag-shared'
+import { useDemoRacePersist } from '@/features/demo/useDemoRacePersist'
 
 interface DropBagTemplateEditorProps {
     race: Race
@@ -16,6 +17,7 @@ interface DropBagTemplateEditorProps {
 
 export function DropBagTemplateEditor({ race, canEdit }: DropBagTemplateEditorProps) {
     const queryClient = useQueryClient()
+    const { isDemoMode, saveRacePatch } = useDemoRacePersist(race.id)
     const [open, setOpen] = useState(false)
     const [items, setItems] = useState<DropBagTemplateItem[]>(() => parseDropBagTemplate(race.drop_bag_template))
     const [newText, setNewText] = useState('')
@@ -30,6 +32,11 @@ export function DropBagTemplateEditor({ race, canEdit }: DropBagTemplateEditorPr
     const handleSave = async () => {
         setSaving(true)
         try {
+            if (isDemoMode) {
+                await saveRacePatch({ drop_bag_template: items as unknown as Race['drop_bag_template'] })
+                setOpen(false)
+                return
+            }
             const { error } = await (supabase.from('races') as any)
                 .update({ drop_bag_template: items })
                 .eq('id', race.id)

@@ -1,4 +1,5 @@
 import { useAuth } from './AuthContext'
+import { useDemoMode } from '@/features/demo/DemoModeContext'
 
 export interface Permission {
   canView: boolean
@@ -29,12 +30,32 @@ const emptyPermission: Permission = {
   availableRoleViews: [],
 }
 
+const demoPermission: Permission = {
+  canView: true,
+  canEdit: true,
+  canEditRaceSettings: true,
+  isOwner: true,
+  isAdmin: false,
+  isRunner: true,
+  isPacer: false,
+  isCrew: false,
+  canManageTeam: false,
+  canLogCheckins: false,
+  availableRoleViews: ['full'],
+}
+
 // Resolves a user's permission for a given race using the membership map
 // loaded by AuthContext. Public-race read access is handled at the data
 // layer (RLS); this hook only governs UI gating, so unknown raceId returns
 // no-perm for non-admins.
+// Demo mode (try-before-signup) grants planning edit affordances without team/live writes.
 export function usePermission(raceId: string | undefined, raceDirectorUserId?: string | null): Permission {
   const { user, isSiteAdmin, memberships } = useAuth()
+  const { isDemoMode } = useDemoMode()
+
+  if (isDemoMode && raceId) {
+    return demoPermission
+  }
 
   if (!user || !raceId) {
     return emptyPermission

@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
+import { setClaimDemoIntent } from '@/features/demo/demoStore'
 
 export function SignupForm() {
   const [email, setEmail] = useState('')
@@ -9,11 +10,14 @@ export function SignupForm() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const claimDemo = searchParams.get('claim_demo')
 
   const handleStravaSignup = async () => {
     try {
       setError(null)
       setLoading(true)
+      if (claimDemo) setClaimDemoIntent(claimDemo)
       const { data, error } = await supabase.functions.invoke('strava-auth', {
         body: { action: 'start', redirectUrl: window.location.origin + '/auth/strava/callback' }
       })
@@ -42,6 +46,7 @@ export function SignupForm() {
     }
 
     setLoading(true)
+    if (claimDemo) setClaimDemoIntent(claimDemo)
 
     const { error } = await supabase.auth.signUp({
       email,
@@ -52,14 +57,18 @@ export function SignupForm() {
       setError(error.message)
       setLoading(false)
     } else {
-      navigate('/dashboard')
+      navigate(claimDemo ? `/dashboard?claim_demo=${encodeURIComponent(claimDemo)}` : '/dashboard')
     }
   }
 
   return (
     <form onSubmit={handleSubmit} className='bg-neutral-900 border border-neutral-800 p-8 rounded-xl w-full max-w-md'>
       <h1 className='text-2xl font-bold text-white mb-2'>Create Account</h1>
-      <p className='text-neutral-400 mb-6'>Start planning your next ultra</p>
+      <p className='text-neutral-400 mb-6'>
+        {claimDemo
+          ? 'Create an account to save your demo event edits'
+          : 'Start planning your next ultra'}
+      </p>
 
       <div className="mb-6">
         <button

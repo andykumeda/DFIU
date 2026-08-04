@@ -474,6 +474,8 @@ export type Database = {
           id: string
           is_official: boolean
           is_public: boolean | null
+          official_revision: number
+          merged_official_revision: number | null
           public_share_enabled: boolean
           public_share_token: string | null
           location: string | null
@@ -523,6 +525,8 @@ export type Database = {
           id?: string
           is_official?: boolean
           is_public?: boolean | null
+          official_revision?: number
+          merged_official_revision?: number | null
           public_share_enabled?: boolean
           public_share_token?: string | null
           location?: string | null
@@ -572,6 +576,8 @@ export type Database = {
           id?: string
           is_official?: boolean
           is_public?: boolean | null
+          official_revision?: number
+          merged_official_revision?: number | null
           public_share_enabled?: boolean
           public_share_token?: string | null
           location?: string | null
@@ -946,6 +952,10 @@ export type Database = {
         }[]
       }
       sync_official_race_to_clones: { Args: { p_source_race_id: string }; Returns: number }
+      sync_official_race_to_clone: { Args: { p_clone_race_id: string }; Returns: boolean }
+      get_clone_update_status: { Args: { p_race_id: string }; Returns: Json }
+      dismiss_clone_official_update: { Args: { p_race_id: string }; Returns: boolean }
+      bump_official_revision: { Args: { p_source_race_id: string }; Returns: number }
       user_can_edit_race: { Args: { rid: string }; Returns: boolean }
       user_can_log_race_execution: { Args: { rid: string }; Returns: boolean }
       user_can_manage_team: { Args: { rid: string }; Returns: boolean }
