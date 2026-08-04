@@ -1,18 +1,22 @@
 # Handoff Document
 
 **Date:** 2026-08-04
-**Branch:** `main` @ `723fad5`
-**Status:** Persistent Training Analysis and Strava connection status deployed.
+**Branch:** `main` @ `9e50ec5`
+**Status:** Per-section Training Analysis deployed.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Frontend: `723fad5` (deployed; hard-refresh and compare the footer hash).
+- Frontend: `9e50ec5` (deployed; hard-refresh and compare the footer hash).
 - Wilson Loop: **9.95 unique on-course miles**, displayed as **74.9–84.9**. Its start snaps to race mile **78.78**.
 - Repository: `main` only; no extra worktrees or stale feature branches remain.
 
 ## Just finished
+
+- Training Analysis now compares every overlap pair independently—no combined training-run total. For example, Wilson Loop's race 78.8–84.9 / training 0–7.1 and race 74.9–78.6 / training 10.2–14.4 show distinct Plan A, moving-time, and delta results.
+- `strava-activity` now retrieves Strava's distance, time, and moving streams so each section uses its own recorded moving time. Activities without stream data retain a clearly labeled moving-time-only fallback.
+- Added a regression test for non-consecutive segments, verified 32 tests, build, lint (0 errors; 31 existing warnings), and deployed `strava-activity` v4 plus frontend `9e50ec5`.
 
 - Training Analysis now saves each route's entered Strava links/IDs and restores them after later visits and sessions. It continues to accept one run per line.
 - The Training Analysis connection area now clearly shows “Connected as [Strava username]”; existing connections are backfilled from Strava when needed, while new/reconnected accounts save their display name immediately.
