@@ -27,6 +27,7 @@ interface TerrainSidebarProps {
   canEdit: boolean
   highlightedTerrainId?: string | null
   onHoverNode?: (id: string | null) => void
+  onSelectNode?: (id: string) => void
   onSaveSegment: (startMile: number, endMile: number, type: string, difficulty: number) => Promise<void> | void
   onDeleteSegment: (segment: Segment) => Promise<void> | void
   onUpdateSegment?: (segment: Segment, startMile: number, endMile: number, type: TerrainTypeValue, difficulty: number) => Promise<void> | void
@@ -40,6 +41,7 @@ export function TerrainSidebar({
   canEdit,
   highlightedTerrainId,
   onHoverNode,
+  onSelectNode,
   onSaveSegment,
   onDeleteSegment,
   onUpdateSegment,
@@ -420,8 +422,11 @@ export function TerrainSidebar({
                   <button
                     type="button"
                     className="text-xs text-neutral-300 font-mono shrink-0 w-[76px] text-left hover:text-orange-300"
-                    onClick={() => canEdit && startEditSegment(seg)}
-                    title="Edit segment mileage"
+                    onClick={() => {
+                      onSelectNode?.(seg.startNodeId)
+                      if (canEdit) startEditSegment(seg)
+                    }}
+                    title={canEdit ? 'Select and edit segment mileage' : 'Select terrain segment'}
                   >
                     {seg.startMile.toFixed(2)}–{seg.endMile.toFixed(2)}
                   </button>

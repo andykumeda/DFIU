@@ -217,6 +217,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   const [hoveredMile, setHoveredMile] = useState<number | null>(null)
   const [hoveredWaypointId, setHoveredWaypointId] = useState<string | null>(null)
   const [hoveredTerrainId, setHoveredTerrainId] = useState<string | null>(null)
+  const [selectedTerrainId, setSelectedTerrainId] = useState<string | null>(null)
   // Pending segment: set by map 2-click or profile drag → triggers classification popup.
   // nodeId is set when editing an existing segment (vs defining a new range).
   const [pendingSegment, setPendingSegment] = useState<{ startMile: number; endMile: number; nodeId?: string } | null>(null)
@@ -806,6 +807,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   const clearPendingTerrainSegment = () => {
     setPendingSegment(null)
     setHoveredTerrainId(null)
+    setSelectedTerrainId(null)
   }
 
   const getRoutePointForMile = (mile: number) => {
@@ -849,6 +851,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     setPendingType((node.type === 'other' ? 'single_track' : node.type) as TerrainTypeValue)
     setPendingSegment({ startMile: node.mile, endMile, nodeId: node.id })
     setHoveredTerrainId(node.id)
+    setSelectedTerrainId(node.id)
   }
 
   const handleUpdateTerrainSegment = async (
@@ -1629,7 +1632,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                         })() : null}
 
 
-                        highlightedTerrainId={pendingSegment?.nodeId ?? hoveredTerrainId}
+                        highlightedTerrainId={pendingSegment?.nodeId ?? selectedTerrainId ?? hoveredTerrainId}
                         activeTerrainRange={pendingSegment ? { startMile: pendingSegment.startMile, endMile: pendingSegment.endMile } : null}
                         terrainNodes={isOwner ? terrainNodes : []}
                         onTerrainNodeClick={isOwner && isTerrainEditMode ? handleEditTerrainSegment : undefined}
@@ -1876,8 +1879,9 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                         if (editing) setIsWaypointEditMode(false)
                         clearPendingTerrainSegment()
                       }}
-                      highlightedTerrainId={pendingSegment?.nodeId ?? hoveredTerrainId}
+                      highlightedTerrainId={pendingSegment?.nodeId ?? selectedTerrainId ?? hoveredTerrainId}
                       onHoverNode={setHoveredTerrainId}
+                      onSelectNode={setSelectedTerrainId}
                       onSaveSegment={handleSaveTerrainSegment}
                       onDeleteSegment={handleDeleteTerrainSegmentRange}
                       onUpdateSegment={handleUpdateTerrainSegment}

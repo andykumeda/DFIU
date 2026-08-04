@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-04
 **Branch:** `main` @ `172862c`
-**Status:** Terrain map legend and landmark visibility toggle deployed.
+**Status:** Adding persistent terrain-segment selection highlighting to the map.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 

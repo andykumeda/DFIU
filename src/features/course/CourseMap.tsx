@@ -396,6 +396,7 @@ export function CourseMap({
             }
 
 
+            if (m.getLayer('terrain-segments-highlight')) m.removeLayer('terrain-segments-highlight')
             if (m.getLayer('terrain-segments')) m.removeLayer('terrain-segments')
             if (m.getSource('terrain-segments')) m.removeSource('terrain-segments')
 
@@ -460,8 +461,24 @@ export function CourseMap({
                 layout: { 'line-join': 'round', 'line-cap': 'round' },
                 paint: {
                     'line-color': ['get', 'color'],
-                    'line-width': ['case', ['boolean', ['feature-state', 'hover'], false], 10, 6]
+                    'line-width': ['case', ['boolean', ['feature-state', 'selected'], false], 9, 6]
                 }
+            })
+
+            // A white outline makes the selected segment unmistakable on every
+            // terrain color and basemap, while the colored line remains visible.
+            m.addLayer({
+                id: 'terrain-segments-highlight',
+                type: 'line',
+                source: 'terrain-segments',
+                filter: ['boolean', ['feature-state', 'selected'], false],
+                layout: { 'line-join': 'round', 'line-cap': 'round' },
+                paint: {
+                    'line-color': '#ffffff',
+                    'line-width': 15,
+                    'line-gap-width': 9,
+                    'line-opacity': 0.95,
+                },
             })
 
             // ... interactions ...
@@ -481,7 +498,7 @@ export function CourseMap({
             if (m.getSource('terrain-segments')) {
                 m.setFeatureState(
                     { source: 'terrain-segments', id: lastHighlightedTerrainRef.current },
-                    { hover: false }
+                    { selected: false }
                 )
             }
         }
@@ -491,13 +508,13 @@ export function CourseMap({
             if (m.getSource('terrain-segments')) {
                 m.setFeatureState(
                     { source: 'terrain-segments', id: highlightedTerrainId },
-                    { hover: true }
+                    { selected: true }
                 )
             }
         }
 
         lastHighlightedTerrainRef.current = highlightedTerrainId || null
-    }, [highlightedTerrainId, mapLoaded, terrainNodes]) // terrainNodes dep ensures we re-apply if layer rebuilds
+    }, [highlightedTerrainId, mapLoaded, styleLoaded, terrainNodes]) // terrainNodes dep ensures we re-apply if layer rebuilds
 
     // Click a terrain segment line on the map to select it for editing.
     useEffect(() => {
