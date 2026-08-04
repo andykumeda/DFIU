@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-04
 **Branch:** `main` @ `c5ae764`
-**Status:** Terrain-aware hybrid pace prediction and Training fixes deployed.
+**Status:** Fixing the terrain-node constraint for new pacing terrain labels.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
