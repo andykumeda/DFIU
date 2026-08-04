@@ -1,14 +1,14 @@
 # Handoff Document
 
 **Date:** 2026-08-03
-**Branch:** `main` @ `eb49576`
-**Status:** Strava connection transfer is pending explicit approval because it would displace another DFIU user's existing link.
+**Branch:** `main` @ `e6bbfc0`
+**Status:** Approved OAuth-proven Strava connection transfer is deployed.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Frontend: `eb49576` (deployed; hard-refresh and compare the footer hash).
+- Frontend: `e6bbfc0` (deployed; hard-refresh and compare the footer hash).
 - Wilson Loop: **9.95 unique on-course miles**, displayed as **74.9–84.9**. Its start snaps to race mile **78.78**.
 - Repository: `main` only; no extra worktrees or stale feature branches remain.
 
@@ -29,10 +29,10 @@
 - Fixed the Strava callback session failure. Training Analysis now binds a Strava authorization to the currently signed-in participant's DFIU account and keeps it separate from the event owner; activity lookup only ever uses that participant's token.
 - Replaced the fragile temporary-password handoff, deployed both Strava functions, and added a regression test so Edge Function responses show their real error message. Verified 30 tests, both Deno Edge Function checks, lint (0 errors; 31 existing warnings), and production deployment.
 - Removed the legacy Strava sign-in user-list lookup, which did not reliably filter by email. Sign-in now resolves only through the unique Strava athlete-to-DFIU-user mapping; a Strava account already attached to another user is rejected rather than reassigned.
+- With explicit approval, added a server-side transfer for an OAuth-proven athlete connection. It replaces only the current participant's prior connection and moves the athlete mapping without involving the event owner.
 
 ## Open / follow-up
 
-- Pending approval: a participant can prove control of a Strava account via OAuth, but transferring its existing link would displace another DFIU user's connection. Do not deploy that behavior without explicit user approval.
 - **Priority follow-up:** the failed legacy callback updated one real DFIU account before it failed, so that account's prior password may have been replaced. Do not reset or delete it without confirming the account owner; use the normal password-recovery flow with that person if needed.
 - Rotate the previously tracked Strava client secret and confirm Supabase function secrets.
 - Reconcile Supabase migration history before the next `db push`: the new `strava_connections` schema was applied directly because the remote history already contains migrations absent locally. The tracked migration is `20260804012144_strava_activity_connections.sql`; do not run migration repair blindly.
