@@ -1,35 +1,42 @@
 # Handoff Document
 
 **Date:** 2026-08-03
-**Branch:** `main` @ `d56f550`
-**Status:** Cleaning stale repository state, then fixing Training detail-map rendering and Wilson Loop overlap accuracy.
+**Branch:** `main` @ `4a737c0`
+**Status:** Training detail map and Wilson Loop overlap are fixed, deployed, and production data is corrected.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Frontend: `e5ba884` (hard-refresh; compare footer via `git describe --always --dirty --abbrev=7`).
-- Wilson Loop overlap: **~9.9 mi on course (74.9–84.9)**; lap finish **~10.4 mi (90.4–100.8)**.
-- Extra worktree (unchanged): `/Users/andy/.codex/worktrees/9dfe/DFIU` on `codex/fix-vite-chunk-deploy`.
+- Frontend: `4a737c0` (deployed; hard-refresh and compare the footer hash).
+- Wilson Loop: **9.95 unique on-course miles**, displayed as **74.9–84.9**. Its start snaps to race mile **78.78**.
+- Repository: `main` only; no extra worktrees or stale feature branches remain.
 
 ## Just finished
 
-- Lazy Mapbox Training detail map (ResizeObserver + SVG fallback).
-- Overlap uses unique course-mile coverage; DB recomputed.
+- Removed stale generated/review artifacts, an obsolete one-off migration script, and superseded handoff notes.
+- Reconciled and removed `codex/fix-vite-chunk-deploy`; retained its useful deploy safeguards on `main` (`c372a00`).
+- Refreshed patched dependencies without the React Router breaking downgrade (`b64d8f6`). Two audit findings remain limited to React Router RSC mode, which this BrowserRouter SPA does not use.
+- Fixed Training detail-map drawing by synchronizing custom layers directly with Mapbox style readiness and stabilizing map props/callbacks. SVG fallback remains available when WebGL cannot initialize.
+- Fixed overlap recomputation so it always derives updates from current geometries and surfaces database read/write failures instead of silently leaving stale values.
+- Backfilled the production Wilson Loop row from its current GPX and the current Angeles Crest 100 GPX.
+- Verified 27 tests, TypeScript production build, lint (0 errors; 31 existing warnings), WebGL rendering, SVG fallback, repeated map mount/unmount, and production deployment.
 
 ## Active task
 
-- Remove superseded local/worktree artifacts after preserving useful deployment safeguards.
-- Reproduce Wilson Loop against the stored training/course GPX geometry.
-- Fix the detailed route map and course-mile overlap calculation with regression coverage.
+- None.
 
 ## Open / follow-up
 
-- Pace copy: duration + `(pace/mi)` only.
-- Dirty `DEPLOYMENT.md` / `scripts/deploy-remote.sh` still uncommitted.
-- Rotate Strava client secret; RBAC E2E; `/admin`; Pacer View; offline Crew PWA.
+- Rotate the previously tracked Strava client secret and confirm Supabase function secrets.
+- Apply the share-token migration and deploy the `weather` / updated `strava-auth` Edge Functions.
+- Verify RBAC and invite flows end-to-end with a second account.
+- Build `/admin` and owner-transfer UI.
+- Finish or retire Pacer View; decide whether offline/PWA Crew View remains a priority.
+- Revisit Training pace copy (duration plus `(pace/mi)` only) if still desired.
+- Consider additional code splitting for the existing large-chunk build warnings.
 
 ## Workflow reminders
 
-- `npm test` / `npm run build` then `npm run deploy`; record `git describe --always --dirty --abbrev=7`.
+- Run `npm test` / `npm run build`, then `npm run deploy`; record `git describe --always --dirty --abbrev=7`.
 - Do not use GPG signing. Do not remove `scripts/verify-critical-files.sh`.
