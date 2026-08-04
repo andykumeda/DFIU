@@ -118,6 +118,7 @@ serve(async (req) => {
         if (!activityResponse.ok) throw new HttpError('Unable to load this Strava activity', 502)
 
         const data = await activityResponse.json()
+        const stream = await getActivityDistanceTimeStream(accessToken, activityId)
         return json({
             id: data.id,
             name: typeof data.name === 'string' ? data.name : 'Strava activity',
@@ -125,6 +126,7 @@ serve(async (req) => {
             movingSeconds: Number(data.moving_time) || 0,
             distanceMiles: Number.isFinite(Number(data.distance)) ? Number(data.distance) / 1609.344 : null,
             startDate: typeof data.start_date === 'string' ? data.start_date : null,
+            stream,
         })
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Unable to load Strava activity'
@@ -139,6 +141,46 @@ function parseActivityId(value: unknown): string | null {
     if (/^\d+$/.test(trimmed)) return trimmed
     const match = trimmed.match(/strava\.com\/activities\/(\d+)(?:[/?#]|$)/i)
     return match?.[1] ?? null
+}
+
+type ActivityDistanceTimeStream = {
+    distanceMeters: number[]
+    elapsedSeconds: number[]
+    moving: boolean[]
+}
+
+async function getActivityDistanceTimeStream(accessToken: string, activityId: string): Promise<ActivityDistanceTimeStream | null> {
+    // This is intentionally optional: Strava can omit streams for some older
+    // or privacy-restricted activities, in which case the client uses its safe
+    // moving-time-only distance-weighted fallback.
+    const params = new URLSearchParams({
+        keys: 'time,distance,moving',
+        key_by_type: 'true',
+    })
+    const response = await fetch(`https://www.strava.com/api/v3/activities/${activityId}/streams?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+    })
+    if (!response.ok) return null
+
+    const streams = await response.json() as Record<string, { data?: unknown }>
+    const distanceMeters = numberStream(streams.distance?.data)
+    const elapsedSeconds = numberStream(streams.time?.data)
+    const moving = booleanStream(streams.moving?.data)
+    if (distanceMeters.length < 2 || distanceMeters.length !== elapsedSeconds.length || elapsedSeconds.length !== moving.length) {
+        return null
+    }
+    return { distanceMeters, elapsedSeconds, moving }
+}
+
+function numberStream(data: unknown): number[] {
+    if (!Array.isArray(data)) return []
+    const values = data.map(Number)
+    return values.every(Number.isFinite) ? values : []
+}
+
+function booleanStream(data: unknown): boolean[] {
+    if (!Array.isArray(data)) return []
+    return data.map(value => value === true || value === 1 || value === 'true')
 }
 
 async function getValidAccessToken(input: {

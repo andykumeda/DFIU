@@ -11,6 +11,22 @@ export interface TrainingPlanSummary {
   raceDurationLabel: string | null
   trainingMilesLabel: string
   trainingMilesTotal: number
+  segments: TrainingPlanSegment[]
+}
+
+export interface TrainingPlanSegment {
+  courseMilesLabel: string
+  trainingMilesLabel: string
+  trainingStartMi: number
+  trainingEndMi: number
+  raceDurationMinutes: number | null
+  raceDurationLabel: string | null
+}
+
+export interface ActivityDistanceTimeStream {
+  distanceMeters: number[]
+  elapsedSeconds: number[]
+  moving: boolean[]
 }
 
 export interface TrainingAnalysisDelta {
@@ -70,6 +86,14 @@ export function buildTrainingPlanSummary(
       .map(segment => `${formatMile(segment.trainingStartMi)}–${formatMile(segment.trainingEndMi)}`)
       .join(', '),
     trainingMilesTotal,
+    segments: segments.map((segment, index) => ({
+      courseMilesLabel: `${formatMile(segment.courseStartMi)}–${formatMile(segment.courseEndMi)}`,
+      trainingMilesLabel: `${formatMile(segment.trainingStartMi)}–${formatMile(segment.trainingEndMi)}`,
+      trainingStartMi: segment.trainingStartMi,
+      trainingEndMi: segment.trainingEndMi,
+      raceDurationMinutes: paces[index]?.durationMin ?? null,
+      raceDurationLabel: paces[index] ? formatDurationWords(paces[index].durationMin) : null,
+    })),
   }
 }
 
@@ -86,6 +110,43 @@ export function getOverlappingMovingMinutes(
   if (!(movingSeconds > 0) || !(overlappingTrainingMiles > 0)) return null
   if (!activityMiles || activityMiles <= 0) return null
   return (movingSeconds / 60) * Math.min(1, overlappingTrainingMiles / activityMiles)
+}
+
+/**
+ * Moving time for one matched portion of a training activity. When Strava's
+ * time/distance/moving streams are available, this preserves the actual timing
+ * of that part of the run (even when other matched portions are non-consecutive).
+ * Older activities without streams safely fall back to a distance-weighted share
+ * of Strava's moving time—never elapsed time.
+ */
+export function getTrainingSegmentMovingMinutes(
+  movingSeconds: number,
+  activityMiles: number | null,
+  segment: Pick<TrainingPlanSegment, 'trainingStartMi' | 'trainingEndMi'>,
+  stream?: ActivityDistanceTimeStream | null
+): number | null {
+  const startMi = Math.min(segment.trainingStartMi, segment.trainingEndMi)
+  const endMi = Math.max(segment.trainingStartMi, segment.trainingEndMi)
+  if (!(endMi > startMi)) return null
+
+  const distance = stream?.distanceMeters
+  const elapsed = stream?.elapsedSeconds
+  const moving = stream?.moving
+  if (distance && elapsed && moving && distance.length === elapsed.length && elapsed.length === moving.length && distance.length > 1) {
+    let movingSecondsInSegment = 0
+    for (let index = 1; index < distance.length; index += 1) {
+      const intervalStartMi = Number(distance[index - 1]) / 1609.344
+      const intervalEndMi = Number(distance[index]) / 1609.344
+      const intervalMiles = intervalEndMi - intervalStartMi
+      const intervalSeconds = Number(elapsed[index]) - Number(elapsed[index - 1])
+      if (!moving[index] || !(intervalMiles > 0) || !(intervalSeconds > 0)) continue
+      const sharedMiles = Math.max(0, Math.min(endMi, intervalEndMi) - Math.max(startMi, intervalStartMi))
+      movingSecondsInSegment += intervalSeconds * (sharedMiles / intervalMiles)
+    }
+    return movingSecondsInSegment > 0 ? movingSecondsInSegment / 60 : null
+  }
+
+  return getOverlappingMovingMinutes(movingSeconds, activityMiles, endMi - startMi)
 }
 
 export function getTrainingAnalysisDelta(

@@ -10,7 +10,7 @@ import {
   buildTrainingPlanSummary,
   formatDurationWords,
   getTrainingAnalysisDelta,
-  getOverlappingMovingMinutes,
+  getTrainingSegmentMovingMinutes,
 } from './training-analysis'
 
 interface StravaActivity {
@@ -20,6 +20,11 @@ interface StravaActivity {
   movingSeconds: number
   distanceMiles: number | null
   startDate: string | null
+  stream?: {
+    distanceMeters: number[]
+    elapsedSeconds: number[]
+    moving: boolean[]
+  } | null
 }
 
 interface StravaConnectionStatus {
@@ -41,7 +46,6 @@ interface TrainingAnalysisPanelProps {
 export function TrainingAnalysisPanel({
   routes,
   planA,
-  planAGoalMinutes,
   race,
   clock24h,
   hideRoutePicker = false,
@@ -86,7 +90,7 @@ export function TrainingAnalysisPanel({
       setError('Paste a Strava activity link or enter its numeric activity ID.')
       return
     }
-    if (!summary?.raceDurationMinutes) {
+    if (!summary?.segments.some(segment => segment.raceDurationMinutes != null)) {
       setError('Set a valid Plan A goal before comparing a training activity.')
       return
     }
@@ -198,7 +202,7 @@ export function TrainingAnalysisPanel({
           <button
             type="button"
             onClick={() => void analyzeActivity()}
-            disabled={loading || !summary?.raceDurationMinutes}
+            disabled={loading || !summary?.segments.some(segment => segment.raceDurationMinutes != null)}
             className="inline-flex items-center justify-center gap-2 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-lg text-sm font-medium"
           >
             {loading && <LoaderCircle className="w-4 h-4 animate-spin" aria-hidden />}
@@ -225,22 +229,20 @@ export function TrainingAnalysisPanel({
         </div>
 
         {summary ? (
-          <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-            <SummaryMetric
-              label="Race segment"
-              value={`${summary.raceMilesLabel} mi`}
-              detail={`Plan A ${summary.raceDurationLabel ?? 'not generated'}`}
-            />
-            <SummaryMetric
-              label="Training portions"
-              value={`${summary.trainingMilesLabel} mi`}
-              detail={`${summary.trainingMilesTotal.toFixed(1)} mi total on route`}
-            />
-            <SummaryMetric
-              label="Plan A goal"
-              value={planAGoalMinutes > 0 ? formatDurationWords(planAGoalMinutes) : 'Not generated'}
-              detail="overall race goal"
-            />
+          <div className="mt-5">
+            <p className="text-xs text-neutral-500 mb-3">
+              Each matched section is analyzed separately. Non-consecutive training miles are never combined.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+              {summary.segments.map((segment, index) => (
+                <SummaryMetric
+                  key={`${segment.courseMilesLabel}-${segment.trainingMilesLabel}`}
+                  label={`Section ${index + 1}: race mi ${segment.courseMilesLabel}`}
+                  value={`Plan A ${segment.raceDurationLabel ?? 'not generated'}`}
+                  detail={`training mi ${segment.trainingMilesLabel}`}
+                />
+              ))}
+            </div>
           </div>
         ) : (
           <p className="mt-5 text-sm text-neutral-500">
@@ -266,36 +268,44 @@ export function TrainingAnalysisPanel({
         )}
 
         {activities.map(activity => {
-          const overlapMovingMinutes = summary
-            ? getOverlappingMovingMinutes(activity.movingSeconds, activity.distanceMiles, summary.trainingMilesTotal)
-            : null
-          const comparison = overlapMovingMinutes != null && summary?.raceDurationMinutes != null
-            ? getTrainingAnalysisDelta(overlapMovingMinutes, summary.raceDurationMinutes)
-            : null
-          if (!comparison || !summary) return null
+          if (!summary) return null
+          const comparisons = summary.segments.flatMap((segment, index) => {
+            const movingMinutes = getTrainingSegmentMovingMinutes(
+              activity.movingSeconds,
+              activity.distanceMiles,
+              segment,
+              activity.stream
+            )
+            if (movingMinutes == null || segment.raceDurationMinutes == null) return []
+            return [{ segment, index, movingMinutes, delta: getTrainingAnalysisDelta(movingMinutes, segment.raceDurationMinutes) }]
+          })
+          if (comparisons.length === 0) return null
           return <div key={activity.id} className="mt-5 rounded-lg border border-neutral-700 bg-neutral-950/70 p-4">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <div>
                 <p className="text-sm font-medium text-white">{activity.name}</p>
-                <p className="text-xs text-neutral-500 mt-1">Uses moving time, weighted to this route&apos;s overlapping training miles only.</p>
+                <p className="text-xs text-neutral-500 mt-1">
+                  {activity.stream
+                    ? 'Uses Strava moving-time data for each individual training section.'
+                    : 'Uses Strava moving time, weighted separately for each individual training section.'}
+                </p>
               </div>
-              <p
-                className={
-                  comparison.tone === 'faster'
-                    ? 'text-sm font-medium text-emerald-300'
-                    : comparison.tone === 'slower'
-                      ? 'text-sm font-medium text-orange-300'
-                      : 'text-sm font-medium text-neutral-200'
-                }
-              >
-                {comparison.label}
-              </p>
             </div>
-            <dl className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
-              <SummaryMetric label="Overlap moving time" value={overlapMovingMinutes != null ? formatDurationWords(overlapMovingMinutes) : '—'} />
-              <SummaryMetric label="Plan A overlap" value={summary.raceDurationLabel ?? '—'} />
-              <SummaryMetric label="Delta" value={comparison.label} />
-            </dl>
+            <div className="mt-4 space-y-3">
+              {comparisons.map(({ segment, index, movingMinutes, delta }) => (
+                <div key={`${segment.courseMilesLabel}-${segment.trainingMilesLabel}`} className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-3">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <p className="text-sm font-medium text-white">Section {index + 1}: race mi {segment.courseMilesLabel}</p>
+                    <p className={delta.tone === 'faster' ? 'text-sm font-medium text-emerald-300' : delta.tone === 'slower' ? 'text-sm font-medium text-orange-300' : 'text-sm font-medium text-neutral-200'}>{delta.label}</p>
+                  </div>
+                  <dl className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                    <SummaryMetric label="Training miles" value={`${segment.trainingMilesLabel} mi`} />
+                    <SummaryMetric label="Moving time" value={formatDurationWords(movingMinutes)} />
+                    <SummaryMetric label="Plan A time" value={segment.raceDurationLabel ?? '—'} />
+                  </dl>
+                </div>
+              ))}
+            </div>
           </div>
         })}
       </div>

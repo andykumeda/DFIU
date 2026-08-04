@@ -4,6 +4,7 @@ import {
   buildTrainingPlanSummary,
   getTrainingAnalysisDelta,
   getOverlappingMovingMinutes,
+  getTrainingSegmentMovingMinutes,
 } from './training-analysis'
 
 function makePlan(
@@ -53,6 +54,10 @@ describe('buildTrainingPlanSummary', () => {
     expect(summary!.raceDurationLabel).toBe('3 hours 50 mins')
     expect(summary!.trainingMilesLabel).toBe('0–6.1, 10–14')
     expect(summary!.trainingMilesTotal).toBeCloseTo(10.1, 4)
+    expect(summary!.segments).toEqual([
+      expect.objectContaining({ courseMilesLabel: '78.7–84.8', trainingMilesLabel: '0–6.1', raceDurationLabel: '3 hours 20 mins' }),
+      expect.objectContaining({ courseMilesLabel: '74.8–78.6', trainingMilesLabel: '10–14', raceDurationLabel: '30 mins' }),
+    ])
   })
 })
 
@@ -69,5 +74,22 @@ describe('getTrainingAnalysisDelta', () => {
 describe('getOverlappingMovingMinutes', () => {
   it('uses moving time and excludes non-overlapping training miles', () => {
     expect(getOverlappingMovingMinutes(120 * 60, 20, 5)).toBe(30)
+  })
+})
+
+describe('getTrainingSegmentMovingMinutes', () => {
+  it('keeps non-consecutive training portions separate using Strava moving stream data', () => {
+    const activity = {
+      movingSeconds: 9999,
+      distanceMiles: 15,
+      stream: {
+        distanceMeters: [0, 1609.344, 2 * 1609.344, 10 * 1609.344, 11 * 1609.344, 12 * 1609.344, 14 * 1609.344, 15 * 1609.344],
+        elapsedSeconds: [0, 600, 1200, 4200, 4800, 5400, 6000, 6600],
+        moving: [true, true, true, false, true, true, true, true],
+      },
+    }
+
+    expect(getTrainingSegmentMovingMinutes(activity.movingSeconds, activity.distanceMiles, { trainingStartMi: 0, trainingEndMi: 2 }, activity.stream)).toBeCloseTo(20)
+    expect(getTrainingSegmentMovingMinutes(activity.movingSeconds, activity.distanceMiles, { trainingStartMi: 10, trainingEndMi: 14 }, activity.stream)).toBeCloseTo(30)
   })
 })
