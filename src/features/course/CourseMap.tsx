@@ -10,6 +10,7 @@ import MapStyleSwitcher from './MapStyleSwitcher'
 import { getNearestPointOnLine, getDistanceFromStart, getCoordinateAtDistance, getDistanceAtCoordinate } from '@/lib/geo-utils'
 import styles from './CourseMap.module.css'
 import { getTerrainColor, TERRAIN_TYPES } from './terrain-constants'
+import { mapLabelForWaypointGroup } from './waypoint-labels'
 
 type TerrainPoint = { lat: number, lon: number, mile: number }
 const TERRAIN_START_PICK_DISTANCE_MILES = 0.5
@@ -846,9 +847,7 @@ export function CourseMap({
             features: groups.map(group => {
                 group.sort((a, b) => a.mile - b.mile)
                 const primaryWp = group[0]
-                const label = group.length === 1
-                    ? primaryWp.name
-                    : group.map(wp => wp.name).join(' / ')
+                const label = mapLabelForWaypointGroup(group.map(wp => wp.name))
                 return {
                     type: 'Feature',
                     properties: { label },
