@@ -2,21 +2,19 @@
 
 **Date:** 2026-08-05
 **Branch:** `main`
-**Status:** In progress — widen map stack radius for out-and-back aids.
+**Status:** Out-and-back aid map stacking widened to 0.06 mi.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Frontend: `93c7ef3` (multi-visit aid map labels use shared base name). Hard-refresh and compare the footer hash.
+- Frontend: `7f6578e` (out-and-back aids stack within 0.06 mi; map shows base name). Hard-refresh and compare the footer hash.
 - AC100 training overlaps backfilled in DB (all 6 routes).
-- Repository: `main` @ `c08c79a` on `origin/main`.
-
-## In progress
-
-- Shortcut Saddle / Chilao visits are ~15–50 m apart (outside the old ~11 m epsilon), so they never stacked. Widening stack radius to 0.06 mi and stripping visit suffixes on map labels.
+- Repository: `main` @ `7f6578e` on `origin/main`.
 
 ## Just finished
+
+- Widened map waypoint stacking to 0.06 mi so Shortcut Saddle / Chilao (and Newcomb) merge to one marker + base-name label; Drop Bags keep visit names (`7f6578e`).
 
 - Map labels for colocated multi-visit aids (e.g. Shortcut Saddle 1/2) show the shared base name once; Drop Bags and waypoint lists keep full visit names (`93c7ef3`).
 
