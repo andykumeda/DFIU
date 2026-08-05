@@ -1,38 +1,20 @@
 # Handoff Document
 
 **Date:** 2026-08-05
-**Branch:** `cursor/fix-races-42501-f322` (off `main` @ `b440131`)
-**Status:** Race-list 42501 diagnosed; code fix ready. **Apply GRANT locally** — cloud cannot auth Supabase MCP.
+**Branch:** `main`
+**Status:** Race-list 42501 fixed (GRANT applied + PR #5 merged; deploy hash below).
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
-## Active now — local-only (required)
-
-Production race lists fail with PostgREST `42501 permission denied for table races`.
-
-**Root cause:** `20260728_restrict_public_share_token` switched `races` to per-column SELECT grants; later `official_revision` / `merged_official_revision` (in `RACE_SELECT`) were never granted to `anon`/`authenticated`.
-
-**Do this locally (cloud cannot):**
-
-1. In Supabase SQL editor (or scoped CLI against the linked project), run:
-   ```sql
-   GRANT SELECT (official_revision, merged_official_revision)
-     ON TABLE public.races TO anon, authenticated;
-   ```
-2. Confirm with anon: `select=id,official_revision` returns 200 (not 42501).
-3. Merge/deploy `cursor/fix-races-42501-f322` (supersedes draft PRs #3 and #4).
-4. Close obsolete drafts #3 (`cursor/fix-race-column-grants-6937`) and #4 (`cursor/fix-races-error-message-dccd`).
-
-Branch already includes: migration `20260805130000_grant_official_merge_columns.sql`, `getErrorMessage` for RaceList, and `NewRacePage` `.select(RACE_SELECT)`.
-
 ## Current production snapshot
 
-- Frontend: `92df8dd` (deployed; hard-refresh and compare the footer hash). Race lists that use full `RACE_SELECT` are broken until the GRANT above is applied.
-- Working branch: `cursor/fix-races-42501-f322`.
+- Frontend: `e6ebe22` (deployed; hard-refresh and compare the footer hash).
+- Wilson Loop: **9.95 unique on-course miles**, displayed as **74.9–84.9**. Its start snaps to race mile **78.78**.
+- Repository: `main` only; obsolete drafts #3/#4 closed after #5 merged.
 
 ## Just finished
 
-- Diagnosed production "Failed to load races" / "Unknown error" as column-level `42501` on `official_revision` / `merged_official_revision`. Cloud agent cannot apply the GRANT (Supabase MCP `needsAuth`; interactive auth is desktop-only). Fix packaged on `cursor/fix-races-42501-f322` for local apply + merge.
+- Fixed production race-list `42501`: applied `GRANT SELECT (official_revision, merged_official_revision) ON public.races TO anon, authenticated` on DFIU; merged PR #5 (`getErrorMessage`, `NewRacePage` `.select(RACE_SELECT)`, tracked migration `20260805130000_grant_official_merge_columns.sql`). Anon probe `select=id,official_revision` returns 200. Closed superseded drafts #3/#4 and deleted their remote branches. Verified 44 tests, production build, lint path unchanged; deployed frontend `e6ebe22`.
 
 - Guest try-before-signup demo (`?demo=1`): anonymous users edit a public event into an IndexedDB overlay, then claim into a private `clone_race` on signup/login. Official clones no longer auto-sync; owners get a merge/dismiss banner when `official_revision` advances. Migration `20260805120000_opt_in_official_merge` applied on DFIU. Verified 39 tests, production build, lint (0 errors), deployed frontend `92df8dd`.
 
