@@ -8,9 +8,9 @@
 
 ## Current production snapshot
 
-- Frontend: deploy just shipped (dirty tree during build — refresh after commit hash is known). Hard-refresh and compare the footer hash.
+- Frontend: `0b8b18c` (ability prediction hidden; amenity icons aligned). Hard-refresh and compare the footer hash.
 - AC100 training overlaps backfilled in DB (all 6 routes).
-- Repository: `main` — amenity icon + prediction UI commit pending push.
+- Repository: `main` @ `0b8b18c` on `origin/main`.
 
 ## Just finished
 
