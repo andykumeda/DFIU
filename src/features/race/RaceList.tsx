@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { RACE_SELECT } from '@/lib/race-select'
 import { useAuth } from '@/features/auth/AuthContext'
 import type { Race } from '@/types/database'
-import { formatDate } from '@/lib/utils'
+import { formatDate, getErrorMessage } from '@/lib/utils'
 import { CheckCircle2, Search } from 'lucide-react'
 
 interface RaceListProps {
@@ -102,7 +102,7 @@ export function RaceList({ mode = 'user', showSearch = mode === 'public' }: Race
     return (
       <div className='p-8 bg-red-900/20 border border-red-900/50 rounded-xl text-red-400 text-center'>
         <h3 className='font-bold mb-2'>Failed to load races</h3>
-        <p className='text-sm'>{error instanceof Error ? error.message : 'Unknown error'}</p>
+        <p className='text-sm'>{getErrorMessage(error)}</p>
       </div>
     )
   }

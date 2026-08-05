@@ -1,6 +1,7 @@
 import { useState, useMemo, Suspense, lazy } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
+import { RACE_SELECT } from '@/lib/race-select'
 import { GpxUploader } from '@/features/course/GpxUploader'
 import { ElevationProfile } from '@/features/course/ElevationProfile'
 import { CourseStats } from '@/features/course/CourseStats'
@@ -59,7 +60,8 @@ export default function NewRacePage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: race, error: raceError } = await (supabase.from('races') as any)
         .insert(raceData)
-        .select()
+        // Column-level SELECT grants omit public_share_token; never select('*').
+        .select(RACE_SELECT)
         .single()
 
       if (raceError) throw raceError
