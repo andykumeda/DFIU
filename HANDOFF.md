@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-05
 **Branch:** `main`
-**Status:** Race-list 42501 fixed (GRANT applied + PR #5 merged; deploy hash below).
+**Status:** Race-list 42501 fixed (GRANT applied + PR #5 merged/deployed).
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
