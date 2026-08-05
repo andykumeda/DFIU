@@ -2,108 +2,29 @@
 
 **Date:** 2026-08-05
 **Branch:** `main`
-**Status:** In progress — training detail map UI (in-map legend, race-course color, Plan A time/duration); prior overlap algorithm rewrite still uncommitted.
+**Status:** Training overlap out-and-back fix committed (`0de0c5b`); clean-hash redeploy next. Parallel training-detail map UI WIP is stashed as `wip training detail map UI`.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Frontend: `45c01bc` (deployed; hard-refresh and compare the footer hash).
-- Wilson Loop: **9.95 unique on-course miles**, displayed as **74.9–84.9**. Its start snaps to race mile **78.78**.
-- Repository: `main` only; obsolete drafts #3/#4 closed after #5 merged.
-
-## In progress
-
-- Training route detail UI:
-  - Move color legend into the map (terrain-legend style).
-  - Race course line: standout color distinct from blue training / orange overlap.
-  - Plan A overlap line: time of day + duration `(H:MM)`; drop min/mi pace.
-- Training overlap rewrite in `computeTrainingOverlap` (uncommitted from prior session):
-  - **Shortcut to Newcomb:** two race visits → `42.7→33.2` and `72.4→63.0` (different times of day); ~18.9 mi on course.
-  - **Shortcut to Hillyer:** continuous race out-and-back → one span `42.6→63.4` (~20.7 mi); no gap.
-  - **Chantry to Finish:** finish start/finish-colocation bug fixed (now `82.3–100.8`); remaining gap `80.1–82.3` is a real ~0.7 mi Wilson-area shortcut (~0.37 mi off course), not an algorithm false negative.
-  - Wilson Loop unchanged. Unit tests updated. Backfill AC100 routes still pending after this deploy.
+- Frontend: redeploy pending for `0de0c5b` (prior live was `45c01bc`).
+- AC100 training overlaps backfilled in DB (all 6 routes).
+- Repository: `main` ahead of `origin/main`; stash holds training detail map UI edits.
 
 ## Just finished
 
+- Fixed training-route / race-course overlap for out-and-backs and start/finish colocation (`0de0c5b`):
+  - **Shortcut to Newcomb:** disconnected race visits → `42.7→33.2` and `72.4→63.0` (~18.9 mi); different times of day.
+  - **Shortcut to Hillyer:** continuous race out-and-back → one span `42.6→63.4` (~20.7 mi); no gap.
+  - **Chantry to Finish:** finish continuity fixed (`82.3–100.8`); gap `80.1–82.3` is a real Wilson-area shortcut (~0.37 mi off course), not a false negative.
+  - Wilson Loop unchanged. Docs: `docs/ALGORITHMS.md`. Verified 46 tests, lint 0 errors, production build. DB backfilled.
+
 - Fixed production race-list `42501`: applied `GRANT SELECT (official_revision, merged_official_revision) ON public.races TO anon, authenticated` on DFIU; merged PR #5 (`getErrorMessage`, `NewRacePage` `.select(RACE_SELECT)`, tracked migration `20260805130000_grant_official_merge_columns.sql`). Anon probe `select=id,official_revision,merged_official_revision` returns 200. Closed superseded drafts #3/#4 and deleted their remote branches. Verified 44 tests, production build, lint (0 errors); deployed frontend `45c01bc`.
-
-- Guest try-before-signup demo (`?demo=1`): anonymous users edit a public event into an IndexedDB overlay, then claim into a private `clone_race` on signup/login. Official clones no longer auto-sync; owners get a merge/dismiss banner when `official_revision` advances. Migration `20260805120000_opt_in_official_merge` applied on DFIU. Verified 39 tests, production build, lint (0 errors), deployed frontend `92df8dd`.
-
-- Added a complete documentation set: `docs/USER_GUIDE.md` for race owners/runners/crew, `docs/ALGORITHMS.md` for pace/prediction/terrain/training methods and limits, and `docs/DEVELOPER_GUIDE.md` for architecture and release practices. Refreshed README, deployment safeguards, and stale terrain/history handoff notes. Documentation-only change; no production application deploy required.
-
-- Fixed an out-and-back map rendering error where a terrain boundary could snap to a later visit of the same physical trail. Production data for AC100 correctly held paved 49.10–49.40; CourseMap now supplies the intended mile when resolving the endpoint, so it stays on that visit rather than extending visually toward mile 52.8. Verified 35 tests, production build, lint (0 errors; 31 existing warnings), and deployed frontend `5733e15`.
-
-- Custom text resources now render Markdown exactly like Lodging and Schedule of Events. Their print action is in the upper-right header and prints the rendered Markdown, including headings, lists, links, and tables. Bed and calendar choices are now available in the resource-icon menu. Verified 35 tests, production build, lint (0 errors; 31 existing warnings), and deployed frontend `5e4e3cd`.
-
-- Terrain classification now detects continuous reverse-direction course overlap, avoiding ordinary crossings and nearby same-direction trail sections. The map’s terrain dialog previews every detected out-and-back counterpart with an enabled-by-default checkbox. Sidebar type changes, range edits, and deletes propagate to reverse passes as well. Verified 35 tests, production build, lint (0 errors; 31 existing warnings), and deployed frontend `652d9e7`.
-
-- Selecting a terrain segment from its mileage range now keeps it selected after leaving the side panel and adds a bright white outline around its colored course line. Verified 35 tests, production build, lint (0 errors; 31 existing warnings), and deployed frontend `f66f45d`.
-
-- Added a compact lower-right terrain legend showing every terrain color and label. The upper-left map menu now has an eye toggle that hides/shows landmarks while retaining aid stations and all other waypoint types. Verified 35 tests, production build, lint (0 errors; 31 existing warnings), and deployed frontend `172862c`.
-
-- Fixed production terrain saves after the new five-level terrain UI: `terrain_nodes_type_check` now accepts smooth dirt/gravel, runnable trail, and highly technical alongside all legacy terrain values. Verified 35 tests, build, lint (0 errors; 31 existing warnings), and deployed frontend `2096266`.
-
-- Added the hybrid pace predictor: a personal flat baseline plus recency-weighted past finishes produces P10/P50/P90 finish estimates, expected stop time, confidence, and factor attribution while leaving Plan A/B/C target-time calculations intact.
-- Pace Plans now accepts private manual race history and shows the independent prediction plus a goal-outside-range warning. Prediction input/output snapshots are stored with the plan for reproducibility.
-- Terrain selection now uses five pacing levels—Paved, Smooth Dirt/Gravel, Runnable Trail, Technical Trail, Highly Technical—while legacy double/single-track segments retain their existing visual and pace behavior.
-- Applied the scoped runner-history, terrain-metadata, and pace-model schema migration directly (the remote migration history remains divergent, so do not run a blind `db push`). Verified 35 tests, production build, and lint (0 errors; 31 existing warnings); deployed frontend `c5ae764`.
-
-- Training preview cards again show the detailed Plan A segment summary (race segment miles/time and training miles); only the standalone green pace/time line is removed.
-- Create Route now requests Mapbox walking directions between successive clicks, producing a network-snapped route instead of straight lines. It also displays labeled green aid-station markers with the optional race-course reference layer.
-- Verified 32 tests, production build, lint (0 errors; 31 existing warnings), and deployed frontend `d01b41d`.
-
-- Training Analysis now saves completed result cards—not only pasted Strava links—so a route reopens with its prior comparisons intact.
-- Re-selecting the active Training tab returns from route detail to the preview-card list, matching “All training routes.”
-- Training now offers Create Route alongside GPX import: click to draw a route, undo/clear points, save it with automatic overlap detection, and toggle the gray race-course reference layer. Manually drawn routes calculate distance; elevation remains unavailable until a GPX-backed route is used.
-- Simplified preview-card details by removing Plan A pace and duration content. Applied the scoped saved-analysis schema field, verified 32 tests, build, lint (0 errors; 31 existing warnings), and deployed frontend `02199a6`.
-
-- Training Analysis now compares every overlap pair independently—no combined training-run total. For example, Wilson Loop's race 78.8–84.9 / training 0–7.1 and race 74.9–78.6 / training 10.2–14.4 show distinct Plan A, moving-time, and delta results.
-- `strava-activity` now retrieves Strava's distance, time, and moving streams so each section uses its own recorded moving time. Activities without stream data retain a clearly labeled moving-time-only fallback.
-- Added a regression test for non-consecutive segments, verified 32 tests, build, lint (0 errors; 31 existing warnings), and deployed `strava-activity` v4 plus frontend `9e50ec5`.
-
-- Training Analysis now saves each route's entered Strava links/IDs and restores them after later visits and sessions. It continues to accept one run per line.
-- The Training Analysis connection area now clearly shows “Connected as [Strava username]”; existing connections are backfilled from Strava when needed, while new/reconnected accounts save their display name immediately.
-- Applied the scoped `training_routes.strava_activity_inputs` and `strava_connections.athlete_name` schema additions, verified both fields in production, deployed `strava-activity` v3 and `strava-auth` v16, and deployed frontend `723fad5`.
-- Verified 31 tests, TypeScript production build, lint (0 errors; 31 existing warnings), and both Strava Edge Function checks.
-
-- Training Analysis now sums every detected race overlap, weights each Strava activity's moving time to only its matching training miles, and accepts multiple activity links/IDs (one per line) with separate comparisons.
-- Added regression coverage for multi-segment Plan A totals and moving-time overlap weighting; verified 31 tests, build, lint (0 errors; 31 existing warnings), and deployed frontend `53b665a`.
-
-- Fixed the reproducible Map & Aid Stations → any-tab crash: CourseMap now clears its map reference before disposing Mapbox, and waypoint-label cleanup skips a disposed style. This prevents `getOwnLayer` from being read during React unmount cleanup.
-- Verified build and 30 tests; deployed frontend `9708ce4`.
-
-- Fixed a remaining Map & Aid Stations Mapbox lifecycle bug: terrain cleanup now checks layers and sources independently, preventing the unsafe `getOwnLayer` removal path after style changes.
-- Custom Resource now begins with a Link/Text-box picker. Text boxes are full-width sections below links, can be ordered, have icon selection, and can opt into printing.
-- Crew omits landmarks everywhere, treats Start and Finish as crew-accessible, visually labels them in green, and offers directions from the final crew aid station to Finish.
-- Verified build, 30 tests, and lint (0 errors; 31 existing warnings); deployed frontend `b03754a`.
-
-- Hardened the Training detail Mapbox layer lifecycle against a source/layer mismatch that can surface as `getOwnLayer` undefined; the SVG fallback remains available.
-- Resources now support editable link or text entries, selectable icons, and titles that directly open link resources.
-- Pace Plans now recalculate automatically from a valid edited goal time; the separate Generate Plan button is removed.
-- Replaced landmark camera glyphs with mountains, limited Crew and Live crew maps to aid stations, and moved Strava Training Analysis into each selected training route.
-- Overview weather samples now use a chosen aid station, show only high/low temperatures, and show all Plan A arrival times for repeated station visits.
-- Verified build, 30 tests, and lint (0 errors; 31 existing warnings); deployed frontend `4b66013`.
-
-- Removed stale generated/review artifacts, an obsolete one-off migration script, and superseded handoff notes.
-- Reconciled and removed `codex/fix-vite-chunk-deploy`; retained its useful deploy safeguards on `main` (`c372a00`).
-- Refreshed patched dependencies without the React Router breaking downgrade (`b64d8f6`). Two audit findings remain limited to React Router RSC mode, which this BrowserRouter SPA does not use.
-- Fixed Training detail-map drawing by synchronizing custom layers directly with Mapbox style readiness and stabilizing map props/callbacks. SVG fallback remains available when WebGL cannot initialize.
-- Fixed overlap recomputation so it always derives updates from current geometries and surfaces database read/write failures instead of silently leaving stale values.
-- Backfilled the production Wilson Loop row from its current GPX and the current Angeles Crest 100 GPX.
-- Verified 27 tests, TypeScript production build, lint (0 errors; 31 existing warnings), WebGL rendering, SVG fallback, repeated map mount/unmount, and production deployment.
-- Added Mapbox terrain backgrounds behind overview-card routes, while keeping those card maps deliberately non-interactive.
-- Added concise Plan A race segment miles, target time, and all training portions to every route card.
-- Added a Training Analysis panel: connect Strava once, paste an activity link or ID, and compare actual elapsed time with the selected route's Plan A segment goal and delta.
-- Stored Strava activity tokens only in a server-only, user-scoped connection table; deployed the updated `strava-auth` and new `strava-activity` Edge Functions.
-- Verified 29 tests, TypeScript production build, lint (0 errors; 31 existing warnings), production deployment, and live Training UI with no browser-console warnings/errors.
-- Fixed the Strava callback session failure. Training Analysis now binds a Strava authorization to the currently signed-in participant's DFIU account and keeps it separate from the event owner; activity lookup only ever uses that participant's token.
-- Replaced the fragile temporary-password handoff, deployed both Strava functions, and added a regression test so Edge Function responses show their real error message. Verified 30 tests, both Deno Edge Function checks, lint (0 errors; 31 existing warnings), and production deployment.
-- Removed the legacy Strava sign-in user-list lookup, which did not reliably filter by email. Sign-in now resolves only through the unique Strava athlete-to-DFIU-user mapping; a Strava account already attached to another user is rejected rather than reassigned.
-- With explicit approval, added a server-side transfer for an OAuth-proven athlete connection. It replaces only the current participant's prior connection and moves the athlete mapping without involving the event owner.
 
 ## Open / follow-up
 
+- Restore stash `wip training detail map UI` (in-map legend, race-course color, Plan A time/duration copy) and finish that UI batch.
 - **Priority follow-up:** the failed legacy callback updated one real DFIU account before it failed, so that account's prior password may have been replaced. Do not reset or delete it without confirming the account owner; use the normal password-recovery flow with that person if needed.
 - Rotate the previously tracked Strava client secret and confirm Supabase function secrets.
 - Reconcile Supabase migration history before the next `db push`: the new `strava_connections` schema was applied directly because the remote history already contains migrations absent locally. The tracked migration is `20260804012144_strava_activity_connections.sql`; do not run migration repair blindly.
