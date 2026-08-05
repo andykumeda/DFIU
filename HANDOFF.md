@@ -2,18 +2,19 @@
 
 **Date:** 2026-08-05
 **Branch:** `main`
-**Status:** Training detail map UI ready to commit/deploy (in-map legend, violet race course, Plan A time/duration).
+**Status:** Training detail map UI deployed (`f95361a`).
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Frontend: dirty deploy includes UI WIP on top of overlap fix; clean-hash redeploy after UI commit.
+- Frontend: `f95361a` (in-map legend, violet race course, Plan A time/duration). Hard-refresh and compare the footer hash.
 - AC100 training overlaps backfilled in DB (all 6 routes).
-- Repository: `main`; drop obsolete stashes `wip training detail map UI` / `wip training detail Plan A duration` after this lands.
+- Repository: `main` @ `f95361a` on `origin/main`.
+
 ## Just finished
 
-- Training route detail UI: color legend moved into the map (terrain-legend style); race course line now violet (`#9333ea`) vs blue training / orange overlap; Plan A overlap line shows time of day with duration in parentheses via `formatHM` (no min/mi pace).
+- Training route detail UI (`f95361a`): color legend moved into the map; race course line violet (`#9333ea`) vs blue training / orange overlap; Plan A overlap line shows time of day with duration in parentheses via `formatHM` (no min/mi pace). Verified 46 tests, production build.
 
 - Fixed training-route / race-course overlap for out-and-backs and start/finish colocation (`0de0c5b`):
   - **Shortcut to Newcomb:** disconnected race visits → `42.7→33.2` and `72.4→63.0` (~18.9 mi); different times of day.
