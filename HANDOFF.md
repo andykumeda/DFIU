@@ -8,9 +8,9 @@
 
 ## Current production snapshot
 
-- Frontend:  (mobile Resources tap fix). Hard-refresh and compare the footer hash.
+- Frontend: `1d41800` (mobile Resources tap fix). Hard-refresh and compare the footer hash.
 - AC100 training overlaps backfilled in DB (all 6 routes).
-- Repository: `main` — mobile Resources interactivity fix about to land.
+- Repository: `main` @ `2a1eb9b` on `origin/main`.
 
 ## Just finished
 
