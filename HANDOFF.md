@@ -14,6 +14,17 @@
 
 ## Just finished
 
+- Fixed production "Failed to load races" (PostgREST `42501 permission denied for
+  table races`). Root cause: `20260728_restrict_public_share_token` switched
+  `races` to per-column SELECT grants, and the later `official_revision` /
+  `merged_official_revision` columns (in `RACE_SELECT`) were never granted to
+  `anon`/`authenticated`. Added migration
+  `20260805130000_grant_official_merge_columns.sql` (grant those two columns) and
+  made `RaceList` surface the real Supabase error via a shared `getErrorMessage`
+  helper (was masking every DB error as "Unknown error"). **ACTION: apply the new
+  migration to the production project** (see `DEPLOYMENT.md` scoped-migration
+  procedure) and redeploy the frontend. Verified 44 tests, lint (0 errors), build.
+
 - Guest try-before-signup demo (`?demo=1`): anonymous users edit a public event into an IndexedDB overlay, then claim into a private `clone_race` on signup/login. Official clones no longer auto-sync; owners get a merge/dismiss banner when `official_revision` advances. Migration `20260805120000_opt_in_official_merge` applied on DFIU. Verified 39 tests, production build, lint (0 errors), deployed frontend `92df8dd`.
 
 - Added a complete documentation set: `docs/USER_GUIDE.md` for race owners/runners/crew, `docs/ALGORITHMS.md` for pace/prediction/terrain/training methods and limits, and `docs/DEVELOPER_GUIDE.md` for architecture and release practices. Refreshed README, deployment safeguards, and stale terrain/history handoff notes. Documentation-only change; no production application deploy required.
