@@ -2,17 +2,19 @@
 
 **Date:** 2026-08-05
 **Branch:** `main`
-**Status:** Training detail map UI deployed (`f95361a`).
+**Status:** Terrain legend compact bottom-left; Pace prediction calibration UI hidden.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Frontend: `f95361a` (in-map legend, violet race course, Plan A time/duration). Hard-refresh and compare the footer hash.
+- Frontend: pending clean commit/redeploy after this change (was `b350bca-dirty` at last deploy).
 - AC100 training overlaps backfilled in DB (all 6 routes).
-- Repository: `main` @ `f95361a` on `origin/main`.
+- Repository: `main`.
 
 ## Just finished
+
+- CourseMap terrain legend moved to **bottom-left** and shrunk (tighter padding/type for mobile). Pace “Prediction calibration” panel gated behind `SHOW_PREDICTION_CALIBRATION = false` (logic/state kept). Verified 46 tests, build, lint 0 errors.
 
 - Training route detail UI (`f95361a`): color legend moved into the map; race course line violet (`#9333ea`) vs blue training / orange overlap; Plan A overlap line shows time of day with duration in parentheses via `formatHM` (no min/mi pace). Verified 46 tests, production build.
 

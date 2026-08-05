@@ -33,6 +33,9 @@ interface PaceCalculatorProps {
 
 type StrategyMode = 'planA' | 'planB' | 'planC'
 
+/** Past-finish calibration UI — keep wired; hide until the flow is productized. */
+const SHOW_PREDICTION_CALIBRATION = false
+
 const strategyColors: Record<StrategyMode, {
     active: string
     inactive: string
@@ -636,6 +639,7 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                     </div>
                 </div>
 
+                {SHOW_PREDICTION_CALIBRATION && (
                 <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6">
                     <h2 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
                         <Activity className="w-5 h-5 text-violet-400" /> Prediction calibration
@@ -653,6 +657,7 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                         {history.slice(0, 3).map(item => <li key={item.id}>{item.raceName}: {item.distanceMi} mi in {formatDuration(item.finishMinutes)}</li>)}
                     </ul>}
                 </div>
+                )}
 
                 {plan && (
                     <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6">
