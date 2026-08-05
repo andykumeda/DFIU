@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-05
 **Branch:** `main`
-**Status:** Race-list 42501 fixed (GRANT applied + PR #5 merged/deployed).
+**Status:** In progress — training detail map UI (in-map legend, race-course color, Plan A time/duration); prior overlap algorithm rewrite still uncommitted.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -11,6 +11,18 @@
 - Frontend: `45c01bc` (deployed; hard-refresh and compare the footer hash).
 - Wilson Loop: **9.95 unique on-course miles**, displayed as **74.9–84.9**. Its start snaps to race mile **78.78**.
 - Repository: `main` only; obsolete drafts #3/#4 closed after #5 merged.
+
+## In progress
+
+- Training route detail UI:
+  - Move color legend into the map (terrain-legend style).
+  - Race course line: standout color distinct from blue training / orange overlap.
+  - Plan A overlap line: time of day + duration `(H:MM)`; drop min/mi pace.
+- Training overlap rewrite in `computeTrainingOverlap` (uncommitted from prior session):
+  - **Shortcut to Newcomb:** two race visits → `42.7→33.2` and `72.4→63.0` (different times of day); ~18.9 mi on course.
+  - **Shortcut to Hillyer:** continuous race out-and-back → one span `42.6→63.4` (~20.7 mi); no gap.
+  - **Chantry to Finish:** finish start/finish-colocation bug fixed (now `82.3–100.8`); remaining gap `80.1–82.3` is a real ~0.7 mi Wilson-area shortcut (~0.37 mi off course), not an algorithm false negative.
+  - Wilson Loop unchanged. Unit tests updated. Backfill AC100 routes still pending after this deploy.
 
 ## Just finished
 

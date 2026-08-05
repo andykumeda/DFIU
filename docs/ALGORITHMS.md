@@ -77,12 +77,15 @@ Map terrain rendering resolves a terrain endpoint with both location and intende
 Training overlap is geometric, not name-based. DFIU:
 
 1. Samples the training route about every 0.05 mi.
-2. Snaps each sample to the race course and counts it as on-course within 0.12 mi (about 200 m) to tolerate GPS drift.
+2. Snaps each sample to the race course within 0.12 mi (about 200 m), preferring course-mile continuity so start/finish colocation does not flip visits.
 3. Bridges brief gaps up to about 0.4 mi for dropouts and switchbacks.
-4. Merges nearby course-mile clusters within 1.25 mi for displayed coverage, while preserving individual contiguous training sections for analysis.
-5. Filters the special false match that can occur when a course Start and Finish share coordinates.
+4. Detects clear out-and-back turnarounds:
+   - If the race revisits the same trail later (disconnected visits), the return leg maps onto that later pass — separate segments and times of day (e.g. Shortcut to Newcomb).
+   - If the race itself is a continuous out-and-back, course miles keep advancing through the turnaround as one span (e.g. Shortcut to Hillyer).
+5. Merges nearby course-mile clusters within 1.25 mi for displayed coverage summaries.
+6. Filters the special false match that can occur when a course Start and Finish share coordinates.
 
-The total overlap is unique course-mile coverage. An out-and-back training route that covers the same physical trail more than once is not allowed to inflate the number of race miles covered.
+The total overlap is unique course-mile coverage across the assigned race-mile ranges.
 
 ## Strava training analysis
 

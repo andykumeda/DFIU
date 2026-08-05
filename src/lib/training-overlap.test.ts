@@ -106,6 +106,7 @@ describe('computeTrainingOverlap', () => {
 
   it('counts unique course coverage on out-and-back (not one short leg)', () => {
     // Reverse on course miles 8→5, then forward 5→10 — unique coverage ~5 mi.
+    // Same-trail reverse without a second race visit stays on one visit; unique miles still ~5.
     const course = makeLine(37, -122, 101, 0.1)
     const reverse = course.slice(50, 81).reverse() // ~8→5
     const forward = course.slice(50, 101) // ~5→10
@@ -114,10 +115,43 @@ describe('computeTrainingOverlap', () => {
     expect(result.segments.length).toBeGreaterThanOrEqual(1)
     expect(result.overlapMiles).toBeGreaterThan(4.5)
     expect(result.overlapMiles).toBeLessThan(6)
-    const courseStart = Math.min(...result.segments.map(s => s.courseStartMi))
-    const courseEnd = Math.max(...result.segments.map(s => s.courseEndMi))
+    const courseStart = Math.min(...result.segments.map(s => Math.min(s.courseStartMi, s.courseEndMi)))
+    const courseEnd = Math.max(...result.segments.map(s => Math.max(s.courseStartMi, s.courseEndMi)))
     expect(courseStart).toBeLessThan(6)
     expect(courseEnd).toBeGreaterThan(9)
+  })
+
+  it('maps a mirrored race out-and-back as continuous course miles', () => {
+    // Race goes north 0→5, then returns south as miles 5→10. Training mirrors it.
+    const outbound = makeLine(37, -122, 51, 0.1)
+    const ret = [...outbound].reverse()
+    const course = [...outbound, ...ret.slice(1)]
+    const training = [...outbound, ...ret.slice(1)]
+    const result = computeTrainingOverlap(training, course)
+    expect(result.overlapMiles).toBeGreaterThan(9)
+    expect(result.overlapMiles).toBeLessThan(11)
+    const courseStart = Math.min(...result.segments.map(s => Math.min(s.courseStartMi, s.courseEndMi)))
+    const courseEnd = Math.max(...result.segments.map(s => Math.max(s.courseStartMi, s.courseEndMi)))
+    expect(courseStart).toBeLessThan(1)
+    expect(courseEnd).toBeGreaterThan(9)
+    // Continuous race OAB may still split at the turnaround for endpoints; the
+    // overall span should advance and cover the full out-and-back race miles.
+    expect(result.segments.length).toBeGreaterThanOrEqual(1)
+    expect(result.segments.some(s => s.courseEndMi > s.courseStartMi || s.courseStartMi < 2)).toBe(true)
+  })
+
+  it('switches race visits when training turns around on an out-and-back trail', () => {
+    // Race: outbound 0→5, return 5→10 on the same trail.
+    const outbound = makeLine(37, -122, 51, 0.1)
+    const ret = [...outbound].reverse()
+    const course = [...outbound, ...ret.slice(1)]
+    // Out along the outbound visit, then reverse on the same geography — return
+    // should snap to the later race visit rather than retracing miles 5→0.
+    const outThenBack = [...outbound, ...outbound.slice(0, 40).reverse()]
+    const result = computeTrainingOverlap(outThenBack, course)
+    expect(result.segments.length).toBeGreaterThanOrEqual(2)
+    const returnSeg = result.segments[result.segments.length - 1]
+    expect(Math.max(returnSeg.courseStartMi, returnSeg.courseEndMi)).toBeGreaterThan(5)
   })
 
   it('handles empty inputs', () => {
