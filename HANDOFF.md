@@ -8,13 +8,13 @@
 
 ## Current production snapshot
 
-- Frontend: `e6ebe22` (deployed; hard-refresh and compare the footer hash).
+- Frontend: `45c01bc` (deployed; hard-refresh and compare the footer hash).
 - Wilson Loop: **9.95 unique on-course miles**, displayed as **74.9–84.9**. Its start snaps to race mile **78.78**.
 - Repository: `main` only; obsolete drafts #3/#4 closed after #5 merged.
 
 ## Just finished
 
-- Fixed production race-list `42501`: applied `GRANT SELECT (official_revision, merged_official_revision) ON public.races TO anon, authenticated` on DFIU; merged PR #5 (`getErrorMessage`, `NewRacePage` `.select(RACE_SELECT)`, tracked migration `20260805130000_grant_official_merge_columns.sql`). Anon probe `select=id,official_revision` returns 200. Closed superseded drafts #3/#4 and deleted their remote branches. Verified 44 tests, production build, lint path unchanged; deployed frontend `e6ebe22`.
+- Fixed production race-list `42501`: applied `GRANT SELECT (official_revision, merged_official_revision) ON public.races TO anon, authenticated` on DFIU; merged PR #5 (`getErrorMessage`, `NewRacePage` `.select(RACE_SELECT)`, tracked migration `20260805130000_grant_official_merge_columns.sql`). Anon probe `select=id,official_revision,merged_official_revision` returns 200. Closed superseded drafts #3/#4 and deleted their remote branches. Verified 44 tests, production build, lint (0 errors); deployed frontend `45c01bc`.
 
 - Guest try-before-signup demo (`?demo=1`): anonymous users edit a public event into an IndexedDB overlay, then claim into a private `clone_race` on signup/login. Official clones no longer auto-sync; owners get a merge/dismiss banner when `official_revision` advances. Migration `20260805120000_opt_in_official_merge` applied on DFIU. Verified 39 tests, production build, lint (0 errors), deployed frontend `92df8dd`.
 
