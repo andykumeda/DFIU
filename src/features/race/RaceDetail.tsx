@@ -1,9 +1,9 @@
-import { useState, useEffect, useMemo, Suspense, lazy } from 'react'
+import { useState, useEffect, useMemo, useRef, Suspense, lazy } from 'react'
 import { useAuth } from '@/features/auth/AuthContext'
 import { usePermission } from '@/features/auth/usePermission'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Calendar, MapPin, Globe, ArrowUpRight, CloudSun, Trophy, RefreshCw, Settings, Download, Save, CheckCircle2, Trash2, Share2, Users, Footprints, Backpack } from 'lucide-react'
+import { Calendar, MapPin, Globe, ArrowUpRight, CloudSun, Trophy, RefreshCw, Settings, Download, Save, CheckCircle2, Trash2, Share2, Users, Footprints, Backpack, ChevronDown } from 'lucide-react'
 
 import { supabase } from '@/lib/supabase'
 import { RACE_SELECT } from '@/lib/race-select'
@@ -254,6 +254,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     return () => { ro.disconnect(); document.documentElement.style.removeProperty('--page-header-h') }
   }, [headerEl])
   const [isCloning, setIsCloning] = useState(false)
+  const mapSidebarRef = useRef<HTMLDivElement | null>(null)
 
   // Data Fetching
   const { data: race, isLoading: raceLoading, isError: raceLoadFailed } = useQuery({
@@ -1796,7 +1797,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
               <div className="contents">
                 {/* Left Column: Map + Elevation */}
                 <div className='flex-1 flex flex-col min-w-0 relative'>
-                  <div className='relative overflow-hidden h-[40vh] md:h-auto md:flex-1'>
+                  <div className='relative overflow-hidden h-[34vh] md:h-auto md:flex-1'>
                     <Suspense fallback={
                       <div className="w-full h-[600px] bg-neutral-900 animate-pulse rounded-xl flex items-center justify-center">
                         <RefreshCw className="w-6 h-6 text-neutral-600 animate-spin" />
@@ -1945,10 +1946,24 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                       } : undefined}
                     />
                   </div>
+
+                  {/* Mobile: map + elevation often fill the screen — cue that stats/aids continue below. */}
+                  <button
+                    type='button'
+                    className='md:hidden flex w-full items-center justify-center gap-2 border-t border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm font-medium text-neutral-300 active:bg-neutral-900'
+                    onClick={() => mapSidebarRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                  >
+                    <ChevronDown className='h-4 w-4 shrink-0 text-blue-400 animate-bounce' />
+                    <span>Route stats & aid stations below</span>
+                    <ChevronDown className='h-4 w-4 shrink-0 text-blue-400 animate-bounce' />
+                  </button>
                 </div>
 
                 {/* Right Sidebar: Stats & Waypoints */}
-                <div className='w-full md:w-80 border-l border-neutral-800 bg-neutral-900 overflow-y-auto flex-shrink-0'>
+                <div
+                  ref={mapSidebarRef}
+                  className='w-full md:w-80 border-l border-neutral-800 bg-neutral-900 overflow-y-auto flex-shrink-0 scroll-mt-[calc(var(--page-header-h,0px)+3.5rem)]'
+                >
                   <div className='p-4 border-b border-neutral-800'>
                     <div className='flex items-center justify-between mb-4'>
                       <h3 className='text-sm font-semibold text-neutral-400 uppercase tracking-wider'>Route Stats</h3>
