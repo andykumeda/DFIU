@@ -295,21 +295,18 @@ ${body}
                 {(isEditing ? config.links : visibleLinks).filter(link => link.kind !== 'text').map((link, index) => {
                     const Icon = RESOURCE_ICON_MAP[link.icon] ?? RESOURCE_ICON_MAP.link
                     const hasContent = !!link.url || isEditing
+                    const cardClass = `${isEditing ? 'bg-neutral-900/50' : 'bg-neutral-900'} border border-neutral-800 rounded-xl p-4 transition-colors ${!link.enabled && isEditing ? 'opacity-60' : ''} ${!isEditing && link.url ? 'active:border-neutral-600' : ''}`
 
                     if (!isEditing && !link.enabled) return null
 
-                    return (
-                        <div
-                            key={link.id}
-                            className={`${isEditing ? 'bg-neutral-900/50' : 'bg-neutral-900'} border border-neutral-800 rounded-xl p-4 transition-colors ${!link.enabled && isEditing ? 'opacity-60' : ''}`}
-                        >
+                    const body = (
                             <div className="flex items-start gap-4">
                                 {isEditing && (
                                     <div className="flex flex-col gap-1 shrink-0">
-                                        <button onClick={() => moveLink(index, -1)} disabled={index === 0} className="text-neutral-500 hover:text-white disabled:opacity-30 p-1">
+                                        <button type="button" onClick={() => moveLink(index, -1)} disabled={index === 0} className="text-neutral-500 hover:text-white disabled:opacity-30 p-1">
                                             <ChevronUp className="w-4 h-4" />
                                         </button>
-                                        <button onClick={() => moveLink(index, 1)} disabled={index === config.links.length - 1} className="text-neutral-500 hover:text-white disabled:opacity-30 p-1">
+                                        <button type="button" onClick={() => moveLink(index, 1)} disabled={index === config.links.length - 1} className="text-neutral-500 hover:text-white disabled:opacity-30 p-1">
                                             <ChevronDown className="w-4 h-4" />
                                         </button>
                                     </div>
@@ -328,6 +325,7 @@ ${body}
                                                     onChange={e => updateLink(link.id, { label: e.target.value })}
                                                 />
                                                 <button
+                                                    type="button"
                                                     onClick={() => updateLink(link.id, { enabled: !link.enabled })}
                                                     className="text-neutral-500 hover:text-white p-1"
                                                     title={link.enabled ? 'Hide resource' : 'Show resource'}
@@ -335,7 +333,7 @@ ${body}
                                                     {link.enabled ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                                                 </button>
                                                 {link.id.startsWith('custom_') && (
-                                                    <button onClick={() => removeLink(link.id)} className="text-neutral-500 hover:text-red-400 p-1">
+                                                    <button type="button" onClick={() => removeLink(link.id)} className="text-neutral-500 hover:text-red-400 p-1">
                                                         <Trash2 className="w-4 h-4" />
                                                     </button>
                                                 )}
@@ -404,15 +402,10 @@ ${body}
                                         </div>
                                     ) : (
                                         <>
-                                            {link.kind === 'link' && link.url ? (
-                                                <a href={link.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm font-medium text-blue-300 hover:text-blue-200 mb-1 group">
-                                                    <span>{link.label}</span><ExternalLink className="w-3.5 h-3.5 opacity-70 group-hover:opacity-100" />
-                                                </a>
-                                            ) : (
-                                                <div className="text-sm font-medium text-neutral-300 block mb-1">
-                                                    {link.label}
-                                                </div>
-                                            )}
+                                            <div className="inline-flex items-center gap-1 text-sm font-medium text-blue-300 mb-1">
+                                                <span>{link.label}</span>
+                                                {link.url ? <ExternalLink className="w-3.5 h-3.5 opacity-70" /> : null}
+                                            </div>
                                             {link.id === 'racebook_url' && race.racebook_last_updated && (
                                                 <span className="ml-2 text-xs text-neutral-500 font-normal">
                                                     Updated {new Date(race.racebook_last_updated).toLocaleDateString()}
@@ -436,6 +429,25 @@ ${body}
                                     )}
                                 </div>
                             </div>
+                    )
+
+                    if (!isEditing && link.kind === 'link' && link.url) {
+                        return (
+                            <a
+                                key={link.id}
+                                href={link.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={`block ${cardClass}`}
+                            >
+                                {body}
+                            </a>
+                        )
+                    }
+
+                    return (
+                        <div key={link.id} className={cardClass}>
+                            {body}
                         </div>
                     )
                 })}

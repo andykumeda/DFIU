@@ -2,18 +2,17 @@
 
 **Date:** 2026-08-05
 **Branch:** `main`
-**Status:** Ability prediction hidden; map/sidebar amenity icons match Pace plan.
+**Status:** Mobile Resources tap freeze mitigated (sticky/backdrop stacking).
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Frontend: `0b8b18c` (ability prediction hidden; amenity icons aligned). Hard-refresh and compare the footer hash.
+- Frontend: pending commit hash after this push. Hard-refresh and compare the footer hash.
 - AC100 training overlaps backfilled in DB (all 6 routes).
-- Repository: `main` @ `0b8b18c` on `origin/main`.
+- Repository: `main` — mobile Resources interactivity fix about to land.
 
 ## Just finished
 
-- Hid Pace “Ability-based prediction” card (`SHOW_ABILITY_BASED_PREDICTION = false`); keep `predictPace` wired.
-- Map badges, aid-station sidebar, and waypoint modal use Pace plan Lucide icons/colors: Users green-400, Footprints blue-400, Backpack orange-300 (`waypoint-amenity-icons.ts`).
-- Widened map waypoint stacking to 0.06 mi (`7f6578e`).
+- Mobile Resources: opaque sticky header/nav (dropped `backdrop-blur`), `main` `z-0`, ScrollToTop `z-[110]`, tab strip `touch-pan-x`; resource link cards are full-card tap targets.
+- Hid Pace ability prediction; aligned crew/pacer/drop icons (`0b8b18c`).

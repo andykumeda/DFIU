@@ -1510,7 +1510,8 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   return (
     <div className='min-h-screen bg-neutral-950 flex flex-col'>
       {/* Header */}
-      <header ref={setHeaderEl} className='print:hidden border-b border-neutral-800 bg-neutral-950/50 backdrop-blur-sm sticky top-0 z-[100]'>
+      {/* Opaque sticky chrome (no backdrop-blur): WebKit can mis-hit-test sticky+blur on long mobile pages. */}
+      <header ref={setHeaderEl} className='print:hidden border-b border-neutral-800 bg-neutral-950 sticky top-0 z-[100]'>
         <div className='max-w-7xl mx-auto px-3 sm:px-4 py-1.5 sm:py-2 flex justify-between items-center gap-2'>
           <div className='flex items-center gap-1 sm:gap-8 min-w-0 flex-1'>
             <Link to='/events' className='flex items-center hover:opacity-80 transition-opacity cursor-pointer pointer-events-auto relative z-[999] -space-x-3 shrink-0'>
@@ -1736,14 +1737,14 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       {/* Tabs */}
       <nav
         aria-label='Race sections'
-        className='print:hidden sticky z-[90] border-y border-neutral-700 bg-neutral-900/95 shadow-lg shadow-black/20 backdrop-blur-sm'
+        className='print:hidden sticky z-[90] border-y border-neutral-700 bg-neutral-900 shadow-lg shadow-black/20'
         style={{ top: 'var(--page-header-h, 0px)' }}
       >
         <div className='max-w-7xl mx-auto px-2 sm:px-4'>
           <div className='relative'>
             <div className='pointer-events-none absolute inset-y-0 left-0 z-10 w-4 bg-gradient-to-r from-neutral-900 to-transparent sm:hidden' />
             <div className='pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-neutral-900 to-transparent' />
-            <div role='tablist' className='flex gap-2 overflow-x-auto whitespace-nowrap py-2 pr-8 [-webkit-overflow-scrolling:touch] [scrollbar-color:#525252_transparent] [scrollbar-width:thin]'>
+            <div role='tablist' className='flex gap-2 overflow-x-auto whitespace-nowrap py-2 pr-8 touch-pan-x overscroll-x-contain [-webkit-overflow-scrolling:touch] [scrollbar-color:#525252_transparent] [scrollbar-width:thin]'>
               {tabs.map(tab => {
                 const isActive = activeTab === tab.id
                 return (
@@ -1768,7 +1769,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       </nav>
 
       {/* Content */}
-      <main className='flex-1 relative'>
+      <main className='flex-1 relative z-0'>
         {activeTab === 'live' && (
           <div className="animate-in fade-in duration-500">
             <Suspense fallback={<div className='p-6 text-white text-center'>Loading live view...</div>}>
