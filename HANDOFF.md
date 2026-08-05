@@ -8,7 +8,7 @@
 
 ## Current production snapshot
 
-- Frontend: pending commit hash after this push. Hard-refresh and compare the footer hash.
+- Frontend:  (mobile Resources tap fix). Hard-refresh and compare the footer hash.
 - AC100 training overlaps backfilled in DB (all 6 routes).
 - Repository: `main` — mobile Resources interactivity fix about to land.
 
