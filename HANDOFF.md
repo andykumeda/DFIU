@@ -2,21 +2,19 @@
 
 **Date:** 2026-08-05
 **Branch:** `main`
-**Status:** In progress — collapse multi-visit aid labels on the map.
+**Status:** Map multi-visit aid labels collapsed to base name.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Frontend: `fa6fc6b` (training preview legends off; compact detail legend). Hard-refresh and compare the footer hash.
+- Frontend: `93c7ef3` (multi-visit aid map labels use shared base name). Hard-refresh and compare the footer hash.
 - AC100 training overlaps backfilled in DB (all 6 routes).
-- Repository: `main` @ `a13316c` on `origin/main`.
-
-## In progress
-
-- Map labels for colocated multi-visit aids (e.g. Shortcut Saddle 1/2) show the shared base name once; Drop Bags keep full visit names.
+- Repository: `main` @ `93c7ef3` on `origin/main`.
 
 ## Just finished
+
+- Map labels for colocated multi-visit aids (e.g. Shortcut Saddle 1/2) show the shared base name once; Drop Bags and waypoint lists keep full visit names (`93c7ef3`).
 
 - Training preview cards no longer show the race/training/overlap legend; detail view keeps a smaller in-map legend (`fa6fc6b`). Also includes prior terrain-legend + hidden pace-calibration UI.
 
