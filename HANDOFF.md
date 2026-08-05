@@ -1,16 +1,34 @@
 # Handoff Document
 
-**Date:** 2026-08-04
-**Branch:** `main`
-**Status:** Guest demo sandbox + opt-in official merge shipped (pending deploy hash below).
+**Date:** 2026-08-05
+**Branch:** `cursor/fix-race-column-grants-6937` (off `main` @ `b440131`)
+**Status:** Live e2e partially verified. Column-grant fix ready; Mapbox tile egress still incomplete.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
+## Active now
+
+1. **Apply on DFIU (required for race lists / official-merge fields):**
+   ```sql
+   GRANT SELECT (official_revision, merged_official_revision)
+   ON TABLE public.races TO anon, authenticated;
+   ```
+   Migration file: `supabase/migrations/20260805140000_grant_official_revision_columns.sql`
+2. **Egress:** add `api.mapbox.com` and `*.tiles.mapbox.com` (only `events.mapbox.com` is allowlisted today). Then re-run live map demo.
+3. Merge/deploy this branch after the GRANT is applied (`NewRacePage` now uses `.select(RACE_SELECT)` so inserts do not request `public_share_token`).
+
+## Live e2e results (this VM)
+
+- Signup (email) → dashboard: **OK** (`e2e.live.a7f3b9c2@example.com`)
+- Public races against live Supabase: **OK** after omitting ungranted revision columns locally
+- Angeles Crest 100 detail + elevation/aid list: **OK**
+- Course map tiles: **FAIL** — `api.mapbox.com` `ERR_CONNECTION_RESET`
+- Screenshots: `/opt/cursor/artifacts/screenshots/e2e-*.webp`
+
 ## Current production snapshot
 
-- Frontend: `92df8dd` (deployed; hard-refresh and compare the footer hash).
-- Wilson Loop: **9.95 unique on-course miles**, displayed as **74.9–84.9**. Its start snaps to race mile **78.78**.
-- Repository: `main` only; no extra worktrees or stale feature branches remain.
+- Frontend: `92df8dd` (deployed). Race lists that use full `RACE_SELECT` are broken until the GRANT above is applied.
+- Working branch: `cursor/fix-race-column-grants-6937`.
 
 ## Just finished
 
