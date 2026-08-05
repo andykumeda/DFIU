@@ -9,18 +9,18 @@ const OVERLAP_COLOR = '#ea580c'
 
 function TrainingMapLegend() {
   return (
-    <div className="absolute bottom-3 left-3 z-10 rounded-md border border-neutral-700 bg-neutral-950/90 px-3 py-2 text-[11px] text-neutral-200 shadow-lg backdrop-blur-sm pointer-events-none">
-      <div className="space-y-1">
-        <div className="flex items-center gap-1.5 whitespace-nowrap">
-          <span className="inline-block h-0.5 w-3 rounded" style={{ backgroundColor: COURSE_COLOR }} />
+    <div className="absolute bottom-3 left-3 z-10 rounded border border-neutral-700/80 bg-neutral-950/85 px-1.5 py-1 text-[9px] leading-tight text-neutral-200 shadow-md backdrop-blur-sm pointer-events-none sm:px-2 sm:py-1.5 sm:text-[10px]">
+      <div className="space-y-0.5">
+        <div className="flex items-center gap-1 whitespace-nowrap">
+          <span className="inline-block h-0.5 w-2.5 rounded sm:w-3" style={{ backgroundColor: COURSE_COLOR }} />
           <span>Race course</span>
         </div>
-        <div className="flex items-center gap-1.5 whitespace-nowrap">
-          <span className="inline-block h-0.5 w-3 rounded" style={{ backgroundColor: TRAINING_COLOR }} />
+        <div className="flex items-center gap-1 whitespace-nowrap">
+          <span className="inline-block h-0.5 w-2.5 rounded sm:w-3" style={{ backgroundColor: TRAINING_COLOR }} />
           <span>Training</span>
         </div>
-        <div className="flex items-center gap-1.5 whitespace-nowrap">
-          <span className="inline-block h-0.5 w-3 rounded" style={{ backgroundColor: OVERLAP_COLOR }} />
+        <div className="flex items-center gap-1 whitespace-nowrap">
+          <span className="inline-block h-0.5 w-2.5 rounded sm:w-3" style={{ backgroundColor: OVERLAP_COLOR }} />
           <span>Overlap</span>
         </div>
       </div>
@@ -143,6 +143,8 @@ interface TrainingRouteDetailMapProps {
   className?: string
   interactive?: boolean
   showControls?: boolean
+  /** Color key for race / training / overlap — detail view only, not preview cards. */
+  showLegend?: boolean
 }
 
 const TrainingRouteMapbox = lazy(() =>
@@ -153,7 +155,7 @@ const TrainingRouteMapbox = lazy(() =>
 export function TrainingRouteDetailMap(props: TrainingRouteDetailMapProps) {
   const [useSvg, setUseSvg] = useState(!import.meta.env.VITE_MAPBOX_TOKEN)
   const handleMapFailure = useCallback(() => setUseSvg(true), [])
-  const { className, ...mapProps } = props
+  const { className, showLegend = false, ...mapProps } = props
 
   return (
     <div className={`relative ${className ?? 'w-full h-full'}`}>
@@ -164,7 +166,7 @@ export function TrainingRouteDetailMap(props: TrainingRouteDetailMapProps) {
           <TrainingRouteMapbox {...mapProps} className="w-full h-full" onFail={handleMapFailure} />
         </Suspense>
       )}
-      <TrainingMapLegend />
+      {showLegend ? <TrainingMapLegend /> : null}
     </div>
   )
 }

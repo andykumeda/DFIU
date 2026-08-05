@@ -140,6 +140,7 @@ export function TrainingRouteDetail({
           coordinates={trainingCoords}
           courseCoordinates={showCourseRoute && courseCoords.length >= 2 ? courseCoords : undefined}
           overlapSegments={route.overlapSegments}
+          showLegend
           className="w-full h-full"
         />
         </div>
