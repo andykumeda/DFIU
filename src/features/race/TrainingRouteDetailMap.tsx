@@ -2,6 +2,32 @@ import { lazy, Suspense, useCallback, useState } from 'react'
 
 /** Card previews stay SVG-only (no Mapbox in the main bundle). */
 
+/** Race course reference — violet stands out on outdoors basemap vs blue training / orange overlap. */
+const COURSE_COLOR = '#9333ea'
+const TRAINING_COLOR = '#2563eb'
+const OVERLAP_COLOR = '#ea580c'
+
+function TrainingMapLegend() {
+  return (
+    <div className="absolute bottom-3 left-3 z-10 rounded-md border border-neutral-700 bg-neutral-950/90 px-3 py-2 text-[11px] text-neutral-200 shadow-lg backdrop-blur-sm pointer-events-none">
+      <div className="space-y-1">
+        <div className="flex items-center gap-1.5 whitespace-nowrap">
+          <span className="inline-block h-0.5 w-3 rounded" style={{ backgroundColor: COURSE_COLOR }} />
+          <span>Race course</span>
+        </div>
+        <div className="flex items-center gap-1.5 whitespace-nowrap">
+          <span className="inline-block h-0.5 w-3 rounded" style={{ backgroundColor: TRAINING_COLOR }} />
+          <span>Training</span>
+        </div>
+        <div className="flex items-center gap-1.5 whitespace-nowrap">
+          <span className="inline-block h-0.5 w-3 rounded" style={{ backgroundColor: OVERLAP_COLOR }} />
+          <span>Overlap</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function downsample(line: [number, number][], maxPoints: number): [number, number][] {
   if (line.length <= maxPoints) return line
   const step = Math.ceil(line.length / maxPoints)
@@ -127,15 +153,19 @@ const TrainingRouteMapbox = lazy(() =>
 export function TrainingRouteDetailMap(props: TrainingRouteDetailMapProps) {
   const [useSvg, setUseSvg] = useState(!import.meta.env.VITE_MAPBOX_TOKEN)
   const handleMapFailure = useCallback(() => setUseSvg(true), [])
-
-  if (useSvg) {
-    return <TrainingRouteSvgDetail {...props} />
-  }
+  const { className, ...mapProps } = props
 
   return (
-    <Suspense fallback={<TrainingRouteSvgDetail {...props} />}>
-      <TrainingRouteMapbox {...props} onFail={handleMapFailure} />
-    </Suspense>
+    <div className={`relative ${className ?? 'w-full h-full'}`}>
+      {useSvg ? (
+        <TrainingRouteSvgDetail {...mapProps} className="w-full h-full" />
+      ) : (
+        <Suspense fallback={<TrainingRouteSvgDetail {...mapProps} className="w-full h-full" />}>
+          <TrainingRouteMapbox {...mapProps} className="w-full h-full" onFail={handleMapFailure} />
+        </Suspense>
+      )}
+      <TrainingMapLegend />
+    </div>
   )
 }
 
@@ -209,8 +239,8 @@ function TrainingRouteSvgDetail({
         <polyline
           points={coursePoints}
           fill="none"
-          stroke="#737373"
-          strokeOpacity={0.55}
+          stroke={COURSE_COLOR}
+          strokeOpacity={0.85}
           strokeWidth="3"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -219,7 +249,7 @@ function TrainingRouteSvgDetail({
       <polyline
         points={trainingPoints}
         fill="none"
-        stroke="#2563eb"
+        stroke={TRAINING_COLOR}
         strokeWidth="4"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -229,7 +259,7 @@ function TrainingRouteSvgDetail({
           key={i}
           points={pts}
           fill="none"
-          stroke="#ea580c"
+          stroke={OVERLAP_COLOR}
           strokeWidth="6"
           strokeLinecap="round"
           strokeLinejoin="round"

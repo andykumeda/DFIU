@@ -2,6 +2,11 @@ import { useEffect, useRef } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
+/** Keep in sync with TrainingRouteDetailMap legend / SVG strokes. */
+const COURSE_COLOR = '#9333ea'
+const TRAINING_COLOR = '#2563eb'
+const OVERLAP_COLOR = '#ea580c'
+
 function downsample(line: [number, number][], maxPoints: number): [number, number][] {
   if (line.length <= maxPoints) return line
   const step = Math.ceil(line.length / maxPoints)
@@ -104,7 +109,7 @@ function drawRouteData(map: mapboxgl.Map, data: MapData) {
       map,
       SOURCE_IDS.course,
       lineFeature(course),
-      { 'line-color': '#737373', 'line-opacity': 0.55 },
+      { 'line-color': COURSE_COLOR, 'line-opacity': 0.85 },
       3
     )
   } else {
@@ -116,7 +121,7 @@ function drawRouteData(map: mapboxgl.Map, data: MapData) {
     map,
     SOURCE_IDS.training,
     lineFeature(training),
-    { 'line-color': '#2563eb', 'line-opacity': 0.95 },
+    { 'line-color': TRAINING_COLOR, 'line-opacity': 0.95 },
     4
   )
 
@@ -137,7 +142,7 @@ function drawRouteData(map: mapboxgl.Map, data: MapData) {
         map,
         SOURCE_IDS.overlap,
         { type: 'FeatureCollection', features },
-        { 'line-color': '#ea580c', 'line-opacity': 1 },
+        { 'line-color': OVERLAP_COLOR, 'line-opacity': 1 },
         6
       )
     }

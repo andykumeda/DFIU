@@ -11,7 +11,7 @@ import {
   returnDirectionsUrl,
 } from '@/lib/training-overlap'
 import type { PacePlanResult } from './pace-utils'
-import { getOverlapRacePace } from './race-day-utils'
+import { formatHM, getOverlapRacePace } from './race-day-utils'
 import { TrainingAnalysisPanel, type StravaActivity } from './TrainingAnalysisPanel'
 
 interface TrainingRouteDetailProps {
@@ -266,10 +266,10 @@ export function TrainingRouteDetail({
                     </div>
                     {pace && (
                       <div className="text-emerald-400/95 text-sm">
-                        Plan A {pace.paceLabel}/mi
+                        Plan A{' '}
                         {pace.enterTimeOfDay && pace.exitTimeOfDay
-                          ? ` · ${pace.enterTimeOfDay} – ${pace.exitTimeOfDay}`
-                          : ''}
+                          ? `${pace.enterTimeOfDay} – ${pace.exitTimeOfDay} (${formatHM(pace.durationMin)})`
+                          : `(${formatHM(pace.durationMin)})`}
                       </div>
                     )}
                   </li>
@@ -279,15 +279,9 @@ export function TrainingRouteDetail({
           )}
           {route.overlapSegments.length > 0 && !planAReady && (
             <p className="mt-3 text-xs text-neutral-500">
-              Set a valid Plan A goal on the Pace tab to see predicted race pace and time of day for this
-              overlap.
+              Set a valid Plan A goal on the Pace tab to see predicted time of day for this overlap.
             </p>
           )}
-          <p className="mt-2 text-xs text-neutral-500 flex items-center gap-2">
-            <span className="inline-block w-3 h-1 rounded bg-neutral-500" /> race course
-            <span className="inline-block w-3 h-1 rounded bg-blue-500" /> training
-            <span className="inline-block w-3 h-1 rounded bg-orange-500" /> overlap
-          </p>
         </div>
         <TrainingAnalysisPanel
           routes={[route]}
