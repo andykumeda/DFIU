@@ -6,17 +6,13 @@
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
-## Current production snapshot
-
-- Frontend: `96d295e` committed on `origin/main` (terrain legend + hidden pace calibration); may need redeploy with this training-legend follow-up.
+- Frontend: `fa6fc6b` (training preview legends off; compact detail legend). Hard-refresh and compare the footer hash.
 - AC100 training overlaps backfilled in DB (all 6 routes).
 - Repository: `main` @ `96d295e` on `origin/main`.
 
-## In progress
-
-- Training list preview cards: omit in-map color legend; detail view keeps a smaller legend.
-
 ## Just finished
+
+- Training preview cards no longer show the race/training/overlap legend; detail view keeps a smaller in-map legend (`fa6fc6b`). Also includes prior terrain-legend + hidden pace-calibration UI.
 
 - CourseMap terrain legend moved to **bottom-left** and shrunk (tighter padding/type for mobile). Pace “Prediction calibration” panel gated behind `SHOW_PREDICTION_CALIBRATION = false` (logic/state kept). Verified 46 tests, build, lint 0 errors (`96d295e`).
 
