@@ -2,17 +2,18 @@
 
 **Date:** 2026-08-05
 **Branch:** `main`
-**Status:** Training overlap out-and-back fix committed (`0de0c5b`); clean-hash redeploy next. Parallel training-detail map UI WIP is stashed as `wip training detail map UI`.
+**Status:** Overlap fix deployed (`742ee02`). Training detail map UI may still be shipping from a parallel session.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Frontend: redeploy pending for `0de0c5b` (prior live was `45c01bc`).
+- Frontend: `742ee02` (overlap fix live; hard-refresh and compare the footer hash).
 - AC100 training overlaps backfilled in DB (all 6 routes).
-- Repository: `main` ahead of `origin/main`; stash holds training detail map UI edits.
-
+- Repository: `main` @ `742ee02` on `origin/main`; UI WIP may be unstaged or in stashes.
 ## Just finished
+
+- Training route detail UI: color legend moved into the map (terrain-legend style); race course line now violet (`#9333ea`) vs blue training / orange overlap; Plan A overlap line shows time of day with duration in parentheses via `formatHM` (no min/mi pace).
 
 - Fixed training-route / race-course overlap for out-and-backs and start/finish colocation (`0de0c5b`):
   - **Shortcut to Newcomb:** disconnected race visits → `42.7→33.2` and `72.4→63.0` (~18.9 mi); different times of day.
@@ -24,7 +25,6 @@
 
 ## Open / follow-up
 
-- Restore stash `wip training detail map UI` (in-map legend, race-course color, Plan A time/duration copy) and finish that UI batch.
 - **Priority follow-up:** the failed legacy callback updated one real DFIU account before it failed, so that account's prior password may have been replaced. Do not reset or delete it without confirming the account owner; use the normal password-recovery flow with that person if needed.
 - Rotate the previously tracked Strava client secret and confirm Supabase function secrets.
 - Reconcile Supabase migration history before the next `db push`: the new `strava_connections` schema was applied directly because the remote history already contains migrations absent locally. The tracked migration is `20260804012144_strava_activity_connections.sql`; do not run migration repair blindly.
@@ -32,7 +32,7 @@
 - Verify RBAC and invite flows end-to-end with a second account.
 - Build `/admin` and owner-transfer UI.
 - Finish or retire Pacer View; decide whether offline/PWA Crew View remains a priority.
-- Revisit Training pace copy (duration plus `(pace/mi)` only) if still desired.
+- Preview-card Plan A copy is unchanged; only the detailed training overlap Plan A line dropped pace/mi.
 - Consider additional code splitting for the existing large-chunk build warnings.
 
 ## Workflow reminders
