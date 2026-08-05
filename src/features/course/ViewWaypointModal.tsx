@@ -1,5 +1,6 @@
 'use client'
 
+import { Users, Footprints, Backpack } from 'lucide-react'
 import { Waypoint } from '@/types/database'
 import styles from '../race/EditRaceModal.module.css' // Reuse consistent styles
 import { getDropBagNotes } from '@/features/race/drop-bag-shared'
@@ -104,18 +105,18 @@ export function ViewWaypointModal({ waypoint, isOwner, timeZone, clock24h = fals
                             <div className="text-neutral-500 text-xs uppercase tracking-wider mb-2">Amenities & Access</div>
                             <div className="flex flex-wrap gap-2">
                                 {waypoint.has_drop_bag && (
-                                    <span className="bg-neutral-800 text-neutral-300 text-xs px-2.5 py-1 rounded border border-neutral-700 flex items-center gap-1">
-                                        🎒 Drop Bag
+                                    <span className="bg-neutral-800 text-orange-300 text-xs px-2.5 py-1 rounded border border-neutral-700 flex items-center gap-1.5">
+                                        <Backpack className="w-3.5 h-3.5" /> Drop Bag
                                     </span>
                                 )}
                                 {waypoint.crew_allowed && (
-                                    <span className="bg-neutral-800 text-neutral-300 text-xs px-2.5 py-1 rounded border border-neutral-700 flex items-center gap-1">
-                                        👥 Crew Access
+                                    <span className="bg-neutral-800 text-green-400 text-xs px-2.5 py-1 rounded border border-neutral-700 flex items-center gap-1.5">
+                                        <Users className="w-3.5 h-3.5" /> Crew Access
                                     </span>
                                 )}
                                 {waypoint.pacer_allowed && (
-                                    <span className="bg-neutral-800 text-neutral-300 text-xs px-2.5 py-1 rounded border border-neutral-700 flex items-center gap-1">
-                                        🏃 Pacer Pickup
+                                    <span className="bg-neutral-800 text-blue-400 text-xs px-2.5 py-1 rounded border border-neutral-700 flex items-center gap-1.5">
+                                        <Footprints className="w-3.5 h-3.5" /> Pacer Pickup
                                     </span>
                                 )}
                             </div>

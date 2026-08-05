@@ -81,19 +81,19 @@
 .badgeCrew {
     top: -6px;
     right: -6px;
-    color: #a855f7;
+    color: #4ade80; /* green-400 — Pace plan crew */
 }
 
 .badgePacer {
     bottom: -6px;
     right: -6px;
-    color: #f59e0b;
+    color: #60a5fa; /* blue-400 — Pace plan pacer */
 }
 
 .badgeBag {
     bottom: -6px;
     left: -6px;
-    color: #10b981;
+    color: #fdba74; /* orange-300 — Pace plan drop bag */
 }
 
 /* Toolbar */

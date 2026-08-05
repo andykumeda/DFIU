@@ -35,6 +35,8 @@ type StrategyMode = 'planA' | 'planB' | 'planC'
 
 /** Past-finish calibration UI — keep wired; hide until the flow is productized. */
 const SHOW_PREDICTION_CALIBRATION = false
+/** Keep predictPace wired; hide the P10–P90 ability card until product wants it back. */
+const SHOW_ABILITY_BASED_PREDICTION = false
 
 const strategyColors: Record<StrategyMode, {
     active: string
@@ -755,7 +757,7 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                             {/* Extra slot */}
                         </div>
 
-                        {prediction && <div className="rounded-xl border border-violet-900/70 bg-violet-950/20 p-4 print:hidden">
+                        {SHOW_ABILITY_BASED_PREDICTION && prediction && <div className="rounded-xl border border-violet-900/70 bg-violet-950/20 p-4 print:hidden">
                             <div className="flex flex-wrap items-baseline justify-between gap-2">
                                 <div>
                                     <div className="text-xs font-semibold uppercase tracking-wider text-violet-300">Ability-based prediction</div>

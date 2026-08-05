@@ -11,6 +11,7 @@ import { getNearestPointOnLine, getDistanceFromStart, getCoordinateAtDistance, g
 import styles from './CourseMap.module.css'
 import { getTerrainColor, TERRAIN_TYPES } from './terrain-constants'
 import { mapLabelForWaypointGroup, groupWaypointsByProximity } from './waypoint-labels'
+import { amenityIconSvgHtml } from './waypoint-amenity-icons'
 
 type TerrainPoint = { lat: number, lon: number, mile: number }
 const TERRAIN_START_PICK_DISTANCE_MILES = 0.5
@@ -672,21 +673,21 @@ export function CourseMap({
                 if (primaryWp.crew_allowed) {
                     const badge = document.createElement('div')
                     badge.className = `${styles.badge} ${styles.badgeCrew}`
-                    badge.innerHTML = '👥'
+                    badge.innerHTML = amenityIconSvgHtml('crew')
                     badge.style.pointerEvents = 'none'
                     container.appendChild(badge)
                 }
                 if (primaryWp.pacer_allowed) {
                     const badge = document.createElement('div')
                     badge.className = `${styles.badge} ${styles.badgePacer}`
-                    badge.innerHTML = '🏃'
+                    badge.innerHTML = amenityIconSvgHtml('pacer')
                     badge.style.pointerEvents = 'none'
                     container.appendChild(badge)
                 }
                 if (primaryWp.has_drop_bag || primaryWp.type === 'start' || primaryWp.mile <= 0.01) {
                     const badge = document.createElement('div')
                     badge.className = `${styles.badge} ${styles.badgeBag}`
-                    badge.innerHTML = '🎒'
+                    badge.innerHTML = amenityIconSvgHtml('drop_bag')
                     badge.style.pointerEvents = 'none'
                     container.appendChild(badge)
                 }

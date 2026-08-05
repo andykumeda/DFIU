@@ -3,7 +3,7 @@ import { useAuth } from '@/features/auth/AuthContext'
 import { usePermission } from '@/features/auth/usePermission'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Calendar, MapPin, Globe, ArrowUpRight, CloudSun, Trophy, RefreshCw, Settings, Download, Save, CheckCircle2, Trash2, Share2 } from 'lucide-react'
+import { Calendar, MapPin, Globe, ArrowUpRight, CloudSun, Trophy, RefreshCw, Settings, Download, Save, CheckCircle2, Trash2, Share2, Users, Footprints, Backpack } from 'lucide-react'
 
 import { supabase } from '@/lib/supabase'
 import { RACE_SELECT } from '@/lib/race-select'
@@ -2080,10 +2080,10 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                                 ) : (
                                   <span title={wp.type.replace('_', ' ')}>{getWaypointIcon(wp.type)}</span>
                                 )}
-                                <div className="flex gap-1">
-                                  {wp.crew_allowed && <span title="Crew Access" className="text-[10px] grayscale opacity-80">👥</span>}
-                                  {wp.pacer_allowed && <span title="Pacer Pickup" className="text-[10px] grayscale opacity-80">🏃</span>}
-                                  {wp.has_drop_bag && <span title="Drop Bag" className="text-[10px] grayscale opacity-80">🎒</span>}
+                                <div className="flex gap-1 items-center">
+                                  {wp.crew_allowed && <span title="Crew Access"><Users className="w-3.5 h-3.5 text-green-400" /></span>}
+                                  {wp.pacer_allowed && <span title="Pacer Pickup"><Footprints className="w-3.5 h-3.5 text-blue-400" /></span>}
+                                  {wp.has_drop_bag && <span title="Drop Bag"><Backpack className="w-3.5 h-3.5 text-orange-300" /></span>}
                                 </div>
                               </div>
                               <div className="text-neutral-500 text-xs text-right min-w-[3rem]">
