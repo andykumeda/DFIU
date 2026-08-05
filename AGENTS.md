@@ -101,3 +101,8 @@ documented in `README.md` / `package.json` (`dev`, `lint`, `test`, `build`, `pre
 - Git hooks (husky) run on commit: `scripts/verify-critical-files.sh` (fails if core source
   files are missing) plus `lint-staged` (`eslint --fix` on staged `*.ts/tsx`). Never bypass
   or remove them.
+- **Egress:** live auth/DB/map calls go to the hosted Supabase project subdomain
+  (`<project-ref>.supabase.co`) and to `api.mapbox.com` / `events.mapbox.com`. The default
+  cloud sandbox blocks these (DNS resolves but the connection is reset), so signup/login,
+  database reads, and map tiles fail in the browser until those domains are added to the
+  agent's network egress allowlist. lint/test/build/dev do not need egress.
