@@ -10,7 +10,7 @@ import MapStyleSwitcher from './MapStyleSwitcher'
 import { getNearestPointOnLine, getDistanceFromStart, getCoordinateAtDistance, getDistanceAtCoordinate } from '@/lib/geo-utils'
 import styles from './CourseMap.module.css'
 import { getTerrainColor, TERRAIN_TYPES } from './terrain-constants'
-import { mapLabelForWaypointGroup } from './waypoint-labels'
+import { mapLabelForWaypointGroup, groupWaypointsByProximity } from './waypoint-labels'
 
 type TerrainPoint = { lat: number, lon: number, mile: number }
 const TERRAIN_START_PICK_DISTANCE_MILES = 0.5
@@ -558,19 +558,8 @@ export function CourseMap({
 
         if (isTerrainMode) return
 
-        // Group waypoints
-        const groups: typeof visibleWaypoints[] = []
-        visibleWaypoints.forEach(wp => {
-            const existingGroup = groups.find(g =>
-                Math.abs(g[0].lat - wp.lat) < 0.0001 &&
-                Math.abs(g[0].lon - wp.lon) < 0.0001
-            )
-            if (existingGroup) {
-                existingGroup.push(wp)
-            } else {
-                groups.push([wp])
-            }
-        })
+        // Group waypoints (0.06 mi covers typical out-and-back snap drift)
+        const groups = groupWaypointsByProximity(visibleWaypoints)
 
         // Render groups
         groups.forEach(group => {
@@ -832,15 +821,7 @@ export function CourseMap({
             return
         }
 
-        const groups: typeof visibleWaypoints[] = []
-        visibleWaypoints.forEach(wp => {
-            const existingGroup = groups.find(g =>
-                Math.abs(g[0].lat - wp.lat) < 0.0001 &&
-                Math.abs(g[0].lon - wp.lon) < 0.0001
-            )
-            if (existingGroup) existingGroup.push(wp)
-            else groups.push([wp])
-        })
+        const groups = groupWaypointsByProximity(visibleWaypoints)
 
         const labelData: GeoJSON.FeatureCollection<GeoJSON.Point, { label: string }> = {
             type: 'FeatureCollection',

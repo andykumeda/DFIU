@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-05
 **Branch:** `main`
-**Status:** Map multi-visit aid labels collapsed to base name.
+**Status:** In progress — widen map stack radius for out-and-back aids.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -10,7 +10,11 @@
 
 - Frontend: `93c7ef3` (multi-visit aid map labels use shared base name). Hard-refresh and compare the footer hash.
 - AC100 training overlaps backfilled in DB (all 6 routes).
-- Repository: `main` @ `93c7ef3` on `origin/main`.
+- Repository: `main` @ `c08c79a` on `origin/main`.
+
+## In progress
+
+- Shortcut Saddle / Chilao visits are ~15–50 m apart (outside the old ~11 m epsilon), so they never stacked. Widening stack radius to 0.06 mi and stripping visit suffixes on map labels.
 
 ## Just finished
 
