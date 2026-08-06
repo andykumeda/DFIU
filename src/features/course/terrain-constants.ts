@@ -17,12 +17,12 @@ export interface TerrainTypeDef {
 }
 
 export const TERRAIN_TYPES: readonly TerrainTypeDef[] = [
-    { value: 'paved',            label: 'Paved / Road',       defaultDifficulty: 100, color: '#3b82f6' },
-    { value: 'dirt',             label: 'Smooth Dirt / Gravel', defaultDifficulty: 104, color: '#eab308' },
-    { value: 'runnable_trail',   label: 'Runnable Trail',     defaultDifficulty: 110, color: '#f97316' },
-    { value: 'technical',        label: 'Technical Trail',    defaultDifficulty: 118, color: '#ef4444' },
-    { value: 'highly_technical', label: 'Highly Technical',   defaultDifficulty: 130, color: '#7f1d1d' },
-    { value: 'other',        label: 'Other',         defaultDifficulty: 100, color: '#9ca3af' },
+    { value: 'paved',            label: 'Paved',              defaultDifficulty: 100, color: '#3b82f6' },
+    { value: 'dirt',             label: 'Smooth dirt',        defaultDifficulty: 104, color: '#eab308' },
+    { value: 'runnable_trail',   label: 'Technical (low)',    defaultDifficulty: 110, color: '#f97316' },
+    { value: 'technical',        label: 'Technical (med)',    defaultDifficulty: 118, color: '#ef4444' },
+    { value: 'highly_technical', label: 'Technical (high)',   defaultDifficulty: 130, color: '#7f1d1d' },
+    { value: 'other',            label: 'Other',              defaultDifficulty: 100, color: '#9ca3af' },
 ]
 
 const TERRAIN_BY_VALUE: Record<string, TerrainTypeDef> = Object.fromEntries(

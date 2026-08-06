@@ -1295,13 +1295,13 @@ export function CourseMap({
                 )}
             </div>
 
-            <div className="absolute bottom-3 left-3 z-10 max-w-[42%] rounded border border-neutral-700/80 bg-neutral-950/85 px-1.5 py-1 text-[9px] leading-tight text-neutral-200 shadow-md backdrop-blur-sm pointer-events-none sm:max-w-none sm:px-2 sm:py-1.5 sm:text-[10px]">
+            <div className="absolute bottom-3 left-2 z-10 rounded border border-neutral-700/80 bg-neutral-950/85 px-1.5 py-1 text-[9px] leading-tight text-neutral-200 shadow-md backdrop-blur-sm pointer-events-none sm:bottom-4 sm:left-4 sm:px-2 sm:py-1.5 sm:text-[10px]">
                 <div className="mb-0.5 text-[8px] font-semibold uppercase tracking-wide text-neutral-500 sm:text-[9px]">Terrain</div>
                 <div className="space-y-0.5">
                     {TERRAIN_TYPES.map(terrain => (
                         <div key={terrain.value} className="flex items-center gap-1 whitespace-nowrap">
                             <span className="h-1.5 w-1.5 shrink-0 rounded-full ring-1 ring-white/25 sm:h-2 sm:w-2" style={{ backgroundColor: terrain.color }} />
-                            <span className="truncate">{terrain.label}</span>
+                            <span>{terrain.label}</span>
                         </div>
                     ))}
                 </div>
