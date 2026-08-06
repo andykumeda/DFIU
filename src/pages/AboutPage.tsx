@@ -20,10 +20,10 @@ export default function AboutPage() {
           <h2 className='text-xl font-bold'>Contact</h2>
           <p className='mt-3 text-neutral-400 leading-7'>Questions, feedback, or a problem to report? Email the person behind DFIU.</p>
           <a
-            href='mailto:andy@delta9.tech'
+            href='mailto:andy@kumeda.com'
             className='mt-4 inline-flex items-center gap-2 text-blue-400 hover:text-blue-300 underline underline-offset-4'
           >
-            <Mail size={17} aria-hidden='true' /> andy@delta9.tech
+            <Mail size={17} aria-hidden='true' /> andy@kumeda.com
           </a>
         </section>
       </div>

@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-06
 **Branch:** `main`
-**Status:** Moving About and Documentation links from the landing-page CTA into its footer.
+**Status:** Landing-page info links moved to footer; contact email corrected to `andy@kumeda.com`.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
