@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { RaceList } from '@/features/race/RaceList'
 import { Settings } from 'lucide-react'
 import { useClaimDemoOnAuth } from '@/features/demo/useClaimDemoOnAuth'
-import { SiteInfoLinks } from '@/components/ui/SiteInfoLinks'
+import { SiteFooter } from '@/components/ui/SiteFooter'
 
 export default function DashboardPage() {
   const { user, profile } = useAuth()
@@ -33,7 +33,6 @@ export default function DashboardPage() {
             </div>
           </Link>
           <div className='flex items-center gap-2 sm:gap-4'>
-            <SiteInfoLinks />
             <div className="flex items-center gap-3">
               {profile?.avatar_url ? (
                 <img src={profile.avatar_url} alt="Profile" className="w-8 h-8 rounded-full border border-neutral-700 object-cover" />
@@ -93,6 +92,7 @@ export default function DashboardPage() {
           <RaceList mode='public' />
         </section>
       </main>
+      <SiteFooter />
     </div>
   )
 }

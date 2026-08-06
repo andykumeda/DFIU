@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { ArrowLeft, AlertCircle, Footprints } from 'lucide-react'
 import { usePermission } from '@/features/auth/usePermission'
-import { SiteInfoLinks } from '@/components/ui/SiteInfoLinks'
+import { SiteFooter } from '@/components/ui/SiteFooter'
 
 interface PacerViewProps {
   raceId: string
@@ -29,7 +29,6 @@ export function PacerView({ raceId }: PacerViewProps) {
             <div className='text-xs text-neutral-400 truncate'>Pacer View</div>
             <div className='text-sm font-semibold truncate'>Race execution</div>
           </div>
-          <SiteInfoLinks />
         </div>
       </header>
 
@@ -44,6 +43,7 @@ export function PacerView({ raceId }: PacerViewProps) {
           </p>
         </section>
       </main>
+      <SiteFooter />
     </div>
   )
 }

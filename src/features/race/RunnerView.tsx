@@ -7,7 +7,7 @@ import { useAuth } from '@/features/auth/AuthContext'
 import { usePermission } from '@/features/auth/usePermission'
 import { useRunnerLocationUploader } from './useRunnerLocation'
 import type { Race } from '@/types/database'
-import { SiteInfoLinks } from '@/components/ui/SiteInfoLinks'
+import { SiteFooter } from '@/components/ui/SiteFooter'
 
 interface RunnerViewProps {
   raceId: string
@@ -56,7 +56,6 @@ export function RunnerView({ raceId }: RunnerViewProps) {
             <div className='text-xs text-neutral-400 truncate'>Runner View</div>
             <div className='text-sm font-semibold truncate'>{race.name}</div>
           </div>
-          <SiteInfoLinks />
         </div>
       </header>
 
@@ -98,6 +97,7 @@ export function RunnerView({ raceId }: RunnerViewProps) {
           </p>
         </section>
       </main>
+      <SiteFooter />
     </div>
   )
 }

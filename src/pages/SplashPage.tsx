@@ -6,6 +6,7 @@ import { Race } from '../types/database'
 import styles from './SplashPage.module.css'
 import { useAuth } from '../features/auth/AuthContext'
 import { CheckCircle2 } from 'lucide-react'
+import { SiteFooter } from '@/components/ui/SiteFooter'
 
 export default function SplashPage() {
   const { user } = useAuth()
@@ -119,13 +120,7 @@ export default function SplashPage() {
         </div>
       </div>
 
-      <footer className={styles.footer}>
-        <span>DFIU · Don&apos;t F* It Up!</span>
-        <nav aria-label="Site information">
-          <Link to="/about">About</Link>
-          <Link to="/documentation">Documentation</Link>
-        </nav>
-      </footer>
+      <SiteFooter />
     </main>
   )
 }

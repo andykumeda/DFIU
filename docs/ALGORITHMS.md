@@ -100,4 +100,10 @@ Strava moving time is used exclusively. With distance/time/moving streams, DFIU 
 - They do not calculate traffic-aware crew travel time or in-app driving routes.
 - They cannot correct an inaccurate GPX, missing elevation data, or a poor GPS trace.
 
-Relevant implementation: [`src/features/race/pace-utils.ts`](https://github.com/andykumeda/DFIU/blob/main/src/features/race/pace-utils.ts), [`src/features/race/pace-prediction.ts`](https://github.com/andykumeda/DFIU/blob/main/src/features/race/pace-prediction.ts), [`src/lib/training-overlap.ts`](https://github.com/andykumeda/DFIU/blob/main/src/lib/training-overlap.ts), [`src/features/race/training-analysis.ts`](https://github.com/andykumeda/DFIU/blob/main/src/features/race/training-analysis.ts), and [`src/features/race/RaceDetail.tsx`](https://github.com/andykumeda/DFIU/blob/main/src/features/race/RaceDetail.tsx).
+Relevant implementation:
+
+- [`src/features/race/pace-utils.ts`](https://github.com/andykumeda/DFIU/blob/main/src/features/race/pace-utils.ts)
+- [`src/features/race/pace-prediction.ts`](https://github.com/andykumeda/DFIU/blob/main/src/features/race/pace-prediction.ts)
+- [`src/lib/training-overlap.ts`](https://github.com/andykumeda/DFIU/blob/main/src/lib/training-overlap.ts)
+- [`src/features/race/training-analysis.ts`](https://github.com/andykumeda/DFIU/blob/main/src/features/race/training-analysis.ts)
+- [`src/features/race/RaceDetail.tsx`](https://github.com/andykumeda/DFIU/blob/main/src/features/race/RaceDetail.tsx)

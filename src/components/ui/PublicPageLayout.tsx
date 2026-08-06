@@ -1,7 +1,7 @@
 import { LogIn, UserPlus } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/features/auth/AuthContext'
-import { SiteInfoLinks } from './SiteInfoLinks'
+import { SiteFooter } from './SiteFooter'
 
 interface PublicPageLayoutProps {
   eyebrow: string
@@ -23,7 +23,6 @@ export function PublicPageLayout({ eyebrow, title, intro, children }: PublicPage
           </Link>
 
           <nav aria-label='Information' className='flex items-center gap-1 sm:gap-2 text-sm'>
-            <SiteInfoLinks />
             {user ? (
               <Link to='/dashboard' className='ml-1 px-3 py-2 rounded-md bg-blue-600 hover:bg-blue-500 font-semibold transition-colors'>Dashboard</Link>
             ) : (
@@ -48,6 +47,7 @@ export function PublicPageLayout({ eyebrow, title, intro, children }: PublicPage
         </div>
         <div className='mt-10'>{children}</div>
       </main>
+      <SiteFooter />
     </div>
   )
 }

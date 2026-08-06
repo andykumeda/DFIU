@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-06
 **Branch:** `main`
-**Status:** Shared About/Documentation navigation added to app headers; contact email and algorithm references fixed.
+**Status:** About/Documentation moved to shared footers; algorithm implementation references reformatted.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
