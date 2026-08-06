@@ -2,21 +2,20 @@
 
 **Date:** 2026-08-06
 **Branch:** `main`
-**Status:** iMessage OG fix — event vanity URLs always serve share-preview HTML.
+**Status:** Share previews use RouteSmith-style local OG injector.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Frontend: `15ec62c`. Hard-refresh and compare the footer hash.
-- `share-preview` deployed with compressed PNG (~5KB) + JS redirect to `/race/:id`.
-- nginx: all event vanity/UUID paths hit OG HTML (not bot-UA-only). Template: `scripts/nginx-dfiu.app.conf`.
-- Repository: committing this fix.
+- Frontend: `15ec62c` shell + `og-default.png`. Hard-refresh and compare the footer hash.
+- OG: `dfiu-og` systemd on `:3457` injects event title into SPA `index.html` for vanity/UUID paths.
+- nginx: `scripts/nginx-dfiu.app.conf` proxies those paths to the OG server (no bot UA sniffing).
+- Verified: iPhone Safari UA on `/ac100` → `og:title` = `Angeles Crest 100 | 100.8 mi`, SPA `#root` present.
 
 ## Just finished
 
-- Root cause: iPhone Safari UA received SPA shell (generic DFIU meta), so iMessage never saw event OG tags.
-- Fix: vanity event URLs always return OG HTML; browsers JS-redirect to `/race/:id`.
+- Ported RouteSmith OG approach: inject meta into real SPA HTML; static orange `og-default.png`.
 
 ## Open
 

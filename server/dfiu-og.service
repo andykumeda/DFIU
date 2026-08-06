@@ -1,0 +1,17 @@
+[Unit]
+Description=DFIU Open Graph preview server
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/var/www/dfiu-og
+ExecStart=/usr/bin/node /var/www/dfiu-og/og-server.mjs
+Restart=on-failure
+RestartSec=3
+Environment=NODE_ENV=production
+EnvironmentFile=-/var/www/dfiu-og/.env
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

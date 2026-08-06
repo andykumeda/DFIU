@@ -87,24 +87,22 @@ project, verify the affected schema/query, and record the action in `HANDOFF.md`
 
 GitHub Actions workflow `.github/workflows/ci.yml` runs `npm ci`, lint, vitest, and build on pushes/PRs to `main`.
 
-## Nginx Configuration (Example)
+## Nginx + Open Graph (RouteSmith pattern)
 
-Event vanity URLs (`/ac100`, `/{uuid}`) always return Open Graph HTML from the
-`share-preview` Edge Function so iMessage (Safari-like UA) sees the event title
-and orange PNG card. The HTML JS-redirects real browsers to `/race/:id`.
+Share / vanity event URLs are proxied to a local Node injector that rewrites
+`og:title` / `og:description` into the built SPA `index.html`. Crawlers and
+browsers get the same document (no User-Agent sniffing, no JS redirect).
 
-Template: [`scripts/nginx-dfiu.app.conf`](scripts/nginx-dfiu.app.conf) (replace
-`ANON_KEY_PLACEHOLDER` with the project anon key — same as `VITE_SUPABASE_ANON_KEY`).
+- Server: [`server/og-server.mjs`](server/og-server.mjs) (systemd: `dfiu-og`, port `3457`)
+- Nginx template: [`scripts/nginx-dfiu.app.conf`](scripts/nginx-dfiu.app.conf)
+- Env: copy [`server/.env.example`](server/.env.example) → `/var/www/dfiu-og/.env` on the host
+- Static preview image: `/og-default.png`
 
-```bash
-# After editing the template:
-sed "s/ANON_KEY_PLACEHOLDER/$VITE_SUPABASE_ANON_KEY/g" scripts/nginx-dfiu.app.conf \
-  | ssh web 'cat > /etc/nginx/sites-available/dfiu.app && sudo nginx -t && sudo systemctl reload nginx'
-```
+`npm run deploy` syncs `server/` and restarts `dfiu-og`.
 
-Deploy the `share-preview` Edge Function with JWT verification off:
+After changing nginx:
 
 ```bash
-supabase functions deploy share-preview --no-verify-jwt
-supabase secrets set SITE_URL=https://dfiu.app
+scp scripts/nginx-dfiu.app.conf web:/etc/nginx/sites-available/dfiu.app
+ssh web 'sudo nginx -t && sudo systemctl reload nginx'
 ```

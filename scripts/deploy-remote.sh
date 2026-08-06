@@ -64,5 +64,11 @@ rsync -avz --delete --exclude '/assets/***' dist/ "$USER@$HOST:$DIR/"
 echo "🔐 Normalizing remote file permissions..."
 ssh "$USER@$HOST" "find '$DIR' -type d -exec chmod 755 {} + && find '$DIR' -type f -exec chmod 644 {} +"
 
+# Open Graph injector (RouteSmith-style) — injects event title into SPA HTML
+echo "🔗 Syncing OG preview server..."
+ssh "$USER@$HOST" "mkdir -p /var/www/dfiu-og"
+rsync -avz --exclude '.env' server/ "$USER@$HOST:/var/www/dfiu-og/"
+ssh "$USER@$HOST" "sudo cp /var/www/dfiu-og/dfiu-og.service /etc/systemd/system/dfiu-og.service && sudo systemctl daemon-reload && sudo systemctl enable --now dfiu-og && sudo systemctl restart dfiu-og"
+
 echo "✅ Deployment Complete!"
 echo "   App should be live at http://$HOST (assuming default Nginx setup)"
