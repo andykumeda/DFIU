@@ -8,14 +8,14 @@
 
 ## Current production snapshot
 
-- Frontend: `19fdf29` (demo try link beside Sign In; no public-event banner). Hard-refresh and compare the footer hash.
+- Frontend: `069f749` (header demo link labeled “Demo”). Hard-refresh and compare the footer hash.
 - Share alias migration applied on linked DFIU project.
-- Repository: `main` @ `19fdf29` on `origin/main`.
+- Repository: `main` @ `069f749` on `origin/main`.
 - AC100 training overlaps backfilled in DB (all 6 routes).
 
 ## Just finished
 
-- Removed public-event blue demo banner; muted “Try without account” / “Try free” sits beside Sign In (`?demo=1`).
+- Removed public-event blue demo banner; muted **Demo** link beside Sign In (`?demo=1`, same hover explanation).
 - Share URLs: `/{idOrAlias}?share=…`; vanity alias on Members; share view owner chrome without save.
 
 ## Open
