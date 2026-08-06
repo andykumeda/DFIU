@@ -1,21 +1,22 @@
 # Handoff Document
 
 **Date:** 2026-08-05
-**Branch:** `main`
-**Status:** Training overlap line shows course elevation gain.
+**Branch:** `cursor/mobile-terrain-pace-scroll-3943`
+**Status:** Read-only terrain panel, mobile pace goal order, and overscroll fixes deployed.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Frontend: `a98da9d` (overlap summary includes course elevation gain). Hard-refresh and compare the footer hash.
+- Frontend: deployed from `cursor/mobile-terrain-pace-scroll-3943` (pre-commit hash `f1fbd1f-dirty`). Hard-refresh and compare the footer hash after merge.
 - Share alias migration applied on linked DFIU project.
-- Repository: `main` @ `a98da9d` on `origin/main`.
+- Repository: work on branch `cursor/mobile-terrain-pace-scroll-3943`.
 
 ## Just finished
 
-- Overlap summary line includes race-course elevation gain for overlapped miles (`+N ft`).
-- Plan A race-segment miles use unique course coverage; list cards show totals only.
+- Terrain sidebar + map terrain coloring visible to all viewers (not gated on owner/share chrome).
+- Pace tab: Goal Setting panel appears above the chart on mobile.
+- Mobile overscroll: `min-h-dvh`, `overscroll-behavior-y: none`, sidebar scroll only on desktop.
 
 ## Open
 

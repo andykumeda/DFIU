@@ -1513,7 +1513,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   if (raceLoadFailed || !race) return <div className='p-8 text-white'>Redirecting...</div>
 
   return (
-    <div className='min-h-screen bg-neutral-950 flex flex-col'>
+    <div className='min-h-dvh bg-neutral-950 flex flex-col overscroll-y-none'>
       {/* Header */}
       {/* Opaque sticky chrome (no backdrop-blur): WebKit can mis-hit-test sticky+blur on long mobile pages. */}
       <header ref={setHeaderEl} className='print:hidden border-b border-neutral-800 bg-neutral-950 sticky top-0 z-[100]'>
@@ -1794,7 +1794,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       </nav>
 
       {/* Content */}
-      <main className='flex-1 relative z-0'>
+      <main className='flex-1 relative z-0 min-h-0'>
         {activeTab === 'live' && (
           <div className="animate-in fade-in duration-500">
             <Suspense fallback={<div className='p-6 text-white text-center'>Loading live view...</div>}>
@@ -1856,7 +1856,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
                         highlightedTerrainId={pendingSegment?.nodeId ?? selectedTerrainId ?? hoveredTerrainId}
                         activeTerrainRange={pendingSegment ? { startMile: pendingSegment.startMile, endMile: pendingSegment.endMile } : null}
-                        terrainNodes={showOwnerChrome ? terrainNodes : []}
+                        terrainNodes={terrainNodes}
                         onTerrainNodeClick={isOwner && isTerrainEditMode ? handleEditTerrainSegment : undefined}
                         onSegmentDefined={isOwner && isTerrainEditMode ? (lo, hi) => {
                           setHoveredTerrainId(null)
@@ -1963,7 +1963,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                       highlightedWaypointId={hoveredWaypointId}
                       showMileMarkers={showMileMarkers}
                       waypoints={waypoints.map(wp => ({ id: wp.id, mile: wp.mile, name: wp.name, type: wp.type }))}
-                      terrainNodes={showOwnerChrome ? terrainNodes : []}
+                      terrainNodes={terrainNodes}
                       onRangeDefined={isOwner && isTerrainEditMode ? (lo, hi) => {
                         setHoveredTerrainId(null)
                         openTerrainSelection(lo, hi)
@@ -1978,7 +1978,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                     onClick={() => mapSidebarRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
                   >
                     <ChevronDown className='h-4 w-4 shrink-0 text-blue-400 animate-bounce' />
-                    <span>Route stats & aid stations below</span>
+                    <span>Route stats, aid stations & terrain below</span>
                     <ChevronDown className='h-4 w-4 shrink-0 text-blue-400 animate-bounce' />
                   </button>
                 </div>
@@ -1986,7 +1986,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                 {/* Right Sidebar: Stats & Waypoints */}
                 <div
                   ref={mapSidebarRef}
-                  className='w-full md:w-80 border-l border-neutral-800 bg-neutral-900 overflow-y-auto flex-shrink-0 scroll-mt-[calc(var(--page-header-h,0px)+3.5rem)]'
+                  className='w-full md:w-80 border-l border-neutral-800 bg-neutral-900 md:overflow-y-auto md:max-h-[calc(100dvh-var(--page-header-h,0px)-3.5rem)] flex-shrink-0 scroll-mt-[calc(var(--page-header-h,0px)+3.5rem)]'
                 >
                   <div className='p-4 border-b border-neutral-800'>
                     <div className='flex items-center justify-between mb-4'>
@@ -2139,13 +2139,12 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                     )}
                   </div>
 
-                  {showOwnerChrome && (
-                    <TerrainSidebar
+                  <TerrainSidebar
                       terrainNodes={terrainNodes}
                       totalDistance={course?.total_distance_miles ?? 0}
                       canEdit={!!isOwner && isTerrainEditMode}
                       canEnterEdit={!!isOwner}
-                      showDisabledEdit={isShareView && !isOwner}
+                      showDisabledEdit={!isOwner && showOwnerChrome}
                       onEditModeChange={editing => {
                         setIsTerrainEditMode(editing)
                         if (editing) setIsWaypointEditMode(false)
@@ -2168,7 +2167,6 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                         }
                       }}
                     />
-                  )}
                 </div>
               </div>
             ) : (
