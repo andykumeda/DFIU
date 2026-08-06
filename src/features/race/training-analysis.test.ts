@@ -49,15 +49,30 @@ describe('buildTrainingPlanSummary', () => {
     )
 
     expect(summary).not.toBeNull()
-    expect(summary!.raceMilesLabel).toBe('78.7–84.8, 74.8–78.6')
+    expect(summary!.raceMilesLabel).toBe('74.8–78.6, 78.7–84.8')
     expect(summary!.raceMilesTotal).toBeCloseTo(9.9, 4)
     expect(summary!.raceDurationLabel).toBe('3 hours 50 mins')
-    expect(summary!.trainingMilesLabel).toBe('0–6.1, 10–14')
+    expect(summary!.trainingMilesLabel).toBe('10–14, 0–6.1')
     expect(summary!.trainingMilesTotal).toBeCloseTo(10.1, 4)
     expect(summary!.segments).toEqual([
-      expect.objectContaining({ courseMilesLabel: '78.7–84.8', trainingMilesLabel: '0–6.1', raceDurationLabel: '3 hours 20 mins' }),
       expect.objectContaining({ courseMilesLabel: '74.8–78.6', trainingMilesLabel: '10–14', raceDurationLabel: '30 mins' }),
+      expect.objectContaining({ courseMilesLabel: '78.7–84.8', trainingMilesLabel: '0–6.1', raceDurationLabel: '3 hours 20 mins' }),
     ])
+  })
+
+  it('orders race segments by course mile', () => {
+    const summary = buildTrainingPlanSummary(
+      [
+        { courseStartMi: 72.7, courseEndMi: 87.3, trainingStartMi: 20, trainingEndMi: 35 },
+        { courseStartMi: 25.0, courseEndMi: 24.6, trainingStartMi: 8, trainingEndMi: 8.4 },
+        { courseStartMi: 24.6, courseEndMi: 33, trainingStartMi: 0, trainingEndMi: 8.4 },
+      ],
+      null,
+      { start_datetime: null, timezone: null },
+      false
+    )
+
+    expect(summary!.raceMilesLabel).toBe('24.6–33, 25–24.6, 72.7–87.3')
   })
 })
 

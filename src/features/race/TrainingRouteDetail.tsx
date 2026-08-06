@@ -12,6 +12,7 @@ import {
 } from '@/lib/training-overlap'
 import type { PacePlanResult } from './pace-utils'
 import { formatHM, getOverlapRacePace } from './race-day-utils'
+import { sortOverlapSegmentsByRaceMile } from './training-analysis'
 import { TrainingAnalysisPanel, type StravaActivity } from './TrainingAnalysisPanel'
 
 interface TrainingRouteDetailProps {
@@ -66,6 +67,10 @@ export function TrainingRouteDetail({
     hasStart &&
     hasFinish &&
     isPointToPointRoute(route.start_lat, route.start_lon, route.finish_lat, route.finish_lon)
+  const orderedOverlapSegments = useMemo(
+    () => sortOverlapSegmentsByRaceMile(route.overlapSegments),
+    [route.overlapSegments]
+  )
 
   const dirty = name.trim() !== route.name || notes !== (route.notes ?? '')
 
@@ -244,9 +249,9 @@ export function TrainingRouteDetail({
           <p className="text-sm text-neutral-200">
             {formatOverlapSummary(route.overlap_miles, route.overlapSegments)}
           </p>
-          {route.overlapSegments.length > 0 && (
+          {orderedOverlapSegments.length > 0 && (
             <ul className="mt-3 space-y-3 text-sm text-neutral-400">
-              {route.overlapSegments.map((seg, i) => {
+              {orderedOverlapSegments.map((seg, i) => {
                 const pace = planAReady
                   ? getOverlapRacePace(
                       planA,

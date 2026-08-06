@@ -358,9 +358,9 @@ function TrainingRouteCard({
             <section className="pt-3 mt-3 border-t border-neutral-800 space-y-2" aria-label="Plan A segment">
               <h4 className="text-sm font-medium text-emerald-300">Plan A{planGoalLabel}</h4>
               <dl className="space-y-1.5 text-xs leading-5">
-                <div className="flex justify-between gap-3 text-neutral-400"><dt>Race Segment Miles</dt><dd className="text-right text-neutral-200">{planSummary.raceMilesLabel} <span className="text-neutral-500">(Total: {planSummary.raceMilesTotal.toFixed(1)} mi)</span></dd></div>
-                <div className="flex justify-between gap-3 text-neutral-400"><dt>Race Segment Time</dt><dd className="text-right text-neutral-200">{planSummary.raceTimeLabel ?? 'Generate Plan A'}{planSummary.raceDurationLabel && <span className="text-neutral-500"> (Total: {planSummary.raceDurationLabel})</span>}</dd></div>
-                <div className="flex justify-between gap-3 text-neutral-400"><dt>Training Miles</dt><dd className="text-right text-neutral-200">{planSummary.trainingMilesLabel} <span className="text-neutral-500">(Total: {planSummary.trainingMilesTotal.toFixed(1)} mi)</span></dd></div>
+                <div className="flex justify-between gap-3 text-neutral-400"><dt>Race Segment Miles</dt><dd className="text-right text-neutral-200">{planSummary.raceMilesTotal.toFixed(1)} mi</dd></div>
+                <div className="flex justify-between gap-3 text-neutral-400"><dt>Race Segment Time</dt><dd className="text-right text-neutral-200">{planSummary.raceDurationLabel ?? 'Generate Plan A'}</dd></div>
+                <div className="flex justify-between gap-3 text-neutral-400"><dt>Training Miles</dt><dd className="text-right text-neutral-200">{planSummary.trainingMilesTotal.toFixed(1)} mi</dd></div>
               </dl>
             </section>
           )}

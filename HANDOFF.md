@@ -2,21 +2,22 @@
 
 **Date:** 2026-08-05
 **Branch:** `main`
-**Status:** Demo CTA moved into header Sign In area (no banner).
+**Status:** Training Plan A cards slimmed; race segments sorted by mile.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Frontend: `069f749` (header demo link labeled “Demo”). Hard-refresh and compare the footer hash.
+- Frontend: pending this deploy.
 - Share alias migration applied on linked DFIU project.
-- Repository: `main` @ `069f749` on `origin/main`.
+- Repository: `main` (ahead pending commit).
 - AC100 training overlaps backfilled in DB (all 6 routes).
 
 ## Just finished
 
-- Removed public-event blue demo banner; muted **Demo** link beside Sign In (`?demo=1`, same hover explanation).
-- Share URLs: `/{idOrAlias}?share=…`; vanity alias on Members; share view owner chrome without save.
+- Training list cards: Plan A shows totals only (miles/time); segment detail on open.
+- Overlap race segments ordered by course mile (race order).
+- Header muted **Demo** link beside Sign In; short vanity share links.
 
 ## Open
 

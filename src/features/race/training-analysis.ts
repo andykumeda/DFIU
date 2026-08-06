@@ -48,9 +48,23 @@ export function formatDurationWords(minutes: number): string {
   return `${hours} hour${hours === 1 ? '' : 's'} ${mins} min${mins === 1 ? '' : 's'}`
 }
 
+/** Race-order sort: earlier course miles first; longer span before short reverse stubs. */
+export function sortOverlapSegmentsByRaceMile<T extends OverlapSegment>(segments: T[]): T[] {
+  return [...segments].sort((a, b) => {
+    const aStart = Math.min(a.courseStartMi, a.courseEndMi)
+    const bStart = Math.min(b.courseStartMi, b.courseEndMi)
+    if (aStart !== bStart) return aStart - bStart
+    const aSpan = Math.abs(a.courseEndMi - a.courseStartMi)
+    const bSpan = Math.abs(b.courseEndMi - b.courseStartMi)
+    if (aSpan !== bSpan) return bSpan - aSpan
+    return a.courseStartMi - b.courseStartMi
+  })
+}
+
 /**
  * Summarize a training route for comparison. Every detected overlapping segment
  * contributes to the Plan A goal; no non-overlap portion is included.
+ * Segments are ordered by race course mile (when they occur during the race).
  */
 export function buildTrainingPlanSummary(
   segments: OverlapSegment[],
@@ -60,33 +74,35 @@ export function buildTrainingPlanSummary(
 ): TrainingPlanSummary | null {
   if (segments.length === 0) return null
 
-  const raceMilesTotal = segments.reduce(
+  const ordered = sortOverlapSegmentsByRaceMile(segments)
+
+  const raceMilesTotal = ordered.reduce(
     (total, segment) => total + Math.abs(segment.courseEndMi - segment.courseStartMi),
     0
   )
-  const trainingMilesTotal = segments.reduce(
+  const trainingMilesTotal = ordered.reduce(
     (total, segment) => total + Math.abs(segment.trainingEndMi - segment.trainingStartMi),
     0
   )
-  const paces = segments.map(segment => getOverlapRacePace(plan, segment.courseStartMi, segment.courseEndMi, race, clock24h))
+  const paces = ordered.map(segment => getOverlapRacePace(plan, segment.courseStartMi, segment.courseEndMi, race, clock24h))
   const availablePaces = paces.filter((pace): pace is NonNullable<typeof pace> => pace != null)
-  const raceDurationMinutes = availablePaces.length === segments.length
+  const raceDurationMinutes = availablePaces.length === ordered.length
     ? availablePaces.reduce((total, pace) => total + pace.durationMin, 0)
     : null
 
   return {
-    raceMilesLabel: segments.map(segment => `${formatMile(segment.courseStartMi)}–${formatMile(segment.courseEndMi)}`).join(', '),
+    raceMilesLabel: ordered.map(segment => `${formatMile(segment.courseStartMi)}–${formatMile(segment.courseEndMi)}`).join(', '),
     raceMilesTotal,
-    raceTimeLabel: availablePaces.length === segments.length
+    raceTimeLabel: availablePaces.length === ordered.length
       ? availablePaces.map(pace => pace.enterTimeOfDay && pace.exitTimeOfDay ? `${pace.enterTimeOfDay}–${pace.exitTimeOfDay}` : '').filter(Boolean).join(', ') || null
       : null,
     raceDurationMinutes,
     raceDurationLabel: raceDurationMinutes != null ? formatDurationWords(raceDurationMinutes) : null,
-    trainingMilesLabel: segments
+    trainingMilesLabel: ordered
       .map(segment => `${formatMile(segment.trainingStartMi)}–${formatMile(segment.trainingEndMi)}`)
       .join(', '),
     trainingMilesTotal,
-    segments: segments.map((segment, index) => ({
+    segments: ordered.map((segment, index) => ({
       courseMilesLabel: `${formatMile(segment.courseStartMi)}–${formatMile(segment.courseEndMi)}`,
       trainingMilesLabel: `${formatMile(segment.trainingStartMi)}–${formatMile(segment.trainingEndMi)}`,
       trainingStartMi: segment.trainingStartMi,
