@@ -8,7 +8,7 @@
 
 ## Current production snapshot
 
-- Frontend: see `git describe` after deploy. Hard-refresh and compare the footer hash.
+- Frontend: `764971a`. Hard-refresh and compare the footer hash.
 - OG: `dfiu-og` on `:3457`; `og-default.png` **1200×260**, left-aligned title + tagline (`?v=261`).
 - nginx: vanity/UUID paths → OG server (no bot UA sniffing).
 
