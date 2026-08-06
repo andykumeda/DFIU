@@ -1,6 +1,7 @@
-import { BookOpen, Info, LogIn, UserPlus } from 'lucide-react'
+import { LogIn, UserPlus } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/features/auth/AuthContext'
+import { SiteInfoLinks } from './SiteInfoLinks'
 
 interface PublicPageLayoutProps {
   eyebrow: string
@@ -22,12 +23,7 @@ export function PublicPageLayout({ eyebrow, title, intro, children }: PublicPage
           </Link>
 
           <nav aria-label='Information' className='flex items-center gap-1 sm:gap-2 text-sm'>
-            <Link to='/about' className='px-2.5 py-2 rounded-md text-neutral-300 hover:text-white hover:bg-neutral-800 transition-colors inline-flex items-center gap-1.5'>
-              <Info size={15} aria-hidden='true' /> About
-            </Link>
-            <Link to='/documentation' className='px-2.5 py-2 rounded-md text-neutral-300 hover:text-white hover:bg-neutral-800 transition-colors inline-flex items-center gap-1.5'>
-              <BookOpen size={15} aria-hidden='true' /> Docs
-            </Link>
+            <SiteInfoLinks />
             {user ? (
               <Link to='/dashboard' className='ml-1 px-3 py-2 rounded-md bg-blue-600 hover:bg-blue-500 font-semibold transition-colors'>Dashboard</Link>
             ) : (

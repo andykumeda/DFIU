@@ -6,6 +6,7 @@ import { GpxUploader } from '@/features/course/GpxUploader'
 import { ElevationProfile } from '@/features/course/ElevationProfile'
 import { CourseStats } from '@/features/course/CourseStats'
 import { GpxParseResult, sampleElevationProfile, getPointAtMile } from '@/lib/gpx-parser'
+import { SiteInfoLinks } from '@/components/ui/SiteInfoLinks'
 
 const CourseMap = lazy(() =>
     import('@/features/course/CourseMap').then(m => ({ default: m.CourseMap }))
@@ -113,6 +114,7 @@ export default function NewRacePage() {
             ← Back
           </Link>
           <h1 className='text-xl font-bold'>New Race</h1>
+          <SiteInfoLinks className='ml-auto' />
         </div>
       </header>
 

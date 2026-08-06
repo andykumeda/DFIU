@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { RaceList } from '@/features/race/RaceList'
 import { useAuth } from '@/features/auth/AuthContext'
+import { SiteInfoLinks } from '@/components/ui/SiteInfoLinks'
 
 export default function EventsPage() {
   const { user } = useAuth()
@@ -24,6 +25,7 @@ export default function EventsPage() {
             </div>
           </Link>
           <div className='flex items-center gap-2'>
+            <SiteInfoLinks />
             {user ? (
               <Link
                 to='/dashboard'

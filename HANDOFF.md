@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-06
 **Branch:** `main`
-**Status:** Landing-page info links moved to footer; contact email corrected; algorithm-reference link fixed.
+**Status:** Shared About/Documentation navigation added to app headers; contact email and algorithm references fixed.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 

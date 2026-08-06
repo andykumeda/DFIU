@@ -38,6 +38,7 @@ import { DropBagsSection } from '@/features/race/DropBagsSection'
 import { TrainingSection } from '@/features/race/TrainingSection'
 import { recomputeTrainingOverlapsForRace } from '@/features/race/useTrainingRoutes'
 import { isShareLinkView } from '@/features/race/share-link'
+import { SiteInfoLinks } from '@/components/ui/SiteInfoLinks'
 
 const CrewView = lazy(() =>
     import('@/features/race/CrewView').then(m => ({ default: m.CrewView }))
@@ -1590,6 +1591,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
           </div>
           <div className='flex items-center gap-2 sm:gap-4'>
+            <SiteInfoLinks className='shrink-0' />
             <RoleSwitcher raceId={raceId} views={race.is_official ? ['full'] : availableRoleViews} />
             {canManageTeam && (
               <button

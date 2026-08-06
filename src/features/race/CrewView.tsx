@@ -15,6 +15,7 @@ import { CrewMap } from './CrewMap'
 import { DropBagNotes } from './DropBagNotes'
 import { DropBagSummary } from './DropBagSummary'
 import { getBagKind, getBagKindLabel, hasSavedBagPlan } from './drop-bag-shared'
+import { SiteInfoLinks } from '@/components/ui/SiteInfoLinks'
 import { getDistance } from '@/lib/geo-utils'
 import { getCourseCoordinates, getElapsedMinutes, getPredictedMile, getRunnerLatLonAtMile, getRunnerMapFocus } from './race-day-utils'
 import type { Race, Course, Waypoint, TerrainNode } from '@/types/database'
@@ -344,6 +345,7 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
                             <div className='text-xs text-neutral-400 truncate'>Crew View</div>
                             <div className='text-sm font-semibold truncate'>{race.name}</div>
                         </div>
+                        <SiteInfoLinks />
                     </div>
                 </header>
             )}
