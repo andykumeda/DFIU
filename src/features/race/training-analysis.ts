@@ -61,10 +61,36 @@ export function sortOverlapSegmentsByRaceMile<T extends OverlapSegment>(segments
   })
 }
 
+/** Unique course-mile coverage (merge overlapping / reverse+forward passes). */
+export function uniqueCourseMileRanges(
+  segments: OverlapSegment[]
+): { start: number; end: number }[] {
+  const sorted = segments
+    .map(s => ({
+      start: Math.min(s.courseStartMi, s.courseEndMi),
+      end: Math.max(s.courseStartMi, s.courseEndMi),
+    }))
+    .filter(r => r.end > r.start)
+    .sort((a, b) => a.start - b.start)
+  const merged: { start: number; end: number }[] = []
+  for (const r of sorted) {
+    const cur = merged[merged.length - 1]
+    if (!cur || r.start > cur.end + 1e-6) merged.push({ ...r })
+    else cur.end = Math.max(cur.end, r.end)
+  }
+  return merged
+}
+
+export function uniqueCourseMiles(segments: OverlapSegment[]): number {
+  return uniqueCourseMileRanges(segments).reduce((sum, r) => sum + (r.end - r.start), 0)
+}
+
 /**
  * Summarize a training route for comparison. Every detected overlapping segment
  * contributes to the Plan A goal; no non-overlap portion is included.
  * Segments are ordered by race course mile (when they occur during the race).
+ * Race segment miles/time use unique course coverage so reverse+forward on the
+ * same stretch is not double-counted (matches “mi on course”).
  */
 export function buildTrainingPlanSummary(
   segments: OverlapSegment[],
@@ -75,26 +101,30 @@ export function buildTrainingPlanSummary(
   if (segments.length === 0) return null
 
   const ordered = sortOverlapSegmentsByRaceMile(segments)
-
-  const raceMilesTotal = ordered.reduce(
-    (total, segment) => total + Math.abs(segment.courseEndMi - segment.courseStartMi),
-    0
-  )
+  const uniqueRanges = uniqueCourseMileRanges(ordered)
+  const raceMilesTotal = uniqueRanges.reduce((sum, r) => sum + (r.end - r.start), 0)
   const trainingMilesTotal = ordered.reduce(
     (total, segment) => total + Math.abs(segment.trainingEndMi - segment.trainingStartMi),
     0
   )
-  const paces = ordered.map(segment => getOverlapRacePace(plan, segment.courseStartMi, segment.courseEndMi, race, clock24h))
-  const availablePaces = paces.filter((pace): pace is NonNullable<typeof pace> => pace != null)
-  const raceDurationMinutes = availablePaces.length === ordered.length
-    ? availablePaces.reduce((total, pace) => total + pace.durationMin, 0)
+
+  const uniquePaces = uniqueRanges.map(range =>
+    getOverlapRacePace(plan, range.start, range.end, race, clock24h)
+  )
+  const availableUniquePaces = uniquePaces.filter((pace): pace is NonNullable<typeof pace> => pace != null)
+  const raceDurationMinutes = availableUniquePaces.length === uniqueRanges.length && uniqueRanges.length > 0
+    ? availableUniquePaces.reduce((total, pace) => total + pace.durationMin, 0)
     : null
 
+  const paces = ordered.map(segment => getOverlapRacePace(plan, segment.courseStartMi, segment.courseEndMi, race, clock24h))
+
   return {
-    raceMilesLabel: ordered.map(segment => `${formatMile(segment.courseStartMi)}–${formatMile(segment.courseEndMi)}`).join(', '),
+    raceMilesLabel: uniqueRanges
+      .map(range => `${formatMile(range.start)}–${formatMile(range.end)}`)
+      .join(', '),
     raceMilesTotal,
-    raceTimeLabel: availablePaces.length === ordered.length
-      ? availablePaces.map(pace => pace.enterTimeOfDay && pace.exitTimeOfDay ? `${pace.enterTimeOfDay}–${pace.exitTimeOfDay}` : '').filter(Boolean).join(', ') || null
+    raceTimeLabel: availableUniquePaces.length === uniqueRanges.length
+      ? availableUniquePaces.map(pace => pace.enterTimeOfDay && pace.exitTimeOfDay ? `${pace.enterTimeOfDay}–${pace.exitTimeOfDay}` : '').filter(Boolean).join(', ') || null
       : null,
     raceDurationMinutes,
     raceDurationLabel: raceDurationMinutes != null ? formatDurationWords(raceDurationMinutes) : null,

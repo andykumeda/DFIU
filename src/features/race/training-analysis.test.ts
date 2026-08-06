@@ -72,7 +72,25 @@ describe('buildTrainingPlanSummary', () => {
       false
     )
 
-    expect(summary!.raceMilesLabel).toBe('24.6–33, 25–24.6, 72.7–87.3')
+    expect(summary!.raceMilesLabel).toBe('24.6–33, 72.7–87.3')
+    expect(summary!.segments.map(s => s.courseMilesLabel)).toEqual(['24.6–33', '25–24.6', '72.7–87.3'])
+  })
+
+  it('does not double-count reverse then forward on the same course miles', () => {
+    // Sam Merrill to Finish shape: reverse 95.64→90.44 then forward 90.44→100.85.
+    const summary = buildTrainingPlanSummary(
+      [
+        { courseStartMi: 95.64, courseEndMi: 90.44, trainingStartMi: 1.68, trainingEndMi: 6.79 },
+        { courseStartMi: 90.44, courseEndMi: 100.85, trainingStartMi: 6.79, trainingEndMi: 16.73 },
+      ],
+      null,
+      { start_datetime: null, timezone: null },
+      false
+    )
+
+    expect(summary!.raceMilesTotal).toBeCloseTo(10.41, 4)
+    expect(summary!.raceMilesLabel).toBe('90.4–100.8')
+    expect(summary!.trainingMilesTotal).toBeCloseTo(15.05, 4)
   })
 })
 

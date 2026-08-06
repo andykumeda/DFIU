@@ -2,22 +2,20 @@
 
 **Date:** 2026-08-05
 **Branch:** `main`
-**Status:** Training Plan A cards slimmed; race segments sorted by mile.
+**Status:** Fix Plan A race-segment miles double-count on reverse+forward overlaps.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Frontend: `522fa53` (training segment order + list totals only). Hard-refresh and compare the footer hash.
+- Frontend: pending this deploy. Prior: `522fa53`.
 - Share alias migration applied on linked DFIU project.
-- Repository: `main` @ `522fa53` on `origin/main`.
-- AC100 training overlaps backfilled in DB (all 6 routes).
+- Repository: `main` (ahead pending commit).
 
 ## Just finished
 
-- Training list cards: Plan A shows totals only (miles/time); segment detail on open.
-- Overlap race segments ordered by course mile (race order).
-- Header muted **Demo** link beside Sign In; short vanity share links.
+- Plan A “Race Segment Miles” uses unique course coverage (matches “mi on course”); Sam Merrill reverse+forward no longer sums to 15.6 vs 10.4.
+- Training list cards: Plan A totals only; segments ordered by race mile.
 
 ## Open
 
