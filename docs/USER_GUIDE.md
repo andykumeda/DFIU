@@ -42,8 +42,6 @@ Plan A, B, and C are goal-time plans. Enter or edit a goal time and the plan rec
 
 Use **Settings** to set your runner profile and default aid-station delay. The profile adapts the plan for your climbing, descending, technical-terrain, night, temperature, altitude, and pacing-style strengths. It is a planning aid, not a guarantee.
 
-The Pace Plan can also show an independent P10/P50/P90 prediction based on a supplied flat baseline and optional past results. It does not replace your selected Plan A/B/C target; it helps you judge whether the target is realistic.
-
 ## Overview, Crew, and Live
 
 **Overview** shows the event summary, selected aid-station weather temperatures, and Plan A arrival times. If the course visits an aid station multiple times, every predicted arrival is shown.

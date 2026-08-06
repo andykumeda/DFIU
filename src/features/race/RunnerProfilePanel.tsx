@@ -22,12 +22,6 @@ export function RunnerProfilePanel({
         onChange({ ...profile, aidStationDefaultDelay: clamped })
     }
 
-    const setBaseline = (next: string) => {
-        if (!canEdit) return
-        const value = Number(next)
-        if (Number.isFinite(value)) onChange({ ...profile, baselineFlatPace: Math.min(60, Math.max(3, value)) })
-    }
-
     const levelOptions: { value: RunnerProfileLevel; label: string }[] = [
         { value: 'weak', label: 'Weak' },
         { value: 'average', label: 'Average' },
@@ -70,21 +64,6 @@ export function RunnerProfilePanel({
                     <option value="even">Even-paced runner</option>
                     <option value="strong_finish">Slower start, stronger finish</option>
                 </select>
-            </label>
-
-            <label className="block mb-4">
-                <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500">Flat baseline pace (min/mi)</span>
-                <input
-                    type="number"
-                    min="3"
-                    max="60"
-                    step="0.1"
-                    value={profile.baselineFlatPace}
-                    disabled={!canEdit}
-                    onChange={e => setBaseline(e.target.value)}
-                    className="mt-1 w-full bg-neutral-950 border border-neutral-800 rounded-lg px-3 py-2 text-sm text-white disabled:opacity-60"
-                />
-                <span className="mt-1 block text-[11px] text-neutral-600">Your sustainable pace on flat, runnable ground. Past finishes refine this estimate.</span>
             </label>
 
             <div className="grid grid-cols-[1fr_auto] gap-3 items-center bg-neutral-950/50 border border-neutral-800 rounded-lg px-3 py-2 mb-4">

@@ -46,18 +46,6 @@ Every eligible aid/crew/drop-bag/water/medical waypoint uses its explicit delay 
 
 When a check-in is recorded, the app uses actual elapsed progress to re-extrapolate the remaining plan. This is more grounded than pre-race assumptions, but it still assumes the remaining course will follow the factor model.
 
-## Independent finish prediction
-
-The optional predictor estimates a P10/P50/P90 finish range without changing the selected target plan.
-
-1. Start with the entered flat baseline pace (15 min/mi if none is supplied).
-2. Convert optional manual history into an effort-adjusted pace using distance and elevation gain.
-3. Weight history by recency (an exponential one-year decay) and distance, then blend it into the baseline with bounded influence.
-4. Simulate the course with grade, terrain, night, heat, altitude, technical-downhill, selected runner-profile, and stop-time factors.
-5. Produce P10/P50/P90 using a spread based on the amount of history evidence: more usable history narrows the range.
-
-P10, P50, and P90 are scenario bands from this model—not population-calibrated statistical percentiles and not a guarantee of likelihood.
-
 ## Terrain pairing on out-and-backs
 
 When a terrain range is defined from the map/profile, DFIU examines the course geometry for another continuous pass that:
@@ -101,9 +89,3 @@ Strava moving time is used exclusively. With distance/time/moving streams, DFIU 
 - They cannot correct an inaccurate GPX, missing elevation data, or a poor GPS trace.
 
 Relevant implementation:
-
-- [`src/features/race/pace-utils.ts`](https://github.com/andykumeda/DFIU/blob/main/src/features/race/pace-utils.ts)
-- [`src/features/race/pace-prediction.ts`](https://github.com/andykumeda/DFIU/blob/main/src/features/race/pace-prediction.ts)
-- [`src/lib/training-overlap.ts`](https://github.com/andykumeda/DFIU/blob/main/src/lib/training-overlap.ts)
-- [`src/features/race/training-analysis.ts`](https://github.com/andykumeda/DFIU/blob/main/src/features/race/training-analysis.ts)
-- [`src/features/race/RaceDetail.tsx`](https://github.com/andykumeda/DFIU/blob/main/src/features/race/RaceDetail.tsx)

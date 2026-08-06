@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-06
 **Branch:** `main`
-**Status:** About/Documentation moved to shared footers; algorithm implementation references reformatted.
+**Status:** Removed the disabled independent finish-prediction feature and its stale documentation.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 

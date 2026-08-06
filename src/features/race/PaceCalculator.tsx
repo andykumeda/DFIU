@@ -4,10 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, 
 import { toast } from 'react-hot-toast'
 import { Course, Race, TerrainNode, Waypoint } from '@/types/database'
 import { calculatePacePlan, isPaceChartWaypoint, type PacePlanResult, usesAidStationDefaultDelay } from './pace-utils'
-import { predictPace, type RunnerHistoryEntry, type PacePrediction } from './pace-prediction'
 import { usePacePlans, computePlanMinutes } from './usePacePlans'
-import { supabase } from '@/lib/supabase'
-import { useAuth } from '@/features/auth/AuthContext'
 import {
     getPaceChartColumnLabel,
     getVisiblePaceChartColumns,
@@ -32,11 +29,6 @@ interface PaceCalculatorProps {
 }
 
 type StrategyMode = 'planA' | 'planB' | 'planC'
-
-/** Past-finish calibration UI — keep wired; hide until the flow is productized. */
-const SHOW_PREDICTION_CALIBRATION = false
-/** Keep predictPace wired; hide the P10–P90 ability card until product wants it back. */
-const SHOW_ABILITY_BASED_PREDICTION = false
 
 const strategyColors: Record<StrategyMode, {
     active: string
@@ -82,15 +74,11 @@ const PACE_PRINT_COLUMN_WEIGHTS: Record<PaceChartColumnId, number> = {
 }
 
 export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h = false, unitsDistance = 'miles', runnerProfile, onUpdateWaypointDelay }: PaceCalculatorProps) {
-    const { user } = useAuth()
     const [strategyMode, setStrategyMode] = useState<StrategyMode>('planA')
     const [plan, setPlan] = useState<ReturnType<typeof calculatePacePlan> | null>(null)
     const [calcError, setCalcError] = useState<string | null>(null)
     const [selectedDropBagWaypoint, setSelectedDropBagWaypoint] = useState<Waypoint | null>(null)
     const [draggedColumnId, setDraggedColumnId] = useState<PaceChartColumnId | null>(null)
-    const [prediction, setPrediction] = useState<PacePrediction | null>(null)
-    const [history, setHistory] = useState<(RunnerHistoryEntry & { id: string; raceName: string })[]>([])
-    const [historyForm, setHistoryForm] = useState({ name: '', distance: '', gain: '', time: '', date: '' })
     const draggedColumnIdRef = useRef<PaceChartColumnId | null>(null)
 
     const { plans, loading: plansLoading, canEdit, setPlanA, setPlanB, setPlanCBuffer, markCalculated, setPaceChartColumns } = usePacePlans(race.id)
@@ -98,40 +86,6 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
 
     const { a: planAMinutes, b: planBMinutes, c: planCMinutes } = computePlanMinutes(plans, race.overall_cutoff)
     const paceChartWaypoints = useMemo(() => waypoints.filter(isPaceChartWaypoint), [waypoints])
-
-    useEffect(() => {
-        if (!user?.id) return
-        let cancelled = false
-        void (async () => {
-            const { data } = await supabase.from('runner_history')
-                .select('id, race_name, raced_at, distance_mi, elevation_gain_ft, finish_minutes, moving_minutes, terrain_difficulty, altitude_ft')
-                .eq('user_id', user.id).order('raced_at', { ascending: false })
-            if (!cancelled && data) setHistory(data.map(item => ({
-                id: item.id, raceName: item.race_name, racedAt: item.raced_at ?? undefined,
-                distanceMi: Number(item.distance_mi), elevationGainFt: Number(item.elevation_gain_ft ?? 0),
-                finishMinutes: Number(item.finish_minutes), movingMinutes: item.moving_minutes ? Number(item.moving_minutes) : undefined,
-                terrainDifficulty: item.terrain_difficulty ?? undefined, altitudeFt: item.altitude_ft ?? undefined,
-            })))
-        })()
-        return () => { cancelled = true }
-    }, [user?.id])
-
-    const formatDuration = (minutes: number) => `${Math.floor(minutes / 60)}:${Math.round(minutes % 60).toString().padStart(2, '0')}`
-
-    const addHistory = async () => {
-        if (!user?.id || !historyForm.name.trim()) return
-        const distance = Number(historyForm.distance)
-        const finishMinutes = Number(historyForm.time)
-        if (!Number.isFinite(distance) || distance <= 0 || !Number.isFinite(finishMinutes) || finishMinutes <= 0) {
-            toast.error('Enter a past race name, distance, and finish time in minutes.')
-            return
-        }
-        const row = { user_id: user.id, race_name: historyForm.name.trim(), distance_mi: distance, elevation_gain_ft: Number(historyForm.gain) || 0, finish_minutes: finishMinutes, raced_at: historyForm.date || null }
-        const { data, error } = await supabase.from('runner_history').insert(row).select().single()
-        if (error) { toast.error(`Could not save history: ${error.message}`); return }
-        setHistory(prev => [{ id: data.id, raceName: data.race_name, racedAt: data.raced_at ?? undefined, distanceMi: Number(data.distance_mi), elevationGainFt: Number(data.elevation_gain_ft ?? 0), finishMinutes: Number(data.finish_minutes) }, ...prev])
-        setHistoryForm({ name: '', distance: '', gain: '', time: '', date: '' })
-    }
 
     const getStrategyValue = (): number => {
         if (strategyMode === 'planA') return planAMinutes
@@ -185,28 +139,10 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                 runnerProfile.aidStationDefaultDelay
             )
             setPlan(result)
-            const nextPrediction = predictPace({
-                courseProfile: profile,
-                totalDistance: totalDist,
-                terrainNodes,
-                waypoints: paceChartWaypoints,
-                race,
-                baselineFlatPace: runnerProfile.baselineFlatPace,
-                history,
-                runnerProfile,
-                aidStationDefaultDelay: runnerProfile.aidStationDefaultDelay,
-            })
-            setPrediction(nextPrediction)
             if (!silent) markCalculated({
-                modelVersion: nextPrediction.modelVersion,
                 generatedAt: new Date().toISOString(),
-                baselineFlatPace: nextPrediction.calibratedFlatPace,
-                historyCount: history.length,
-                prediction: {
-                    p10TotalMinutes: nextPrediction.p10TotalMinutes,
-                    p50TotalMinutes: nextPrediction.p50TotalMinutes,
-                    p90TotalMinutes: nextPrediction.p90TotalMinutes,
-                },
+                strategyMode,
+                targetMinutes,
             })
         } catch (err) {
             console.error('calculatePacePlan failed:', err)
@@ -233,7 +169,7 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
         return () => window.clearTimeout(handle)
         // The calculation intentionally follows every meaningful input change.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [plansLoading, strategyMode, planATimeStr, planBTimeStr, planCBufferStr, course, waypoints, terrainNodes, race, clock24h, runnerProfile, history])
+    }, [plansLoading, strategyMode, planATimeStr, planBTimeStr, planCBufferStr, course, waypoints, terrainNodes, race, clock24h, runnerProfile])
 
     // When aid-station stop times change (inline edits in the Stop column), re-run
     // the already-displayed plan so downstream splits reflect the new dwell time.
@@ -641,26 +577,6 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                     </div>
                 </div>
 
-                {SHOW_PREDICTION_CALIBRATION && (
-                <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6">
-                    <h2 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
-                        <Activity className="w-5 h-5 text-violet-400" /> Prediction calibration
-                    </h2>
-                    <p className="text-xs text-neutral-500 mb-4">Past finishes refine your flat baseline. Enter finish time as total minutes (for example, 720 for 12:00).</p>
-                    {canEdit && <div className="grid grid-cols-2 gap-2">
-                        <input value={historyForm.name} onChange={e => setHistoryForm(v => ({ ...v, name: e.target.value }))} placeholder="Race name" className="col-span-2 bg-neutral-950 border border-neutral-800 rounded px-2 py-2 text-sm text-white" />
-                        <input value={historyForm.distance} onChange={e => setHistoryForm(v => ({ ...v, distance: e.target.value }))} type="number" min="1" placeholder="Miles" className="bg-neutral-950 border border-neutral-800 rounded px-2 py-2 text-sm text-white" />
-                        <input value={historyForm.gain} onChange={e => setHistoryForm(v => ({ ...v, gain: e.target.value }))} type="number" min="0" placeholder="Gain ft" className="bg-neutral-950 border border-neutral-800 rounded px-2 py-2 text-sm text-white" />
-                        <input value={historyForm.time} onChange={e => setHistoryForm(v => ({ ...v, time: e.target.value }))} type="number" min="1" placeholder="Finish minutes" className="bg-neutral-950 border border-neutral-800 rounded px-2 py-2 text-sm text-white" />
-                        <input value={historyForm.date} onChange={e => setHistoryForm(v => ({ ...v, date: e.target.value }))} type="date" className="bg-neutral-950 border border-neutral-800 rounded px-2 py-2 text-sm text-white" />
-                        <button type="button" onClick={() => void addHistory()} className="col-span-2 rounded bg-violet-600 hover:bg-violet-500 px-3 py-2 text-sm font-semibold text-white">Add past finish</button>
-                    </div>}
-                    {history.length > 0 && <ul className="mt-3 space-y-1 text-xs text-neutral-400">
-                        {history.slice(0, 3).map(item => <li key={item.id}>{item.raceName}: {item.distanceMi} mi in {formatDuration(item.finishMinutes)}</li>)}
-                    </ul>}
-                </div>
-                )}
-
                 {plan && (
                     <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6">
                         <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
@@ -756,18 +672,6 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                             </div>
                             {/* Extra slot */}
                         </div>
-
-                        {SHOW_ABILITY_BASED_PREDICTION && prediction && <div className="rounded-xl border border-violet-900/70 bg-violet-950/20 p-4 print:hidden">
-                            <div className="flex flex-wrap items-baseline justify-between gap-2">
-                                <div>
-                                    <div className="text-xs font-semibold uppercase tracking-wider text-violet-300">Ability-based prediction</div>
-                                    <div className="mt-1 text-2xl font-black font-mono text-white">P50 {formatDuration(prediction.p50TotalMinutes)}</div>
-                                </div>
-                                <div className="text-right text-sm text-violet-200">P10–P90 {formatDuration(prediction.p10TotalMinutes)}–{formatDuration(prediction.p90TotalMinutes)}<br /><span className="text-xs text-neutral-400">{prediction.confidence} confidence · {history.length} past finish{history.length === 1 ? '' : 'es'}</span></div>
-                            </div>
-                            <p className="mt-2 text-xs text-neutral-400">Includes {formatDuration(prediction.p50MovingMinutes)} moving and {formatDuration(prediction.p50StoppedMinutes)} expected stops. The goal plan remains target-time driven; this is an independent estimate.</p>
-                            {targetMin > 0 && (targetMin < prediction.p10TotalMinutes || targetMin > prediction.p90TotalMinutes) && <p className="mt-2 flex items-center gap-1 text-xs text-amber-300"><AlertTriangle className="h-3.5 w-3.5" /> The selected goal is outside this model’s current expected range.</p>}
-                        </div>}
 
                         {/* Splits Table */}
                         <div

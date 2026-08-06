@@ -36,7 +36,7 @@ Persisted overlap is derived data. Recompute it from current geometries after a 
 
 ### Pace plans
 
-Plan A/B/C are target-time distributions. Keep that separate from `pace-prediction.ts`, which is an optional independent range estimate. Any change to factor math should update `docs/ALGORITHMS.md`, tests in `src/features/race/*.test.ts`, and any saved model version/snapshot behavior.
+Plan A/B/C are target-time distributions. Any change to factor math should update `docs/ALGORITHMS.md`, tests in `src/features/race/*.test.ts`, and any saved model version/snapshot behavior.
 
 ## Local development
 

@@ -16,7 +16,6 @@ export interface RunnerPacingProfile {
     sand: RunnerProfileLevel
     rocky: RunnerProfileLevel
     aidStationDefaultDelay: number // minutes spent at each aid station by default
-    baselineFlatPace: number // min/mi on flat runnable ground; predictor anchor
 }
 
 export const DEFAULT_RUNNER_PROFILE: RunnerPacingProfile = {
@@ -34,7 +33,6 @@ export const DEFAULT_RUNNER_PROFILE: RunnerPacingProfile = {
     sand: 'average',
     rocky: 'average',
     aidStationDefaultDelay: 2,
-    baselineFlatPace: 15,
 }
 
 export const AID_STATION_DELAY_MIN = 0
@@ -69,14 +67,7 @@ export function parseRunnerProfile(value: unknown): RunnerPacingProfile {
         sand: parseLevel(raw.sand),
         rocky: parseLevel(raw.rocky),
         aidStationDefaultDelay: parseDelay(raw.aidStationDefaultDelay),
-        baselineFlatPace: parseBaseline(raw.baselineFlatPace),
     }
-}
-
-function parseBaseline(value: unknown): number {
-    const n = typeof value === 'number' ? value : Number(value)
-    if (!Number.isFinite(n)) return DEFAULT_RUNNER_PROFILE.baselineFlatPace
-    return Math.min(60, Math.max(3, n))
 }
 
 function parseDelay(value: unknown): number {
