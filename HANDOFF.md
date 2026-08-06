@@ -1,22 +1,25 @@
 # Handoff Document
 
-**Date:** 2026-08-05
+**Date:** 2026-08-06
 **Branch:** `main`
-**Status:** Training overlap line shows course elevation gain.
+**Status:** Splash copy, AC100 demo CTA, and signup → settings onboarding shipped.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Frontend: `a98da9d` (overlap summary includes course elevation gain). Hard-refresh and compare the footer hash.
+- Frontend: pending commit hash after this session (splash + signup onboarding). Hard-refresh and compare the footer hash.
 - Share alias migration applied on linked DFIU project.
-- Repository: `main` @ `a98da9d` on `origin/main`.
+- Repository: `main` (committing splash/signup polish).
 
 ## Just finished
 
-- Overlap summary line includes race-course elevation gain for overlapped miles (`+N ft`).
-- Plan A race-segment miles use unique course coverage; list cards show totals only.
+- Splash tagline: "Plan the race. Respect the trail. Don't F* It Up."
+- Feature cards refreshed (pace plans, crew/drop bags, training/Strava, live race day).
+- AC100 demo CTA (`/ac100?demo=1`); public race cards open with `?demo=1`.
+- New signups (email + Strava from signup) go to `/settings#runner-profile`; Strava recommended on signup copy.
 
 ## Open
 
 - Rotate Strava secret; verify RBAC with a second account; `/admin` + owner-transfer UI.
+- Guest race header polish (Demo vs Clone / hide account chrome) if still needed after logged-out verify.

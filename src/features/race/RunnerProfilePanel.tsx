@@ -50,7 +50,7 @@ export function RunnerProfilePanel({
     ]
 
     return (
-        <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6">
+        <div id="runner-profile" className="bg-neutral-900 border border-neutral-800 rounded-xl p-6">
             <h2 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
                 <SlidersHorizontal className="w-5 h-5 text-orange-500" /> Runner Profile
             </h2>

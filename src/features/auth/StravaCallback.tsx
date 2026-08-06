@@ -8,6 +8,12 @@ import { messageFromFunctionError } from './strava-function-error'
 const STATE_STORAGE_KEY = 'strava_oauth_state'
 export const STRAVA_RETURN_TO_STORAGE_KEY = 'strava_oauth_return_to'
 
+function safeReturnTo(returnTo: string | null): string | null {
+    if (!returnTo || !returnTo.startsWith('/') || returnTo.startsWith('//')) return null
+    if (returnTo.startsWith('/race/') || returnTo.startsWith('/settings')) return returnTo
+    return null
+}
+
 export default function StravaCallback() {
     const [searchParams] = useSearchParams()
     const navigate = useNavigate()
@@ -56,7 +62,7 @@ export default function StravaCallback() {
                 toast.success('Strava is connected!')
                 const returnTo = sessionStorage.getItem(STRAVA_RETURN_TO_STORAGE_KEY)
                 sessionStorage.removeItem(STRAVA_RETURN_TO_STORAGE_KEY)
-                navigate(returnTo && returnTo.startsWith('/race/') ? returnTo : '/dashboard')
+                navigate(safeReturnTo(returnTo) ?? '/dashboard')
             } else if (data?.session) {
                 const { error: sessionError } = await supabase.auth.setSession(data.session)
                 if (sessionError) throw sessionError
@@ -67,7 +73,7 @@ export default function StravaCallback() {
                 if (claimDemo) {
                     navigate(`/dashboard?claim_demo=${encodeURIComponent(claimDemo)}`)
                 } else {
-                    navigate(returnTo && returnTo.startsWith('/race/') ? returnTo : '/dashboard')
+                    navigate(safeReturnTo(returnTo) ?? '/dashboard')
                 }
             } else {
                 throw new Error(data?.error || 'No session returned')

@@ -38,7 +38,7 @@ export default function SplashPage() {
           Don&apos;t F* It Up!
         </h1>
         <p className={styles.tagline}>
-          Race planning for 100-mile+ trail runners who obsess over the details.
+          Plan the race. Respect the trail. Don&apos;t F* It Up.
         </p>
         <p className={styles.subtitle}>
           Centralize your course, pace plan, logistics, and crew info in one place.
@@ -52,6 +52,9 @@ export default function SplashPage() {
           <Link to="/login" className={styles.secondaryBtn}>
             Sign In
           </Link>
+          <Link to="/ac100?demo=1" className={styles.demoBtn}>
+            Try Angeles Crest 100 (demo)
+          </Link>
         </div>
       </div>
 
@@ -60,42 +63,59 @@ export default function SplashPage() {
           <div className={styles.publicRaces}>
             <h2>Public Races</h2>
             <div className={styles.raceGrid}>
-              {publicRaces.map((race) => (
-                <Link key={race.id} to={`/race/${race.id}`} className={styles.raceCard}>
-                  <h3>
-                    {race.name}
-                    {race.is_official && <CheckCircle2 size={16} color="#60a5fa" aria-label="Official event" style={{ display: 'inline-block', marginLeft: 6, verticalAlign: '-2px' }} />}
-                  </h3>
-                  <div className={styles.raceMeta}>
-                    <span>{race.distance_miles ? `${race.distance_miles}mi` : ''}</span>
-                    <span>{race.start_datetime ? new Date(race.start_datetime).toLocaleDateString() : ''}</span>
-                  </div>
-                  {race.location && <p className={styles.raceLocation}>{race.location}</p>}
-                </Link>
-              ))}
+              {publicRaces.map((race) => {
+                const isAc100Demo =
+                  race.public_share_alias === 'ac100' ||
+                  race.name.toLowerCase().includes('angeles crest')
+                return (
+                  <Link
+                    key={race.id}
+                    to={`/race/${race.id}?demo=1`}
+                    className={styles.raceCard}
+                  >
+                    <h3>
+                      {race.name}
+                      {race.is_official && (
+                        <CheckCircle2
+                          size={16}
+                          color="#60a5fa"
+                          aria-label="Official event"
+                          style={{ display: 'inline-block', marginLeft: 6, verticalAlign: '-2px' }}
+                        />
+                      )}
+                    </h3>
+                    <div className={styles.raceMeta}>
+                      <span>{race.distance_miles ? `${race.distance_miles}mi` : ''}</span>
+                      <span>{race.start_datetime ? new Date(race.start_datetime).toLocaleDateString() : ''}</span>
+                    </div>
+                    {race.location && <p className={styles.raceLocation}>{race.location}</p>}
+                    {isAc100Demo && <p className={styles.demoBadge}>Demo — try without an account</p>}
+                  </Link>
+                )
+              })}
             </div>
           </div>
         )}
 
         <div className={styles.feature}>
-          <span className={styles.featureIcon}>🗺️</span>
-          <h3>Course Mapping</h3>
-          <p>Upload your GPX, visualize elevation, and mark every aid station.</p>
-        </div>
-        <div className={styles.feature}>
           <span className={styles.featureIcon}>⏱️</span>
-          <h3>Pace Planning</h3>
-          <p>Build detailed pace charts with cutoff tracking and printable crew sheets.</p>
+          <h3>Pace Plans</h3>
+          <p>Goal-time Plan A/B/C with grade, terrain, weather, night, and runner-profile factors.</p>
         </div>
         <div className={styles.feature}>
           <span className={styles.featureIcon}>📍</span>
-          <h3>Crew View</h3>
-          <p>Give crew a mobile view of the next aid station, runner ETA, and drop bag details.</p>
+          <h3>Crew &amp; Drop Bags</h3>
+          <p>Mobile Crew View with ETAs, check-ins, and Start/Finish/crew drop bags.</p>
         </div>
         <div className={styles.feature}>
-          <span className={styles.featureIcon}>🌙</span>
-          <h3>Night Planning</h3>
-          <p>Know exactly when sunset hits based on your pace. No surprises.</p>
+          <span className={styles.featureIcon}>🏃</span>
+          <h3>Training &amp; Strava</h3>
+          <p>Course-overlap training routes and Strava activity analysis against your race.</p>
+        </div>
+        <div className={styles.feature}>
+          <span className={styles.featureIcon}>📡</span>
+          <h3>Live Race Day</h3>
+          <p>Livestream and results embeds plus followed-runner location and ETAs.</p>
         </div>
       </div>
     </main>

@@ -41,6 +41,13 @@ export default function SettingsPage() {
         }
     }, [user])
 
+    useEffect(() => {
+        if (loading) return
+        if (window.location.hash !== '#runner-profile') return
+        const el = document.getElementById('runner-profile')
+        el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, [loading])
+
     async function loadProfile() {
         if (!user?.id) return
 
