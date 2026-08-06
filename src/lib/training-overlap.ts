@@ -480,7 +480,11 @@ export function computeTrainingOverlap(
   return { overlapMiles, segments }
 }
 
-export function formatOverlapSummary(overlapMiles: number, segments: OverlapSegment[]): string {
+export function formatOverlapSummary(
+  overlapMiles: number,
+  segments: OverlapSegment[],
+  options?: { elevationGainFt?: number | null }
+): string {
   if (!overlapMiles || segments.length === 0) return 'No overlap with race course'
   // Merge abutting/nearby course spans so adjacent sections read as one range.
   const sorted = segments
@@ -504,7 +508,61 @@ export function formatOverlapSummary(overlapMiles: number, segments: OverlapSegm
       return `mi ${s.start.toFixed(1)}–${s.end.toFixed(1)}`
     })
     .join(', ')
-  return `${overlapMiles.toFixed(1)} mi on course (${ranges})`
+  const elev =
+    options?.elevationGainFt != null && Number.isFinite(options.elevationGainFt)
+      ? `, +${Math.round(options.elevationGainFt).toLocaleString()} ft`
+      : ''
+  return `${overlapMiles.toFixed(1)} mi on course${elev} (${ranges})`
+}
+
+/** Sum race-course elevation gain (ft) over unique overlapped course-mile ranges. */
+export function courseOverlapElevationGainFt(
+  elevationSamples: { distance: number; elevation: number }[] | null | undefined,
+  segments: OverlapSegment[]
+): number | null {
+  if (!elevationSamples || elevationSamples.length < 2 || segments.length === 0) return null
+
+  const sorted = segments
+    .map(s => ({
+      start: Math.min(s.courseStartMi, s.courseEndMi),
+      end: Math.max(s.courseStartMi, s.courseEndMi),
+    }))
+    .filter(r => r.end > r.start)
+    .sort((a, b) => a.start - b.start)
+  const merged: { start: number; end: number }[] = []
+  for (const r of sorted) {
+    const cur = merged[merged.length - 1]
+    if (!cur || r.start > cur.end + COURSE_RANGE_MERGE_MI) merged.push({ ...r })
+    else cur.end = Math.max(cur.end, r.end)
+  }
+  if (merged.length === 0) return null
+
+  let gain = 0
+  for (const range of merged) {
+    gain += elevationGainBetweenMiles(elevationSamples, range.start, range.end)
+  }
+  return round2(gain)
+}
+
+function elevationGainBetweenMiles(
+  samples: { distance: number; elevation: number }[],
+  startMi: number,
+  endMi: number
+): number {
+  const lo = Math.min(startMi, endMi)
+  const hi = Math.max(startMi, endMi)
+  let gain = 0
+  let prevElev: number | null = null
+  for (const sample of samples) {
+    if (sample.distance < lo - 1e-6) continue
+    if (sample.distance > hi + 1e-6) break
+    if (prevElev != null) {
+      const d = sample.elevation - prevElev
+      if (d > 0) gain += d
+    }
+    prevElev = sample.elevation
+  }
+  return gain
 }
 
 export function parseOverlapSegments(raw: unknown): OverlapSegment[] {

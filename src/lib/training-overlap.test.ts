@@ -203,6 +203,15 @@ describe('formatOverlapSummary', () => {
     expect(s).toContain('12.1–16.3')
   })
 
+  it('includes course elevation gain when provided', () => {
+    const s = formatOverlapSummary(
+      4.2,
+      [{ courseStartMi: 12.1, courseEndMi: 16.3, trainingStartMi: 0, trainingEndMi: 4.2 }],
+      { elevationGainFt: 1234 }
+    )
+    expect(s).toContain('4.2 mi on course, +1,234 ft')
+  })
+
   it('merges abutting course spans for display', () => {
     const s = formatOverlapSummary(9.9, [
       { courseStartMi: 78.8, courseEndMi: 84.9, trainingStartMi: 0, trainingEndMi: 7 },
@@ -211,6 +220,25 @@ describe('formatOverlapSummary', () => {
     expect(s).toContain('9.9 mi on course')
     expect(s).toContain('74.9–84.9')
     expect(s).not.toContain('78.8')
+  })
+})
+
+describe('courseOverlapElevationGainFt', () => {
+  it('sums positive elevation within unique overlapped course miles', async () => {
+    const { courseOverlapElevationGainFt } = await import('./training-overlap')
+    const samples = [
+      { distance: 0, elevation: 100 },
+      { distance: 1, elevation: 200 },
+      { distance: 2, elevation: 150 },
+      { distance: 3, elevation: 250 },
+      { distance: 4, elevation: 240 },
+    ]
+    // Unique coverage mi 1–3: +50 (200→150 ignored) then +100 (150→250) = 100
+    const gain = courseOverlapElevationGainFt(samples, [
+      { courseStartMi: 1, courseEndMi: 2, trainingStartMi: 0, trainingEndMi: 1 },
+      { courseStartMi: 2, courseEndMi: 3, trainingStartMi: 1, trainingEndMi: 2 },
+    ])
+    expect(gain).toBeCloseTo(100, 4)
   })
 })
 

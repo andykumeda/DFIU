@@ -7,6 +7,7 @@ import {
   directionsUrl,
   extractCoordinates,
   formatOverlapSummary,
+  courseOverlapElevationGainFt,
   isPointToPointRoute,
   returnDirectionsUrl,
 } from '@/lib/training-overlap'
@@ -115,6 +116,10 @@ export function TrainingSection({
     () => (course ? extractCoordinates(course.geometry) : []),
     [course]
   )
+  const courseElevationSamples = useMemo(
+    () => (course?.elevation_samples as { distance: number; elevation: number }[] | null) ?? null,
+    [course?.elevation_samples]
+  )
   const aidStationReferences = useMemo(
     () => waypoints
       .filter(waypoint => waypoint.type === 'aid_station')
@@ -184,6 +189,7 @@ export function TrainingSection({
           planAReady={planAReady}
           planAGoalMinutes={planAMinutes}
           clock24h={clock24h}
+          courseElevationSamples={courseElevationSamples}
           onBack={() => setSelectedId(null)}
           onUpdate={updateRoute}
           onDelete={deleteRoute}
@@ -271,6 +277,7 @@ export function TrainingSection({
                 race={race}
                 clock24h={clock24h}
                 courseCoordinates={courseCoordinates}
+                courseElevationSamples={courseElevationSamples}
                 onOpen={() => setSelectedId(route.id)}
               />
             ))}
@@ -288,6 +295,7 @@ function TrainingRouteCard({
   race,
   clock24h,
   courseCoordinates,
+  courseElevationSamples,
   onOpen,
 }: {
   route: TrainingRouteRow
@@ -296,6 +304,7 @@ function TrainingRouteCard({
   race: Race
   clock24h: boolean
   courseCoordinates: [number, number][]
+  courseElevationSamples: { distance: number; elevation: number }[] | null
   onOpen: () => void
 }) {
   const coords = extractCoordinates(route.geometry)
@@ -316,6 +325,7 @@ function TrainingRouteCard({
     isPointToPointRoute(route.start_lat, route.start_lon, route.finish_lat, route.finish_lon)
   const planSummary = buildTrainingPlanSummary(route.overlapSegments, planA, race, clock24h)
   const planGoalLabel = planAGoalMinutes > 0 ? ` (${formatDurationWords(planAGoalMinutes)} goal)` : ''
+  const overlapElevFt = courseOverlapElevationGainFt(courseElevationSamples, route.overlapSegments)
 
   return (
     <article className="bg-neutral-900 border border-neutral-800 hover:border-neutral-700 rounded-xl overflow-hidden flex flex-col transition-colors">
@@ -352,7 +362,9 @@ function TrainingRouteCard({
             </span>
           </div>
           <p className="text-sm text-orange-300/90">
-            {formatOverlapSummary(route.overlap_miles, route.overlapSegments)}
+            {formatOverlapSummary(route.overlap_miles, route.overlapSegments, {
+              elevationGainFt: overlapElevFt,
+            })}
           </p>
           {planSummary && (
             <section className="pt-3 mt-3 border-t border-neutral-800 space-y-2" aria-label="Plan A segment">

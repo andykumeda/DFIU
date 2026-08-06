@@ -7,6 +7,7 @@ import {
   directionsUrl,
   extractCoordinates,
   formatOverlapSummary,
+  courseOverlapElevationGainFt,
   isPointToPointRoute,
   returnDirectionsUrl,
 } from '@/lib/training-overlap'
@@ -24,6 +25,7 @@ interface TrainingRouteDetailProps {
   planAReady: boolean
   planAGoalMinutes: number
   clock24h?: boolean
+  courseElevationSamples?: { distance: number; elevation: number }[] | null
   onBack: () => void
   onUpdate: (id: string, patch: { name?: string; notes?: string | null; strava_activity_inputs?: string[]; strava_activity_results?: Json }) => Promise<void>
   onDelete: (id: string) => Promise<void>
@@ -38,6 +40,7 @@ export function TrainingRouteDetail({
   planAReady,
   planAGoalMinutes,
   clock24h = false,
+  courseElevationSamples = null,
   onBack,
   onUpdate,
   onDelete,
@@ -70,6 +73,10 @@ export function TrainingRouteDetail({
   const orderedOverlapSegments = useMemo(
     () => sortOverlapSegmentsByRaceMile(route.overlapSegments),
     [route.overlapSegments]
+  )
+  const overlapElevFt = useMemo(
+    () => courseOverlapElevationGainFt(courseElevationSamples, route.overlapSegments),
+    [courseElevationSamples, route.overlapSegments]
   )
 
   const dirty = name.trim() !== route.name || notes !== (route.notes ?? '')
@@ -247,7 +254,9 @@ export function TrainingRouteDetail({
         <div className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-4">
           <div className="text-xs uppercase tracking-wide text-neutral-500 mb-1">Course overlap</div>
           <p className="text-sm text-neutral-200">
-            {formatOverlapSummary(route.overlap_miles, route.overlapSegments)}
+            {formatOverlapSummary(route.overlap_miles, route.overlapSegments, {
+              elevationGainFt: overlapElevFt,
+            })}
           </p>
           {orderedOverlapSegments.length > 0 && (
             <ul className="mt-3 space-y-3 text-sm text-neutral-400">
