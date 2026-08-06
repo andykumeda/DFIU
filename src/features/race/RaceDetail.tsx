@@ -1649,8 +1649,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                   className="text-xs text-neutral-500 hover:text-neutral-300 transition-colors whitespace-nowrap"
                   title="Edit plans locally on this device, then save to an account when ready"
                 >
-                  <span className="sm:hidden">Try free</span>
-                  <span className="hidden sm:inline">Try without account</span>
+                  Demo
                 </Link>
               </div>
             ) : (
