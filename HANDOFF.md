@@ -8,8 +8,9 @@
 
 ## Current production snapshot
 
-- Frontend: pending this deploy. Prior: `e851c11`.
+- Frontend: `a98da9d` (overlap summary includes course elevation gain). Hard-refresh and compare the footer hash.
 - Share alias migration applied on linked DFIU project.
+- Repository: `main` @ `a98da9d` on `origin/main`.
 
 ## Just finished
 
