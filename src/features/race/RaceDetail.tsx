@@ -1636,26 +1636,24 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                 )}
                 <Settings className="hidden sm:block w-5 h-5 text-neutral-500 group-hover:text-white transition-colors" />
               </Link>
-            ) : !isDemoMode && !isShareView && race.is_public ? (
+            ) : (
               <div className="flex items-center gap-2">
+                {!isDemoMode && !isShareView && race.is_public && (
+                  <Link
+                    to={`/race/${raceId}?demo=1`}
+                    className="flex items-center gap-2 p-1.5 sm:px-3 sm:py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg transition-colors"
+                    title="Edit plans locally on this device, then save to an account when ready"
+                  >
+                    Demo
+                  </Link>
+                )}
                 <Link
                   to="/login"
                   className="text-sm font-medium text-neutral-400 hover:text-white px-3 py-1.5 rounded-lg border border-neutral-700 hover:border-neutral-500 transition-colors"
                 >
                   Sign In
                 </Link>
-                <Link
-                  to={`/race/${raceId}?demo=1`}
-                  className="text-xs text-neutral-500 hover:text-neutral-300 transition-colors whitespace-nowrap"
-                  title="Edit plans locally on this device, then save to an account when ready"
-                >
-                  Demo
-                </Link>
               </div>
-            ) : (
-              <Link to="/login" className="text-sm font-medium text-neutral-400 hover:text-white px-3 py-1.5 rounded-lg border border-neutral-700 hover:border-neutral-500 transition-colors">
-                Sign In
-              </Link>
             )}
           </div>
         </div>

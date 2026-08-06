@@ -24,7 +24,9 @@ export const RESERVED_SHARE_ALIASES = new Set([
     'new',
     'assets',
     'api',
+    'og-image',
     'logo.png',
+    'og-default.png',
 ])
 
 const SHARE_ALIAS_RE = /^[a-z0-9][a-z0-9-]{1,46}[a-z0-9]$/
