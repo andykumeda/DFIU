@@ -13,6 +13,8 @@ import NewRacePage from './pages/NewRacePage'
 import SplashPage from './pages/SplashPage'
 import SetPasswordPage from './pages/SetPasswordPage'
 import EventsPage from './pages/EventsPage'
+import AboutPage from './pages/AboutPage'
+import DocumentationPage from './pages/DocumentationPage'
 import StravaCallback from './features/auth/StravaCallback'
 import { ScrollToTop } from './components/ui/ScrollToTop'
 
@@ -73,6 +75,8 @@ export default function App() {
             <Route path='/race/:id/pacer' element={<PacerViewPage />} />
             <Route path='/race/:id' element={<RaceDetailPage />} />
             <Route path='/events' element={<EventsPage />} />
+            <Route path='/about' element={<AboutPage />} />
+            <Route path='/documentation' element={<DocumentationPage />} />
             <Route path='/auth/strava/callback' element={<StravaCallback />} />
             <Route path='/auth/set-password' element={<SetPasswordPage />} />
             <Route path='/' element={<SplashPage />} />

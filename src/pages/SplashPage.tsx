@@ -52,6 +52,12 @@ export default function SplashPage() {
           <Link to="/login" className={styles.secondaryBtn}>
             Sign In
           </Link>
+          <Link to="/about" className={styles.secondaryBtn}>
+            About
+          </Link>
+          <Link to="/documentation" className={styles.secondaryBtn}>
+            Documentation
+          </Link>
           <Link to="/ac100?demo=1" className={styles.demoBtn}>
             Try Angeles Crest 100 (demo)
           </Link>
