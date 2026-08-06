@@ -2,18 +2,18 @@
 
 **Date:** 2026-08-06
 **Branch:** `main`
-**Status:** Dual OG images — left for iMessage, centered for Instagram/Facebook crawlers.
+**Status:** Dual OG images for iMessage vs Instagram.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Frontend: `677dfa1`. Hard-refresh and compare the footer hash.
-- OG: `dfiu-og` on `:3457`.
+- Frontend: `13aae81`. Hard-refresh and compare the footer hash.
+- OG: `dfiu-og` serves `og-default.png` (left) by default; Facebook/Instagram UAs get `og-ig.png` (centered).
 
-## In progress
+## Just finished
 
-- Add `og-ig.png` (centered) and UA-select image in `og-server.mjs` for Facebook/Instagram bots; keep `og-default.png` left-aligned for iMessage.
+- Dual OG banners so Instagram center-crop keeps brand text readable without changing iMessage.
 
 ## Open
 
