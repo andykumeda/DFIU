@@ -1636,6 +1636,23 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                 )}
                 <Settings className="hidden sm:block w-5 h-5 text-neutral-500 group-hover:text-white transition-colors" />
               </Link>
+            ) : !isDemoMode && !isShareView && race.is_public ? (
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/login"
+                  className="text-sm font-medium text-neutral-400 hover:text-white px-3 py-1.5 rounded-lg border border-neutral-700 hover:border-neutral-500 transition-colors"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  to={`/race/${raceId}?demo=1`}
+                  className="text-xs text-neutral-500 hover:text-neutral-300 transition-colors whitespace-nowrap"
+                  title="Edit plans locally on this device, then save to an account when ready"
+                >
+                  <span className="sm:hidden">Try free</span>
+                  <span className="hidden sm:inline">Try without account</span>
+                </Link>
+              </div>
             ) : (
               <Link to="/login" className="text-sm font-medium text-neutral-400 hover:text-white px-3 py-1.5 rounded-lg border border-neutral-700 hover:border-neutral-500 transition-colors">
                 Sign In
@@ -1647,22 +1664,6 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
       {isDemoMode && (
         <DemoModeBanner sourceRaceId={raceId} tooLarge={overlayTooLarge} />
-      )}
-
-      {!isDemoMode && !isShareView && !user && race.is_public && (
-        <div className='print:hidden border-b border-blue-800/50 bg-blue-950/30'>
-          <div className='max-w-7xl mx-auto px-3 sm:px-4 py-2.5 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4'>
-            <p className='text-sm text-blue-100 flex-1'>
-              Try this event without an account — edit plans locally, then save when you are ready.
-            </p>
-            <Link
-              to={`/race/${raceId}?demo=1`}
-              className='shrink-0 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold text-center'
-            >
-              Try without account
-            </Link>
-          </div>
-        </div>
       )}
 
       {isShareView && !isOwner && (
