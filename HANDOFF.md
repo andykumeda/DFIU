@@ -8,14 +8,14 @@
 
 ## Current production snapshot
 
-- Frontend: pending this deploy. Prior: `b10e8c8` share vanity + read-only chrome.
+- Frontend: `19fdf29` (demo try link beside Sign In; no public-event banner). Hard-refresh and compare the footer hash.
 - Share alias migration applied on linked DFIU project.
-- Repository: `main` (ahead pending commit).
+- Repository: `main` @ `19fdf29` on `origin/main`.
 - AC100 training overlaps backfilled in DB (all 6 routes).
 
 ## Just finished
 
-- Removed public-event blue demo banner; muted “Try without account” / “Try free” sits beside Sign In with the same `?demo=1` result.
+- Removed public-event blue demo banner; muted “Try without account” / “Try free” sits beside Sign In (`?demo=1`).
 - Share URLs: `/{idOrAlias}?share=…`; vanity alias on Members; share view owner chrome without save.
 
 ## Open
