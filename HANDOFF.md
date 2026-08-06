@@ -8,9 +8,10 @@
 
 ## Current production snapshot
 
-- Frontend: pending commit (guest header + OG previews). Hard-refresh and compare the footer hash.
+- Frontend: `15ec62c` (guest Demo header + OG meta / og-default.png). Hard-refresh and compare the footer hash.
 - `share-preview` Edge Function deployed (`--no-verify-jwt`); `SITE_URL=https://dfiu.app`.
 - nginx on `dfiu.app` routes link-preview bots to `share-preview` and proxies `/og-image`.
+- Repository: `main` @ `15ec62c` on `origin/main`.
 
 ## Just finished
 
