@@ -8,9 +8,9 @@
 
 ## Current production snapshot
 
-- Frontend: pending this deploy.
+- Frontend: `522fa53` (training segment order + list totals only). Hard-refresh and compare the footer hash.
 - Share alias migration applied on linked DFIU project.
-- Repository: `main` (ahead pending commit).
+- Repository: `main` @ `522fa53` on `origin/main`.
 - AC100 training overlaps backfilled in DB (all 6 routes).
 
 ## Just finished
