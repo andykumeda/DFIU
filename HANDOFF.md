@@ -2,13 +2,13 @@
 
 **Date:** 2026-08-06
 **Branch:** `main`
-**Status:** Landing-page info links moved to footer; contact email corrected to `andy@kumeda.com`.
+**Status:** Landing-page info links moved to footer; contact email corrected; algorithm-reference link fixed.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Frontend: `6e639de`. Hard-refresh and compare the footer hash.
+- Frontend: `8e77e68` plus the pending algorithm-reference link fix. Hard-refresh and compare the footer hash.
 - OG: `dfiu-og` serves `og-default.png` (left) by default; Facebook/Instagram UAs get `og-ig.png` (centered).
 
 ## Just finished
