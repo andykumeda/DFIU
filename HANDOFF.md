@@ -2,21 +2,20 @@
 
 **Date:** 2026-08-06
 **Branch:** `main`
-**Status:** Guest race header + event share OG previews shipped.
+**Status:** In progress — fix iMessage share preview (PNG cards, not SVG/HTML).
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Frontend: `15ec62c` (guest Demo header + OG meta / og-default.png). Hard-refresh and compare the footer hash.
-- `share-preview` Edge Function deployed (`--no-verify-jwt`); `SITE_URL=https://dfiu.app`.
-- nginx on `dfiu.app` routes link-preview bots to `share-preview` and proxies `/og-image`.
-- Repository: `main` @ `15ec62c` on `origin/main`.
+- Frontend: `15ec62c`. Hard-refresh and compare the footer hash.
+- `share-preview` Edge Function deployed; nginx bot routing live on `dfiu.app`.
+- Repository: `main` @ `f27781c` on `origin/main`.
 
-## Just finished
+## In progress
 
-- Guest public-race header: prominent **Demo** (not Clone); no User/avatar/Settings when logged out.
-- Share previews: event links get `og:title` = race name + orange SVG card via `/og-image`; site root uses `og-default.png`.
+- Switch OG images from SVG → PNG (iMessage does not render SVG previews).
+- Remove meta-refresh from OG HTML so crawlers keep the tags.
 
 ## Open
 

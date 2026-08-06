@@ -1,6 +1,6 @@
 // Edge function: share-preview
 //
-// Serves Open Graph HTML and SVG card images for link previews (iMessage, Slack, etc.).
+// Serves Open Graph HTML + PNG cards for link previews (iMessage, Slack, etc.).
 // Public — crawlers have no JWT. verify_jwt must stay off.
 //
 // Query:
@@ -12,10 +12,12 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const SITE_URL = Deno.env.get('SITE_URL') ?? 'https://dfiu.app'
-const ORANGE = '#ea580c'
-const ORANGE_DARK = '#c2410c'
 const WIDTH = 1200
 const HEIGHT = 630
+const ORANGE = { r: 234, g: 88, b: 12 } // #ea580c
+const ORANGE_DARK = { r: 194, g: 65, b: 12 } // #c2410c
+const CREAM = { r: 255, g: 237, b: 213 } // #ffedd5
+const WHITE = { r: 255, g: 255, b: 255 }
 
 const RESERVED = new Set([
   'login', 'signup', 'dashboard', 'settings', 'events', 'race', 'auth', 'new',
@@ -63,13 +65,13 @@ serve(async (req) => {
       : `${SITE_URL}/`
 
     if (format === 'image' || format === 'png' || format === 'svg') {
-      const svg = renderOgSvg(
+      const png = await renderOgPng(
         title,
         allowed && race ? 'Event plan on DFIU' : 'Plan the race. Respect the trail.',
       )
-      return new Response(svg, {
+      return new Response(png, {
         headers: {
-          'Content-Type': 'image/svg+xml; charset=utf-8',
+          'Content-Type': 'image/png',
           'Cache-Control': 'public, max-age=300',
           'Access-Control-Allow-Origin': '*',
         },
@@ -77,15 +79,15 @@ serve(async (req) => {
     }
 
     const imageUrl = allowed && race
-      ? `${SITE_URL}/og-image?path=${encodeURIComponent(`/${race.public_share_alias || race.id}`)}&format=image` +
+      ? `${SITE_URL}/og-image?path=${encodeURIComponent(`/${race.public_share_alias || race.id}`)}&format=image&v=2` +
         (share ? `&share=${encodeURIComponent(share)}` : '')
-      : `${SITE_URL}/og-default.png`
+      : `${SITE_URL}/og-default.png?v=2`
     const html = buildOgHtml({ title, description, pageUrl, imageUrl })
     return new Response(html, {
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
         'Cache-Control': 'public, max-age=120',
-        ...(race ? { 'X-DFIU-Race': race.id } : {}),
+        ...(allowed && race ? { 'X-DFIU-Race': race.id } : {}),
         ...(key ? { 'X-DFIU-Key': key } : {}),
       },
     })
@@ -120,7 +122,6 @@ async function lookupRace(key: string): Promise<RaceRow | null> {
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-  // Prefer service role; anon cannot SELECT public_share_token (column grant lockdown).
   const keyToUse = serviceKey || anonKey
   if (!supabaseUrl || !keyToUse) {
     console.error('share-preview: missing supabase env')
@@ -128,7 +129,6 @@ async function lookupRace(key: string): Promise<RaceRow | null> {
   }
 
   const admin = createClient(supabaseUrl, keyToUse)
-  // Omit public_share_token when using anon — that column is revoked for non-service roles.
   const select = serviceKey
     ? 'id, name, location, distance_miles, is_public, public_share_enabled, public_share_token, public_share_alias'
     : 'id, name, location, distance_miles, is_public, public_share_enabled, public_share_alias'
@@ -139,7 +139,7 @@ async function lookupRace(key: string): Promise<RaceRow | null> {
       console.error('share-preview uuid lookup', error.message)
       return null
     }
-    return data ? normalizeRace(data) : null
+    return data ? normalizeRace(data as Record<string, unknown>) : null
   }
 
   const alias = key.trim().toLowerCase()
@@ -148,7 +148,7 @@ async function lookupRace(key: string): Promise<RaceRow | null> {
     console.error('share-preview alias lookup', error.message)
     return null
   }
-  return data ? normalizeRace(data) : null
+  return data ? normalizeRace(data as Record<string, unknown>) : null
 }
 
 function normalizeRace(data: Record<string, unknown>): RaceRow {
@@ -201,6 +201,7 @@ function buildOgHtml(opts: {
   const d = escapeHtml(opts.description)
   const u = escapeHtml(opts.pageUrl)
   const img = escapeHtml(opts.imageUrl)
+  // No meta-refresh: crawlers (esp. Apple LP) can drop OG tags when redirected.
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -214,17 +215,17 @@ function buildOgHtml(opts: {
   <meta property="og:description" content="${d}" />
   <meta property="og:url" content="${u}" />
   <meta property="og:image" content="${img}" />
+  <meta property="og:image:secure_url" content="${img}" />
   <meta property="og:image:width" content="${WIDTH}" />
   <meta property="og:image:height" content="${HEIGHT}" />
-  <meta property="og:image:type" content="image/svg+xml" />
+  <meta property="og:image:type" content="image/png" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="${t}" />
   <meta name="twitter:description" content="${d}" />
   <meta name="twitter:image" content="${img}" />
-  <meta http-equiv="refresh" content="0;url=${u}" />
 </head>
 <body>
-  <p><a href="${u}">${t}</a></p>
+  <p><a href="${u}">${t}</a> — <a href="${u}">Open in DFIU</a></p>
 </body>
 </html>`
 }
@@ -237,13 +238,90 @@ function escapeHtml(s: string): string {
     .replace(/"/g, '&quot;')
 }
 
-function escapeXml(s: string): string {
-  return escapeHtml(s).replace(/'/g, '&apos;')
+// --- PNG card (iMessage requires raster images; SVG is ignored) -------------
+
+/** 5×7 glyphs for A–Z, 0–9, and common punctuation. */
+const GLYPHS: Record<string, number[]> = {
+  ' ': [0, 0, 0, 0, 0, 0, 0],
+  A: [0b01110, 0b10001, 0b10001, 0b11111, 0b10001, 0b10001, 0b10001],
+  B: [0b11110, 0b10001, 0b10001, 0b11110, 0b10001, 0b10001, 0b11110],
+  C: [0b01110, 0b10001, 0b10000, 0b10000, 0b10000, 0b10001, 0b01110],
+  D: [0b11110, 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b11110],
+  E: [0b11111, 0b10000, 0b10000, 0b11110, 0b10000, 0b10000, 0b11111],
+  F: [0b11111, 0b10000, 0b10000, 0b11110, 0b10000, 0b10000, 0b10000],
+  G: [0b01110, 0b10001, 0b10000, 0b10111, 0b10001, 0b10001, 0b01110],
+  H: [0b10001, 0b10001, 0b10001, 0b11111, 0b10001, 0b10001, 0b10001],
+  I: [0b01110, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100, 0b01110],
+  J: [0b00111, 0b00010, 0b00010, 0b00010, 0b00010, 0b10010, 0b01100],
+  K: [0b10001, 0b10010, 0b10100, 0b11000, 0b10100, 0b10010, 0b10001],
+  L: [0b10000, 0b10000, 0b10000, 0b10000, 0b10000, 0b10000, 0b11111],
+  M: [0b10001, 0b11011, 0b10101, 0b10001, 0b10001, 0b10001, 0b10001],
+  N: [0b10001, 0b11001, 0b10101, 0b10011, 0b10001, 0b10001, 0b10001],
+  O: [0b01110, 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b01110],
+  P: [0b11110, 0b10001, 0b10001, 0b11110, 0b10000, 0b10000, 0b10000],
+  Q: [0b01110, 0b10001, 0b10001, 0b10001, 0b10101, 0b10010, 0b01101],
+  R: [0b11110, 0b10001, 0b10001, 0b11110, 0b10100, 0b10010, 0b10001],
+  S: [0b01111, 0b10000, 0b10000, 0b01110, 0b00001, 0b00001, 0b11110],
+  T: [0b11111, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100],
+  U: [0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b01110],
+  V: [0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b01010, 0b00100],
+  W: [0b10001, 0b10001, 0b10001, 0b10001, 0b10101, 0b10101, 0b01010],
+  X: [0b10001, 0b10001, 0b01010, 0b00100, 0b01010, 0b10001, 0b10001],
+  Y: [0b10001, 0b10001, 0b01010, 0b00100, 0b00100, 0b00100, 0b00100],
+  Z: [0b11111, 0b00001, 0b00010, 0b00100, 0b01000, 0b10000, 0b11111],
+  '0': [0b01110, 0b10001, 0b10011, 0b10101, 0b11001, 0b10001, 0b01110],
+  '1': [0b00100, 0b01100, 0b00100, 0b00100, 0b00100, 0b00100, 0b01110],
+  '2': [0b01110, 0b10001, 0b00001, 0b00010, 0b00100, 0b01000, 0b11111],
+  '3': [0b11111, 0b00010, 0b00100, 0b00010, 0b00001, 0b10001, 0b01110],
+  '4': [0b00010, 0b00110, 0b01010, 0b10010, 0b11111, 0b00010, 0b00010],
+  '5': [0b11111, 0b10000, 0b11110, 0b00001, 0b00001, 0b10001, 0b01110],
+  '6': [0b00110, 0b01000, 0b10000, 0b11110, 0b10001, 0b10001, 0b01110],
+  '7': [0b11111, 0b00001, 0b00010, 0b00100, 0b01000, 0b01000, 0b01000],
+  '8': [0b01110, 0b10001, 0b10001, 0b01110, 0b10001, 0b10001, 0b01110],
+  '9': [0b01110, 0b10001, 0b10001, 0b01111, 0b00001, 0b00010, 0b01100],
+  '*': [0b00100, 0b10101, 0b01110, 0b00100, 0b01110, 0b10101, 0b00100],
+  '-': [0b00000, 0b00000, 0b00000, 0b11111, 0b00000, 0b00000, 0b00000],
+  "'": [0b00100, 0b00100, 0b01000, 0b00000, 0b00000, 0b00000, 0b00000],
+  '.': [0b00000, 0b00000, 0b00000, 0b00000, 0b00000, 0b00100, 0b00100],
+  ',': [0b00000, 0b00000, 0b00000, 0b00000, 0b00100, 0b00100, 0b01000],
+  '!': [0b00100, 0b00100, 0b00100, 0b00100, 0b00100, 0b00000, 0b00100],
+  '?': [0b01110, 0b10001, 0b00001, 0b00010, 0b00100, 0b00000, 0b00100],
+  '&': [0b01100, 0b10010, 0b10100, 0b01000, 0b10101, 0b10010, 0b01101],
+  '/': [0b00001, 0b00010, 0b00010, 0b00100, 0b01000, 0b01000, 0b10000],
+  ':': [0b00000, 0b00100, 0b00100, 0b00000, 0b00100, 0b00100, 0b00000],
+}
+
+async function renderOgPng(headline: string, subtitle: string): Promise<Uint8Array> {
+  const pixels = new Uint8Array(WIDTH * HEIGHT * 3)
+  fillRect(pixels, 0, 0, WIDTH, HEIGHT, ORANGE)
+  fillRect(pixels, 0, HEIGHT - 90, WIDTH, 90, ORANGE_DARK)
+
+  drawText(pixels, "DON'T F* IT UP", 64, 64, 4, CREAM)
+  const lines = wrapLines(normalizeForGlyphs(headline), 20)
+  const scale = lines.length > 2 ? 5 : 6
+  let y = 210
+  for (const line of lines.slice(0, 3)) {
+    drawText(pixels, line, 64, y, scale, WHITE)
+    y += 7 * scale + 20
+  }
+  drawText(pixels, normalizeForGlyphs(subtitle).slice(0, 42), 64, HEIGHT - 42, 3, CREAM)
+
+  return await encodePngRgb(pixels, WIDTH, HEIGHT)
+}
+
+function normalizeForGlyphs(s: string): string {
+  return s
+    .toUpperCase()
+    .replace(/[""]/g, "'")
+    .replace(/[–—]/g, '-')
+    .replace(/[^A-Z0-9 *\-'.,!?&/:]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 function wrapLines(text: string, maxChars: number): string[] {
   const words = text.trim().split(/\s+/).filter(Boolean)
-  if (!words.length) return ["Don't F* It Up"]
+  if (!words.length) return ['DFIU']
   const lines: string[] = []
   let cur = ''
   for (const w of words) {
@@ -251,28 +329,170 @@ function wrapLines(text: string, maxChars: number): string[] {
     if (next.length <= maxChars) cur = next
     else {
       if (cur) lines.push(cur)
-      cur = w
+      cur = w.length > maxChars ? w.slice(0, maxChars) : w
     }
   }
   if (cur) lines.push(cur)
-  return lines.slice(0, 3)
+  return lines
 }
 
-function renderOgSvg(headline: string, subtitle: string): string {
-  const lines = wrapLines(headline, 28)
-  const fontSize = lines.length > 2 ? 52 : 64
-  const startY = 250
-  const lineNodes = lines.map((line, i) => {
-    const y = startY + i * (fontSize + 14)
-    return `<text x="72" y="${y}" fill="#ffffff" font-size="${fontSize}" font-weight="700" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif">${escapeXml(line)}</text>`
-  }).join('\n  ')
+function drawText(
+  pixels: Uint8Array,
+  text: string,
+  startX: number,
+  startY: number,
+  scale: number,
+  color: { r: number; g: number; b: number },
+) {
+  let x = startX
+  for (const ch of text) {
+    const glyph = GLYPHS[ch] ?? GLYPHS[' ']
+    for (let row = 0; row < 7; row++) {
+      const bits = glyph[row]
+      for (let col = 0; col < 5; col++) {
+        if (bits & (1 << (4 - col))) {
+          fillRect(pixels, x + col * scale, startY + row * scale, scale, scale, color)
+        }
+      }
+    }
+    x += 6 * scale
+    if (x > WIDTH - 48) break
+  }
+}
 
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}">
-  <rect width="100%" height="100%" fill="${ORANGE}"/>
-  <rect y="${HEIGHT - 96}" width="100%" height="96" fill="${ORANGE_DARK}"/>
-  <text x="72" y="96" fill="#ffedd5" font-size="28" font-weight="600" letter-spacing="0.08em" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif">DON&apos;T F* IT UP</text>
-  ${lineNodes}
-  <text x="72" y="${HEIGHT - 40}" fill="#ffedd5" font-size="26" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif">${escapeXml(subtitle)}</text>
-</svg>`
+function fillRect(
+  pixels: Uint8Array,
+  x0: number,
+  y0: number,
+  w: number,
+  h: number,
+  color: { r: number; g: number; b: number },
+) {
+  const x1 = Math.min(WIDTH, Math.max(0, x0))
+  const y1 = Math.min(HEIGHT, Math.max(0, y0))
+  const x2 = Math.min(WIDTH, Math.max(0, x0 + w))
+  const y2 = Math.min(HEIGHT, Math.max(0, y0 + h))
+  for (let y = y1; y < y2; y++) {
+    let i = (y * WIDTH + x1) * 3
+    for (let x = x1; x < x2; x++) {
+      pixels[i] = color.r
+      pixels[i + 1] = color.g
+      pixels[i + 2] = color.b
+      i += 3
+    }
+  }
+}
+
+async function encodePngRgb(rgb: Uint8Array, width: number, height: number): Promise<Uint8Array> {
+  const raw = new Uint8Array((width * 3 + 1) * height)
+  for (let y = 0; y < height; y++) {
+    const dest = y * (width * 3 + 1)
+    raw[dest] = 0
+    raw.set(rgb.subarray(y * width * 3, (y + 1) * width * 3), dest + 1)
+  }
+  const compressed = await zlibDeflate(raw)
+
+  const signature = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])
+  const ihdr = new Uint8Array(13)
+  const dv = new DataView(ihdr.buffer)
+  dv.setUint32(0, width)
+  dv.setUint32(4, height)
+  ihdr[8] = 8
+  ihdr[9] = 2
+  ihdr[10] = 0
+  ihdr[11] = 0
+  ihdr[12] = 0
+
+  const parts = [signature, chunk('IHDR', ihdr), chunk('IDAT', compressed), chunk('IEND', new Uint8Array(0))]
+  let total = 0
+  for (const p of parts) total += p.length
+  const out = new Uint8Array(total)
+  let off = 0
+  for (const p of parts) {
+    out.set(p, off)
+    off += p.length
+  }
+  return out
+}
+
+function chunk(type: string, data: Uint8Array): Uint8Array {
+  const typeBytes = new TextEncoder().encode(type)
+  const out = new Uint8Array(12 + data.length)
+  const dv = new DataView(out.buffer)
+  dv.setUint32(0, data.length)
+  out.set(typeBytes, 4)
+  out.set(data, 8)
+  dv.setUint32(8 + data.length, crc32(concat(typeBytes, data)) >>> 0)
+  return out
+}
+
+function concat(a: Uint8Array, b: Uint8Array): Uint8Array {
+  const out = new Uint8Array(a.length + b.length)
+  out.set(a)
+  out.set(b, a.length)
+  return out
+}
+
+const CRC_TABLE = (() => {
+  const table = new Uint32Array(256)
+  for (let n = 0; n < 256; n++) {
+    let c = n
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1
+    table[n] = c >>> 0
+  }
+  return table
+})()
+
+function crc32(buf: Uint8Array): number {
+  let c = 0xffffffff
+  for (let i = 0; i < buf.length; i++) c = CRC_TABLE[(c ^ buf[i]) & 0xff] ^ (c >>> 8)
+  return (c ^ 0xffffffff) >>> 0
+}
+
+async function zlibDeflate(data: Uint8Array): Promise<Uint8Array> {
+  // Prefer store blocks: CompressionStream on large RGB frames can hang / OOM
+  // on Edge. Stored zlib is ~2MB for 1200×630 — fine for OG cards.
+  return zlibStore(data)
+}
+
+function zlibStore(data: Uint8Array): Uint8Array {
+  const blocks: Uint8Array[] = []
+  const max = 65535
+  for (let i = 0; i < data.length; i += max) {
+    const slice = data.subarray(i, Math.min(i + max, data.length))
+    const isFinal = i + max >= data.length ? 1 : 0
+    const block = new Uint8Array(5 + slice.length)
+    block[0] = isFinal
+    block[1] = slice.length & 0xff
+    block[2] = (slice.length >> 8) & 0xff
+    const nlen = (~slice.length) & 0xffff
+    block[3] = nlen & 0xff
+    block[4] = (nlen >> 8) & 0xff
+    block.set(slice, 5)
+    blocks.push(block)
+  }
+  let deflateLen = 0
+  for (const b of blocks) deflateLen += b.length
+  const deflated = new Uint8Array(deflateLen)
+  let o = 0
+  for (const b of blocks) {
+    deflated.set(b, o)
+    o += b.length
+  }
+  const out = new Uint8Array(2 + deflated.length + 4)
+  out[0] = 0x78
+  out[1] = 0x01
+  out.set(deflated, 2)
+  new DataView(out.buffer).setUint32(2 + deflated.length, adler32(data) >>> 0)
+  return out
+}
+
+function adler32(buf: Uint8Array): number {
+  let a = 1
+  let b = 0
+  for (let i = 0; i < buf.length; i++) {
+    a = (a + buf[i]) % 65521
+    b = (b + a) % 65521
+  }
+  return ((b << 16) | a) >>> 0
 }
