@@ -8,9 +8,9 @@
 
 ## Current production snapshot
 
-- Frontend: pending commit hash after this session (splash + signup onboarding). Hard-refresh and compare the footer hash.
+- Frontend: `e3f57ef` (splash tagline/features, AC100 demo CTA, signup → settings). Hard-refresh and compare the footer hash.
 - Share alias migration applied on linked DFIU project.
-- Repository: `main` (committing splash/signup polish).
+- Repository: `main` @ `e3f57ef` on `origin/main`.
 
 ## Just finished
 
