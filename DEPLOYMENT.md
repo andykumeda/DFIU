@@ -89,57 +89,17 @@ GitHub Actions workflow `.github/workflows/ci.yml` runs `npm ci`, lint, vitest, 
 
 ## Nginx Configuration (Example)
 
-```nginx
-# Link-preview bots get event-specific Open Graph HTML from the share-preview
-# Edge Function. Humans still receive the SPA. Requires the public anon key in
-# proxy headers (same value as VITE_SUPABASE_ANON_KEY — safe to embed server-side).
+Event vanity URLs (`/ac100`, `/{uuid}`) always return Open Graph HTML from the
+`share-preview` Edge Function so iMessage (Safari-like UA) sees the event title
+and orange PNG card. The HTML JS-redirects real browsers to `/race/:id`.
 
-map $http_user_agent $dfiu_link_bot {
-    default 0;
-    ~*(?i)(facebookexternalhit|facebot|twitterbot|linkedinbot|slackbot|discordbot|whatsapp|telegrambot|skypeuripreview|applebot|embedly|pinterest|redditbot) 1;
-}
+Template: [`scripts/nginx-dfiu.app.conf`](scripts/nginx-dfiu.app.conf) (replace
+`ANON_KEY_PLACEHOLDER` with the project anon key — same as `VITE_SUPABASE_ANON_KEY`).
 
-map $uri $dfiu_og_path {
-    default 1;
-    ~*^/(assets|login|signup|dashboard|settings|events|auth|og-image|logo\.png|og-default\.png) 0;
-    =/ 0;
-}
-
-map "$dfiu_link_bot:$dfiu_og_path" $dfiu_serve_og {
-    default 0;
-    "1:1" 1;
-}
-
-server {
-    listen 80;
-    server_name your-domain.com;
-    root /var/www/dfiu;
-    index index.html;
-
-    location = /og-image {
-        proxy_pass https://YOUR_PROJECT.supabase.co/functions/v1/share-preview$is_args$args;
-        proxy_ssl_server_name on;
-        proxy_set_header Host YOUR_PROJECT.supabase.co;
-        proxy_set_header apikey YOUR_ANON_KEY;
-        proxy_set_header Authorization "Bearer YOUR_ANON_KEY";
-    }
-
-    location / {
-        error_page 418 = @og_preview;
-        if ($dfiu_serve_og = 1) { return 418; }
-        try_files $uri $uri/ /index.html;
-    }
-
-    location @og_preview {
-        set $og_args "path=$uri&format=html";
-        if ($args) { set $og_args "path=$uri&format=html&$args"; }
-        proxy_pass https://YOUR_PROJECT.supabase.co/functions/v1/share-preview?$og_args;
-        proxy_ssl_server_name on;
-        proxy_set_header Host YOUR_PROJECT.supabase.co;
-        proxy_set_header apikey YOUR_ANON_KEY;
-        proxy_set_header Authorization "Bearer YOUR_ANON_KEY";
-    }
-}
+```bash
+# After editing the template:
+sed "s/ANON_KEY_PLACEHOLDER/$VITE_SUPABASE_ANON_KEY/g" scripts/nginx-dfiu.app.conf \
+  | ssh web 'cat > /etc/nginx/sites-available/dfiu.app && sudo nginx -t && sudo systemctl reload nginx'
 ```
 
 Deploy the `share-preview` Edge Function with JWT verification off:

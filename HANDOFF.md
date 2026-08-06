@@ -2,19 +2,21 @@
 
 **Date:** 2026-08-06
 **Branch:** `main`
-**Status:** iMessage share previews use PNG OG cards.
+**Status:** iMessage OG fix — event vanity URLs always serve share-preview HTML.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
 - Frontend: `15ec62c`. Hard-refresh and compare the footer hash.
-- `share-preview` @ `fd35d32`: PNG OG cards (not SVG); no meta-refresh. nginx bot routing live.
-- Repository: `main` @ `fd35d32` on `origin/main`.
+- `share-preview` deployed with compressed PNG (~5KB) + JS redirect to `/race/:id`.
+- nginx: all event vanity/UUID paths hit OG HTML (not bot-UA-only). Template: `scripts/nginx-dfiu.app.conf`.
+- Repository: committing this fix.
 
 ## Just finished
 
-- Fixed iMessage previews: raster PNG with orange background + event name; dropped meta-refresh that confused crawlers.
+- Root cause: iPhone Safari UA received SPA shell (generic DFIU meta), so iMessage never saw event OG tags.
+- Fix: vanity event URLs always return OG HTML; browsers JS-redirect to `/race/:id`.
 
 ## Open
 

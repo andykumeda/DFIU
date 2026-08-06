@@ -10,6 +10,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { zlibSync } from 'https://esm.sh/fflate@0.8.2'
 
 const SITE_URL = Deno.env.get('SITE_URL') ?? 'https://dfiu.app'
 const WIDTH = 1200
@@ -79,14 +80,21 @@ serve(async (req) => {
     }
 
     const imageUrl = allowed && race
-      ? `${SITE_URL}/og-image?path=${encodeURIComponent(`/${race.public_share_alias || race.id}`)}&format=image&v=2` +
+      ? `${SITE_URL}/og-image?path=${encodeURIComponent(`/${race.public_share_alias || race.id}`)}&format=image&v=3` +
         (share ? `&share=${encodeURIComponent(share)}` : '')
-      : `${SITE_URL}/og-default.png?v=2`
-    const html = buildOgHtml({ title, description, pageUrl, imageUrl })
+      : `${SITE_URL}/og-default.png?v=3`
+
+    // Humans land on vanity URLs too (iMessage uses Safari-like UAs). Send them
+    // to the SPA at /race/:id while crawlers keep this document's OG tags.
+    const appUrl = allowed && race
+      ? buildAppUrl(race.id, url.searchParams)
+      : null
+
+    const html = buildOgHtml({ title, description, pageUrl, imageUrl, appUrl })
     return new Response(html, {
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
-        'Cache-Control': 'public, max-age=120',
+        'Cache-Control': 'public, max-age=60',
         ...(allowed && race ? { 'X-DFIU-Race': race.id } : {}),
         ...(key ? { 'X-DFIU-Key': key } : {}),
       },
@@ -185,6 +193,16 @@ function buildDescription(race: RaceRow): string {
   return 'Race plan on Don\'t F* It Up'
 }
 
+function buildAppUrl(raceId: string, params: URLSearchParams): string {
+  const next = new URLSearchParams()
+  for (const [k, v] of params.entries()) {
+    if (k === 'path' || k === 'format') continue
+    next.set(k, v)
+  }
+  const qs = next.toString()
+  return `${SITE_URL}/race/${encodeURIComponent(raceId)}${qs ? `?${qs}` : ''}`
+}
+
 function buildPageUrl(race: RaceRow, share: string | null): string {
   const key = race.public_share_alias || race.id
   const base = `${SITE_URL}/${encodeURIComponent(key)}`
@@ -196,12 +214,17 @@ function buildOgHtml(opts: {
   description: string
   pageUrl: string
   imageUrl: string
+  appUrl: string | null
 }): string {
   const t = escapeHtml(opts.title)
   const d = escapeHtml(opts.description)
   const u = escapeHtml(opts.pageUrl)
   const img = escapeHtml(opts.imageUrl)
-  // No meta-refresh: crawlers (esp. Apple LP) can drop OG tags when redirected.
+  const app = opts.appUrl
+  const redirectScript = app
+    ? `<script>location.replace(${JSON.stringify(app)}+location.hash)</script>`
+    : ''
+  const fallbackHref = escapeHtml(app ?? opts.pageUrl)
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -225,7 +248,8 @@ function buildOgHtml(opts: {
   <meta name="twitter:image" content="${img}" />
 </head>
 <body>
-  <p><a href="${u}">${t}</a> — <a href="${u}">Open in DFIU</a></p>
+  <p><a href="${fallbackHref}">${t}</a></p>
+  ${redirectScript}
 </body>
 </html>`
 }
@@ -450,49 +474,6 @@ function crc32(buf: Uint8Array): number {
 }
 
 async function zlibDeflate(data: Uint8Array): Promise<Uint8Array> {
-  // Prefer store blocks: CompressionStream on large RGB frames can hang / OOM
-  // on Edge. Stored zlib is ~2MB for 1200×630 — fine for OG cards.
-  return zlibStore(data)
-}
-
-function zlibStore(data: Uint8Array): Uint8Array {
-  const blocks: Uint8Array[] = []
-  const max = 65535
-  for (let i = 0; i < data.length; i += max) {
-    const slice = data.subarray(i, Math.min(i + max, data.length))
-    const isFinal = i + max >= data.length ? 1 : 0
-    const block = new Uint8Array(5 + slice.length)
-    block[0] = isFinal
-    block[1] = slice.length & 0xff
-    block[2] = (slice.length >> 8) & 0xff
-    const nlen = (~slice.length) & 0xffff
-    block[3] = nlen & 0xff
-    block[4] = (nlen >> 8) & 0xff
-    block.set(slice, 5)
-    blocks.push(block)
-  }
-  let deflateLen = 0
-  for (const b of blocks) deflateLen += b.length
-  const deflated = new Uint8Array(deflateLen)
-  let o = 0
-  for (const b of blocks) {
-    deflated.set(b, o)
-    o += b.length
-  }
-  const out = new Uint8Array(2 + deflated.length + 4)
-  out[0] = 0x78
-  out[1] = 0x01
-  out.set(deflated, 2)
-  new DataView(out.buffer).setUint32(2 + deflated.length, adler32(data) >>> 0)
-  return out
-}
-
-function adler32(buf: Uint8Array): number {
-  let a = 1
-  let b = 0
-  for (let i = 0; i < buf.length; i++) {
-    a = (a + buf[i]) % 65521
-    b = (b + a) % 65521
-  }
-  return ((b << 16) | a) >>> 0
+  // fflate produces real zlib; solid-color cards compress to a few KB.
+  return zlibSync(data, { level: 6 })
 }
