@@ -52,12 +52,6 @@ export default function SplashPage() {
           <Link to="/login" className={styles.secondaryBtn}>
             Sign In
           </Link>
-          <Link to="/about" className={styles.secondaryBtn}>
-            About
-          </Link>
-          <Link to="/documentation" className={styles.secondaryBtn}>
-            Documentation
-          </Link>
           <Link to="/ac100?demo=1" className={styles.demoBtn}>
             Try Angeles Crest 100 (demo)
           </Link>
@@ -124,6 +118,14 @@ export default function SplashPage() {
           <p>Livestream and results embeds plus followed-runner location and ETAs.</p>
         </div>
       </div>
+
+      <footer className={styles.footer}>
+        <span>DFIU · Don&apos;t F* It Up!</span>
+        <nav aria-label="Site information">
+          <Link to="/about">About</Link>
+          <Link to="/documentation">Documentation</Link>
+        </nav>
+      </footer>
     </main>
   )
 }

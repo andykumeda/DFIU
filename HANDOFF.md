@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-06
 **Branch:** `main`
-**Status:** Public About and Documentation pages deployed.
+**Status:** Moving About and Documentation links from the landing-page CTA into its footer.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
