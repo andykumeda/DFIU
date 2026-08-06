@@ -40,7 +40,14 @@ const DIST_DIR = process.env.DIST_DIR || '/var/www/dfiu'
 const SUPABASE_URL = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').replace(/\/$/, '')
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || ''
 const SITE_ORIGIN = (process.env.SITE_ORIGIN || 'https://dfiu.app').replace(/\/$/, '')
-const DEFAULT_IMAGE = `${SITE_ORIGIN}/og-default.png?v=261`
+const DEFAULT_IMAGE = `${SITE_ORIGIN}/og-default.png?v=262`
+const IG_IMAGE = `${SITE_ORIGIN}/og-ig.png?v=262`
+
+/** Instagram / Facebook center-crop wide banners; use centered artwork for those crawlers. */
+function imageForUserAgent(ua) {
+  if (/facebookexternalhit|facebot|instagram/i.test(ua || '')) return IG_IMAGE
+  return DEFAULT_IMAGE
+}
 
 const RESERVED = new Set([
   'login', 'signup', 'dashboard', 'settings', 'events', 'race', 'auth', 'new',
@@ -199,7 +206,7 @@ const server = http.createServer(async (req, res) => {
           title: buildTitle(race),
           description: buildDescription(race),
           url: pageUrlFor(race, url),
-          image: DEFAULT_IMAGE,
+          image: imageForUserAgent(req.headers['user-agent']),
         })
       }
     }
