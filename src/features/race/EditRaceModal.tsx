@@ -54,6 +54,7 @@ export function EditRaceModal({ race, onClose, onUpdate, onDelete }: EditRaceMod
 
     const [savedShareToken, setSavedShareToken] = useState(race.public_share_token || '')
     const [savedShareEnabled, setSavedShareEnabled] = useState(race.public_share_enabled || false)
+    const [shareAlias, setShareAlias] = useState(race.public_share_alias || '')
 
     useEffect(() => {
         if (isDemoMode) return
@@ -66,6 +67,7 @@ export function EditRaceModal({ race, onClose, onUpdate, onDelete }: EditRaceMod
             setShareToken(row.public_share_token || '')
             setSavedShareToken(row.public_share_token || '')
             setSavedShareEnabled(row.public_share_enabled || false)
+            setShareAlias(row.public_share_alias || '')
             setFormData((prev) => ({
                 ...prev,
                 public_share_enabled: row.public_share_enabled || false,
@@ -74,7 +76,9 @@ export function EditRaceModal({ race, onClose, onUpdate, onDelete }: EditRaceMod
         return () => { cancelled = true }
     }, [race.id, isDemoMode])
 
-    const shareLink = !isDemoMode && formData.public_share_enabled && shareToken ? buildShareLink(race.id, shareToken) : ''
+    const shareLink = !isDemoMode && formData.public_share_enabled && shareToken
+        ? buildShareLink(race.id, shareToken, shareAlias || null)
+        : ''
     const shareLinkNeedsSave = !isDemoMode && formData.public_share_enabled && (
         !savedShareEnabled ||
         shareToken !== savedShareToken
@@ -391,7 +395,7 @@ export function EditRaceModal({ race, onClose, onUpdate, onDelete }: EditRaceMod
                                 checked={formData.public_share_enabled}
                                 onChange={e => handleShareEnabledChange(e.target.checked)}
                             />
-                            Anyone with the link can view read-only
+                            Anyone with the link can view read-only (set a vanity alias on the Members tab)
                         </label>
                         <p className={styles.helpText}>
                             Keeps the event out of Public Events, but allows the exact link to open the race plan without edit access.

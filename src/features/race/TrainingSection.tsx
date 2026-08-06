@@ -30,6 +30,8 @@ interface TrainingSectionProps {
   clock24h?: boolean
   runnerProfile: RunnerPacingProfile
   resetToken?: number
+  /** Private share link: show Import/Create chrome disabled (owner-like, no writes). */
+  showDisabledActions?: boolean
 }
 
 function truncateNotes(notes: string | null, max = 100): string | null {
@@ -46,6 +48,7 @@ export function TrainingSection({
   clock24h = false,
   runnerProfile,
   resetToken = 0,
+  showDisabledActions = false,
 }: TrainingSectionProps) {
   const {
     routes,
@@ -201,11 +204,21 @@ export function TrainingSection({
             GPX routes to prepare for the event, with automatic course-overlap detection.
           </p>
         </div>
-        {canEdit && <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => { setShowUploader(v => !v); setShowCreator(false) }} className="flex items-center gap-2 bg-neutral-800 hover:bg-neutral-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+        {(canEdit || showDisabledActions) && <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => { if (!canEdit) return; setShowUploader(v => !v); setShowCreator(false) }}
+            disabled={!canEdit}
+            className="flex items-center gap-2 bg-neutral-800 hover:bg-neutral-700 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-40 disabled:hover:bg-neutral-800 disabled:cursor-not-allowed"
+          >
             <Upload className="w-4 h-4" />{showUploader ? 'Cancel import' : 'Import GPX'}
           </button>
-          <button type="button" onClick={() => { setShowCreator(v => !v); setShowUploader(false) }} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium">
+          <button
+            type="button"
+            onClick={() => { if (!canEdit) return; setShowCreator(v => !v); setShowUploader(false) }}
+            disabled={!canEdit}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-40 disabled:hover:bg-blue-600 disabled:cursor-not-allowed"
+          >
             <PencilLine className="w-4 h-4" />{showCreator ? 'Cancel creation' : 'Create Route'}
           </button>
         </div>}
@@ -241,7 +254,7 @@ export function TrainingSection({
           <RouteIcon className="w-12 h-12 mb-4 opacity-20" />
           <h3 className="text-xl font-medium text-white mb-2">No training routes yet</h3>
           <p className="max-w-md">
-            {canEdit
+            {canEdit || showDisabledActions
               ? 'Import a GPX file or create a route on the map. Overlap with the race course is calculated automatically.'
               : 'Race editors can add training routes here.'}
           </p>

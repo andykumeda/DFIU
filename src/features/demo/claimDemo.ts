@@ -25,6 +25,7 @@ async function applyOverlayToClone(cloneRaceId: string, overlay: DemoOverlay): P
       race_director_user_id: _rd,
       public_share_enabled: _shareEnabled,
       public_share_token: _shareToken,
+      public_share_alias: _shareAlias,
       created_at: _created,
       official_revision: _rev,
       merged_official_revision: _merged,

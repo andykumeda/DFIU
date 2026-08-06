@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '../types/database'
+import { getShareTokenFromUrl } from '../features/race/share-link'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -26,11 +27,3 @@ export const supabase = createClient<Database>(
     },
   }
 )
-
-function getShareTokenFromUrl(): string | null {
-  if (typeof window === 'undefined') return null
-  const url = new URL(window.location.href)
-  if (!/^\/race\/[0-9a-f-]+(?:\/|$)/i.test(url.pathname)) return null
-  const token = url.searchParams.get('share')?.trim()
-  return token || null
-}

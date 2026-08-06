@@ -478,6 +478,7 @@ export type Database = {
           merged_official_revision: number | null
           public_share_enabled: boolean
           public_share_token: string | null
+          public_share_alias: string | null
           location: string | null
           lodging_info: string | null
           media_url: string | null
@@ -529,6 +530,7 @@ export type Database = {
           merged_official_revision?: number | null
           public_share_enabled?: boolean
           public_share_token?: string | null
+          public_share_alias?: string | null
           location?: string | null
           lodging_info?: string | null
           media_url?: string | null
@@ -580,6 +582,7 @@ export type Database = {
           merged_official_revision?: number | null
           public_share_enabled?: boolean
           public_share_token?: string | null
+          public_share_alias?: string | null
           location?: string | null
           lodging_info?: string | null
           media_url?: string | null
@@ -949,6 +952,7 @@ export type Database = {
         Returns: {
           public_share_enabled: boolean
           public_share_token: string | null
+          public_share_alias: string | null
         }[]
       }
       sync_official_race_to_clones: { Args: { p_source_race_id: string }; Returns: number }

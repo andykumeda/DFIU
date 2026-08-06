@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/features/auth/AuthContext'
 import type { Race } from '@/types/database'
 import type { RaceShareSettings } from '@/lib/race-select'
-import { buildShareLink, createShareToken } from './share-link'
+import { buildShareLink, createShareToken, validateShareAlias } from './share-link'
 
 type Role = 'crew' | 'pacer'
 type Permission = 'view' | 'edit'
@@ -62,8 +62,9 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
   const [pendingPermission, setPendingPermission] = useState<Permission>('view')
   const [inviteStatus, setInviteStatus] = useState<string | null>(null)
   const [shareStatus, setShareStatus] = useState<string | null>(null)
+  const [aliasOverride, setAliasOverride] = useState<string | null>(null)
 
-  const { data: raceAccess } = useQuery<Pick<Race, 'id' | 'public_share_enabled' | 'public_share_token'>>({
+  const { data: raceAccess } = useQuery<Pick<Race, 'id' | 'public_share_enabled' | 'public_share_token' | 'public_share_alias'>>({
     queryKey: ['race-share-access', raceId],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_race_share_settings', { rid: raceId })
@@ -73,10 +74,13 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
         id: raceId,
         public_share_enabled: row?.public_share_enabled ?? false,
         public_share_token: row?.public_share_token ?? null,
+        public_share_alias: row?.public_share_alias ?? null,
       }
     },
     enabled: canManage,
   })
+
+  const aliasDraft = aliasOverride ?? (raceAccess?.public_share_alias ?? '')
 
   const { data: members = [], isLoading } = useQuery<Member[]>({
     queryKey: ['race_members', raceId],
@@ -273,10 +277,11 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
         id: raceId,
         public_share_enabled: enabled,
         public_share_token: token,
-      } as Pick<Race, 'id' | 'public_share_enabled' | 'public_share_token'>
+        public_share_alias: raceAccess?.public_share_alias ?? null,
+      } as Pick<Race, 'id' | 'public_share_enabled' | 'public_share_token' | 'public_share_alias'>
     },
     onSuccess: async (data) => {
-      setShareStatus(data.public_share_enabled ? 'Private read-only link is enabled.' : 'Private read-only link revoked.')
+      setShareStatus(data.public_share_enabled ? 'Read-only share link is enabled.' : 'Read-only share link revoked.')
       await queryClient.invalidateQueries({ queryKey: ['race-share-access', raceId] })
       await queryClient.invalidateQueries({ queryKey: ['race', raceId] })
     },
@@ -285,6 +290,36 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
     },
   })
 
+  const aliasMutation = useMutation({
+    mutationFn: async () => {
+      const validated = validateShareAlias(aliasDraft)
+      if (!validated.ok) throw new Error(validated.error)
+      const { error } = await (supabase
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .from('races') as any)
+        .update({ public_share_alias: validated.alias })
+        .eq('id', raceId)
+      if (error) {
+        if (error.code === '23505' || /unique|duplicate/i.test(error.message)) {
+          throw new Error('That alias is already taken.')
+        }
+        if (error.code === '23514' || /check|constraint/i.test(error.message)) {
+          throw new Error('Alias format is invalid.')
+        }
+        throw error
+      }
+      return validated.alias
+    },
+    onSuccess: async (alias) => {
+      setAliasOverride(null)
+      setShareStatus(alias ? `Vanity alias saved as “${alias}”.` : 'Vanity alias cleared.')
+      await queryClient.invalidateQueries({ queryKey: ['race-share-access', raceId] })
+      await queryClient.invalidateQueries({ queryKey: ['race', raceId] })
+    },
+    onError: (err: Error) => {
+      setShareStatus(`Error: ${err.message}`)
+    },
+  })
   const resendPendingInvite = (invite: PendingInvite) => {
     inviteMutation.mutate({
       email: invite.email,
@@ -319,18 +354,24 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
   const permissionOptions: Permission[] = canManage ? ['view', 'edit'] : ['view']
   const inviteStatusIsError = inviteStatus?.startsWith('Error:') || inviteStatus?.toLowerCase().includes('failed')
   const shareStatusIsError = shareStatus?.startsWith('Error:')
+  const aliasValidation = validateShareAlias(aliasDraft)
+  const linkAlias = aliasValidation.ok
+    ? aliasValidation.alias
+    : (raceAccess?.public_share_alias ?? null)
   const shareLink = raceAccess?.public_share_enabled && raceAccess.public_share_token
-    ? buildShareLink(raceId, raceAccess.public_share_token)
+    ? buildShareLink(raceId, raceAccess.public_share_token, linkAlias)
     : ''
+  const aliasDirty =
+    (aliasDraft.trim().toLowerCase() || null) !== (raceAccess?.public_share_alias ?? null)
 
   const copyShareLink = async () => {
     if (!shareLink) return
     try {
       await navigator.clipboard.writeText(shareLink)
-      setShareStatus('Private read-only link copied.')
+      setShareStatus('Read-only share link copied.')
       window.setTimeout(() => setShareStatus(null), 2500)
     } catch {
-      window.prompt('Copy private read-only link:', shareLink)
+      window.prompt('Copy read-only share link:', shareLink)
     }
   }
 
@@ -348,10 +389,10 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
           <div className='flex items-start justify-between gap-3'>
             <div>
               <div className='flex items-center gap-2 text-white font-semibold'>
-                <LinkIcon className='w-4 h-4 text-blue-300' /> Private read-only link
+                <LinkIcon className='w-4 h-4 text-blue-300' /> Read-only share link
               </div>
               <p className='text-neutral-400 text-sm mt-1'>
-                Share this event with anyone who has the exact link, without listing it in Public Events or granting edit access.
+                Share a read-only view of this event (works for public masters and private events). Recipients can explore the plan but cannot save changes. Optional vanity alias replaces the event ID in the URL.
               </p>
             </div>
             <button
@@ -370,13 +411,48 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
             </button>
           </div>
 
+          {raceAccess?.public_share_enabled && (
+            <div className='space-y-2'>
+              <label className='block text-sm text-neutral-300'>
+                Vanity alias <span className='text-neutral-500'>(optional)</span>
+                <div className='mt-1 flex flex-col sm:flex-row gap-2'>
+                  <input
+                    type='text'
+                    value={aliasDraft}
+                    onChange={e => setAliasOverride(e.target.value)}
+                    placeholder='ac100'
+                    spellCheck={false}
+                    autoCapitalize='off'
+                    autoCorrect='off'
+                    aria-label='Vanity share alias'
+                    className='min-w-0 flex-1 bg-neutral-950 border border-blue-900/70 rounded px-3 py-2 text-sm text-blue-100'
+                  />
+                  <button
+                    type='button'
+                    onClick={() => aliasMutation.mutate()}
+                    disabled={aliasMutation.isPending || !aliasDirty || !aliasValidation.ok}
+                    className='shrink-0 px-3 py-2 rounded text-sm font-medium bg-neutral-800 hover:bg-neutral-700 text-white disabled:opacity-50'
+                  >
+                    {aliasMutation.isPending ? 'Saving…' : 'Save alias'}
+                  </button>
+                </div>
+              </label>
+              {!aliasValidation.ok && aliasDraft.trim() && (
+                <p className='text-sm text-amber-400'>{aliasValidation.error}</p>
+              )}
+              <p className='text-xs text-neutral-500'>
+                Link path uses the alias when set, otherwise the event ID. Reserved names like login or events are blocked.
+              </p>
+            </div>
+          )}
+
           {shareLink ? (
             <div className='flex flex-col sm:flex-row gap-2'>
               <input
                 type='text'
                 value={shareLink}
                 readOnly
-                aria-label='Private read-only share link'
+                aria-label='Read-only share link'
                 className='min-w-0 flex-1 bg-neutral-950 border border-blue-900/70 rounded px-3 py-2 text-sm text-blue-100'
               />
               <button
@@ -398,7 +474,7 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
               </a>
             </div>
           ) : (
-            <p className='text-neutral-500 text-sm'>Enable the link to generate a private read-only URL.</p>
+            <p className='text-neutral-500 text-sm'>Enable the link to generate a read-only URL.</p>
           )}
 
           {shareStatus && <p className={`text-sm ${shareStatusIsError ? 'text-red-400' : 'text-emerald-400'}`}>{shareStatus}</p>}

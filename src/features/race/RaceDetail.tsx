@@ -37,6 +37,7 @@ import { WeatherLocations } from '@/features/race/WeatherLocations'
 import { DropBagsSection } from '@/features/race/DropBagsSection'
 import { TrainingSection } from '@/features/race/TrainingSection'
 import { recomputeTrainingOverlapsForRace } from '@/features/race/useTrainingRoutes'
+import { isShareLinkView } from '@/features/race/share-link'
 
 const CrewView = lazy(() =>
     import('@/features/race/CrewView').then(m => ({ default: m.CrewView }))
@@ -1504,6 +1505,9 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   // Legacy alias: existing usage gates full race editing. New crew/pacer
   // role flags do not grant this; they get logging-only permissions.
   const isOwner = canEdit
+  // Private ?share= links: show owner chrome (terrain, disabled actions) without mutations/save.
+  const isShareView = isShareLinkView()
+  const showOwnerChrome = isOwner || isShareView
 
   if (raceLoading) return <div className='p-8 text-white'>Loading race...</div>
   if (raceLoadFailed || !race) return <div className='p-8 text-white'>Redirecting...</div>
@@ -1527,8 +1531,13 @@ export function RaceDetail({ raceId }: { raceId: string }) {
               <div className='flex items-center gap-1.5 min-w-0'>
                 <h1 className='text-base font-bold text-white truncate'>{race.name}</h1>
                 {race.is_official && <CheckCircle2 className='w-4 h-4 text-blue-400 shrink-0' aria-label='Official event' />}
-                {isOwner && (
-                  <button onClick={() => setShowEditModal(true)} className='text-neutral-400 hover:text-white text-sm shrink-0'>
+                {showOwnerChrome && (
+                  <button
+                    onClick={() => { if (isOwner) setShowEditModal(true) }}
+                    disabled={!isOwner}
+                    className='text-neutral-400 hover:text-white text-sm shrink-0 disabled:opacity-40 disabled:hover:text-neutral-400 disabled:cursor-not-allowed'
+                    title={isOwner ? 'Edit event' : 'View only'}
+                  >
                     ✎
                   </button>
                 )}
@@ -1552,8 +1561,13 @@ export function RaceDetail({ raceId }: { raceId: string }) {
               <div className='flex items-center gap-2'>
                 <h1 className='text-xl font-bold text-white'>{race.name}</h1>
                 {race.is_official && <CheckCircle2 className='w-5 h-5 text-blue-400' aria-label='Official event' />}
-                {isOwner && (
-                  <button onClick={() => setShowEditModal(true)} className='text-neutral-400 hover:text-white'>
+                {showOwnerChrome && (
+                  <button
+                    onClick={() => { if (isOwner) setShowEditModal(true) }}
+                    disabled={!isOwner}
+                    className='text-neutral-400 hover:text-white disabled:opacity-40 disabled:hover:text-neutral-400 disabled:cursor-not-allowed'
+                    title={isOwner ? 'Edit event' : 'View only'}
+                  >
                     ✎
                   </button>
                 )}
@@ -1595,7 +1609,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                 {race.is_official ? 'Official' : 'Make official'}
               </button>
             )}
-            {user && !isOwner && race.is_public && (
+            {user && !isOwner && !isShareView && race.is_public && (
               <button
                 onClick={handleCloneRace}
                 disabled={isCloning}
@@ -1635,7 +1649,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
         <DemoModeBanner sourceRaceId={raceId} tooLarge={overlayTooLarge} />
       )}
 
-      {!isDemoMode && !user && race.is_public && (
+      {!isDemoMode && !isShareView && !user && race.is_public && (
         <div className='print:hidden border-b border-blue-800/50 bg-blue-950/30'>
           <div className='max-w-7xl mx-auto px-3 sm:px-4 py-2.5 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4'>
             <p className='text-sm text-blue-100 flex-1'>
@@ -1647,6 +1661,16 @@ export function RaceDetail({ raceId }: { raceId: string }) {
             >
               Try without account
             </Link>
+          </div>
+        </div>
+      )}
+
+      {isShareView && !isOwner && (
+        <div className='print:hidden border-b border-neutral-700 bg-neutral-900/80'>
+          <div className='max-w-7xl mx-auto px-3 sm:px-4 py-2'>
+            <p className='text-sm text-neutral-300'>
+              Read-only share link — you can explore the plan, but changes cannot be saved.
+            </p>
           </div>
         </div>
       )}
@@ -1832,7 +1856,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
                         highlightedTerrainId={pendingSegment?.nodeId ?? selectedTerrainId ?? hoveredTerrainId}
                         activeTerrainRange={pendingSegment ? { startMile: pendingSegment.startMile, endMile: pendingSegment.endMile } : null}
-                        terrainNodes={isOwner ? terrainNodes : []}
+                        terrainNodes={showOwnerChrome ? terrainNodes : []}
                         onTerrainNodeClick={isOwner && isTerrainEditMode ? handleEditTerrainSegment : undefined}
                         onSegmentDefined={isOwner && isTerrainEditMode ? (lo, hi) => {
                           setHoveredTerrainId(null)
@@ -1939,7 +1963,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                       highlightedWaypointId={hoveredWaypointId}
                       showMileMarkers={showMileMarkers}
                       waypoints={waypoints.map(wp => ({ id: wp.id, mile: wp.mile, name: wp.name, type: wp.type }))}
-                      terrainNodes={isOwner ? terrainNodes : []}
+                      terrainNodes={showOwnerChrome ? terrainNodes : []}
                       onRangeDefined={isOwner && isTerrainEditMode ? (lo, hi) => {
                         setHoveredTerrainId(null)
                         openTerrainSelection(lo, hi)
@@ -2001,12 +2025,13 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                       </div>
                     )}
 
-                    {isOwner ? (
+                    {showOwnerChrome ? (
                       <div className='mt-4 pt-4 border-t border-neutral-800'>
                         <div className="flex gap-2 flex-wrap">
                           <button
-                            onClick={() => setIsReimporting(!isReimporting)}
-                            className='flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-medium transition-colors'
+                            onClick={() => { if (isOwner) setIsReimporting(!isReimporting) }}
+                            disabled={!isOwner}
+                            className='flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-medium transition-colors disabled:opacity-40 disabled:hover:bg-neutral-800 disabled:cursor-not-allowed'
                           >
                             <RefreshCw className={`w-3.5 h-3.5 ${isReimporting ? 'animate-spin' : ''}`} />
                             {isReimporting ? 'Cancel' : 'Update GPX'}
@@ -2019,7 +2044,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                             Export
                           </button>
                         </div>
-                        {isReimporting && (
+                        {isOwner && isReimporting && (
                           <div className='mt-4'>
                             <GpxUploader
                               onUpload={handleGpxUpload}
@@ -2047,11 +2072,12 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                       <h3 className='text-sm font-semibold text-neutral-400 flex-1 uppercase tracking-wider flex items-center gap-2'>
                         {isAidListOpen ? '▼' : '▶'} Aid Stations
                       </h3>
-                      {isOwner && (
+                      {showOwnerChrome && (
                         <div className="flex items-center gap-1.5 ml-2">
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
+                              if (!isOwner) return
                               const next = !isWaypointEditMode
                               setIsWaypointEditMode(next)
                               if (next) {
@@ -2059,12 +2085,13 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                                 clearPendingTerrainSegment()
                               }
                             }}
-                            className={`text-xs px-2 py-1 rounded border transition-colors flex items-center gap-1 ${isWaypointEditMode ? 'bg-blue-600 text-white border-blue-500 hover:bg-blue-500' : 'bg-neutral-800 hover:bg-neutral-700 text-white border-neutral-700'}`}
+                            disabled={!isOwner}
+                            className={`text-xs px-2 py-1 rounded border transition-colors flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed ${isWaypointEditMode ? 'bg-blue-600 text-white border-blue-500 hover:bg-blue-500' : 'bg-neutral-800 hover:bg-neutral-700 text-white border-neutral-700 disabled:hover:bg-neutral-800'}`}
                           >
                             <Settings className='w-3 h-3' />
                             {isWaypointEditMode ? 'Done' : 'Edit'}
                           </button>
-                          {isWaypointEditMode && (
+                          {isOwner && isWaypointEditMode && (
                             <button
                               onClick={(e) => { e.stopPropagation(); setEditingWaypoint({ mile: 0 }) }}
                               className="text-xs bg-neutral-800 hover:bg-neutral-700 text-white px-2 py-1 rounded border border-neutral-700 transition-colors"
@@ -2112,12 +2139,13 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                     )}
                   </div>
 
-                  {isOwner && (
+                  {showOwnerChrome && (
                     <TerrainSidebar
                       terrainNodes={terrainNodes}
                       totalDistance={course?.total_distance_miles ?? 0}
                       canEdit={!!isOwner && isTerrainEditMode}
                       canEnterEdit={!!isOwner}
+                      showDisabledEdit={isShareView && !isOwner}
                       onEditModeChange={editing => {
                         setIsTerrainEditMode(editing)
                         if (editing) setIsWaypointEditMode(false)
@@ -2147,8 +2175,14 @@ export function RaceDetail({ raceId }: { raceId: string }) {
               <div className='flex-1 flex flex-col items-center justify-center bg-neutral-950 text-white'>
                 <div className='text-4xl mb-4'>🗺️</div>
                 <h3 className='text-xl font-bold mb-2'>No course uploaded yet</h3>
-                <p className='text-neutral-400 mb-6'>Upload a GPX file to see your route</p>
-                <GpxUploader onUpload={handleGpxUpload} />
+                {isOwner ? (
+                  <>
+                    <p className='text-neutral-400 mb-6'>Upload a GPX file to see your route</p>
+                    <GpxUploader onUpload={handleGpxUpload} />
+                  </>
+                ) : (
+                  <p className='text-neutral-400 mb-6'>A course GPX has not been added for this event yet.</p>
+                )}
               </div>
             )}
           </div>
@@ -2185,6 +2219,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
               clock24h={clock24h}
               runnerProfile={userRunnerProfile}
               resetToken={trainingResetToken}
+              showDisabledActions={isShareView && !isOwner}
             />
           </div>
         )}

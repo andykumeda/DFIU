@@ -76,6 +76,8 @@ export default function App() {
             <Route path='/auth/strava/callback' element={<StravaCallback />} />
             <Route path='/auth/set-password' element={<SetPasswordPage />} />
             <Route path='/' element={<SplashPage />} />
+            {/* Short share / vanity URLs: /{uuid|alias}?share=… (after reserved routes) */}
+            <Route path='/:idOrAlias' element={<RaceDetailPage />} />
           </Routes>
           <ScrollToTop />
         </BrowserRouter>

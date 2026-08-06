@@ -32,6 +32,8 @@ interface TerrainSidebarProps {
   onDeleteSegment: (segment: Segment) => Promise<void> | void
   onUpdateSegment?: (segment: Segment, startMile: number, endMile: number, type: TerrainTypeValue, difficulty: number) => Promise<void> | void
   canEnterEdit?: boolean
+  /** Show an inert Edit control (e.g. private share link) so chrome matches the owner view. */
+  showDisabledEdit?: boolean
   onEditModeChange?: (editing: boolean) => void
 }
 
@@ -46,6 +48,7 @@ export function TerrainSidebar({
   onDeleteSegment,
   onUpdateSegment,
   canEnterEdit = false,
+  showDisabledEdit = false,
   onEditModeChange,
 }: TerrainSidebarProps) {
   const [isOpen, setIsOpen] = useState(true)
@@ -237,14 +240,15 @@ export function TerrainSidebar({
         <h3 className="text-sm font-semibold text-neutral-400 flex-1 uppercase tracking-wider flex items-center gap-2">
           {isOpen ? '▼' : '▶'} Terrain
         </h3>
-        {canEnterEdit && isOpen && (
+        {((canEnterEdit || showDisabledEdit) && isOpen) && (
           <div className="flex items-center gap-1.5 ml-2">
             <button
-              onClick={(e) => { e.stopPropagation(); onEditModeChange?.(!canEdit) }}
-              className={`text-xs px-2 py-1 rounded border transition-colors ${
+              onClick={(e) => { e.stopPropagation(); if (canEnterEdit) onEditModeChange?.(!canEdit) }}
+              disabled={!canEnterEdit}
+              className={`text-xs px-2 py-1 rounded border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                 canEdit
                   ? 'bg-blue-600 text-white border-blue-500 hover:bg-blue-500'
-                  : 'bg-neutral-800 hover:bg-neutral-700 text-white border-neutral-700'
+                  : 'bg-neutral-800 hover:bg-neutral-700 text-white border-neutral-700 disabled:hover:bg-neutral-800'
               }`}
             >
               {canEdit ? 'Done' : 'Edit'}

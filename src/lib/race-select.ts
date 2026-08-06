@@ -50,6 +50,7 @@ export const RACE_SELECT = [
   'merged_official_revision',
   'race_director_user_id',
   'public_share_enabled',
+  'public_share_alias',
   'created_at',
   'updated_at',
 ].join(', ')
@@ -57,4 +58,5 @@ export const RACE_SELECT = [
 export type RaceShareSettings = {
   public_share_enabled: boolean
   public_share_token: string | null
+  public_share_alias: string | null
 }
