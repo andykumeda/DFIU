@@ -2,20 +2,22 @@
 
 **Date:** 2026-08-06
 **Branch:** `main`
-**Status:** Aid-station map terrain legend narrowed and left-aligned.
+**Status:** Showing course terrain to read-only / public viewers (not owner-chrome only).
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Frontend: `b0fd403`. Hard-refresh and compare the footer hash.
+- Frontend: see `git describe` after deploy. Hard-refresh and compare the footer hash.
 - OG: `dfiu-og` on `:3457`; `og-default.png` **1200×260** (`?v=261`).
-- nginx: vanity/UUID paths → OG server (no bot UA sniffing).
+
+## In progress
+
+- Map + elevation + TerrainSidebar receive `terrainNodes` for all viewers; edit stays owner-only.
 
 ## Just finished
 
-- Terrain legend labels: Paved, Smooth dirt, Technical (low/med/high), Other.
-- Legend left inset matches MapStyleSwitcher (`left-2` / `sm:left-4`).
+- Terrain legend labels narrowed; left inset aligned with style switcher.
 
 ## Open
 

@@ -1505,7 +1505,8 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   // Legacy alias: existing usage gates full race editing. New crew/pacer
   // role flags do not grant this; they get logging-only permissions.
   const isOwner = canEdit
-  // Private ?share= links: show owner chrome (terrain, disabled actions) without mutations/save.
+  // Private ?share= links: show owner chrome (edit affordances, disabled) without mutations/save.
+  // Terrain coloring/segments are visible to all viewers who can load the race.
   const isShareView = isShareLinkView()
   const showOwnerChrome = isOwner || isShareView
 
@@ -1854,7 +1855,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
                         highlightedTerrainId={pendingSegment?.nodeId ?? selectedTerrainId ?? hoveredTerrainId}
                         activeTerrainRange={pendingSegment ? { startMile: pendingSegment.startMile, endMile: pendingSegment.endMile } : null}
-                        terrainNodes={showOwnerChrome ? terrainNodes : []}
+                        terrainNodes={terrainNodes}
                         onTerrainNodeClick={isOwner && isTerrainEditMode ? handleEditTerrainSegment : undefined}
                         onSegmentDefined={isOwner && isTerrainEditMode ? (lo, hi) => {
                           setHoveredTerrainId(null)
@@ -1961,7 +1962,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                       highlightedWaypointId={hoveredWaypointId}
                       showMileMarkers={showMileMarkers}
                       waypoints={waypoints.map(wp => ({ id: wp.id, mile: wp.mile, name: wp.name, type: wp.type }))}
-                      terrainNodes={showOwnerChrome ? terrainNodes : []}
+                      terrainNodes={terrainNodes}
                       onRangeDefined={isOwner && isTerrainEditMode ? (lo, hi) => {
                         setHoveredTerrainId(null)
                         openTerrainSelection(lo, hi)
@@ -2137,36 +2138,34 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                     )}
                   </div>
 
-                  {showOwnerChrome && (
-                    <TerrainSidebar
-                      terrainNodes={terrainNodes}
-                      totalDistance={course?.total_distance_miles ?? 0}
-                      canEdit={!!isOwner && isTerrainEditMode}
-                      canEnterEdit={!!isOwner}
-                      showDisabledEdit={isShareView && !isOwner}
-                      onEditModeChange={editing => {
-                        setIsTerrainEditMode(editing)
-                        if (editing) setIsWaypointEditMode(false)
-                        clearPendingTerrainSegment()
-                      }}
-                      highlightedTerrainId={pendingSegment?.nodeId ?? selectedTerrainId ?? hoveredTerrainId}
-                      onHoverNode={setHoveredTerrainId}
-                      onSelectNode={setSelectedTerrainId}
-                      onSaveSegment={saveTerrainAcrossLinkedPasses}
-                      onDeleteSegment={async segment => {
-                        await handleDeleteTerrainSegmentRange(segment)
-                        for (const [startMile, endMile] of findParallelMileRanges(segment.startMile, segment.endMile)) {
-                          await handleSaveTerrainSegment(startMile, endMile, 'other', 100)
-                        }
-                      }}
-                      onUpdateSegment={async (segment, startMile, endMile, type, difficulty) => {
-                        await handleUpdateTerrainSegment(segment, startMile, endMile, type, difficulty)
-                        for (const [parallelStart, parallelEnd] of findParallelMileRanges(startMile, endMile)) {
-                          await handleSaveTerrainSegment(parallelStart, parallelEnd, type, difficulty)
-                        }
-                      }}
-                    />
-                  )}
+                  <TerrainSidebar
+                    terrainNodes={terrainNodes}
+                    totalDistance={course?.total_distance_miles ?? 0}
+                    canEdit={!!isOwner && isTerrainEditMode}
+                    canEnterEdit={!!isOwner}
+                    showDisabledEdit={isShareView && !isOwner}
+                    onEditModeChange={editing => {
+                      setIsTerrainEditMode(editing)
+                      if (editing) setIsWaypointEditMode(false)
+                      clearPendingTerrainSegment()
+                    }}
+                    highlightedTerrainId={pendingSegment?.nodeId ?? selectedTerrainId ?? hoveredTerrainId}
+                    onHoverNode={setHoveredTerrainId}
+                    onSelectNode={setSelectedTerrainId}
+                    onSaveSegment={saveTerrainAcrossLinkedPasses}
+                    onDeleteSegment={async segment => {
+                      await handleDeleteTerrainSegmentRange(segment)
+                      for (const [startMile, endMile] of findParallelMileRanges(segment.startMile, segment.endMile)) {
+                        await handleSaveTerrainSegment(startMile, endMile, 'other', 100)
+                      }
+                    }}
+                    onUpdateSegment={async (segment, startMile, endMile, type, difficulty) => {
+                      await handleUpdateTerrainSegment(segment, startMile, endMile, type, difficulty)
+                      for (const [parallelStart, parallelEnd] of findParallelMileRanges(startMile, endMile)) {
+                        await handleSaveTerrainSegment(parallelStart, parallelEnd, type, difficulty)
+                      }
+                    }}
+                  />
                 </div>
               </div>
             ) : (
