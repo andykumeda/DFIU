@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-05
 **Branch:** `cursor/mobile-terrain-pace-scroll-3943`
-**Status:** Read-only terrain panel, mobile pace goal order, and overscroll fixes deployed.
+**Status:** Pace print columns below chart; terrain segment map highlight fix in progress.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 

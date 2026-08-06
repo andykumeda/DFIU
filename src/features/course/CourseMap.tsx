@@ -57,6 +57,8 @@ interface CourseMapProps {
     totalDistance?: number
     highlightedWaypointId?: string | null // New prop
     highlightedTerrainId?: string | null // Highlight terrain node being edited
+    highlightedTerrainNodeIds?: string[]
+    highlightedTerrainRange?: { startMile: number; endMile: number } | null
     activeTerrainRange?: { startMile: number; endMile: number } | null
     // When provided, the map captures two clicks to define a terrain segment.
     // RaceDetail then opens a classification popup.
@@ -82,6 +84,8 @@ export function CourseMap({
     totalDistance,
     highlightedWaypointId,
     highlightedTerrainId,
+    highlightedTerrainNodeIds,
+    highlightedTerrainRange,
     activeTerrainRange,
     onSegmentDefined,
 }: CourseMapProps) {
@@ -487,39 +491,56 @@ export function CourseMap({
             })
 
             // ... interactions ...
+
+            applyTerrainHighlights(m, highlightedNodeIdsRef.current)
         }
 
         updateTerrainLayer()
     }, [mapLoaded, terrainNodes, coordinates, isTerrainMode, styleLoaded])
 
+    const highlightedNodeIdsRef = useRef<string[]>([])
+    const resolvedHighlightedNodeIds = useMemo(() => {
+        if (highlightedTerrainNodeIds && highlightedTerrainNodeIds.length > 0) {
+            return highlightedTerrainNodeIds
+        }
+        if (highlightedTerrainId) return [highlightedTerrainId]
+        return []
+    }, [highlightedTerrainNodeIds, highlightedTerrainId])
+
+    useEffect(() => {
+        highlightedNodeIdsRef.current = resolvedHighlightedNodeIds
+    }, [resolvedHighlightedNodeIds])
+
+    const applyTerrainHighlights = (m: mapboxgl.Map, nodeIds: string[]) => {
+        if (!m.getSource('terrain-segments')) return
+        for (const id of nodeIds) {
+            try {
+                m.setFeatureState({ source: 'terrain-segments', id }, { selected: true })
+            } catch {
+                // Feature may not exist for merged/other nodes.
+            }
+        }
+    }
+
     // Terrain Highlighting Effect
-    const lastHighlightedTerrainRef = useRef<string | null>(null)
+    const lastHighlightedTerrainIdsRef = useRef<string[]>([])
     useEffect(() => {
         if (!map.current || !mapLoaded) return
         const m = map.current
 
-        // Remove previous highlight
-        if (lastHighlightedTerrainRef.current) {
+        for (const id of lastHighlightedTerrainIdsRef.current) {
             if (m.getSource('terrain-segments')) {
-                m.setFeatureState(
-                    { source: 'terrain-segments', id: lastHighlightedTerrainRef.current },
-                    { selected: false }
-                )
+                try {
+                    m.setFeatureState({ source: 'terrain-segments', id }, { selected: false })
+                } catch {
+                    // ignore missing features
+                }
             }
         }
 
-        // Add new highlight
-        if (highlightedTerrainId) {
-            if (m.getSource('terrain-segments')) {
-                m.setFeatureState(
-                    { source: 'terrain-segments', id: highlightedTerrainId },
-                    { selected: true }
-                )
-            }
-        }
-
-        lastHighlightedTerrainRef.current = highlightedTerrainId || null
-    }, [highlightedTerrainId, mapLoaded, styleLoaded, terrainNodes]) // terrainNodes dep ensures we re-apply if layer rebuilds
+        applyTerrainHighlights(m, resolvedHighlightedNodeIds)
+        lastHighlightedTerrainIdsRef.current = resolvedHighlightedNodeIds
+    }, [resolvedHighlightedNodeIds, mapLoaded, styleLoaded, terrainNodes])
 
     // Click a terrain segment line on the map to select it for editing.
     useEffect(() => {
@@ -922,9 +943,19 @@ export function CourseMap({
             ? getTerrainPointAtMile(activeTerrainRange.endMile)
             : terrainSelection.end
 
-        if (isTerrainMode && rangeStart && rangeEnd && coordinates.length > 0) {
-            const startIndex = getNearestPointOnLine({ lat: rangeStart.lat, lon: rangeStart.lon }, coordinates)?.index ?? 0
-            const endIndex = getNearestPointOnLine({ lat: rangeEnd.lat, lon: rangeEnd.lon }, coordinates)?.index ?? 0
+        const readOnlyRange = !isTerrainMode && highlightedTerrainRange
+            ? {
+                start: getTerrainPointAtMile(highlightedTerrainRange.startMile),
+                end: getTerrainPointAtMile(highlightedTerrainRange.endMile),
+            }
+            : null
+
+        const displayStart = isTerrainMode ? rangeStart : readOnlyRange?.start ?? null
+        const displayEnd = isTerrainMode ? rangeEnd : readOnlyRange?.end ?? null
+
+        if (displayStart && displayEnd && coordinates.length > 0) {
+            const startIndex = getNearestPointOnLine({ lat: displayStart.lat, lon: displayStart.lon }, coordinates)?.index ?? 0
+            const endIndex = getNearestPointOnLine({ lat: displayEnd.lat, lon: displayEnd.lon }, coordinates)?.index ?? 0
 
             // Handle different orders
             const minIdx = Math.min(startIndex, endIndex)
@@ -974,7 +1005,21 @@ export function CourseMap({
             }
         }
 
-    }, [isTerrainMode, terrainSelection, activeTerrainRange, mapLoaded, coordinates, getTerrainPointAtMile])
+    }, [isTerrainMode, terrainSelection, activeTerrainRange, highlightedTerrainRange, mapLoaded, coordinates, getTerrainPointAtMile])
+
+    // Pan map to selected terrain segment (especially helpful on mobile).
+    useEffect(() => {
+        if (!map.current || !mapLoaded || !highlightedTerrainRange || coordinates.length === 0) return
+        const m = map.current
+        const start = getTerrainPointAtMile(highlightedTerrainRange.startMile)
+        const end = getTerrainPointAtMile(highlightedTerrainRange.endMile)
+        if (!start || !end) return
+
+        const bounds = new mapboxgl.LngLatBounds()
+        bounds.extend([start.lon, start.lat])
+        bounds.extend([end.lon, end.lat])
+        m.fitBounds(bounds, { padding: 48, maxZoom: 14, duration: 450 })
+    }, [highlightedTerrainRange, mapLoaded, coordinates, getTerrainPointAtMile])
 
     // Handle Waypoint Highlighting independent of marker recreation
     useEffect(() => {

@@ -33,6 +33,7 @@ interface ElevationProfileProps {
     showMileMarkers?: boolean
     waypoints?: WaypointMarker[]
     terrainNodes?: TerrainNode[]
+    highlightedTerrainRange?: { startMile: number; endMile: number } | null
     // Drag-release defines a mile range; parent opens the classification popup.
     onRangeDefined?: (startMile: number, endMile: number) => void
 }
@@ -48,6 +49,7 @@ export function ElevationProfile({
     showMileMarkers = false,
     waypoints = [],
     terrainNodes = [],
+    highlightedTerrainRange = null,
     onRangeDefined,
 }: ElevationProfileProps) {
     const [dragStart, setDragStart] = useState<number | null>(null)
@@ -365,6 +367,25 @@ export function ElevationProfile({
                             strokeLinejoin="round"
                         />
                     ))}
+
+                    {/* Selected terrain segment */}
+                    {!isPainting && highlightedTerrainRange && totalDistance > 0 && (() => {
+                        const lo = Math.min(highlightedTerrainRange.startMile, highlightedTerrainRange.endMile)
+                        const hi = Math.max(highlightedTerrainRange.startMile, highlightedTerrainRange.endMile)
+                        const x1 = (lo / totalDistance) * 100
+                        const x2 = (hi / totalDistance) * 100
+                        return (
+                            <rect
+                                x={x1}
+                                y={0}
+                                width={Math.max(0.01, x2 - x1)}
+                                height={100}
+                                fill="#fbbf24"
+                                opacity={0.22}
+                                pointerEvents="none"
+                            />
+                        )
+                    })()}
 
                     {/* Brush drag preview */}
                     {isPainting && dragStart !== null && dragEnd !== null && totalDistance > 0 && (() => {

@@ -28,7 +28,7 @@ import { GpxUploader } from '@/features/course/GpxUploader'
 import { EditRaceModal } from '@/features/race/EditRaceModal'
 import { EditWaypointModal } from '@/features/course/EditWaypointModal'
 import { ViewWaypointModal } from '@/features/course/ViewWaypointModal'
-import { TerrainSidebar } from '@/features/course/TerrainSidebar'
+import { TerrainSidebar, type TerrainSidebarSegment } from '@/features/course/TerrainSidebar'
 import { TerrainTypeValue, TERRAIN_TYPES, getTerrainColor, getTerrainDefaultDifficulty } from '@/features/course/terrain-constants'
 import { PaceCalculator } from '@/features/race/PaceCalculator'
 import { parseRunnerProfile } from '@/features/race/runner-profile'
@@ -229,6 +229,11 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   const [hoveredWaypointId, setHoveredWaypointId] = useState<string | null>(null)
   const [hoveredTerrainId, setHoveredTerrainId] = useState<string | null>(null)
   const [selectedTerrainId, setSelectedTerrainId] = useState<string | null>(null)
+  const [selectedTerrainRange, setSelectedTerrainRange] = useState<{
+    startMile: number
+    endMile: number
+    nodeIds: string[]
+  } | null>(null)
   // Pending segment: set by map 2-click or profile drag → triggers classification popup.
   // nodeId is set when editing an existing segment (vs defining a new range).
   const [pendingSegment, setPendingSegment] = useState<{ startMile: number; endMile: number; nodeId?: string } | null>(null)
@@ -893,8 +898,19 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     setPendingSegment(null)
     setHoveredTerrainId(null)
     setSelectedTerrainId(null)
+    setSelectedTerrainRange(null)
     setPendingLinkedRanges([])
     setSelectedLinkedRangeKeys(new Set())
+  }
+
+  const handleSelectTerrainSegment = (segment: TerrainSidebarSegment) => {
+    setSelectedTerrainId(segment.startNodeId)
+    setSelectedTerrainRange({
+      startMile: segment.startMile,
+      endMile: segment.endMile,
+      nodeIds: segment.nodeIds,
+    })
+    setHoveredTerrainId(segment.startNodeId)
   }
 
   const getRoutePointForMile = (mile: number) => {
@@ -946,6 +962,11 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     openTerrainSelection(node.mile, endMile, node.id)
     setHoveredTerrainId(node.id)
     setSelectedTerrainId(node.id)
+    setSelectedTerrainRange({
+      startMile: node.mile,
+      endMile,
+      nodeIds: [node.id],
+    })
   }
 
   const handleUpdateTerrainSegment = async (
@@ -1855,6 +1876,11 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
 
                         highlightedTerrainId={pendingSegment?.nodeId ?? selectedTerrainId ?? hoveredTerrainId}
+                        highlightedTerrainNodeIds={selectedTerrainRange?.nodeIds}
+                        highlightedTerrainRange={selectedTerrainRange ? {
+                          startMile: selectedTerrainRange.startMile,
+                          endMile: selectedTerrainRange.endMile,
+                        } : null}
                         activeTerrainRange={pendingSegment ? { startMile: pendingSegment.startMile, endMile: pendingSegment.endMile } : null}
                         terrainNodes={terrainNodes}
                         onTerrainNodeClick={isOwner && isTerrainEditMode ? handleEditTerrainSegment : undefined}
@@ -1964,6 +1990,10 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                       showMileMarkers={showMileMarkers}
                       waypoints={waypoints.map(wp => ({ id: wp.id, mile: wp.mile, name: wp.name, type: wp.type }))}
                       terrainNodes={terrainNodes}
+                      highlightedTerrainRange={selectedTerrainRange ? {
+                        startMile: selectedTerrainRange.startMile,
+                        endMile: selectedTerrainRange.endMile,
+                      } : null}
                       onRangeDefined={isOwner && isTerrainEditMode ? (lo, hi) => {
                         setHoveredTerrainId(null)
                         openTerrainSelection(lo, hi)
@@ -2153,6 +2183,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                       highlightedTerrainId={pendingSegment?.nodeId ?? selectedTerrainId ?? hoveredTerrainId}
                       onHoverNode={setHoveredTerrainId}
                       onSelectNode={setSelectedTerrainId}
+                      onSelectSegment={handleSelectTerrainSegment}
                       onSaveSegment={saveTerrainAcrossLinkedPasses}
                       onDeleteSegment={async segment => {
                         await handleDeleteTerrainSegmentRange(segment)
