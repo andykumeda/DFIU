@@ -40,7 +40,7 @@ const DIST_DIR = process.env.DIST_DIR || '/var/www/dfiu'
 const SUPABASE_URL = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').replace(/\/$/, '')
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || ''
 const SITE_ORIGIN = (process.env.SITE_ORIGIN || 'https://dfiu.app').replace(/\/$/, '')
-const DEFAULT_IMAGE = `${SITE_ORIGIN}/og-default.png`
+const DEFAULT_IMAGE = `${SITE_ORIGIN}/og-default.png?v=260`
 
 const RESERVED = new Set([
   'login', 'signup', 'dashboard', 'settings', 'events', 'race', 'auth', 'new',
@@ -105,7 +105,7 @@ function upsertMeta(html, { title, description, url, image }) {
     `<meta property="og:url" content="${safeUrl}" />`,
     `<meta property="og:image" content="${safeImage}" />`,
     `<meta property="og:image:width" content="1200" />`,
-    `<meta property="og:image:height" content="630" />`,
+    `<meta property="og:image:height" content="260" />`,
     `<meta property="og:image:type" content="image/png" />`,
     `<meta name="twitter:card" content="summary_large_image" />`,
     `<meta name="twitter:title" content="${safeTitle}" />`,
