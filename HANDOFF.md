@@ -8,7 +8,7 @@
 
 ## Current production snapshot
 
-- Frontend: `3a01e28`. Hard-refresh and compare the footer hash.
+- Frontend: `28ca17c`. Hard-refresh and compare the footer hash.
 - OG: `dfiu-og` serves `og-default.png` (left) by default; Facebook/Instagram UAs get `og-ig.png` (centered).
 
 ## Just finished
