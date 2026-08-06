@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-06
 **Branch:** `main`
-**Status:** Removed the disabled independent finish-prediction feature and its stale documentation.
+**Status:** Documentation page simplified to the user guide with clone-first instructions and route scroll reset.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 

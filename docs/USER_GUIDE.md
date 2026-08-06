@@ -4,11 +4,23 @@ DFIU brings a race course, pace plan, logistics, crew coordination, training rou
 
 ## Start here
 
-1. Create a race and enter its date, start time, time zone, and weather details.
+Most people begin by opening a public event and choosing **Clone Race** to make a personal planning copy. You can also create a new event from **New Race** when you are starting without an existing public course.
+
+### Clone an existing event
+
+1. Open a public event from **Public Events**.
+2. Choose **Clone Race**. If you have already cloned that event, DFIU asks you to provide a different name for the new copy.
+3. Review the copied course, date, start time, time zone, weather details, waypoints, and resources.
+4. Adjust terrain and create a Plan A goal time on **Pace Plan**.
+5. Share the event with your runner, crew, and pacers from **Members**.
+
+### Create a new event
+
+1. Choose **New Race** and enter the event date, start time, time zone, and weather details.
 2. Upload the race GPX on **Map & Aid Stations**.
 3. Add Start, Finish, aid stations, and any relevant crew, pacer, water, medical, or drop-bag details.
 4. Define terrain and create a Plan A goal time on **Pace Plan**.
-5. Share the race with your runner, crew, and pacers from **Members**.
+5. Share the event with your runner, crew, and pacers from **Members**.
 
 Race owners can edit the event. Other people see only the sections allowed by their membership or share link.
 
@@ -78,5 +90,3 @@ Use **Members** to add people with view or edit access, designate crew/pacer rol
 - Terrain pairing only suggests reverse-direction physical overlap; review every suggested counterpart before saving.
 - Weather values are planning inputs, not a live safety forecast.
 - Crew distance is straight-line in the app; use the Google Maps link for driving directions.
-
-For calculation details, see [Algorithm Reference](ALGORITHMS.md).
