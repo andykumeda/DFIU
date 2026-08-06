@@ -131,6 +131,10 @@ export function TrainingSection({
     setSelectedId(null)
   }, [resetToken])
 
+  useEffect(() => {
+    if (selectedId) window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+  }, [selectedId])
+
   const handleUpload = async (result: GpxParseResult, rawGpx: string, fileName: string) => {
     setError(null)
     setUploading(true)

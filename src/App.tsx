@@ -15,6 +15,7 @@ import SetPasswordPage from './pages/SetPasswordPage'
 import EventsPage from './pages/EventsPage'
 import AboutPage from './pages/AboutPage'
 import DocumentationPage from './pages/DocumentationPage'
+import AlgorithmReferencePage from './pages/AlgorithmReferencePage'
 import StravaCallback from './features/auth/StravaCallback'
 import { ScrollToTop } from './components/ui/ScrollToTop'
 
@@ -77,6 +78,7 @@ export default function App() {
             <Route path='/events' element={<EventsPage />} />
             <Route path='/about' element={<AboutPage />} />
             <Route path='/documentation' element={<DocumentationPage />} />
+            <Route path='/documentation/algorithms' element={<AlgorithmReferencePage />} />
             <Route path='/auth/strava/callback' element={<StravaCallback />} />
             <Route path='/auth/set-password' element={<SetPasswordPage />} />
             <Route path='/' element={<SplashPage />} />

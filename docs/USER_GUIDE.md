@@ -69,6 +69,7 @@ In **Training**, import a GPX or use **Create Route** to draw one. Drawing uses 
 Open a training route to:
 
 - See its course-overlap ranges and Plan A time for each overlapping race segment.
+- Export the training route as a GPX file. Imported routes preserve their original GPX; manually created routes export their saved track.
 - Connect Strava and enter one or more activity links or IDs, one per line.
 - Compare each matched training section independently with Plan A.
 
@@ -90,3 +91,5 @@ Use **Members** to add people with view or edit access, designate crew/pacer rol
 - Terrain pairing only suggests reverse-direction physical overlap; review every suggested counterpart before saving.
 - Weather values are planning inputs, not a live safety forecast.
 - Crew distance is straight-line in the app; use the Google Maps link for driving directions.
+
+For calculation details, see the [Algorithm Reference](/documentation/algorithms).

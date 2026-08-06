@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useLayoutEffect } from 'react'
 import { ChevronUp } from 'lucide-react'
 import { useLocation } from 'react-router-dom'
 
@@ -6,8 +6,23 @@ export function ScrollToTop() {
     const [isVisible, setIsVisible] = useState(false)
     const { pathname, hash } = useLocation()
 
-    useEffect(() => {
-        window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+    useLayoutEffect(() => {
+        const previousRestoration = window.history.scrollRestoration
+        window.history.scrollRestoration = 'manual'
+        const resetScroll = () => {
+            window.scrollTo(0, 0)
+            document.documentElement.scrollTop = 0
+            document.body.scrollTop = 0
+        }
+        resetScroll()
+        const frame = requestAnimationFrame(() => {
+            resetScroll()
+            requestAnimationFrame(resetScroll)
+        })
+        return () => {
+            cancelAnimationFrame(frame)
+            window.history.scrollRestoration = previousRestoration
+        }
     }, [pathname, hash])
 
     // Show button when page is scrolled down

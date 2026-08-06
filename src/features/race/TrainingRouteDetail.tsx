@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ArrowLeft, ExternalLink, MapPin, Mountain, Route as RouteIcon, Trash2 } from 'lucide-react'
+import { ArrowLeft, Download, ExternalLink, MapPin, Mountain, Route as RouteIcon, Trash2 } from 'lucide-react'
 import type { Course, Json, Race } from '@/types/database'
 import type { TrainingRouteRow } from './useTrainingRoutes'
 import { TrainingRouteDetailMap } from './TrainingRouteDetailMap'
@@ -81,6 +81,20 @@ export function TrainingRouteDetail({
 
   const dirty = name.trim() !== route.name || notes !== (route.notes ?? '')
 
+  const handleExport = () => {
+    const gpx = route.raw_gpx?.trim() || buildTrainingRouteGpx(route.name, trainingCoords)
+    if (!gpx) return
+    const blob = new Blob([gpx], { type: 'application/gpx+xml;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = `${route.name.replace(/[^a-z0-9]+/gi, '_').replace(/^_|_$/g, '').toLowerCase() || 'training_route'}.gpx`
+    document.body.appendChild(anchor)
+    anchor.click()
+    anchor.remove()
+    URL.revokeObjectURL(url)
+  }
+
   const handleSave = async () => {
     if (!canEdit || !dirty) return
     setSaving(true)
@@ -139,6 +153,14 @@ export function TrainingRouteDetail({
               Delete
             </button>
           )}
+          <button
+            type='button'
+            onClick={handleExport}
+            className='flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300'
+          >
+            <Download className='w-4 h-4' />
+            Export GPX
+          </button>
         </div>
       </div>
 
@@ -313,4 +335,23 @@ export function TrainingRouteDetail({
       </div>
     </div>
   )
+}
+
+function buildTrainingRouteGpx(name: string, coordinates: [number, number][]) {
+  if (coordinates.length < 2) return ''
+  const escapeXml = (value: string) => value.replace(/[<>&'"]/g, character => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' })[character] ?? character)
+  const trackPoints = coordinates
+    .map(([lon, lat]) => `      <trkpt lat='${lat}' lon='${lon}' />`)
+    .join('\n')
+  return `<?xml version='1.0' encoding='UTF-8'?>
+<gpx version='1.1' creator='DFIU' xmlns='http://www.topografix.com/GPX/1/1'>
+  <metadata><name>${escapeXml(name)}</name></metadata>
+  <trk>
+    <name>${escapeXml(name)}</name>
+    <trkseg>
+${trackPoints}
+    </trkseg>
+  </trk>
+</gpx>
+`
 }

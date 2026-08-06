@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-06
 **Branch:** `main`
-**Status:** Documentation page simplified to the user guide with clone-first instructions and route scroll reset.
+**Status:** Added separate algorithm reference page, route scroll reset, and training-route GPX export.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
