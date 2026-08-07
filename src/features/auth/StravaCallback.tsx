@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'react-hot-toast'
 import { messageFromFunctionError } from './strava-function-error'
+import { SiteFooter } from '@/components/ui/SiteFooter'
 
 const STATE_STORAGE_KEY = 'strava_oauth_state'
 export const STRAVA_RETURN_TO_STORAGE_KEY = 'strava_oauth_return_to'
@@ -88,8 +89,9 @@ export default function StravaCallback() {
 
     if (error) {
         return (
-            <div className="min-h-screen bg-neutral-950 flex items-center justify-center p-4">
-                <div className="bg-red-900/20 border border-red-900 text-red-200 p-6 rounded-xl max-w-md w-full text-center">
+            <div className="min-h-screen bg-neutral-950 flex flex-col">
+                <div className="flex-1 flex items-center justify-center p-4">
+                    <div className="bg-red-900/20 border border-red-900 text-red-200 p-6 rounded-xl max-w-md w-full text-center">
                     <h2 className="text-xl font-bold mb-2">Login Failed</h2>
                     <p>{error}</p>
                     <button
@@ -98,17 +100,22 @@ export default function StravaCallback() {
                     >
                         Back to Login
                     </button>
+                    </div>
                 </div>
+                <SiteFooter />
             </div>
         )
     }
 
     return (
-        <div className="min-h-screen bg-neutral-950 flex items-center justify-center p-4">
-            <div className="flex flex-col items-center gap-4 text-neutral-400">
+        <div className="min-h-screen bg-neutral-950 flex flex-col">
+            <div className="flex-1 flex items-center justify-center p-4">
+                <div className="flex flex-col items-center gap-4 text-neutral-400">
                 <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
                 <p>Completing Strava login...</p>
+                </div>
             </div>
+            <SiteFooter />
         </div>
     )
 }

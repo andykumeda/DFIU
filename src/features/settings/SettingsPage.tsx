@@ -7,6 +7,8 @@ import { Link } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import { RunnerProfilePanel } from '@/features/race/RunnerProfilePanel'
 import { DEFAULT_RUNNER_PROFILE, parseRunnerProfile, type RunnerPacingProfile } from '@/features/race/runner-profile'
+import { SupportDfiU } from '@/components/ui/SupportDfiU'
+import { SiteFooter } from '@/components/ui/SiteFooter'
 
 interface UserProfile {
     id: string
@@ -264,6 +266,8 @@ export default function SettingsPage() {
                         </div>
                     </section>
 
+                    <SupportDfiU />
+
                     {/* Preferences Section */}
                     <section className="bg-neutral-900 rounded-xl p-6 border border-neutral-800">
                         <h2 className="text-lg font-semibold mb-4 text-orange-500">Preferences</h2>
@@ -331,6 +335,7 @@ export default function SettingsPage() {
                     </div>
                 </form>
             </main>
+            <SiteFooter />
         </div>
     )
 }

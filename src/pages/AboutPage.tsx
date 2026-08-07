@@ -1,5 +1,6 @@
 import { Mail, MapPinned } from 'lucide-react'
 import { PublicPageLayout } from '@/components/ui/PublicPageLayout'
+import { SupportDfiU } from '@/components/ui/SupportDfiU'
 
 export default function AboutPage() {
   return (
@@ -31,6 +32,10 @@ export default function AboutPage() {
       <div className='mt-5 border border-neutral-800 bg-neutral-900/40 rounded-xl p-6 flex gap-3 text-neutral-400'>
         <MapPinned className='mt-1 shrink-0 text-orange-400' size={20} aria-hidden='true' />
         <p className='leading-7'>DFIU is a planning aid. Always verify critical navigation, cutoffs, access, weather, and safety decisions with official race information.</p>
+      </div>
+
+      <div className='mt-5'>
+        <SupportDfiU />
       </div>
     </PublicPageLayout>
   )

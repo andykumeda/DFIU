@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/features/auth/AuthContext'
+import { SiteFooter } from '@/components/ui/SiteFooter'
 
 // Lands here after Supabase invite email redirect. Supabase JS auto-exchanges
 // the token in the URL hash (detectSessionInUrl is on by default), so by the
@@ -80,8 +81,9 @@ export default function SetPasswordPage() {
   }
 
   return (
-    <div className='min-h-screen bg-neutral-950 flex items-center justify-center p-4'>
-      <form onSubmit={handleSubmit} className='bg-neutral-900 border border-neutral-800 p-8 rounded-xl w-full max-w-md'>
+    <div className='min-h-screen bg-neutral-950 flex flex-col'>
+      <div className='flex-1 flex items-center justify-center p-4'>
+        <form onSubmit={handleSubmit} className='bg-neutral-900 border border-neutral-800 p-8 rounded-xl w-full max-w-md'>
         <h1 className='text-2xl font-bold text-white mb-2'>Set your password</h1>
         <p className='text-neutral-400 mb-6'>
           Welcome to DFIU. Pick a password so you can sign back in later.
@@ -131,7 +133,9 @@ export default function SetPasswordPage() {
             {submitting ? 'Saving...' : 'Set password'}
           </button>
         </div>
-      </form>
+        </form>
+      </div>
+      <SiteFooter />
     </div>
   )
 }

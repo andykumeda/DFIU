@@ -1,8 +1,8 @@
 # Handoff Document
 
-**Date:** 2026-08-06
+**Date:** 2026-08-07
 **Branch:** `main`
-**Status:** Added separate algorithm reference page, route scroll reset, and training-route GPX export.
+**Status:** First-phase DFIU support prompts deployed; email follow-up remains a later phase.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -18,4 +18,6 @@
 
 ## Open
 
+- Configure `VITE_DFIU_DONATION_URL` when the external donation page is ready.
+- Design and implement the opt-in post-event feedback email flow.
 - Rotate Strava secret; verify RBAC with a second account; `/admin` + owner-transfer UI.
