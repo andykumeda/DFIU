@@ -2,14 +2,13 @@
 
 **Date:** 2026-08-07
 **Branch:** `main`
-**Status:** Signup access-code gate completed; production deploy is blocked on the remote SSH step.
+**Status:** Signup access-code gate deployed to production.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Frontend: `9198f67`. Buy Me a Coffee support link is included in the deployed build.
-- Local signup-gate build: verified, but not deployed because `npm run deploy` hung before producing output.
+- Frontend: `2e3cb50`. Signup access-code gate and Buy Me a Coffee support link are included in the deployed build.
 - OG: `dfiu-og` serves `og-default.png` (left) by default; Facebook/Instagram UAs get `og-ig.png` (centered).
 
 ## Just finished
