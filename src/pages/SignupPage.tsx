@@ -57,6 +57,13 @@ export default function SignupPage() {
               >
                 Continue
               </button>
+              <p className='mt-5 text-center text-sm text-neutral-500'>
+                Don&apos;t have an access code?{' '}
+                <a href='mailto:andy@kumeda.com' className='text-blue-400 hover:text-blue-300 underline underline-offset-4'>
+                  Email me to request one
+                </a>
+                .
+              </p>
             </form>
           )}
         </div>
