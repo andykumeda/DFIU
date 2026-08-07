@@ -19,7 +19,7 @@ const corsHeaders = {
 }
 
 const STATE_TTL_MS = 15 * 60 * 1000
-type OAuthMode = 'connect' | 'login'
+type OAuthMode = 'connect' | 'login' | 'signup'
 type OAuthState = { mode: OAuthMode }
 type StravaConnectionInsert = {
     user_id: string
@@ -69,13 +69,21 @@ serve(async (req) => {
         }
 
         const supabaseAdmin = createClient<Database>(supabaseUrl, serviceKey)
-        const { action, redirectUrl, code, state, mode } = await req.json()
+        const { action, redirectUrl, code, state, mode, accessCode } = await req.json()
 
         if (action === 'start') {
             if (!redirectUrl || typeof redirectUrl !== 'string') {
                 throw new Error('redirectUrl required')
             }
-            const oauthMode: OAuthMode = mode === 'connect' ? 'connect' : 'login'
+            const normalizedAccessCode = typeof accessCode === 'string' ? accessCode.trim() : ''
+            const oauthMode: OAuthMode = mode === 'connect'
+                ? 'connect'
+                : mode === 'signup' && normalizedAccessCode === '67'
+                    ? 'signup'
+                    : 'login'
+            if (mode === 'signup' && oauthMode !== 'signup') {
+                throw new Error('A valid access code is required to create an account.')
+            }
             const oauthState = await signState(stateSecret, crypto.randomUUID(), oauthMode)
             const scope = 'activity:read_all,profile:read_all'
             const params = new URLSearchParams({
@@ -143,7 +151,7 @@ serve(async (req) => {
                 avatar_url: athlete.profile ?? null,
                 strava_id: athlete.id,
             }
-            const user = await resolveStravaLoginUser(supabaseAdmin, athlete.id, metadata)
+            const user = await resolveStravaLoginUser(supabaseAdmin, athlete.id, metadata, oauthState.mode === 'signup')
 
             await saveStravaConnection(supabaseAdmin, user.id, athlete.id, displayName, tokenData, expiresAt)
 
@@ -244,6 +252,7 @@ async function resolveStravaLoginUser(
     supabaseAdmin: SupabaseAdmin,
     athleteId: number,
     metadata: { name: string; avatar_url: string | null; strava_id: number },
+    allowCreate: boolean,
 ): Promise<{ id: string; email: string }> {
     const { data: connection, error: connectionError } = await supabaseAdmin
         .from('strava_connections')
@@ -260,6 +269,10 @@ async function resolveStravaLoginUser(
         })
         if (updateError) throw updateError
         return { id: data.user.id, email: data.user.email }
+    }
+
+    if (!allowCreate) {
+        throw new Error('No DFIU account is connected to this Strava account. Use Create Account with an access code first.')
     }
 
     const email = `${athleteId}@strava.dfiu.app`
@@ -297,7 +310,9 @@ async function verifyState(secret: string, state: string): Promise<OAuthState | 
         const pad = padded.length % 4 === 0 ? '' : '='.repeat(4 - (padded.length % 4))
         const parsed = JSON.parse(atob(padded + pad)) as { e?: number; m?: unknown }
         if (typeof parsed.e !== 'number' || parsed.e < Date.now()) return null
-        return { mode: parsed.m === 'connect' ? 'connect' : 'login' }
+        return {
+            mode: parsed.m === 'connect' ? 'connect' : parsed.m === 'signup' ? 'signup' : 'login',
+        }
     } catch {
         return null
     }

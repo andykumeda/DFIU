@@ -6,7 +6,7 @@ import { STRAVA_RETURN_TO_STORAGE_KEY } from '@/features/auth/StravaCallback'
 
 const POST_SIGNUP_PATH = '/settings#runner-profile'
 
-export function SignupForm() {
+export function SignupForm({ accessCode }: { accessCode: string }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -26,7 +26,12 @@ export function SignupForm() {
         sessionStorage.setItem(STRAVA_RETURN_TO_STORAGE_KEY, POST_SIGNUP_PATH)
       }
       const { data, error } = await supabase.functions.invoke('strava-auth', {
-        body: { action: 'start', redirectUrl: window.location.origin + '/auth/strava/callback' }
+        body: {
+          action: 'start',
+          mode: 'signup',
+          accessCode,
+          redirectUrl: window.location.origin + '/auth/strava/callback',
+        }
       })
       if (error) throw error
       if (data?.state) sessionStorage.setItem('strava_oauth_state', data.state)
@@ -55,15 +60,17 @@ export function SignupForm() {
     setLoading(true)
     if (claimDemo) setClaimDemoIntent(claimDemo)
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
+    const { data, error } = await supabase.functions.invoke('signup', {
+      body: { email, password, accessCode },
     })
 
     if (error) {
       setError(error.message)
       setLoading(false)
     } else {
+      if (data?.session) {
+        await supabase.auth.setSession(data.session)
+      }
       navigate(claimDemo ? `/dashboard?claim_demo=${encodeURIComponent(claimDemo)}` : POST_SIGNUP_PATH)
     }
   }

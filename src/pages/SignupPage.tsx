@@ -20,7 +20,7 @@ export default function SignupPage() {
       <div className='flex-1 flex items-center justify-center p-4'>
         <div className='w-full max-w-md'>
           {unlocked ? (
-            <SignupForm />
+            <SignupForm accessCode={accessCode} />
           ) : (
             <form
               onSubmit={handleUnlock}
