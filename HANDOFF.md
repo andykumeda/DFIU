@@ -8,11 +8,12 @@
 
 ## Current production snapshot
 
-- Frontend: `9996a99`. Hard-refresh and compare the footer hash.
+- Frontend: `2e741fa`. Hard-refresh and compare the footer hash.
 - OG: `dfiu-og` serves `og-default.png` (left) by default; Facebook/Instagram UAs get `og-ig.png` (centered).
 
 ## Just finished
 
+- Added the Support DFIU card to Settings and About, plus a persistent footer link across the app. The donation destination is configured with `VITE_DFIU_DONATION_URL`; email follow-up is deferred.
 - Dual OG banners so Instagram center-crop keeps brand text readable without changing iMessage.
 - Added public `/about` and `/documentation` pages, with contact email and the maintained user guide rendered in-app. Deployed to production.
 
