@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-07
 **Branch:** `main`
-**Status:** Signup access-code request note deployed to production.
+**Status:** Repository cleanup in progress: restored accidentally emptied modules; branch review and verification pending.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -13,6 +13,8 @@
 
 ## Just finished
 
+- iMessage's composite crawler UA now receives the left-aligned image; Facebook/Instagram still receive the centered image.
+- OG HTML responses now include `Content-Length`, correct empty-body `HEAD` handling, and `Vary: User-Agent`.
 - Added the Support DFIU card to Settings and About, plus a persistent footer link across the app. Configured the donation destination as `https://buymeacoffee.com/andyk`; email follow-up is deferred.
 - Dual OG banners so Instagram center-crop keeps brand text readable without changing iMessage.
 - Added public `/about` and `/documentation` pages, with contact email and the maintained user guide rendered in-app. Deployed to production.
@@ -21,5 +23,6 @@
 
 ## Open
 
+- Restore and verify the five modules that were blanked in the working tree; review `cursor/mobile-terrain-pace-scroll-3943` before retiring or merging it.
 - Design and implement the opt-in post-event feedback email flow.
 - Rotate Strava secret; verify RBAC with a second account; `/admin` + owner-transfer UI.
