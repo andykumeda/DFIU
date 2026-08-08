@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-08
 **Branch:** `main`
-**Status:** Repository cleanup in progress: emptied modules restored; pace/terrain UI branch merged and verification pending.
+**Status:** Repository cleanup complete; restored modules and merged pace/terrain UI fixes verified and deployed.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -23,6 +23,6 @@
 
 ## Open
 
-- Deploy and smoke-test the merged pace/terrain UI.
+- Smoke-test the merged pace/terrain UI in production.
 - Design and implement the opt-in post-event feedback email flow.
 - Rotate Strava secret; verify RBAC with a second account; `/admin` + owner-transfer UI.
