@@ -11,7 +11,7 @@ import {
   getTerrainDefaultDifficulty,
 } from './terrain-constants'
 
-interface Segment {
+export interface TerrainSidebarSegment {
   startNodeId: string
   endNodeId?: string
   nodeIds: string[]
@@ -28,9 +28,10 @@ interface TerrainSidebarProps {
   highlightedTerrainId?: string | null
   onHoverNode?: (id: string | null) => void
   onSelectNode?: (id: string) => void
+  onSelectSegment?: (segment: TerrainSidebarSegment) => void
   onSaveSegment: (startMile: number, endMile: number, type: string, difficulty: number) => Promise<void> | void
-  onDeleteSegment: (segment: Segment) => Promise<void> | void
-  onUpdateSegment?: (segment: Segment, startMile: number, endMile: number, type: TerrainTypeValue, difficulty: number) => Promise<void> | void
+  onDeleteSegment: (segment: TerrainSidebarSegment) => Promise<void> | void
+  onUpdateSegment?: (segment: TerrainSidebarSegment, startMile: number, endMile: number, type: TerrainTypeValue, difficulty: number) => Promise<void> | void
   canEnterEdit?: boolean
   /** Show an inert Edit control (e.g. private share link) so chrome matches the owner view. */
   showDisabledEdit?: boolean
@@ -44,6 +45,7 @@ export function TerrainSidebar({
   highlightedTerrainId,
   onHoverNode,
   onSelectNode,
+  onSelectSegment,
   onSaveSegment,
   onDeleteSegment,
   onUpdateSegment,
@@ -63,9 +65,9 @@ export function TerrainSidebar({
   const [editEnd, setEditEnd] = useState('')
   const [editType, setEditType] = useState<TerrainTypeValue>('single_track')
 
-  const segments = useMemo<Segment[]>(() => {
+  const segments = useMemo<TerrainSidebarSegment[]>(() => {
     const sorted = [...terrainNodes].sort((a, b) => a.mile - b.mile)
-    const result: Segment[] = []
+    const result: TerrainSidebarSegment[] = []
     const isKnownTerrain = (node: TerrainNode) => node.type !== 'other' && node.type !== 'default'
     const gapTol = 0.1 + 1e-6
 
@@ -152,7 +154,7 @@ export function TerrainSidebar({
     }
   }
 
-  const handleTypeChange = async (seg: Segment, type: TerrainTypeValue) => {
+  const handleTypeChange = async (seg: TerrainSidebarSegment, type: TerrainTypeValue) => {
     if (type === seg.type) return
     setBusy(true)
     try {
@@ -162,7 +164,7 @@ export function TerrainSidebar({
     }
   }
 
-  const handleDelete = async (seg: Segment) => {
+  const handleDelete = async (seg: TerrainSidebarSegment) => {
     setBusy(true)
     setError(null)
     try {
@@ -175,7 +177,7 @@ export function TerrainSidebar({
     }
   }
 
-  const startEditSegment = (seg: Segment) => {
+  const startEditSegment = (seg: TerrainSidebarSegment) => {
     setEditingSegmentId(seg.startNodeId)
     setEditStart(seg.startMile.toFixed(2))
     setEditEnd(seg.endMile.toFixed(2))
@@ -191,7 +193,7 @@ export function TerrainSidebar({
     setError(null)
   }
 
-  const saveEditSegment = async (seg: Segment) => {
+  const saveEditSegment = async (seg: TerrainSidebarSegment) => {
     const start = parseFloat(editStart)
     const end = parseFloat(editEnd)
     if (Number.isNaN(start) || Number.isNaN(end)) {
@@ -418,6 +420,10 @@ export function TerrainSidebar({
                   }`}
                   onMouseEnter={() => onHoverNode?.(seg.startNodeId)}
                   onMouseLeave={() => onHoverNode?.(null)}
+                  onClick={() => {
+                    onSelectSegment?.(seg)
+                    onSelectNode?.(seg.startNodeId)
+                  }}
                 >
                   <span
                     className="w-2.5 h-2.5 rounded-full shrink-0"
@@ -426,7 +432,9 @@ export function TerrainSidebar({
                   <button
                     type="button"
                     className="text-xs text-neutral-300 font-mono shrink-0 w-[76px] text-left hover:text-orange-300"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onSelectSegment?.(seg)
                       onSelectNode?.(seg.startNodeId)
                       if (canEdit) startEditSegment(seg)
                     }}

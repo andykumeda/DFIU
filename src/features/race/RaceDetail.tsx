@@ -28,7 +28,7 @@ import { GpxUploader } from '@/features/course/GpxUploader'
 import { EditRaceModal } from '@/features/race/EditRaceModal'
 import { EditWaypointModal } from '@/features/course/EditWaypointModal'
 import { ViewWaypointModal } from '@/features/course/ViewWaypointModal'
-import { TerrainSidebar } from '@/features/course/TerrainSidebar'
+import { TerrainSidebar, type TerrainSidebarSegment } from '@/features/course/TerrainSidebar'
 import { TerrainTypeValue, TERRAIN_TYPES, getTerrainColor, getTerrainDefaultDifficulty } from '@/features/course/terrain-constants'
 import { PaceCalculator } from '@/features/race/PaceCalculator'
 import { parseRunnerProfile } from '@/features/race/runner-profile'
@@ -38,7 +38,6 @@ import { DropBagsSection } from '@/features/race/DropBagsSection'
 import { TrainingSection } from '@/features/race/TrainingSection'
 import { recomputeTrainingOverlapsForRace } from '@/features/race/useTrainingRoutes'
 import { isShareLinkView } from '@/features/race/share-link'
-import { SiteFooter } from '@/components/ui/SiteFooter'
 
 const CrewView = lazy(() =>
     import('@/features/race/CrewView').then(m => ({ default: m.CrewView }))
@@ -230,6 +229,11 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   const [hoveredWaypointId, setHoveredWaypointId] = useState<string | null>(null)
   const [hoveredTerrainId, setHoveredTerrainId] = useState<string | null>(null)
   const [selectedTerrainId, setSelectedTerrainId] = useState<string | null>(null)
+  const [selectedTerrainRange, setSelectedTerrainRange] = useState<{
+    startMile: number
+    endMile: number
+    nodeIds: string[]
+  } | null>(null)
   // Pending segment: set by map 2-click or profile drag → triggers classification popup.
   // nodeId is set when editing an existing segment (vs defining a new range).
   const [pendingSegment, setPendingSegment] = useState<{ startMile: number; endMile: number; nodeId?: string } | null>(null)
@@ -894,8 +898,19 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     setPendingSegment(null)
     setHoveredTerrainId(null)
     setSelectedTerrainId(null)
+    setSelectedTerrainRange(null)
     setPendingLinkedRanges([])
     setSelectedLinkedRangeKeys(new Set())
+  }
+
+  const handleSelectTerrainSegment = (segment: TerrainSidebarSegment) => {
+    setSelectedTerrainId(segment.startNodeId)
+    setSelectedTerrainRange({
+      startMile: segment.startMile,
+      endMile: segment.endMile,
+      nodeIds: segment.nodeIds,
+    })
+    setHoveredTerrainId(segment.startNodeId)
   }
 
   const getRoutePointForMile = (mile: number) => {
@@ -947,6 +962,11 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     openTerrainSelection(node.mile, endMile, node.id)
     setHoveredTerrainId(node.id)
     setSelectedTerrainId(node.id)
+    setSelectedTerrainRange({
+      startMile: node.mile,
+      endMile,
+      nodeIds: [node.id],
+    })
   }
 
   const handleUpdateTerrainSegment = async (
@@ -1506,8 +1526,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   // Legacy alias: existing usage gates full race editing. New crew/pacer
   // role flags do not grant this; they get logging-only permissions.
   const isOwner = canEdit
-  // Private ?share= links: show owner chrome (edit affordances, disabled) without mutations/save.
-  // Terrain coloring/segments are visible to all viewers who can load the race.
+  // Private ?share= links: show owner chrome (terrain, disabled actions) without mutations/save.
   const isShareView = isShareLinkView()
   const showOwnerChrome = isOwner || isShareView
 
@@ -1515,7 +1534,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   if (raceLoadFailed || !race) return <div className='p-8 text-white'>Redirecting...</div>
 
   return (
-    <div className='min-h-screen bg-neutral-950 flex flex-col'>
+    <div className='min-h-dvh bg-neutral-950 flex flex-col overscroll-y-none'>
       {/* Header */}
       {/* Opaque sticky chrome (no backdrop-blur): WebKit can mis-hit-test sticky+blur on long mobile pages. */}
       <header ref={setHeaderEl} className='print:hidden border-b border-neutral-800 bg-neutral-950 sticky top-0 z-[100]'>
@@ -1638,24 +1657,26 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                 )}
                 <Settings className="hidden sm:block w-5 h-5 text-neutral-500 group-hover:text-white transition-colors" />
               </Link>
-            ) : (
+            ) : !isDemoMode && !isShareView && race.is_public ? (
               <div className="flex items-center gap-2">
-                {!isDemoMode && !isShareView && race.is_public && (
-                  <Link
-                    to={`/race/${raceId}?demo=1`}
-                    className="flex items-center gap-2 p-1.5 sm:px-3 sm:py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg transition-colors"
-                    title="Edit plans locally on this device, then save to an account when ready"
-                  >
-                    Demo
-                  </Link>
-                )}
                 <Link
                   to="/login"
                   className="text-sm font-medium text-neutral-400 hover:text-white px-3 py-1.5 rounded-lg border border-neutral-700 hover:border-neutral-500 transition-colors"
                 >
                   Sign In
                 </Link>
+                <Link
+                  to={`/race/${raceId}?demo=1`}
+                  className="text-xs text-neutral-500 hover:text-neutral-300 transition-colors whitespace-nowrap"
+                  title="Edit plans locally on this device, then save to an account when ready"
+                >
+                  Demo
+                </Link>
               </div>
+            ) : (
+              <Link to="/login" className="text-sm font-medium text-neutral-400 hover:text-white px-3 py-1.5 rounded-lg border border-neutral-700 hover:border-neutral-500 transition-colors">
+                Sign In
+              </Link>
             )}
           </div>
         </div>
@@ -1794,7 +1815,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       </nav>
 
       {/* Content */}
-      <main className='flex-1 relative z-0'>
+      <main className='flex-1 relative z-0 min-h-0'>
         {activeTab === 'live' && (
           <div className="animate-in fade-in duration-500">
             <Suspense fallback={<div className='p-6 text-white text-center'>Loading live view...</div>}>
@@ -1855,6 +1876,11 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
 
                         highlightedTerrainId={pendingSegment?.nodeId ?? selectedTerrainId ?? hoveredTerrainId}
+                        highlightedTerrainNodeIds={selectedTerrainRange?.nodeIds}
+                        highlightedTerrainRange={selectedTerrainRange ? {
+                          startMile: selectedTerrainRange.startMile,
+                          endMile: selectedTerrainRange.endMile,
+                        } : null}
                         activeTerrainRange={pendingSegment ? { startMile: pendingSegment.startMile, endMile: pendingSegment.endMile } : null}
                         terrainNodes={terrainNodes}
                         onTerrainNodeClick={isOwner && isTerrainEditMode ? handleEditTerrainSegment : undefined}
@@ -1964,6 +1990,10 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                       showMileMarkers={showMileMarkers}
                       waypoints={waypoints.map(wp => ({ id: wp.id, mile: wp.mile, name: wp.name, type: wp.type }))}
                       terrainNodes={terrainNodes}
+                      highlightedTerrainRange={selectedTerrainRange ? {
+                        startMile: selectedTerrainRange.startMile,
+                        endMile: selectedTerrainRange.endMile,
+                      } : null}
                       onRangeDefined={isOwner && isTerrainEditMode ? (lo, hi) => {
                         setHoveredTerrainId(null)
                         openTerrainSelection(lo, hi)
@@ -1978,7 +2008,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                     onClick={() => mapSidebarRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
                   >
                     <ChevronDown className='h-4 w-4 shrink-0 text-blue-400 animate-bounce' />
-                    <span>Route stats & aid stations below</span>
+                    <span>Route stats, aid stations & terrain below</span>
                     <ChevronDown className='h-4 w-4 shrink-0 text-blue-400 animate-bounce' />
                   </button>
                 </div>
@@ -1986,7 +2016,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                 {/* Right Sidebar: Stats & Waypoints */}
                 <div
                   ref={mapSidebarRef}
-                  className='w-full md:w-80 border-l border-neutral-800 bg-neutral-900 overflow-y-auto flex-shrink-0 scroll-mt-[calc(var(--page-header-h,0px)+3.5rem)]'
+                  className='w-full md:w-80 border-l border-neutral-800 bg-neutral-900 md:overflow-y-auto md:max-h-[calc(100dvh-var(--page-header-h,0px)-3.5rem)] flex-shrink-0 scroll-mt-[calc(var(--page-header-h,0px)+3.5rem)]'
                 >
                   <div className='p-4 border-b border-neutral-800'>
                     <div className='flex items-center justify-between mb-4'>
@@ -2140,33 +2170,34 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                   </div>
 
                   <TerrainSidebar
-                    terrainNodes={terrainNodes}
-                    totalDistance={course?.total_distance_miles ?? 0}
-                    canEdit={!!isOwner && isTerrainEditMode}
-                    canEnterEdit={!!isOwner}
-                    showDisabledEdit={isShareView && !isOwner}
-                    onEditModeChange={editing => {
-                      setIsTerrainEditMode(editing)
-                      if (editing) setIsWaypointEditMode(false)
-                      clearPendingTerrainSegment()
-                    }}
-                    highlightedTerrainId={pendingSegment?.nodeId ?? selectedTerrainId ?? hoveredTerrainId}
-                    onHoverNode={setHoveredTerrainId}
-                    onSelectNode={setSelectedTerrainId}
-                    onSaveSegment={saveTerrainAcrossLinkedPasses}
-                    onDeleteSegment={async segment => {
-                      await handleDeleteTerrainSegmentRange(segment)
-                      for (const [startMile, endMile] of findParallelMileRanges(segment.startMile, segment.endMile)) {
-                        await handleSaveTerrainSegment(startMile, endMile, 'other', 100)
-                      }
-                    }}
-                    onUpdateSegment={async (segment, startMile, endMile, type, difficulty) => {
-                      await handleUpdateTerrainSegment(segment, startMile, endMile, type, difficulty)
-                      for (const [parallelStart, parallelEnd] of findParallelMileRanges(startMile, endMile)) {
-                        await handleSaveTerrainSegment(parallelStart, parallelEnd, type, difficulty)
-                      }
-                    }}
-                  />
+                      terrainNodes={terrainNodes}
+                      totalDistance={course?.total_distance_miles ?? 0}
+                      canEdit={!!isOwner && isTerrainEditMode}
+                      canEnterEdit={!!isOwner}
+                      showDisabledEdit={!isOwner && showOwnerChrome}
+                      onEditModeChange={editing => {
+                        setIsTerrainEditMode(editing)
+                        if (editing) setIsWaypointEditMode(false)
+                        clearPendingTerrainSegment()
+                      }}
+                      highlightedTerrainId={pendingSegment?.nodeId ?? selectedTerrainId ?? hoveredTerrainId}
+                      onHoverNode={setHoveredTerrainId}
+                      onSelectNode={setSelectedTerrainId}
+                      onSelectSegment={handleSelectTerrainSegment}
+                      onSaveSegment={saveTerrainAcrossLinkedPasses}
+                      onDeleteSegment={async segment => {
+                        await handleDeleteTerrainSegmentRange(segment)
+                        for (const [startMile, endMile] of findParallelMileRanges(segment.startMile, segment.endMile)) {
+                          await handleSaveTerrainSegment(startMile, endMile, 'other', 100)
+                        }
+                      }}
+                      onUpdateSegment={async (segment, startMile, endMile, type, difficulty) => {
+                        await handleUpdateTerrainSegment(segment, startMile, endMile, type, difficulty)
+                        for (const [parallelStart, parallelEnd] of findParallelMileRanges(startMile, endMile)) {
+                          await handleSaveTerrainSegment(parallelStart, parallelEnd, type, difficulty)
+                        }
+                      }}
+                    />
                 </div>
               </div>
             ) : (
@@ -2497,7 +2528,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
         }
 
       </main >
-      <SiteFooter />
+
     </div >
   )
 }
