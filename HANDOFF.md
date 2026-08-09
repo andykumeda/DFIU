@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-08
 **Branch:** `main`
-**Status:** Fixing production load latency (missing compression) and blank elastic overscroll below race pages.
+**Status:** Production load latency and blank elastic overscroll fixes are deployed and verified.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -13,6 +13,8 @@
 
 ## Just finished
 
+- Enabled Nginx gzip compression for JavaScript, JSON, XML, SVG, CSS, and text responses. Verified the production main bundle now transfers at about 305 KB instead of 1.06 MB and Mapbox at about 462 KB instead of 1.68 MB.
+- Contained elastic page overscroll and made the `html`, `body`, and app-root backgrounds opaque dark. Verified the production training detail at 390x844 loads the correct route/title in about 2.8 seconds without exposing a blank page canvas below the content.
 - Training-route links preserve the race share token and now expose route-specific Open Graph title/description metadata.
 - Restored five accidentally emptied production modules and confirmed the TypeScript/Vite build.
 - Merged the pace/terrain UI fixes: mobile goal panel and overscroll behavior, print columns below the splits chart, and full terrain-segment highlighting/pan behavior.
@@ -25,7 +27,7 @@
 ## Open
 
 - Verify training card clicks and direct `?training=` links after the navigation fix.
-- Last deployed commit: `d1435cd`.
+- Last deployed commit: `a703f17`.
 - Smoke-test the merged pace/terrain UI in production.
 - Design and implement the opt-in post-event feedback email flow.
 - Rotate Strava secret; verify RBAC with a second account; `/admin` + owner-transfer UI.
