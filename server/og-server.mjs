@@ -96,6 +96,23 @@ function buildDescription(race) {
   return "Don't F* It Up"
 }
 
+function buildTrainingTitle(training, race) {
+  const routeName = String(training.name || 'Training route').trim()
+  const raceName = String(race.name || 'Event').trim()
+  return `${routeName} | ${raceName}`.slice(0, 120)
+}
+
+function buildTrainingDescription(training, race) {
+  const parts = [`Training route for ${String(race.name || 'event').trim()}`]
+  if (training.distance_miles != null && Number.isFinite(Number(training.distance_miles))) {
+    parts.push(`${Number(training.distance_miles).toFixed(1)} mi`)
+  }
+  if (training.elevation_gain_ft != null && Number.isFinite(Number(training.elevation_gain_ft))) {
+    parts.push(`+${Math.round(Number(training.elevation_gain_ft)).toLocaleString()} ft`)
+  }
+  return parts.join(' · ').slice(0, 200)
+}
+
 function upsertMeta(html, { title, description, url, image }) {
   const safeTitle = escapeAttr(title)
   const safeDesc = escapeAttr(description)
@@ -177,6 +194,25 @@ async function fetchRaceMeta(parsed, shareToken) {
   return null
 }
 
+async function fetchTrainingMeta(trainingId, raceId) {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !UUID_RE.test(trainingId)) return null
+  const headers = {
+    apikey: SUPABASE_ANON_KEY,
+    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    Accept: 'application/json',
+  }
+  const filter = `id=eq.${encodeURIComponent(trainingId)}&race_id=eq.${encodeURIComponent(raceId)}`
+  const url = `${SUPABASE_URL}/rest/v1/training_routes?${filter}&select=id,name,distance_miles,elevation_gain_ft&limit=1`
+  const res = await fetch(url, { headers })
+  if (!res.ok) {
+    console.error('[og] training_routes HTTP', res.status, await res.text())
+    return null
+  }
+  const rows = await res.json()
+  const training = Array.isArray(rows) ? rows[0] : null
+  return training?.name ? training : null
+}
+
 function pageUrlFor(race, reqUrl) {
   const key = race.public_share_alias || race.id
   const u = new URL(`${SITE_ORIGIN}/${encodeURIComponent(key)}`)
@@ -184,6 +220,8 @@ function pageUrlFor(race, reqUrl) {
   if (share) u.searchParams.set('share', share)
   const demo = reqUrl.searchParams.get('demo')
   if (demo) u.searchParams.set('demo', demo)
+  const training = reqUrl.searchParams.get('training')
+  if (training) u.searchParams.set('training', training)
   return u.toString()
 }
 
@@ -202,9 +240,12 @@ const server = http.createServer(async (req, res) => {
     if (parsed) {
       const race = await fetchRaceMeta(parsed, url.searchParams.get('share'))
       if (race?.name) {
+        const training = url.searchParams.get('training')
+          ? await fetchTrainingMeta(url.searchParams.get('training'), race.id)
+          : null
         html = upsertMeta(html, {
-          title: buildTitle(race),
-          description: buildDescription(race),
+          title: training ? buildTrainingTitle(training, race) : buildTitle(race),
+          description: training ? buildTrainingDescription(training, race) : buildDescription(race),
           url: pageUrlFor(race, url),
           image: imageForUserAgent(req.headers['user-agent']),
         })

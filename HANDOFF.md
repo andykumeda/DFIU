@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-08
 **Branch:** `main`
-**Status:** Investigating tab navigation scroll regression affecting Resources and Drop Bags.
+**Status:** Adding route-specific training share previews with distinct metadata.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -23,7 +23,7 @@
 
 ## Open
 
-- Reset the race content scroll position when switching tabs; verify Resources and Drop Bags on mobile and desktop.
+- Verify route-specific OG title/description for training links after deployment.
 - Smoke-test the merged pace/terrain UI in production.
 - Design and implement the opt-in post-event feedback email flow.
 - Rotate Strava secret; verify RBAC with a second account; `/admin` + owner-transfer UI.
