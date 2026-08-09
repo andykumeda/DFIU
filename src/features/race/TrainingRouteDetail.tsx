@@ -99,7 +99,7 @@ export function TrainingRouteDetail({
   const handleShare = async () => {
     const url = new URL(window.location.href)
     url.searchParams.set('training', route.id)
-    const shareData = { title: route.name, text: `Training route: ${route.name}`, url: url.toString() }
+    const shareData = { url: url.toString() }
 
     try {
       if (navigator.share) {

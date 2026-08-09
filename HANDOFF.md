@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-08
 **Branch:** `main`
-**Status:** Fixing direct training links to open the Training tab before resolving the route detail.
+**Status:** Removing share-message text so copied training links contain only the URL.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
