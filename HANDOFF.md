@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-08
 **Branch:** `main`
-**Status:** Fixing training-card navigation so URL-backed route selection opens detail without a remount.
+**Status:** Fixing direct training links to open the Training tab before resolving the route detail.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 

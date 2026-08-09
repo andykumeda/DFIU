@@ -1,7 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useRef, Suspense, lazy } from 'react'
 import { useAuth } from '@/features/auth/AuthContext'
 import { usePermission } from '@/features/auth/usePermission'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Calendar, MapPin, Globe, ArrowUpRight, CloudSun, Trophy, RefreshCw, Settings, Download, Save, CheckCircle2, Trash2, Share2, Users, Footprints, Backpack, ChevronDown } from 'lucide-react'
 
@@ -209,11 +209,14 @@ function RoleSwitcher({ raceId, views }: { raceId: string; views: Array<'full' |
 
 export function RaceDetail({ raceId }: { raceId: string }) {
   const { user, refreshMemberships } = useAuth()
+  const location = useLocation()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { isDemoMode, overlay, overlayReady, overlayTooLarge } = useDemoMode()
   const { saveWaypoints, saveTerrain } = useDemoRacePersist(raceId)
-  const [activeTab, setActiveTab] = useState<Tab>('overview')
+  const [activeTab, setActiveTab] = useState<Tab>(() =>
+    new URLSearchParams(location.search).has('training') ? 'training' : 'overview'
+  )
   const [trainingResetToken, setTrainingResetToken] = useState(0)
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingWaypoint, setEditingWaypoint] = useState<Partial<Waypoint> | null>(null)
@@ -249,6 +252,14 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   // Measure the sticky page header so child sticky elements (pace plan thead)
   // can pin directly below it, even when mobile chrome / font scaling shift things.
   const [headerEl, setHeaderEl] = useState<HTMLElement | null>(null)
+
+  // A training route's detail view is addressed by ?training=<route-id>.
+  // Select its parent tab before TrainingSection resolves that route.
+  useEffect(() => {
+    if (new URLSearchParams(location.search).has('training')) {
+      setActiveTab('training')
+    }
+  }, [location.search])
 
   // Tabs share the page scroll container. Reset it after switching sections so
   // long views like Map or Pace do not leave Resources/Drop Bags starting
