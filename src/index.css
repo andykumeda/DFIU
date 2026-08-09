@@ -3,7 +3,13 @@
 html,
 body,
 #root {
-  overscroll-behavior-y: none;
+  background-color: #0a0a0a;
+  overscroll-behavior: none;
+}
+
+body,
+#root {
+  min-height: 100dvh;
 }
 
 @page {

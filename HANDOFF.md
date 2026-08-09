@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-08
 **Branch:** `main`
-**Status:** Removing share-message text so copied training links contain only the URL.
+**Status:** Fixing production load latency (missing compression) and blank elastic overscroll below race pages.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
