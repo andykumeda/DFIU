@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, Suspense, lazy } from 'react'
+import { useState, useEffect, useLayoutEffect, useMemo, useRef, Suspense, lazy } from 'react'
 import { useAuth } from '@/features/auth/AuthContext'
 import { usePermission } from '@/features/auth/usePermission'
 import { Link, useNavigate } from 'react-router-dom'
@@ -249,6 +249,22 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   // Measure the sticky page header so child sticky elements (pace plan thead)
   // can pin directly below it, even when mobile chrome / font scaling shift things.
   const [headerEl, setHeaderEl] = useState<HTMLElement | null>(null)
+
+  // Tabs share the page scroll container. Reset it after switching sections so
+  // long views like Map or Pace do not leave Resources/Drop Bags starting
+  // halfway down the page.
+  useLayoutEffect(() => {
+    const resetScroll = () => {
+      window.scrollTo(0, 0)
+      document.documentElement.scrollTop = 0
+      document.body.scrollTop = 0
+    }
+
+    resetScroll()
+    const frame = requestAnimationFrame(resetScroll)
+    return () => cancelAnimationFrame(frame)
+  }, [activeTab])
+
   useEffect(() => {
     if (!headerEl) return
     const apply = () => {
