@@ -206,7 +206,7 @@ export function TrainingSection({
 
   if (selected) {
     return (
-      <div className="p-4 md:p-8 max-w-7xl mx-auto">
+      <div className="race-tab-page p-4 md:p-8 max-w-7xl mx-auto">
         <TrainingRouteDetail
           route={selected}
           course={course}
@@ -226,7 +226,7 @@ export function TrainingSection({
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto animate-in fade-in duration-500">
+    <div className="race-tab-page p-4 md:p-8 max-w-7xl mx-auto animate-in fade-in duration-500">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
           <h2 className="text-2xl font-bold text-white flex items-center gap-2">

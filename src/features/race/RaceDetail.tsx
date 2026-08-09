@@ -2319,7 +2319,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
         )}
 
         {activeTab === 'overview' && (
-          <div className="space-y-8 animate-in fade-in duration-500 max-w-5xl mx-auto p-4 md:p-8">
+          <div className="race-tab-page space-y-8 animate-in fade-in duration-500 max-w-5xl mx-auto p-4 md:p-8">
             {/* Hero / Header Info */}
             <div className="bg-neutral-900/50 rounded-2xl p-8 border border-neutral-800 relative overflow-hidden">
               <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">

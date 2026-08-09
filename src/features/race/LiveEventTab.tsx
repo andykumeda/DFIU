@@ -503,7 +503,7 @@ export function LiveEventTab({
         : `grid grid-cols-1 gap-5 ${showLiveFeedPanel ? 'xl:grid-cols-[minmax(0,1fr)_minmax(22rem,32rem)]' : ''}`
 
     return (
-        <div className='max-w-6xl mx-auto p-4 md:p-6 space-y-5 text-white'>
+        <div className='race-tab-page max-w-6xl mx-auto p-4 md:p-6 space-y-5 text-white'>
             <section className='border border-neutral-800 bg-neutral-900 rounded-lg p-4 md:p-5'>
                 <div className='flex flex-col gap-4 md:flex-row md:items-start md:justify-between'>
                     <div className='min-w-0'>

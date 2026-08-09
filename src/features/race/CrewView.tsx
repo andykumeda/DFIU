@@ -349,7 +349,7 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
                 </header>
             )}
 
-            <main className='px-3 py-3 space-y-3 max-w-3xl mx-auto'>
+            <main className='race-tab-page px-3 py-3 space-y-3 max-w-3xl mx-auto'>
                 {/* Map */}
                 <section className='bg-neutral-900 rounded-lg overflow-hidden'>
                     <div className='h-[50vh] min-h-[300px] sm:h-[520px]'>

@@ -205,7 +205,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
     }
 
     return (
-        <div className="p-4 md:p-8 animate-in fade-in duration-500 max-w-7xl mx-auto flex flex-col lg:flex-row gap-8 items-start relative">
+        <div className="race-tab-page p-4 md:p-8 animate-in fade-in duration-500 max-w-7xl mx-auto flex flex-col lg:flex-row gap-8 items-start relative">
 
             <div className="flex-1 space-y-6 min-w-0 w-full print:hidden">
 

@@ -243,7 +243,7 @@ ${body}
     const visibleLinks = config.links.filter(l => l.enabled || isEditing)
 
     return (
-        <div className="max-w-5xl mx-auto p-6 space-y-8">
+        <div className="race-tab-page max-w-5xl mx-auto p-6 space-y-8">
             <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-white">Race Resources</h2>
                 {canEdit && !isEditing ? (

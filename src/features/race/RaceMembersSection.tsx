@@ -376,7 +376,7 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
   }
 
   return (
-    <div className='max-w-3xl mx-auto px-4 py-6 space-y-6'>
+    <div className='race-tab-page max-w-3xl mx-auto px-4 py-6 space-y-6'>
       <div>
         <h2 className='text-2xl font-bold text-white mb-1'>Members</h2>
         <p className='text-neutral-400 text-sm'>

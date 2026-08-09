@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-08
 **Branch:** `main`
-**Status:** Production load latency and blank elastic overscroll fixes are deployed and verified.
+**Status:** Fixing mobile race tabs whose page-level bottom padding extends scrolling beyond the final displayed item.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 

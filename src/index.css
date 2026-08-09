@@ -12,6 +12,12 @@ body,
   min-height: 100dvh;
 }
 
+@media (max-width: 639px) {
+  .race-tab-page {
+    padding-bottom: 0;
+  }
+}
+
 @page {
   size: letter portrait;
   margin: 0.25in;

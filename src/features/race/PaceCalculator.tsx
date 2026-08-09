@@ -570,7 +570,7 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
     }
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6 max-w-7xl mx-auto print:block print:p-0">
+        <div className="race-tab-page grid grid-cols-1 lg:grid-cols-3 gap-6 p-6 max-w-7xl mx-auto print:block print:p-0">
             {/* Left Col: Configuration (goal inputs first on mobile) */}
             <div className="lg:col-span-1 space-y-6 print:hidden">
                 <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6">
