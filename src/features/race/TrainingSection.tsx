@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { ExternalLink, Mountain, PencilLine, Route as RouteIcon, Upload } from 'lucide-react'
 import type { Course, Race, TerrainNode, Waypoint } from '@/types/database'
 import { GpxUploader } from '@/features/course/GpxUploader'
@@ -60,7 +61,8 @@ export function TrainingSection({
     updateRoute,
     deleteRoute,
   } = useTrainingRoutes(race.id, course?.geometry)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [selectedId, setSelectedId] = useState<string | null>(() => searchParams.get('training'))
   const [uploading, setUploading] = useState(false)
   const [showUploader, setShowUploader] = useState(false)
   const [showCreator, setShowCreator] = useState(false)
@@ -128,12 +130,34 @@ export function TrainingSection({
   )
 
   useEffect(() => {
+    if (!resetToken) return
     setSelectedId(null)
-  }, [resetToken])
+    if (searchParams.has('training')) {
+      const next = new URLSearchParams(searchParams)
+      next.delete('training')
+      setSearchParams(next, { replace: true })
+    }
+  }, [resetToken, searchParams, setSearchParams])
 
   useEffect(() => {
     if (selectedId) window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
   }, [selectedId])
+
+  const openRoute = (id: string) => {
+    setSelectedId(id)
+    const next = new URLSearchParams(searchParams)
+    next.set('training', id)
+    setSearchParams(next, { replace: true })
+  }
+
+  const closeRoute = () => {
+    setSelectedId(null)
+    if (searchParams.has('training')) {
+      const next = new URLSearchParams(searchParams)
+      next.delete('training')
+      setSearchParams(next, { replace: true })
+    }
+  }
 
   const handleUpload = async (result: GpxParseResult, rawGpx: string, fileName: string) => {
     setError(null)
@@ -194,7 +218,7 @@ export function TrainingSection({
           planAGoalMinutes={planAMinutes}
           clock24h={clock24h}
           courseElevationSamples={courseElevationSamples}
-          onBack={() => setSelectedId(null)}
+          onBack={closeRoute}
           onUpdate={updateRoute}
           onDelete={deleteRoute}
         />
@@ -282,7 +306,7 @@ export function TrainingSection({
                 clock24h={clock24h}
                 courseCoordinates={courseCoordinates}
                 courseElevationSamples={courseElevationSamples}
-                onOpen={() => setSelectedId(route.id)}
+                onOpen={() => openRoute(route.id)}
               />
             ))}
           </div>

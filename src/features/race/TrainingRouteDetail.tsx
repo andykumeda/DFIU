@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ArrowLeft, Download, ExternalLink, MapPin, Mountain, Route as RouteIcon, Trash2 } from 'lucide-react'
+import { ArrowLeft, Download, ExternalLink, MapPin, Mountain, Route as RouteIcon, Share2, Trash2 } from 'lucide-react'
 import type { Course, Json, Race } from '@/types/database'
 import type { TrainingRouteRow } from './useTrainingRoutes'
 import { TrainingRouteDetailMap } from './TrainingRouteDetailMap'
@@ -49,6 +49,7 @@ export function TrainingRouteDetail({
   const [notes, setNotes] = useState(route.notes ?? '')
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [shareState, setShareState] = useState<'idle' | 'copied' | 'error'>('idle')
   const [showCourseRoute, setShowCourseRoute] = useState(true)
 
   const trainingCoords = useMemo(() => extractCoordinates(route.geometry), [route.geometry])
@@ -93,6 +94,26 @@ export function TrainingRouteDetail({
     anchor.click()
     anchor.remove()
     URL.revokeObjectURL(url)
+  }
+
+  const handleShare = async () => {
+    const url = new URL(window.location.href)
+    url.searchParams.set('training', route.id)
+    const shareData = { title: route.name, text: `Training route: ${route.name}`, url: url.toString() }
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData)
+        setShareState('copied')
+        return
+      }
+      await navigator.clipboard.writeText(url.toString())
+      setShareState('copied')
+    } catch (error) {
+      // A cancelled native share is not an error worth surfacing.
+      if (error instanceof DOMException && error.name === 'AbortError') return
+      setShareState('error')
+    }
   }
 
   const handleSave = async () => {
@@ -160,6 +181,14 @@ export function TrainingRouteDetail({
           >
             <Download className='w-4 h-4' />
             Export GPX
+          </button>
+          <button
+            type='button'
+            onClick={() => void handleShare()}
+            className='flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300'
+          >
+            <Share2 className='w-4 h-4' />
+            {shareState === 'copied' ? 'Link ready' : shareState === 'error' ? 'Copy failed' : 'Share route'}
           </button>
         </div>
       </div>
