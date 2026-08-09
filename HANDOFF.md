@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-08
 **Branch:** `main`
-**Status:** Route-specific training share previews deployed; final production verification complete.
+**Status:** Fixing training-card navigation so URL-backed route selection opens detail without a remount.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -24,6 +24,7 @@
 
 ## Open
 
+- Verify training card clicks and direct `?training=` links after the navigation fix.
 - Last deployed commit: `d1435cd`.
 - Smoke-test the merged pace/terrain UI in production.
 - Design and implement the opt-in post-event feedback email flow.

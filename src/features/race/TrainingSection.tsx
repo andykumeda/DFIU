@@ -62,7 +62,9 @@ export function TrainingSection({
     deleteRoute,
   } = useTrainingRoutes(race.id, course?.geometry)
   const [searchParams, setSearchParams] = useSearchParams()
-  const [selectedId, setSelectedId] = useState<string | null>(() => searchParams.get('training'))
+  // The URL is the source of truth so a shared training link and in-app card
+  // clicks follow the same detail-view path without remounting the race page.
+  const selectedId = searchParams.get('training')
   const [uploading, setUploading] = useState(false)
   const [showUploader, setShowUploader] = useState(false)
   const [showCreator, setShowCreator] = useState(false)
@@ -131,7 +133,6 @@ export function TrainingSection({
 
   useEffect(() => {
     if (!resetToken) return
-    setSelectedId(null)
     if (searchParams.has('training')) {
       const next = new URLSearchParams(searchParams)
       next.delete('training')
@@ -144,14 +145,12 @@ export function TrainingSection({
   }, [selectedId])
 
   const openRoute = (id: string) => {
-    setSelectedId(id)
     const next = new URLSearchParams(searchParams)
     next.set('training', id)
     setSearchParams(next, { replace: true })
   }
 
   const closeRoute = () => {
-    setSelectedId(null)
     if (searchParams.has('training')) {
       const next = new URLSearchParams(searchParams)
       next.delete('training')
@@ -165,7 +164,7 @@ export function TrainingSection({
     try {
       const created = await createFromGpx(result, rawGpx, fileName)
       setShowUploader(false)
-      if (created) setSelectedId(created.id)
+      if (created) openRoute(created.id)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save training route')
     } finally {
@@ -182,7 +181,7 @@ export function TrainingSection({
       setDraftRouteHistory([])
       setDraftName('')
       setShowCreator(false)
-      if (created) setSelectedId(created.id)
+      if (created) openRoute(created.id)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to create training route')
     } finally {
