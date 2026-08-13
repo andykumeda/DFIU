@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ExternalLink, Mountain, PencilLine, Route as RouteIcon, Upload } from 'lucide-react'
 import type { Course, Race, TerrainNode, Waypoint } from '@/types/database'
@@ -19,6 +19,7 @@ import { calculatePacePlan, isPaceChartWaypoint, type PacePlanResult } from './p
 import { usePacePlans, computePlanMinutes } from './usePacePlans'
 import type { RunnerPacingProfile } from './runner-profile'
 import { buildTrainingPlanSummary, formatDurationWords } from './training-analysis'
+import { resetPageScroll } from './training-scroll'
 
 const TrainingRouteCreatorMap = lazy(() =>
   import('./TrainingRouteCreatorMap').then(module => ({ default: module.TrainingRouteCreatorMap }))
@@ -116,6 +117,7 @@ export function TrainingSection({
 
   const planAReady = plans.hasCalculated && planA != null
   const selected = selectedId ? routes.find(r => r.id === selectedId) ?? null : null
+  const selectedRouteReady = selected?.id === selectedId
   const courseCoordinates = useMemo(
     () => (course ? extractCoordinates(course.geometry) : []),
     [course]
@@ -140,9 +142,21 @@ export function TrainingSection({
     }
   }, [resetToken, searchParams, setSearchParams])
 
-  useEffect(() => {
-    if (selectedId) window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
-  }, [selectedId])
+  useLayoutEffect(() => {
+    // Direct links can resolve the route after the parent race page has already
+    // rendered. Reset when the selected row appears, not only when the URL
+    // changes, and repeat after paint so browser scroll restoration cannot win.
+    if (!selectedId || !selectedRouteReady) return
+
+    const reset = () => resetPageScroll(window)
+    reset()
+    const firstFrame = requestAnimationFrame(reset)
+    const secondFrame = requestAnimationFrame(reset)
+    return () => {
+      cancelAnimationFrame(firstFrame)
+      cancelAnimationFrame(secondFrame)
+    }
+  }, [selectedId, selectedRouteReady])
 
   const openRoute = (id: string) => {
     const next = new URLSearchParams(searchParams)
