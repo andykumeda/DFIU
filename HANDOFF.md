@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-12
 **Branch:** `main`
-**Status:** Investigating Training route detail scroll restoration from direct `?training=` links; no code changes made yet.
+**Status:** Training route detail scroll restoration is fixed and deployed; direct `?training=` smoke verification remains.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -28,10 +28,9 @@
 
 ## Open
 
-- Fix and deploy Training route detail scroll restoration so direct links and card clicks open at the top of the detail view.
 - Complete a signed-in production smoke test of Ask Strava with route/segment and raw GET requests.
 - Verify training card clicks and direct `?training=` links after the navigation fix.
-- Last deployed commit: `3a2f70c`.
+- Last deployed commit: `a71f599`.
 - Smoke-test the merged pace/terrain UI in production.
 - Design and implement the opt-in post-event feedback email flow.
 - Rotate Strava secret; verify RBAC with a second account; `/admin` + owner-transfer UI.
