@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-12
 **Branch:** `main`
-**Status:** Ask Strava technical UI copy is corrected and deployed; signed-in production smoke test remains.
+**Status:** Diagnosing Ask Strava intent routing: broad activity matching is returning recent activities for unrelated questions.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -28,6 +28,7 @@
 
 ## Open
 
+- Narrow Ask Strava intent matching so unrelated questions do not silently return recent activities.
 - Complete a signed-in production smoke test of Ask Strava with route/segment and raw GET requests.
 - Verify training card clicks and direct `?training=` links after the navigation fix.
 - Last deployed commit: `1652301`.

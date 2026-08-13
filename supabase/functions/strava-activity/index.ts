@@ -7,6 +7,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { classifyStravaQueryIntent } from "../_shared/strava-query-intent.ts"
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -157,23 +158,48 @@ async function handleQuery(query: unknown, accessToken: string, athleteId: numbe
         })
     }
 
-    if (normalized.includes('zone')) {
+    const intent = classifyStravaQueryIntent(query)
+
+    if (intent === 'zones') {
         const data = await fetchStrava(accessToken, '/athlete/zones')
         return json({ kind: 'zones', answer: 'Here are your configured heart-rate and power zones.', zones: data })
     }
 
-    if (normalized.includes('profile') || normalized.includes('who am i')) {
+    if (intent === 'profile') {
         const data = await fetchStrava(accessToken, '/athlete') as Record<string, unknown>
         const name = [data.firstname, data.lastname].filter(Boolean).join(' ') || data.username || 'your Strava profile'
         return json({ kind: 'profile', answer: `You are connected as ${name}.`, profile: data })
     }
 
-    if (normalized.includes('stat')) {
+    if (intent === 'stats') {
         const data = await fetchStrava(accessToken, `/athletes/${athleteId}/stats`)
         return json({ kind: 'stats', answer: 'Here are your recent, year-to-date, and all-time Strava stats.', stats: data })
     }
 
-    if (normalized.includes('activit') || normalized.includes('run') || normalized.includes('ride') || normalized.includes('recent') || normalized.includes('latest')) {
+    if (intent === 'routes') {
+        const routeId = query.match(/\broute\s*#?(\d+)\b/i)?.[1]
+        if (routeId && normalized.includes('export')) {
+            const format = normalized.includes('tcx') ? 'tcx' : 'gpx'
+            return handleApiRequest({ method: 'GET', path: `/routes/${routeId}/export_${format}` }, accessToken)
+        }
+        if (routeId) return handleApiRequest({ method: 'GET', path: `/routes/${routeId}` }, accessToken)
+        return handleApiRequest({ method: 'GET', path: '/athlete/routes?page=1&per_page=50' }, accessToken)
+    }
+
+    if (intent === 'segments') {
+        if (normalized.includes('starred')) {
+            return handleApiRequest({ method: 'GET', path: '/segments/starred' }, accessToken)
+        }
+        const segmentId = query.match(/\bsegment\s*#?(\d+)\b/i)?.[1]
+        if (segmentId && normalized.includes('effort')) {
+            return handleApiRequest({ method: 'GET', path: `/segments/${segmentId}/all_efforts` }, accessToken)
+        }
+        if (segmentId) return handleApiRequest({ method: 'GET', path: `/segments/${segmentId}` }, accessToken)
+        const bounds = query.match(/(-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?)/)?.[1]
+        if (bounds) return handleApiRequest({ method: 'GET', path: `/segments/explore?bounds=${encodeURIComponent(bounds)}` }, accessToken)
+    }
+
+    if (intent === 'activities') {
         const data = await fetchStrava(accessToken, '/athlete/activities?per_page=10&page=1') as unknown[]
         const activities = data.map(item => {
             const value = item as Record<string, unknown>
@@ -189,30 +215,7 @@ async function handleQuery(query: unknown, accessToken: string, athleteId: numbe
         return json({ kind: 'activities', answer: `Here are your ${activities.length} most recent activities.`, activities })
     }
 
-    if (normalized.includes('route')) {
-        const routeId = query.match(/\broute\s*#?(\d+)\b/i)?.[1]
-        if (routeId && normalized.includes('export')) {
-            const format = normalized.includes('tcx') ? 'tcx' : 'gpx'
-            return handleApiRequest({ method: 'GET', path: `/routes/${routeId}/export_${format}` }, accessToken)
-        }
-        if (routeId) return handleApiRequest({ method: 'GET', path: `/routes/${routeId}` }, accessToken)
-        return handleApiRequest({ method: 'GET', path: '/athlete/routes?page=1&per_page=50' }, accessToken)
-    }
-
-    if (normalized.includes('segment')) {
-        if (normalized.includes('starred')) {
-            return handleApiRequest({ method: 'GET', path: '/segments/starred' }, accessToken)
-        }
-        const segmentId = query.match(/\bsegment\s*#?(\d+)\b/i)?.[1]
-        if (segmentId && normalized.includes('effort')) {
-            return handleApiRequest({ method: 'GET', path: `/segments/${segmentId}/all_efforts` }, accessToken)
-        }
-        if (segmentId) return handleApiRequest({ method: 'GET', path: `/segments/${segmentId}` }, accessToken)
-        const bounds = query.match(/(-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?)/)?.[1]
-        if (bounds) return handleApiRequest({ method: 'GET', path: `/segments/explore?bounds=${encodeURIComponent(bounds)}` }, accessToken)
-    }
-
-    throw new HttpError('Use a natural-language request or raw Strava API form such as GET /athlete/routes?page=1 or GET /segments/starred.', 400)
+    throw new HttpError('Try asking about your activities, routes, segments, stats, zones, profile, or a specific Strava activity link.', 400)
 }
 
 type RawApiRequest = {
