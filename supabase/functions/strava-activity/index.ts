@@ -142,10 +142,6 @@ serve(async (req) => {
 async function handleQuery(query: unknown, accessToken: string, athleteId: number): Promise<Response> {
     if (typeof query !== 'string' || !query.trim()) throw new HttpError('Ask a Strava question first', 400)
     const normalized = query.trim().toLowerCase()
-    const rawRequest = parseRawApiRequest(query)
-
-    if (rawRequest) return handleApiRequest(rawRequest, accessToken)
-
     const activityId = parseActivityId(query)
 
     if (activityId) {
@@ -189,62 +185,7 @@ async function handleQuery(query: unknown, accessToken: string, athleteId: numbe
         return json({ kind: 'activities', answer: `Here are your ${activities.length} most recent activities.`, activities })
     }
 
-    if (normalized.includes('route')) {
-        const routeId = query.match(/\broute\s*#?(\d+)\b/i)?.[1]
-        if (routeId && normalized.includes('export')) {
-            const format = normalized.includes('tcx') ? 'tcx' : 'gpx'
-            return handleApiRequest({ method: 'GET', path: `/routes/${routeId}/export_${format}` }, accessToken)
-        }
-        if (routeId) return handleApiRequest({ method: 'GET', path: `/routes/${routeId}` }, accessToken)
-        return handleApiRequest({ method: 'GET', path: '/athlete/routes?page=1&per_page=50' }, accessToken)
-    }
-
-    if (normalized.includes('segment')) {
-        if (normalized.includes('starred')) {
-            return handleApiRequest({ method: 'GET', path: '/segments/starred' }, accessToken)
-        }
-        const segmentId = query.match(/\bsegment\s*#?(\d+)\b/i)?.[1]
-        if (segmentId && normalized.includes('effort')) {
-            return handleApiRequest({ method: 'GET', path: `/segments/${segmentId}/all_efforts` }, accessToken)
-        }
-        if (segmentId) return handleApiRequest({ method: 'GET', path: `/segments/${segmentId}` }, accessToken)
-        const bounds = query.match(/(-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?)/)?.[1]
-        if (bounds) return handleApiRequest({ method: 'GET', path: `/segments/explore?bounds=${encodeURIComponent(bounds)}` }, accessToken)
-    }
-
-    throw new HttpError('Use a natural-language request or raw Strava API form such as GET /athlete/routes?page=1 or GET /segments/starred.', 400)
-}
-
-type RawApiRequest = {
-    method: 'GET'
-    path: string
-}
-
-function parseRawApiRequest(value: string): RawApiRequest | null {
-    const match = value.trim().replace(/\s+/g, ' ').match(/^(GET)\s+(\/[^\s]+)$/i)
-    if (!match) return null
-    const path = match[2]
-    if (path.includes('..') || path.includes('//')) throw new HttpError('Invalid Strava API path', 400)
-    return { method: 'GET', path }
-}
-
-async function handleApiRequest(request: RawApiRequest, accessToken: string): Promise<Response> {
-    const response = await fetch(`https://www.strava.com/api/v3${request.path}`, {
-        method: request.method,
-        headers: { Authorization: `Bearer ${accessToken}` },
-    })
-    if (response.status === 401) throw new HttpError('Reconnect Strava to refresh activity access', 409)
-    if (response.status === 403) throw new HttpError('Strava did not allow access to that API resource', 403)
-    if (response.status === 404) throw new HttpError('Strava API resource not found', 404)
-    if (!response.ok) throw new HttpError(`Strava API returned HTTP ${response.status}`, 502)
-
-    const contentType = response.headers.get('content-type') ?? ''
-    const data = contentType.includes('json') ? await response.json() : await response.text()
-    return json({
-        kind: 'api',
-        answer: `${request.method} ${request.path} returned successfully.`,
-        data,
-    })
+    throw new HttpError('Try asking about recent activities, your profile, stats, zones, or a specific activity ID or link.', 400)
 }
 
 async function fetchActivity(accessToken: string, activityId: string) {
