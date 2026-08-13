@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-12
 **Branch:** `main`
-**Status:** Training route detail scroll restoration is fixed and deployed; direct `?training=` smoke verification remains.
+**Status:** Correcting confusing technical copy in the deployed Ask Strava panel; no code changes made yet.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -28,6 +28,7 @@
 
 ## Open
 
+- Replace raw `GET ...` Ask Strava UI copy with plain-language prompts and guidance.
 - Complete a signed-in production smoke test of Ask Strava with route/segment and raw GET requests.
 - Verify training card clicks and direct `?training=` links after the navigation fix.
 - Last deployed commit: `a71f599`.

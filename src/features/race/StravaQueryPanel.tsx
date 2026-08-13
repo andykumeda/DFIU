@@ -18,9 +18,9 @@ interface QueryMessage {
 
 const suggestions = [
   'Show my recent activities',
-  'List my saved routes',
+  'Show my athlete stats',
   'Show my starred segments',
-  'GET /athlete/routes?page=1&per_page=20',
+  'Show my saved routes',
 ]
 
 export function StravaQueryPanel() {
@@ -146,9 +146,7 @@ export function StravaQueryPanel() {
           </button>
         </form>
         <p className="mt-2 text-xs text-neutral-500">
-          Press ⌘/Ctrl + Enter to send. For unrestricted API access, use forms like{' '}
-          <code className="text-neutral-400">GET /segments/starred</code> or{' '}
-          <code className="text-neutral-400">GET /segments/explore?bounds=…</code>. Queries use your signed-in Strava connection.
+          Press ⌘/Ctrl + Enter to send. Ask about activities, routes, segments, stats, or a specific activity. Queries use your signed-in Strava connection.
         </p>
         {error && (
           <div className="mt-3 rounded-lg border border-red-900/70 bg-red-950/30 p-3 text-sm text-red-200" role="alert">
