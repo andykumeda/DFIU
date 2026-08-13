@@ -36,6 +36,7 @@ import { RaceResources } from '@/features/race/RaceResources'
 import { WeatherLocations } from '@/features/race/WeatherLocations'
 import { DropBagsSection } from '@/features/race/DropBagsSection'
 import { TrainingSection } from '@/features/race/TrainingSection'
+import { trainingRouteListSearch } from '@/features/race/training-navigation'
 import { recomputeTrainingOverlapsForRace } from '@/features/race/useTrainingRoutes'
 import { isShareLinkView } from '@/features/race/share-link'
 
@@ -1827,7 +1828,16 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                     role='tab'
                     aria-selected={isActive}
                     onClick={() => {
-                      if (tab.id === 'training' && activeTab === 'training') setTrainingResetToken(token => token + 1)
+                      if (
+                        tab.id === 'training' &&
+                        activeTab === 'training' &&
+                        new URLSearchParams(location.search).has('training')
+                      ) {
+                        navigate({ search: trainingRouteListSearch(location.search) }, { replace: true })
+                      }
+                      if (tab.id === 'training' && activeTab === 'training') {
+                        setTrainingResetToken(token => token + 1)
+                      }
                       setActiveTab(tab.id)
                     }}
                     className={`shrink-0 rounded-md border px-3.5 py-2 text-[15px] sm:text-sm font-semibold transition-colors ${isActive ? 'border-blue-400 bg-blue-600 text-white shadow-sm shadow-blue-950/60' : 'border-neutral-700 bg-neutral-800/70 text-neutral-100 hover:border-neutral-500 hover:bg-neutral-800 hover:text-white'}`}

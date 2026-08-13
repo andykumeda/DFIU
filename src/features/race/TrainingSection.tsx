@@ -63,9 +63,10 @@ export function TrainingSection({
     deleteRoute,
   } = useTrainingRoutes(race.id, course?.geometry)
   const [searchParams, setSearchParams] = useSearchParams()
-  // The URL is the source of truth so a shared training link and in-app card
-  // clicks follow the same detail-view path without remounting the race page.
-  const selectedId = searchParams.get('training')
+  const routeIdFromUrl = searchParams.get('training')
+  // Update locally first so a card opens immediately, while mirroring the
+  // selection in the URL for direct links and sharing.
+  const [selectedId, setSelectedId] = useState<string | null>(() => routeIdFromUrl)
   const [uploading, setUploading] = useState(false)
   const [showUploader, setShowUploader] = useState(false)
   const [showCreator, setShowCreator] = useState(false)
@@ -134,13 +135,13 @@ export function TrainingSection({
   )
 
   useEffect(() => {
+    setSelectedId(routeIdFromUrl)
+  }, [routeIdFromUrl])
+
+  useEffect(() => {
     if (!resetToken) return
-    if (searchParams.has('training')) {
-      const next = new URLSearchParams(searchParams)
-      next.delete('training')
-      setSearchParams(next, { replace: true })
-    }
-  }, [resetToken, searchParams, setSearchParams])
+    setSelectedId(null)
+  }, [resetToken])
 
   useLayoutEffect(() => {
     // Direct links can resolve the route after the parent race page has already
@@ -159,12 +160,14 @@ export function TrainingSection({
   }, [selectedId, selectedRouteReady])
 
   const openRoute = (id: string) => {
+    setSelectedId(id)
     const next = new URLSearchParams(searchParams)
     next.set('training', id)
     setSearchParams(next, { replace: true })
   }
 
   const closeRoute = () => {
+    setSelectedId(null)
     if (searchParams.has('training')) {
       const next = new URLSearchParams(searchParams)
       next.delete('training')
