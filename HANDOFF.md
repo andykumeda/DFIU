@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-12
 **Branch:** `main`
-**Status:** Correcting confusing technical copy in the deployed Ask Strava panel; no code changes made yet.
+**Status:** Ask Strava technical UI copy is corrected and deployed; signed-in production smoke test remains.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -28,10 +28,9 @@
 
 ## Open
 
-- Replace raw `GET ...` Ask Strava UI copy with plain-language prompts and guidance.
 - Complete a signed-in production smoke test of Ask Strava with route/segment and raw GET requests.
 - Verify training card clicks and direct `?training=` links after the navigation fix.
-- Last deployed commit: `a71f599`.
+- Last deployed commit: `1652301`.
 - Smoke-test the merged pace/terrain UI in production.
 - Design and implement the opt-in post-event feedback email flow.
 - Rotate Strava secret; verify RBAC with a second account; `/admin` + owner-transfer UI.
