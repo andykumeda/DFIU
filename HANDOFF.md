@@ -30,7 +30,7 @@
 
 - Complete a signed-in production smoke test of Ask Strava with a participant account.
 - Verify training card clicks and direct `?training=` links after the navigation fix.
-- Last deployed commit: `3194b3b`.
+- Last deployed commit: `3a2f70c`.
 - Smoke-test the merged pace/terrain UI in production.
 - Design and implement the opt-in post-event feedback email flow.
 - Rotate Strava secret; verify RBAC with a second account; `/admin` + owner-transfer UI.
