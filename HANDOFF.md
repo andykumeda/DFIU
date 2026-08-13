@@ -13,7 +13,6 @@
 
 ## Just finished
 
-- Added **Ask Strava** above Training Analysis on training-route detail pages. It supports recent activities, profile, stats, zones, and specific activity IDs/links through the authenticated `strava-activity` Edge Function. Frontend and Edge Function deployed; unauthenticated endpoint smoke check correctly returned 401.
 - Removed page-level bottom padding from standard race-tab shells on mobile while preserving desktop spacing. Production Resources and Overview both measure a 0 px trailing gap at 390x844, with no browser console errors or warnings.
 - Enabled Nginx gzip compression for JavaScript, JSON, XML, SVG, CSS, and text responses. Verified the production main bundle now transfers at about 305 KB instead of 1.06 MB and Mapbox at about 462 KB instead of 1.68 MB.
 - Contained elastic page overscroll and made the `html`, `body`, and app-root backgrounds opaque dark. Verified the production training detail at 390x844 loads the correct route/title in about 2.8 seconds without exposing a blank page canvas below the content.

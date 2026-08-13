@@ -15,7 +15,6 @@ import type { PacePlanResult } from './pace-utils'
 import { formatHM, getOverlapRacePace } from './race-day-utils'
 import { sortOverlapSegmentsByRaceMile } from './training-analysis'
 import { TrainingAnalysisPanel, type StravaActivity } from './TrainingAnalysisPanel'
-import { StravaQueryPanel } from './StravaQueryPanel'
 
 interface TrainingRouteDetailProps {
   route: TrainingRouteRow
@@ -350,7 +349,6 @@ export function TrainingRouteDetail({
             </p>
           )}
         </div>
-        <StravaQueryPanel />
         <TrainingAnalysisPanel
           routes={[route]}
           planA={planA}
