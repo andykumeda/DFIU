@@ -29,7 +29,7 @@
 
 ## Open
 
-- Last product deployment: current Training navigation fix; clean commit/hash update pending.
+- Last product deployment: Training navigation fix from `8a1619b`; browser-verified at `https://dfiu.app/ac100?demo=1`.
 - Smoke-test the merged pace/terrain UI in production.
 - Design and implement the opt-in post-event feedback email flow.
 - Rotate Strava secret; verify RBAC with a second account; `/admin` + owner-transfer UI.
