@@ -1,4 +1,9 @@
-export type StravaQueryKind = 'activities' | 'profile' | 'stats' | 'zones' | 'activity'
+export type StravaQueryKind = 'activities' | 'profile' | 'stats' | 'zones' | 'activity' | 'api'
+
+export interface StravaApiRequest {
+  method: 'GET'
+  path: string
+}
 
 export interface StravaQueryActivity {
   id: number
@@ -24,10 +29,21 @@ export interface StravaQueryResponse {
     distanceMiles: number | null
     startDate: string | null
   }
+  data?: unknown
 }
 
 export function normalizeStravaQuery(query: string): string {
   return query.trim().replace(/\s+/g, ' ')
+}
+
+/** Parse the read-only advanced request form without allowing absolute URLs or path traversal. */
+export function parseStravaApiRequest(query: string): StravaApiRequest | null {
+  const match = normalizeStravaQuery(query).match(/^(GET)\s+(\/[^\s]+)$/i)
+  if (!match) return null
+  const method = 'GET'
+  const path = match[2]
+  if (path.includes('..') || path.includes('//')) return null
+  return { method, path }
 }
 
 export function formatDistanceMiles(distanceMiles: number | null | undefined): string {

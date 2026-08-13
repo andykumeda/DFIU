@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-12
 **Branch:** `main`
-**Status:** Participant-scoped Strava query panel is deployed; signed-in production smoke test remains.
+**Status:** Read-only full Strava API query gateway is deployed; signed-in route/segment smoke test remains.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -28,7 +28,7 @@
 
 ## Open
 
-- Complete a signed-in production smoke test of Ask Strava with a participant account.
+- Complete a signed-in production smoke test of Ask Strava with route/segment and raw GET requests.
 - Verify training card clicks and direct `?training=` links after the navigation fix.
 - Last deployed commit: `3a2f70c`.
 - Smoke-test the merged pace/terrain UI in production.

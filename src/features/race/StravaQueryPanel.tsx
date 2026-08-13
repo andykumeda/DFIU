@@ -16,7 +16,12 @@ interface QueryMessage {
   response?: StravaQueryResponse
 }
 
-const suggestions = ['Show my recent activities', 'What are my Strava stats?', 'Show my heart-rate zones']
+const suggestions = [
+  'Show my recent activities',
+  'List my saved routes',
+  'Show my starred segments',
+  'GET /athlete/routes?page=1&per_page=20',
+]
 
 export function StravaQueryPanel() {
   const [query, setQuery] = useState('')
@@ -60,7 +65,7 @@ export function StravaQueryPanel() {
         <div>
           <h2 id="strava-query-title" className="text-xl font-semibold text-white">Ask Strava</h2>
           <p className="text-sm text-neutral-400 mt-1">
-            Ask about your recent activities, profile, stats, zones, or a specific activity link.
+            Ask about Strava data, or call any Strava API path you have access to.
           </p>
         </div>
       </div>
@@ -102,6 +107,16 @@ export function StravaQueryPanel() {
                       ))}
                     </ul>
                   )}
+                  {message.response?.kind === 'api' && message.response.data !== undefined && (
+                    <details className="mt-3 border-t border-neutral-800 pt-2">
+                      <summary className="cursor-pointer text-xs text-blue-300 hover:text-blue-200">Show API response</summary>
+                      <pre className="mt-2 max-h-96 overflow-auto whitespace-pre-wrap break-words text-[11px] text-neutral-400">
+                        {typeof message.response.data === 'string'
+                          ? message.response.data
+                          : JSON.stringify(message.response.data, null, 2)}
+                      </pre>
+                    </details>
+                  )}
                 </div>
               </div>
             ))}
@@ -130,7 +145,11 @@ export function StravaQueryPanel() {
             Ask
           </button>
         </form>
-        <p className="mt-2 text-xs text-neutral-500">Press ⌘/Ctrl + Enter to send. Queries use your signed-in Strava connection.</p>
+        <p className="mt-2 text-xs text-neutral-500">
+          Press ⌘/Ctrl + Enter to send. For unrestricted API access, use forms like{' '}
+          <code className="text-neutral-400">GET /segments/starred</code> or{' '}
+          <code className="text-neutral-400">GET /segments/explore?bounds=…</code>. Queries use your signed-in Strava connection.
+        </p>
         {error && (
           <div className="mt-3 rounded-lg border border-red-900/70 bg-red-950/30 p-3 text-sm text-red-200" role="alert">
             <div className="flex items-start gap-2"><Activity className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /><p>{error}</p></div>
