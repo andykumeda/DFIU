@@ -68,7 +68,7 @@ serve(async (req) => {
         const { data: userResult, error: userError } = await supabaseAdmin.auth.getUser(jwt)
         if (userError || !userResult.user) throw new HttpError('Authentication required', 401)
 
-        const { activity, action } = await req.json()
+        const { activity, action, query } = await req.json()
 
         const { data: connection, error: connectionError } = await supabaseAdmin
             .from('strava_connections')
@@ -105,6 +105,10 @@ serve(async (req) => {
             return json({ connected: true, athleteName: athleteName ?? `Strava athlete ${connection.athlete_id}` })
         }
 
+        if (action === 'query') {
+            return await handleQuery(query, accessToken, connection.athlete_id)
+        }
+
         const activityId = parseActivityId(activity)
         if (!activityId) throw new HttpError('Enter a valid Strava activity link or ID', 400)
 
@@ -134,6 +138,88 @@ serve(async (req) => {
         return json({ error: message }, status)
     }
 })
+
+async function handleQuery(query: unknown, accessToken: string, athleteId: number): Promise<Response> {
+    if (typeof query !== 'string' || !query.trim()) throw new HttpError('Ask a Strava question first', 400)
+    const normalized = query.trim().toLowerCase()
+    const activityId = parseActivityId(query)
+
+    if (activityId) {
+        const activity = await fetchActivity(accessToken, activityId)
+        return json({
+            kind: 'activity',
+            answer: `${activity.name}: ${formatMiles(activity.distanceMiles)} in ${formatMinutes(activity.movingSeconds)} moving time.`,
+            activity,
+        })
+    }
+
+    if (normalized.includes('zone')) {
+        const data = await fetchStrava(accessToken, '/athlete/zones')
+        return json({ kind: 'zones', answer: 'Here are your configured heart-rate and power zones.', zones: data })
+    }
+
+    if (normalized.includes('profile') || normalized.includes('who am i')) {
+        const data = await fetchStrava(accessToken, '/athlete') as Record<string, unknown>
+        const name = [data.firstname, data.lastname].filter(Boolean).join(' ') || data.username || 'your Strava profile'
+        return json({ kind: 'profile', answer: `You are connected as ${name}.`, profile: data })
+    }
+
+    if (normalized.includes('stat')) {
+        const data = await fetchStrava(accessToken, `/athletes/${athleteId}/stats`)
+        return json({ kind: 'stats', answer: 'Here are your recent, year-to-date, and all-time Strava stats.', stats: data })
+    }
+
+    if (normalized.includes('activit') || normalized.includes('run') || normalized.includes('ride') || normalized.includes('recent') || normalized.includes('latest')) {
+        const data = await fetchStrava(accessToken, '/athlete/activities?per_page=10&page=1') as unknown[]
+        const activities = data.map(item => {
+            const value = item as Record<string, unknown>
+            return {
+                id: Number(value.id),
+                name: typeof value.name === 'string' ? value.name : 'Strava activity',
+                type: typeof value.type === 'string' ? value.type : undefined,
+                distanceMiles: Number.isFinite(Number(value.distance)) ? Number(value.distance) / 1609.344 : null,
+                movingSeconds: Number(value.moving_time) || 0,
+                startDate: typeof value.start_date === 'string' ? value.start_date : null,
+            }
+        })
+        return json({ kind: 'activities', answer: `Here are your ${activities.length} most recent activities.`, activities })
+    }
+
+    throw new HttpError('Try asking about recent activities, your profile, stats, zones, or a specific activity ID or link.', 400)
+}
+
+async function fetchActivity(accessToken: string, activityId: string) {
+    const data = await fetchStrava(accessToken, `/activities/${activityId}`) as Record<string, unknown>
+    const stream = await getActivityDistanceTimeStream(accessToken, activityId)
+    return {
+        id: Number(data.id),
+        name: typeof data.name === 'string' ? data.name : 'Strava activity',
+        elapsedSeconds: Number(data.elapsed_time) || 0,
+        movingSeconds: Number(data.moving_time) || 0,
+        distanceMiles: Number.isFinite(Number(data.distance)) ? Number(data.distance) / 1609.344 : null,
+        startDate: typeof data.start_date === 'string' ? data.start_date : null,
+        stream,
+    }
+}
+
+async function fetchStrava(accessToken: string, path: string): Promise<unknown> {
+    const response = await fetch(`https://www.strava.com/api/v3${path}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+    })
+    if (response.status === 404) throw new HttpError('Strava could not find that resource', 404)
+    if (response.status === 401 || response.status === 403) throw new HttpError('Strava did not allow access to that data', 403)
+    if (!response.ok) throw new HttpError('Unable to load data from Strava', 502)
+    return response.json()
+}
+
+function formatMiles(value: number | null): string {
+    return value != null && Number.isFinite(value) ? `${value.toFixed(1)} miles` : 'an unknown distance'
+}
+
+function formatMinutes(seconds: number): string {
+    const minutes = Math.round(Math.max(0, seconds) / 60)
+    return `${minutes} minutes`
+}
 
 function parseActivityId(value: unknown): string | null {
     if (typeof value !== 'string') return null
