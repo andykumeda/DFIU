@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-13
 **Branch:** `main`
-**Status:** Training map overlap uses a 0.05-mile GPX snap and trims range ends so a converging approach stays blue until the race junction.
+**Status:** Training map overlap keeps full-course GPX snapping for accuracy. Latency on that view is client CPU (~2.5–5s Turf scans), not nginx or asset transfer.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -13,6 +13,7 @@
 
 ## Just finished
 
+- Confirmed Training-detail latency is client overlap snapping (Turf against the full AC100 GPX, ~2.5–5s). HTML ~200–340ms and gzip JS ~450ms. Kept the accurate full-course snap rather than a faster vertex/downsample approximation.
 - Tightened Training map overlap to a 0.05-mile GPX snap and trimmed range ends by that radius so the approach to a race junction (e.g. Spruce Grove) stays blue until the traces meet. Heading/visit checks stay off so a true shared stem remains orange.
 - Simplified Training map overlap to GPX coordinate distance (~0.12 mi). Heading and course-mile jump checks were dropping the shared stem at the Chantry loop. A training sample is orange when it is that close to the race line.
 - Fixed Training route navigation by restoring immediate local selection while retaining shareable `?training=` URLs. Reselecting the Training tab returns to the list without breaking later card clicks.
