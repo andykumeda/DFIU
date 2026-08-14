@@ -14,11 +14,11 @@ export const OVERLAP_SAMPLE_STEP_MI = 0.05
 /** Bridge brief off-course gaps along the training route (GPS dropouts / switchbacks). */
 export const OVERLAP_GAP_BRIDGE_MI = 0.4
 
-/** Map painting uses the same snap distance as analysis (~200 m). */
-export const MAP_OVERLAP_BUFFER_MI = OVERLAP_BUFFER_MI
+/** Map painting uses a tighter snap (~80 m) so a converging trail stays blue until it meets the race. */
+export const MAP_OVERLAP_BUFFER_MI = 0.05
 
-/** Map painting bridges normal GPS gaps between samples on one shared trail. */
-export const MAP_OVERLAP_GAP_BRIDGE_MI = 0.4
+/** Map painting only bridges tiny GPS gaps; longer approaches must remain blue. */
+export const MAP_OVERLAP_GAP_BRIDGE_MI = 0.1
 
 /** Merge course-mile clusters closer than this into one displayed range. */
 export const COURSE_RANGE_MERGE_MI = 1.25
@@ -138,7 +138,9 @@ function round2(n: number): number {
 /**
  * Paint overlap where training GPX is within snap distance of race GPX.
  * Heading and course-mile jumps are ignored so a shared stem stays orange
- * when the race turns off onto a loop.
+ * when the race turns off onto a loop. Range ends are trimmed by the snap
+ * radius so a trail that only converges on the race is not painted orange
+ * before the actual junction.
  */
 export function computeTrainingMapOverlap(
   trainingCoords: LonLat[],
@@ -155,8 +157,13 @@ export function computeTrainingMapOverlap(
   let lastHit: number | null = null
 
   const flush = () => {
-    if (start == null || lastHit == null || lastHit - start < 0.05) return
-    ranges.push({ trainingStartMi: round2(start), trainingEndMi: round2(lastHit) })
+    if (start == null || lastHit == null) return
+    const span = lastHit - start
+    const trim = Math.min(bufferMi, span / 3)
+    const trimmedStart = start + trim
+    const trimmedEnd = lastHit - trim
+    if (trimmedEnd - trimmedStart < 0.05) return
+    ranges.push({ trainingStartMi: round2(trimmedStart), trainingEndMi: round2(trimmedEnd) })
     start = null
     lastHit = null
   }

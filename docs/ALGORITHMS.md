@@ -75,7 +75,7 @@ Training overlap is geometric, not name-based. DFIU:
 
 The total overlap is unique course-mile coverage across the assigned race-mile ranges.
 
-Map coloring uses the same GPX snap distance (~0.12 mi). A training sample is orange when it is that close to the race line, regardless of heading or which race-mile visit is nearest. Trails farther than that stay blue.
+Map coloring snaps training GPX to the race line within about 0.05 mi. Heading and race-visit jumps are ignored, so a shared stem stays orange when the race turns onto a loop. Each painted range is trimmed by that snap radius so a trail that only converges on the course stays blue until the junction.
 
 ## Strava training analysis
 

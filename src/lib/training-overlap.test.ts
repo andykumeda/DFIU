@@ -177,7 +177,7 @@ describe('computeTrainingMapOverlap', () => {
     const ranges = computeTrainingMapOverlap(training, course)
 
     expect(ranges).toHaveLength(1)
-    expect(ranges[0].trainingStartMi).toBe(0)
+    expect(ranges[0].trainingStartMi).toBeLessThan(0.1)
     expect(ranges[0].trainingEndMi).toBeGreaterThan(4.5)
   })
 
@@ -230,7 +230,7 @@ describe('computeTrainingMapOverlap', () => {
     const ranges = computeTrainingMapOverlap(training, course)
 
     expect(ranges).toHaveLength(1)
-    expect(ranges[0].trainingStartMi).toBe(0)
+    expect(ranges[0].trainingStartMi).toBeLessThan(0.15)
     expect(ranges[0].trainingEndMi).toBeGreaterThan(3.5)
   })
 
@@ -271,8 +271,26 @@ describe('computeTrainingMapOverlap', () => {
     const ranges = computeTrainingMapOverlap(stem, course)
 
     expect(ranges).toHaveLength(1)
-    expect(ranges[0].trainingStartMi).toBe(0)
+    expect(ranges[0].trainingStartMi).toBeLessThan(0.15)
     expect(ranges[0].trainingEndMi).toBeGreaterThan(3.5)
+  })
+
+  it('keeps a converging approach blue until the trails meet', () => {
+    const lat = 34.2
+    const dLon = 0.05 / (69 * Math.cos((lat * Math.PI) / 180))
+    const dLat = 0.05 / 69
+    const junctionLon = -118.2 + 20 * dLon
+    const course: [number, number][] = [
+      ...Array.from({ length: 12 }, (_, i) => [junctionLon, lat - (12 - i) * dLat] as [number, number]),
+      ...Array.from({ length: 13 }, (_, i) => [junctionLon + i * dLon, lat] as [number, number]),
+    ]
+    const training: [number, number][] = Array.from({ length: 33 }, (_, i) => [-118.2 + i * dLon, lat])
+
+    const ranges = computeTrainingMapOverlap(training, course)
+    const first = ranges[0]
+
+    expect(first).toBeTruthy()
+    expect(first.trainingStartMi).toBeGreaterThan(0.7)
   })
 })
 

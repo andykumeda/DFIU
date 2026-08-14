@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-13
 **Branch:** `main`
-**Status:** Training map overlap is GPX distance only (~0.12 mi); shared trail at a race loop paints orange.
+**Status:** Training map overlap uses a 0.05-mile GPX snap and trims range ends so a converging approach stays blue until the race junction.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -13,6 +13,7 @@
 
 ## Just finished
 
+- Tightened Training map overlap to a 0.05-mile GPX snap and trimmed range ends by that radius so the approach to a race junction (e.g. Spruce Grove) stays blue until the traces meet. Heading/visit checks stay off so a true shared stem remains orange.
 - Simplified Training map overlap to GPX coordinate distance (~0.12 mi). Heading and course-mile jump checks were dropping the shared stem at the Chantry loop. A training sample is orange when it is that close to the race line.
 - Fixed Training route navigation by restoring immediate local selection while retaining shareable `?training=` URLs. Reselecting the Training tab returns to the list without breaking later card clicks.
 - Removed the Ask Strava panel and its query gateway. The Training page retains its prior Strava connection and Training Analysis flows.
@@ -30,7 +31,7 @@
 
 ## Open
 
-- Last product deployment: Training map overlap is GPX distance only; production URL is `https://dfiu.app/race/fca7696b-6093-49a7-be8a-ba3c0a480643?demo=1&training=30a7927b-1283-47ca-9968-45ec803dfef1`.
+- Last product deployment: Training map overlap snap 0.05 mi with junction trim; production URL is `https://dfiu.app/race/fca7696b-6093-49a7-be8a-ba3c0a480643?demo=1&training=30a7927b-1283-47ca-9968-45ec803dfef1`.
 - Smoke-test the merged pace/terrain UI in production.
 - Design and implement the opt-in post-event feedback email flow.
 - Rotate Strava secret; verify RBAC with a second account; `/admin` + owner-transfer UI.
