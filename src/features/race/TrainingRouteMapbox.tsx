@@ -100,23 +100,6 @@ function setOrAddLine(
   }
 }
 
-function overlapSlice(
-  data: MapData,
-  segment: NonNullable<MapData['overlapSegments']>[number]
-): [number, number][] {
-  if (
-    data.courseCoordinates &&
-    data.courseCoordinates.length >= 2 &&
-    segment.courseStartMi != null &&
-    segment.courseEndMi != null
-  ) {
-    const lo = Math.min(segment.courseStartMi, segment.courseEndMi)
-    const hi = Math.max(segment.courseStartMi, segment.courseEndMi)
-    return sliceByMiles(data.courseCoordinates, lo, hi)
-  }
-  return sliceByMiles(data.coordinates, segment.trainingStartMi, segment.trainingEndMi)
-}
-
 function drawRouteData(map: mapboxgl.Map, data: MapData) {
   if (data.coordinates.length < 2) return
 
@@ -152,7 +135,7 @@ function drawRouteData(map: mapboxgl.Map, data: MapData) {
       .map(segment =>
         lineFeature(
           downsample(
-            overlapSlice(data, segment),
+            sliceByMiles(data.coordinates, segment.trainingStartMi, segment.trainingEndMi),
             2000
           )
         )

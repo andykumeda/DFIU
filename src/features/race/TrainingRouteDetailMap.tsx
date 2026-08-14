@@ -248,7 +248,7 @@ export function TrainingRouteDetailMap(props: TrainingRouteDetailMapProps) {
   const { className, showLegend = false, ...mapProps } = props
   const liveOverlap =
     !staticPreview && !!props.courseCoordinates && props.courseCoordinates.length >= 2
-  const [computedOverlap, setComputedOverlap] = useState(props.overlapSegments)
+  const [computedOverlap, setComputedOverlap] = useState<typeof props.overlapSegments>(undefined)
   useEffect(() => {
     if (!liveOverlap || !props.courseCoordinates) return
     const training = props.coordinates
@@ -326,22 +326,7 @@ function TrainingRouteSvgDetail({
   const overlapPolylines =
     overlapSegments
       ?.map(seg => {
-        const source =
-          courseCoordinates &&
-          courseCoordinates.length >= 2 &&
-          seg.courseStartMi != null &&
-          seg.courseEndMi != null
-            ? courseCoordinates
-            : coordinates
-        const lo =
-          source === courseCoordinates
-            ? Math.min(seg.courseStartMi!, seg.courseEndMi!)
-            : seg.trainingStartMi
-        const hi =
-          source === courseCoordinates
-            ? Math.max(seg.courseStartMi!, seg.courseEndMi!)
-            : seg.trainingEndMi
-        const slice = downsample(sliceByMiles(source, lo, hi), 1500)
+        const slice = downsample(sliceByMiles(coordinates, seg.trainingStartMi, seg.trainingEndMi), 1500)
         if (slice.length < 2) return null
         return project(slice, minLon, maxLon, minLat, maxLat, vbW, vbH, pad)
       })
