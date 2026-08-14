@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-13
 **Branch:** `main`
-**Status:** Production redeployed with Training overlap visit-lock. The remaining blue connector on Redbox–Wilson is off the official AC100 GPX: race turns down toward Chantry while training stays high on Sturtevant.
+**Status:** Training map overlap is GPX distance only (~0.12 mi); shared trail at a race loop paints orange.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -13,9 +13,8 @@
 
 ## Just finished
 
-- Fixed Training overlap coloring on shared out-and-back trail. Map painting now snaps to full course geometry and stays on the current race visit when unconstrained nearest-point jumps to the return pass, so that stretch stays orange instead of blue.
+- Simplified Training map overlap to GPX coordinate distance (~0.12 mi). Heading and course-mile jump checks were dropping the shared stem at the Chantry loop. A training sample is orange when it is that close to the race line.
 - Fixed Training route navigation by restoring immediate local selection while retaining shareable `?training=` URLs. Reselecting the Training tab returns to the list without breaking later card clicks.
-- Fixed Training detail-map overlap rendering. The map tracks course-mile progression with direction-aware proximity, a 0.06-mile visual tolerance, and a 0.4-mile bridge for normal shared-trail GPS gaps. The detail breakdown filters sub-quarter-mile reverse/duplicate snaps such as `24.8–24.6`.
 - Removed the Ask Strava panel and its query gateway. The Training page retains its prior Strava connection and Training Analysis flows.
 - Removed page-level bottom padding from standard race-tab shells on mobile while preserving desktop spacing. Production Resources and Overview both measure a 0 px trailing gap at 390x844, with no browser console errors or warnings.
 - Enabled Nginx gzip compression for JavaScript, JSON, XML, SVG, CSS, and text responses. Verified the production main bundle now transfers at about 305 KB instead of 1.06 MB and Mapbox at about 462 KB instead of 1.68 MB.
@@ -31,7 +30,7 @@
 
 ## Open
 
-- Last product deployment: Training overlap visit-lock (footer will match the commit after a clean rebuild); production URL is `https://dfiu.app/race/fca7696b-6093-49a7-be8a-ba3c0a480643?demo=1&training=30a7927b-1283-47ca-9968-45ec803dfef1`.
+- Last product deployment: Training map overlap is GPX distance only; production URL is `https://dfiu.app/race/fca7696b-6093-49a7-be8a-ba3c0a480643?demo=1&training=30a7927b-1283-47ca-9968-45ec803dfef1`.
 - Smoke-test the merged pace/terrain UI in production.
 - Design and implement the opt-in post-event feedback email flow.
 - Rotate Strava secret; verify RBAC with a second account; `/admin` + owner-transfer UI.

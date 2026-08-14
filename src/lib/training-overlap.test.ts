@@ -201,18 +201,16 @@ describe('computeTrainingMapOverlap', () => {
     expect(ranges[0].trainingEndMi).toBeLessThan(ranges[1].trainingStartMi)
   })
 
-  it('does not paint a nearby parallel trail as overlap', () => {
+  it('does not paint a distant parallel trail as overlap', () => {
     const course: [number, number][] = [
       [-118.2, 34.2],
       [-118.16, 34.2],
       [-118.12, 34.2],
     ]
-    // About 180 ft north of the course: close enough for broad route analysis,
-    // but visibly a separate trail and therefore not map overlap.
     const training: [number, number][] = [
-      [-118.2, 34.201],
-      [-118.16, 34.201],
-      [-118.12, 34.201],
+      [-118.2, 34.203],
+      [-118.16, 34.203],
+      [-118.12, 34.203],
     ]
 
     expect(computeTrainingMapOverlap(training, course)).toEqual([])
@@ -256,6 +254,25 @@ describe('computeTrainingMapOverlap', () => {
     // The matching eastbound approach is ~2.3 mi; the northbound branch adds
     // another ~0.7 mi and must stay blue.
     expect(ranges[0].trainingEndMi).toBeLessThan(2.5)
+  })
+
+  it('paints the shared stem orange when the race turns off onto a loop', () => {
+    const lat = 34.2
+    const dLon = 0.1 / (69 * Math.cos((lat * Math.PI) / 180))
+    const dLat = 0.1 / 69
+    const stem: [number, number][] = Array.from({ length: 41 }, (_, i) => [-118.2 + i * dLon, lat])
+    const junction = stem[20]
+    const loopNorth: [number, number][] = Array.from({ length: 10 }, (_, i) => [
+      junction[0],
+      junction[1] + (i + 1) * dLat,
+    ])
+    const course = [...stem.slice(0, 21), ...loopNorth, ...[...loopNorth].reverse().slice(1), ...stem.slice(21)]
+
+    const ranges = computeTrainingMapOverlap(stem, course)
+
+    expect(ranges).toHaveLength(1)
+    expect(ranges[0].trainingStartMi).toBe(0)
+    expect(ranges[0].trainingEndMi).toBeGreaterThan(3.5)
   })
 })
 

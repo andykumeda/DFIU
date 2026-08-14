@@ -14,20 +14,11 @@ export const OVERLAP_SAMPLE_STEP_MI = 0.05
 /** Bridge brief off-course gaps along the training route (GPS dropouts / switchbacks). */
 export const OVERLAP_GAP_BRIDGE_MI = 0.4
 
+/** Map painting uses the same snap distance as analysis (~200 m). */
+export const MAP_OVERLAP_BUFFER_MI = OVERLAP_BUFFER_MI
+
 /** Map painting bridges normal GPS gaps between samples on one shared trail. */
 export const MAP_OVERLAP_GAP_BRIDGE_MI = 0.4
-
-/** Map painting is stricter than analysis so nearby parallel trails remain blue. */
-export const MAP_OVERLAP_BUFFER_MI = 0.06
-
-/** Sharp trail bends can differ between GPX traces; allow a wider local heading change. */
-export const MAP_OVERLAP_HEADING_TOLERANCE_DEG = 75
-
-/** Permit course-mile movement through sharp bends without accepting a distant branch. */
-export const MAP_OVERLAP_COURSE_JUMP_MI = 4
-
-/** Nearby paths must follow the same trail direction (either travel direction is valid). */
-export const OVERLAP_HEADING_TOLERANCE_DEG = 45
 
 /** Merge course-mile clusters closer than this into one displayed range. */
 export const COURSE_RANGE_MERGE_MI = 1.25
@@ -144,117 +135,38 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100
 }
 
-function indexAtCourseMile(courseCum: number[], mile: number): number {
-  if (courseCum.length < 2) return 0
-  for (let i = 0; i < courseCum.length - 1; i++) {
-    if (courseCum[i + 1] >= mile) return i
-  }
-  return courseCum.length - 2
-}
-
-function headingDegrees(a: LonLat, b: LonLat): number | null {
-  const meanLat = ((a[1] + b[1]) / 2) * (Math.PI / 180)
-  const east = (b[0] - a[0]) * Math.cos(meanLat)
-  const north = b[1] - a[1]
-  if (Math.hypot(east, north) < 1e-9) return null
-  return (Math.atan2(east, north) * 180) / Math.PI
-}
-
-/** Same trail can be traveled in either direction, so compare headings modulo 180°. */
-function hasMatchingTrailDirection(
-  training: LonLat[],
-  trainingIndex: number,
-  course: LonLat[],
-  courseIndex: number,
-  toleranceDeg: number
-): boolean {
-  const trainingStart = training[Math.max(0, trainingIndex - 1)]
-  const trainingEnd = training[Math.min(training.length - 1, trainingIndex + 1)]
-  const courseStart = course[Math.max(0, Math.min(courseIndex, course.length - 2))]
-  const courseEnd = course[Math.min(course.length - 1, Math.max(1, courseIndex + 1))]
-  const trainingHeading = headingDegrees(trainingStart, trainingEnd)
-  const courseHeading = headingDegrees(courseStart, courseEnd)
-  if (trainingHeading == null || courseHeading == null) return true
-
-  const rawDifference = Math.abs(((trainingHeading - courseHeading + 540) % 360) - 180)
-  const undirectedDifference = Math.min(rawDifference, 180 - rawDifference)
-  return undirectedDifference <= toleranceDeg
-}
-
 /**
- * Find the portions of the displayed training geometry that are physically
- * close to the displayed race geometry. This is intentionally geometry-first
- * for map painting: persisted overlap metadata can be stale after a course or
- * route edit, while the map should always color the lines the user can see.
- * Course-mile continuity keeps an out-and-back from dropping to "training only"
- * when GPS is slightly closer to the other visit of the same trail.
+ * Paint overlap where training GPX is within snap distance of race GPX.
+ * Heading and course-mile jumps are ignored so a shared stem stays orange
+ * when the race turns off onto a loop.
  */
 export function computeTrainingMapOverlap(
   trainingCoords: LonLat[],
   courseCoords: LonLat[],
-  options?: { bufferMi?: number; gapBridgeMi?: number; headingToleranceDeg?: number }
+  options?: { bufferMi?: number; gapBridgeMi?: number }
 ): TrainingMapOverlapSegment[] {
   if (trainingCoords.length < 2 || courseCoords.length < 2) return []
 
   const bufferMi = options?.bufferMi ?? MAP_OVERLAP_BUFFER_MI
   const gapBridgeMi = options?.gapBridgeMi ?? MAP_OVERLAP_GAP_BRIDGE_MI
-  const headingToleranceDeg = options?.headingToleranceDeg ?? MAP_OVERLAP_HEADING_TOLERANCE_DEG
   const { coords, miles } = downsampleByDistance(trainingCoords, OVERLAP_SAMPLE_STEP_MI)
-  const courseCum = cumulativeMiles(courseCoords)
   const ranges: TrainingMapOverlapSegment[] = []
   let start: number | null = null
   let lastHit: number | null = null
-  let lastCourseMi: number | null = null
 
   const flush = () => {
     if (start == null || lastHit == null || lastHit - start < 0.05) return
     ranges.push({ trainingStartMi: round2(start), trainingEndMi: round2(lastHit) })
     start = null
     lastHit = null
-    lastCourseMi = null
   }
 
   for (let i = 0; i < coords.length; i++) {
     const [lon, lat] = coords[i]
-    const pt = { lat, lon }
-    const nearest = getNearestPointOnLine(pt, courseCoords)
-    let nearestCourseMi =
-      nearest != null
-        ? getDistanceFromStart(courseCoords, nearest.index, { lat: nearest.lat, lon: nearest.lon })
-        : null
-    const courseJump =
-      nearestCourseMi != null && lastCourseMi != null ? Math.abs(nearestCourseMi - lastCourseMi) : 0
-    let onCourse =
-      nearest != null &&
-      nearest.distance <= bufferMi &&
-      hasMatchingTrailDirection(coords, i, courseCoords, nearest.index, headingToleranceDeg) &&
-      courseJump <= MAP_OVERLAP_COURSE_JUMP_MI
-
-    // Out-and-back GPS traces sit on the same trail. Unconstrained nearest can
-    // jump to the other visit and look like a branch; stay on the current visit
-    // when that trail is still underfoot.
-    if (!onCourse && lastCourseMi != null) {
-      const hintedMi = snapNearPredictedMile(
-        pt,
-        courseCoords,
-        courseCum,
-        lastCourseMi,
-        bufferMi,
-        MAP_OVERLAP_COURSE_JUMP_MI
-      )
-      if (hintedMi != null) {
-        const hintedIndex = indexAtCourseMile(courseCum, hintedMi)
-        if (hasMatchingTrailDirection(coords, i, courseCoords, hintedIndex, headingToleranceDeg)) {
-          onCourse = true
-          nearestCourseMi = hintedMi
-        }
-      }
-    }
-
-    if (onCourse) {
+    const nearest = getNearestPointOnLine({ lat, lon }, courseCoords)
+    if (nearest != null && nearest.distance <= bufferMi) {
       if (start == null) start = miles[i]
       lastHit = miles[i]
-      lastCourseMi = nearestCourseMi
     } else if (lastHit != null && miles[i] - lastHit > gapBridgeMi) {
       flush()
     }
