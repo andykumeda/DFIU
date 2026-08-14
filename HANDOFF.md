@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-13
 **Branch:** `main`
-**Status:** Training detail maps keep orange overlap on shared out-and-back trail when GPS is closer to the other race visit.
+**Status:** Production redeployed with Training overlap visit-lock. The remaining blue connector on Redbox–Wilson is off the official AC100 GPX: race turns down toward Chantry while training stays high on Sturtevant.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -31,7 +31,7 @@
 
 ## Open
 
-- Last product deployment: Training out-and-back overlap visit-lock (`68f87f1`); production URL is `https://dfiu.app/race/fca7696b-6093-49a7-be8a-ba3c0a480643?demo=1&training=30a7927b-1283-47ca-9968-45ec803dfef1`.
+- Last product deployment: Training overlap visit-lock (footer will match the commit after a clean rebuild); production URL is `https://dfiu.app/race/fca7696b-6093-49a7-be8a-ba3c0a480643?demo=1&training=30a7927b-1283-47ca-9968-45ec803dfef1`.
 - Smoke-test the merged pace/terrain UI in production.
 - Design and implement the opt-in post-event feedback email flow.
 - Rotate Strava secret; verify RBAC with a second account; `/admin` + owner-transfer UI.
