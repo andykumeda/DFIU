@@ -31,7 +31,7 @@
 
 ## Open
 
-- Last product deployment: Training out-and-back overlap visit-lock; production URL is `https://dfiu.app/race/fca7696b-6093-49a7-be8a-ba3c0a480643?demo=1&training=30a7927b-1283-47ca-9968-45ec803dfef1`.
+- Last product deployment: Training out-and-back overlap visit-lock (`68f87f1`); production URL is `https://dfiu.app/race/fca7696b-6093-49a7-be8a-ba3c0a480643?demo=1&training=30a7927b-1283-47ca-9968-45ec803dfef1`.
 - Smoke-test the merged pace/terrain UI in production.
 - Design and implement the opt-in post-event feedback email flow.
 - Rotate Strava secret; verify RBAC with a second account; `/admin` + owner-transfer UI.
