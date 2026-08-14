@@ -14,11 +14,17 @@ export const OVERLAP_SAMPLE_STEP_MI = 0.05
 /** Bridge brief off-course gaps along the training route (GPS dropouts / switchbacks). */
 export const OVERLAP_GAP_BRIDGE_MI = 0.4
 
-/** Map painting only bridges tiny GPS gaps; longer nearby branches must remain blue. */
-export const MAP_OVERLAP_GAP_BRIDGE_MI = 0.1
+/** Map painting bridges normal GPS gaps between samples on one shared trail. */
+export const MAP_OVERLAP_GAP_BRIDGE_MI = 0.4
 
 /** Map painting is stricter than analysis so nearby parallel trails remain blue. */
 export const MAP_OVERLAP_BUFFER_MI = 0.06
+
+/** Sharp trail bends can differ between GPX traces; allow a wider local heading change. */
+export const MAP_OVERLAP_HEADING_TOLERANCE_DEG = 75
+
+/** Permit course-mile movement through sharp bends without accepting a distant branch. */
+export const MAP_OVERLAP_COURSE_JUMP_MI = 4
 
 /** Nearby paths must follow the same trail direction (either travel direction is valid). */
 export const OVERLAP_HEADING_TOLERANCE_DEG = 45
@@ -182,7 +188,7 @@ export function computeTrainingMapOverlap(
 
   const bufferMi = options?.bufferMi ?? MAP_OVERLAP_BUFFER_MI
   const gapBridgeMi = options?.gapBridgeMi ?? MAP_OVERLAP_GAP_BRIDGE_MI
-  const headingToleranceDeg = options?.headingToleranceDeg ?? OVERLAP_HEADING_TOLERANCE_DEG
+  const headingToleranceDeg = options?.headingToleranceDeg ?? MAP_OVERLAP_HEADING_TOLERANCE_DEG
   const { coords, miles } = downsampleByDistance(trainingCoords, OVERLAP_SAMPLE_STEP_MI)
   const sampledCourse = downsampleByDistance(courseCoords, OVERLAP_SAMPLE_STEP_MI)
   const ranges: TrainingMapOverlapSegment[] = []
@@ -209,7 +215,7 @@ export function computeTrainingMapOverlap(
       nearest != null &&
       nearest.distance <= bufferMi &&
       hasMatchingTrailDirection(coords, i, sampledCourse.coords, nearest.index, headingToleranceDeg) &&
-      courseJump <= COURSE_JUMP_SPLIT_MI
+      courseJump <= MAP_OVERLAP_COURSE_JUMP_MI
     if (onCourse) {
       if (start == null) start = miles[i]
       lastHit = miles[i]
