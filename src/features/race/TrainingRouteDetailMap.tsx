@@ -154,14 +154,16 @@ const TrainingRouteMapbox = lazy(() =>
 
 /** Detail map: Mapbox basemap (lazy) with SVG fallback. */
 export function TrainingRouteDetailMap(props: TrainingRouteDetailMapProps) {
-  const [useSvg, setUseSvg] = useState(!import.meta.env.VITE_MAPBOX_TOKEN)
+  const staticPreview = props.interactive === false
+  const [useSvg, setUseSvg] = useState(staticPreview || !import.meta.env.VITE_MAPBOX_TOKEN)
   const handleMapFailure = useCallback(() => setUseSvg(true), [])
   const { className, showLegend = false, ...mapProps } = props
   const mapOverlapSegments = useMemo(
-    () => props.courseCoordinates && props.courseCoordinates.length >= 2
-      ? computeTrainingMapOverlap(props.coordinates, props.courseCoordinates)
-      : props.overlapSegments,
-    [props.coordinates, props.courseCoordinates, props.overlapSegments]
+    () =>
+      !staticPreview && props.courseCoordinates && props.courseCoordinates.length >= 2
+        ? computeTrainingMapOverlap(props.coordinates, props.courseCoordinates)
+        : props.overlapSegments,
+    [staticPreview, props.coordinates, props.courseCoordinates, props.overlapSegments]
   )
   const mapData = { ...mapProps, overlapSegments: mapOverlapSegments }
 

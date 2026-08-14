@@ -13,8 +13,8 @@ import {
   returnDirectionsUrl,
 } from '@/lib/training-overlap'
 import { useTrainingRoutes, type TrainingRouteRow } from './useTrainingRoutes'
-import { TrainingRouteDetailMap } from './TrainingRouteDetailMap'
 import { TrainingRouteDetail } from './TrainingRouteDetail'
+import { TrainingRouteSvgPreview } from './TrainingRouteDetailMap'
 import { calculatePacePlan, isPaceChartWaypoint, type PacePlanResult } from './pace-utils'
 import { usePacePlans, computePlanMinutes } from './usePacePlans'
 import type { RunnerPacingProfile } from './runner-profile'
@@ -320,7 +320,6 @@ export function TrainingSection({
                 planAGoalMinutes={planAMinutes}
                 race={race}
                 clock24h={clock24h}
-                courseCoordinates={courseCoordinates}
                 courseElevationSamples={courseElevationSamples}
                 onOpen={() => openRoute(route.id)}
               />
@@ -338,7 +337,6 @@ function TrainingRouteCard({
   planAGoalMinutes,
   race,
   clock24h,
-  courseCoordinates,
   courseElevationSamples,
   onOpen,
 }: {
@@ -347,7 +345,6 @@ function TrainingRouteCard({
   planAGoalMinutes: number
   race: Race
   clock24h: boolean
-  courseCoordinates: [number, number][]
   courseElevationSamples: { distance: number; elevation: number }[] | null
   onOpen: () => void
 }) {
@@ -376,12 +373,8 @@ function TrainingRouteCard({
       <button type="button" onClick={onOpen} className="text-left block w-full">
         <div className="h-44 bg-neutral-950 relative overflow-hidden">
           {coords.length >= 2 ? (
-            <TrainingRouteDetailMap
+            <TrainingRouteSvgPreview
               coordinates={coords}
-              courseCoordinates={courseCoordinates.length >= 2 ? courseCoordinates : undefined}
-              overlapSegments={route.overlapSegments}
-              interactive={false}
-              showControls={false}
               className="absolute inset-0 h-full w-full pointer-events-none"
             />
           ) : (

@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-13
 **Branch:** `main`
-**Status:** Training map overlap keeps full-course GPX snapping for accuracy. Latency on that view is client CPU (~2.5–5s Turf scans), not nginx or asset transfer.
+**Status:** Training list cards use static SVG thumbnails; full-course overlap snap runs only on the route detail map.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -13,6 +13,7 @@
 
 ## Just finished
 
+- Training list cards use a static SVG route thumbnail. They no longer run Mapbox or full-course overlap snaps (that was N times 2.5–5s after overlap painting moved onto TrainingRouteDetailMap).
 - Confirmed Training-detail latency is client overlap snapping (Turf against the full AC100 GPX, ~2.5–5s). HTML ~200–340ms and gzip JS ~450ms. Kept the accurate full-course snap rather than a faster vertex/downsample approximation.
 - Tightened Training map overlap to a 0.05-mile GPX snap and trimmed range ends by that radius so the approach to a race junction (e.g. Spruce Grove) stays blue until the traces meet. Heading/visit checks stay off so a true shared stem remains orange.
 - Simplified Training map overlap to GPX coordinate distance (~0.12 mi). Heading and course-mile jump checks were dropping the shared stem at the Chantry loop. A training sample is orange when it is that close to the race line.
@@ -32,7 +33,7 @@
 
 ## Open
 
-- Last product deployment: Training map overlap snap 0.05 mi with junction trim; production URL is `https://dfiu.app/race/fca7696b-6093-49a7-be8a-ba3c0a480643?demo=1&training=30a7927b-1283-47ca-9968-45ec803dfef1`.
+- Last product deployment: Training list static SVG previews; production URL is `https://dfiu.app/race/fca7696b-6093-49a7-be8a-ba3c0a480643?demo=1`.
 - Smoke-test the merged pace/terrain UI in production.
 - Design and implement the opt-in post-event feedback email flow.
 - Rotate Strava secret; verify RBAC with a second account; `/admin` + owner-transfer UI.
