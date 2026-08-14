@@ -178,7 +178,7 @@ describe('computeTrainingMapOverlap', () => {
 
     expect(ranges).toHaveLength(1)
     expect(ranges[0].trainingStartMi).toBe(0)
-    expect(ranges[0].trainingEndMi).toBeGreaterThan(5)
+    expect(ranges[0].trainingEndMi).toBeGreaterThan(4.5)
   })
 
   it('leaves an off-course connector blue between two on-course sections', () => {

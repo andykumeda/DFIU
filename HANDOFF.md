@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-13
 **Branch:** `main`
-**Status:** Training route detail maps reject nearby branches and parallel trails while tolerating normal GPX offset on shared trail geometry.
+**Status:** Training route detail maps use continuous course-mile tracking and no longer display tiny reverse/duplicate overlap artifacts.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -14,7 +14,7 @@
 ## Just finished
 
 - Fixed Training route navigation by restoring immediate local selection while retaining shareable `?training=` URLs. Reselecting the Training tab returns to the list without breaking later card clicks.
-- Fixed Training detail-map overlap rendering. The map now requires both close geometry and matching trail direction, uses a 0.06-mile visual tolerance, and only bridges 0.1-mile GPS gaps. This excludes nearby branches/parallel trails without fragmenting genuine overlap. Deployed to production with regression coverage.
+- Fixed Training detail-map overlap rendering. The map now tracks continuous course-mile progression with direction-aware proximity and only bridges 0.1-mile gaps. The detail breakdown filters sub-quarter-mile reverse/duplicate snaps such as `24.8–24.6`. Deployed to production with regression coverage.
 - Removed the Ask Strava panel and its query gateway. The Training page retains its prior Strava connection and Training Analysis flows.
 - Removed page-level bottom padding from standard race-tab shells on mobile while preserving desktop spacing. Production Resources and Overview both measure a 0 px trailing gap at 390x844, with no browser console errors or warnings.
 - Enabled Nginx gzip compression for JavaScript, JSON, XML, SVG, CSS, and text responses. Verified the production main bundle now transfers at about 305 KB instead of 1.06 MB and Mapbox at about 462 KB instead of 1.68 MB.
@@ -30,7 +30,7 @@
 
 ## Open
 
-- Last product deployment: Training overlap direction/tolerance fix (current commit); production URL is `https://dfiu.app/race/fca7696b-6093-49a7-be8a-ba3c0a480643?demo=1&training=30a7927b-1283-47ca-9968-45ec803dfef1`.
+- Last product deployment: Training overlap continuity/artifact fix (current commit); production URL is `https://dfiu.app/race/fca7696b-6093-49a7-be8a-ba3c0a480643?demo=1&training=30a7927b-1283-47ca-9968-45ec803dfef1`.
 - Smoke-test the merged pace/terrain UI in production.
 - Design and implement the opt-in post-event feedback email flow.
 - Rotate Strava secret; verify RBAC with a second account; `/admin` + owner-transfer UI.

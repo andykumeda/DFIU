@@ -72,7 +72,9 @@ export function TrainingRouteDetail({
     hasFinish &&
     isPointToPointRoute(route.start_lat, route.start_lon, route.finish_lat, route.finish_lon)
   const orderedOverlapSegments = useMemo(
-    () => sortOverlapSegmentsByRaceMile(route.overlapSegments),
+    () => sortOverlapSegmentsByRaceMile(
+      route.overlapSegments.filter(segment => Math.abs(segment.courseEndMi - segment.courseStartMi) >= 0.25)
+    ),
     [route.overlapSegments]
   )
   const overlapElevFt = useMemo(

@@ -184,28 +184,36 @@ export function computeTrainingMapOverlap(
   const gapBridgeMi = options?.gapBridgeMi ?? MAP_OVERLAP_GAP_BRIDGE_MI
   const headingToleranceDeg = options?.headingToleranceDeg ?? OVERLAP_HEADING_TOLERANCE_DEG
   const { coords, miles } = downsampleByDistance(trainingCoords, OVERLAP_SAMPLE_STEP_MI)
-  const sampledCourse = downsampleByDistance(courseCoords, OVERLAP_SAMPLE_STEP_MI).coords
+  const sampledCourse = downsampleByDistance(courseCoords, OVERLAP_SAMPLE_STEP_MI)
   const ranges: TrainingMapOverlapSegment[] = []
   let start: number | null = null
   let lastHit: number | null = null
+  let lastCourseMi: number | null = null
 
   const flush = () => {
     if (start == null || lastHit == null || lastHit - start < 0.05) return
     ranges.push({ trainingStartMi: round2(start), trainingEndMi: round2(lastHit) })
     start = null
     lastHit = null
+    lastCourseMi = null
   }
 
   for (let i = 0; i < coords.length; i++) {
     const [lon, lat] = coords[i]
-    const nearest = getNearestPointOnLine({ lat, lon }, sampledCourse)
+    const nearest = getNearestPointOnLine({ lat, lon }, sampledCourse.coords)
+    const nearestCourseMi = nearest ? sampledCourse.miles[Math.min(nearest.index, sampledCourse.miles.length - 1)] : null
+    const courseJump = nearestCourseMi != null && lastCourseMi != null
+      ? Math.abs(nearestCourseMi - lastCourseMi)
+      : 0
     const onCourse =
       nearest != null &&
       nearest.distance <= bufferMi &&
-      hasMatchingTrailDirection(coords, i, sampledCourse, nearest.index, headingToleranceDeg)
+      hasMatchingTrailDirection(coords, i, sampledCourse.coords, nearest.index, headingToleranceDeg) &&
+      courseJump <= COURSE_JUMP_SPLIT_MI
     if (onCourse) {
       if (start == null) start = miles[i]
       lastHit = miles[i]
+      lastCourseMi = nearestCourseMi
     } else if (lastHit != null && miles[i] - lastHit > gapBridgeMi) {
       flush()
     }
