@@ -35,6 +35,11 @@ export interface TrainingOverlapResult {
   segments: OverlapSegment[]
 }
 
+export interface TrainingMapOverlapSegment {
+  trainingStartMi: number
+  trainingEndMi: number
+}
+
 type LonLat = [number, number]
 
 function cumulativeMiles(line: LonLat[]): number[] {
@@ -122,6 +127,49 @@ export function filterStartFinishCollisionRanges(
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100
+}
+
+/**
+ * Find the portions of the displayed training geometry that are physically
+ * close to the displayed race geometry. This is intentionally geometry-first
+ * for map painting: persisted overlap metadata can be stale after a course or
+ * route edit, while the map should always color the lines the user can see.
+ */
+export function computeTrainingMapOverlap(
+  trainingCoords: LonLat[],
+  courseCoords: LonLat[],
+  options?: { bufferMi?: number; gapBridgeMi?: number }
+): TrainingMapOverlapSegment[] {
+  if (trainingCoords.length < 2 || courseCoords.length < 2) return []
+
+  const bufferMi = options?.bufferMi ?? OVERLAP_BUFFER_MI
+  const gapBridgeMi = options?.gapBridgeMi ?? OVERLAP_GAP_BRIDGE_MI
+  const { coords, miles } = downsampleByDistance(trainingCoords, OVERLAP_SAMPLE_STEP_MI)
+  const sampledCourse = downsampleByDistance(courseCoords, OVERLAP_SAMPLE_STEP_MI).coords
+  const ranges: TrainingMapOverlapSegment[] = []
+  let start: number | null = null
+  let lastHit: number | null = null
+
+  const flush = () => {
+    if (start == null || lastHit == null || lastHit - start < 0.05) return
+    ranges.push({ trainingStartMi: round2(start), trainingEndMi: round2(lastHit) })
+    start = null
+    lastHit = null
+  }
+
+  for (let i = 0; i < coords.length; i++) {
+    const [lon, lat] = coords[i]
+    const nearest = getNearestPointOnLine({ lat, lon }, sampledCourse)
+    const onCourse = nearest != null && nearest.distance <= bufferMi
+    if (onCourse) {
+      if (start == null) start = miles[i]
+      lastHit = miles[i]
+    } else if (lastHit != null && miles[i] - lastHit > gapBridgeMi) {
+      flush()
+    }
+  }
+  flush()
+  return ranges
 }
 
 type AssignedHit = { trainingMi: number; courseMi: number; lat: number; lon: number }

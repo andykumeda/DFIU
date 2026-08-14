@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-13
 **Branch:** `main`
-**Status:** Training route cards open detail immediately again; the fix is verified in production.
+**Status:** Training route detail maps now derive the orange overlap overlay from the displayed route/course geometry; verified in production.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -14,6 +14,7 @@
 ## Just finished
 
 - Fixed Training route navigation by restoring immediate local selection while retaining shareable `?training=` URLs. Reselecting the Training tab returns to the list without breaking later card clicks.
+- Fixed Training detail-map overlap rendering. The map no longer trusts stale persisted overlap ranges; it recomputes visible overlap from the route and course geometry, so coincident blue/purple paths are painted orange. Deployed and browser-verified on the Angeles Crest demo route.
 - Removed the Ask Strava panel and its query gateway. The Training page retains its prior Strava connection and Training Analysis flows.
 - Removed page-level bottom padding from standard race-tab shells on mobile while preserving desktop spacing. Production Resources and Overview both measure a 0 px trailing gap at 390x844, with no browser console errors or warnings.
 - Enabled Nginx gzip compression for JavaScript, JSON, XML, SVG, CSS, and text responses. Verified the production main bundle now transfers at about 305 KB instead of 1.06 MB and Mapbox at about 462 KB instead of 1.68 MB.
@@ -29,7 +30,7 @@
 
 ## Open
 
-- Last product deployment: Training navigation fix from `8a1619b`; browser-verified at `https://dfiu.app/ac100?demo=1`.
+- Last product deployment: Training overlap map fix (current commit); browser-verified at `https://dfiu.app/race/fca7696b-6093-49a7-be8a-ba3c0a480643?demo=1&training=30a7927b-1283-47ca-9968-45ec803dfef1`.
 - Smoke-test the merged pace/terrain UI in production.
 - Design and implement the opt-in post-event feedback email flow.
 - Rotate Strava secret; verify RBAC with a second account; `/admin` + owner-transfer UI.

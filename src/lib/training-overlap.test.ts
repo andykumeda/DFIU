@@ -3,6 +3,7 @@ import {
   buildTrainingOverlapUpdates,
   clusterMileRanges,
   computeTrainingOverlap,
+  computeTrainingMapOverlap,
   downsampleByDistance,
   formatOverlapSummary,
   nameFromGpxFileName,
@@ -160,6 +161,44 @@ describe('computeTrainingOverlap', () => {
       overlapMiles: 0,
       segments: [],
     })
+  })
+})
+
+describe('computeTrainingMapOverlap', () => {
+  it('paints geometry that is visibly on the course even without persisted segments', () => {
+    const course: [number, number][] = [[-118.2, 34.2], [-118.1, 34.2]]
+    const training: [number, number][] = [
+      [-118.2, 34.2],
+      [-118.16, 34.2],
+      [-118.12, 34.2],
+      [-118.1, 34.2],
+    ]
+
+    const ranges = computeTrainingMapOverlap(training, course)
+
+    expect(ranges).toHaveLength(1)
+    expect(ranges[0].trainingStartMi).toBe(0)
+    expect(ranges[0].trainingEndMi).toBeGreaterThan(5)
+  })
+
+  it('leaves an off-course connector blue between two on-course sections', () => {
+    const course: [number, number][] = [
+      [-118.2, 34.2],
+      [-118.16, 34.2],
+      [-118.12, 34.2],
+    ]
+    const training: [number, number][] = [
+      [-118.2, 34.2],
+      [-118.17, 34.2],
+      [-118.15, 34.205],
+      [-118.13, 34.2],
+      [-118.12, 34.2],
+    ]
+
+    const ranges = computeTrainingMapOverlap(training, course, { gapBridgeMi: 0.1 })
+
+    expect(ranges.length).toBeGreaterThanOrEqual(2)
+    expect(ranges[0].trainingEndMi).toBeLessThan(ranges[1].trainingStartMi)
   })
 })
 

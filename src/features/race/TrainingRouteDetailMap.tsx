@@ -1,4 +1,5 @@
-import { lazy, Suspense, useCallback, useState } from 'react'
+import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
+import { computeTrainingMapOverlap } from '@/lib/training-overlap'
 
 /** Card previews stay SVG-only (no Mapbox in the main bundle). */
 
@@ -156,14 +157,21 @@ export function TrainingRouteDetailMap(props: TrainingRouteDetailMapProps) {
   const [useSvg, setUseSvg] = useState(!import.meta.env.VITE_MAPBOX_TOKEN)
   const handleMapFailure = useCallback(() => setUseSvg(true), [])
   const { className, showLegend = false, ...mapProps } = props
+  const mapOverlapSegments = useMemo(
+    () => props.courseCoordinates && props.courseCoordinates.length >= 2
+      ? computeTrainingMapOverlap(props.coordinates, props.courseCoordinates)
+      : props.overlapSegments,
+    [props.coordinates, props.courseCoordinates, props.overlapSegments]
+  )
+  const mapData = { ...mapProps, overlapSegments: mapOverlapSegments }
 
   return (
     <div className={`relative ${className ?? 'w-full h-full'}`}>
       {useSvg ? (
-        <TrainingRouteSvgDetail {...mapProps} className="w-full h-full" />
+        <TrainingRouteSvgDetail {...mapData} className="w-full h-full" />
       ) : (
-        <Suspense fallback={<TrainingRouteSvgDetail {...mapProps} className="w-full h-full" />}>
-          <TrainingRouteMapbox {...mapProps} className="w-full h-full" onFail={handleMapFailure} />
+        <Suspense fallback={<TrainingRouteSvgDetail {...mapData} className="w-full h-full" />}>
+          <TrainingRouteMapbox {...mapData} className="w-full h-full" onFail={handleMapFailure} />
         </Suspense>
       )}
       {showLegend ? <TrainingMapLegend /> : null}
