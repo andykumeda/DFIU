@@ -327,6 +327,7 @@ export function TrainingSection({
                 clock24h={clock24h}
                 courseElevationSamples={courseElevationSamples}
                 onOpen={() => openRoute(route.id)}
+                showBasemap={isActive}
               />
             ))}
           </div>
@@ -344,6 +345,7 @@ function TrainingRouteCard({
   clock24h,
   courseElevationSamples,
   onOpen,
+  showBasemap = true,
 }: {
   route: TrainingRouteRow
   planA: PacePlanResult | null
@@ -352,6 +354,7 @@ function TrainingRouteCard({
   clock24h: boolean
   courseElevationSamples: { distance: number; elevation: number }[] | null
   onOpen: () => void
+  showBasemap?: boolean
 }) {
   const coords = extractCoordinates(route.geometry)
   const notesPreview = truncateNotes(route.notes)
@@ -380,6 +383,7 @@ function TrainingRouteCard({
           {coords.length >= 2 ? (
             <TrainingRouteSvgPreview
               coordinates={coords}
+              showBasemap={showBasemap}
               className="absolute inset-0 h-full w-full pointer-events-none"
             />
           ) : (

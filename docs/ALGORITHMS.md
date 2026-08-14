@@ -75,7 +75,7 @@ Training overlap is geometric, not name-based. DFIU:
 
 The total overlap is unique course-mile coverage across the assigned race-mile ranges.
 
-Map coloring snaps training GPX to the race line within about 0.05 mi. A stretch is orange only when snapped race miles advance with the training line (same trail), including a shared stem after the race turns onto a loop. An approach into a junction the race visits on another road (for example Markham Saddle to Red Box vs the race’s earlier Red Box pass) stays blue. Each painted range is trimmed by the snap radius so a trail that only converges on the course stays blue until the junction.
+Map coloring snaps training GPX to the race line within about 0.035 mi and paints orange on the race line for those race miles, not along a nearby training detour. A stretch is orange only when snapped race miles advance with the training line (same trail), including a shared stem after the race turns onto a loop. An off-course canyon dip or fire-road approach stays blue.
 
 ## Strava training analysis
 

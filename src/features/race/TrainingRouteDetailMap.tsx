@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { computeTrainingMapOverlap } from '@/lib/training-overlap'
 
 /** Card previews stay SVG-only (no Mapbox in the main bundle). */
@@ -141,9 +141,11 @@ export function fitLonLatBox(
 export function TrainingRouteSvgPreview({
   coordinates,
   className,
+  showBasemap = true,
 }: {
   coordinates: [number, number][]
   className?: string
+  showBasemap?: boolean
 }) {
   if (coordinates.length < 2) {
     return (
@@ -171,8 +173,9 @@ export function TrainingRouteSvgPreview({
   const fitted = fitLonLatBox(minLon, minLat, maxLon, maxLat, vbW / vbH)
   const points = projectMercator(line, fitted, vbW, vbH)
   const token = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
-  const mapUrl = token
-    ? `https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/static/[${fitted.minLon},${fitted.minLat},${fitted.maxLon},${fitted.maxLat}]/400x224@2x?attribution=false&logo=false&access_token=${token}`
+  const mapUrl =
+    showBasemap && token
+    ? `https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/static/[${fitted.minLon},${fitted.minLat},${fitted.maxLon},${fitted.maxLat}]/300x168@2x?attribution=false&logo=false&access_token=${token}`
     : null
 
   return (
@@ -220,7 +223,12 @@ export function TrainingRouteSvgPreview({
 interface TrainingRouteDetailMapProps {
   coordinates: [number, number][]
   courseCoordinates?: [number, number][]
-  overlapSegments?: { trainingStartMi: number; trainingEndMi: number }[]
+  overlapSegments?: {
+    trainingStartMi: number
+    trainingEndMi: number
+    courseStartMi?: number
+    courseEndMi?: number
+  }[]
   className?: string
   interactive?: boolean
   showControls?: boolean
@@ -238,13 +246,19 @@ export function TrainingRouteDetailMap(props: TrainingRouteDetailMapProps) {
   const [useSvg, setUseSvg] = useState(staticPreview || !import.meta.env.VITE_MAPBOX_TOKEN)
   const handleMapFailure = useCallback(() => setUseSvg(true), [])
   const { className, showLegend = false, ...mapProps } = props
-  const mapOverlapSegments = useMemo(
-    () =>
-      !staticPreview && props.courseCoordinates && props.courseCoordinates.length >= 2
-        ? computeTrainingMapOverlap(props.coordinates, props.courseCoordinates)
-        : props.overlapSegments,
-    [staticPreview, props.coordinates, props.courseCoordinates, props.overlapSegments]
-  )
+  const liveOverlap =
+    !staticPreview && !!props.courseCoordinates && props.courseCoordinates.length >= 2
+  const [computedOverlap, setComputedOverlap] = useState(props.overlapSegments)
+  useEffect(() => {
+    if (!liveOverlap || !props.courseCoordinates) return
+    const training = props.coordinates
+    const course = props.courseCoordinates
+    const handle = window.setTimeout(() => {
+      setComputedOverlap(computeTrainingMapOverlap(training, course))
+    }, 0)
+    return () => window.clearTimeout(handle)
+  }, [liveOverlap, props.coordinates, props.courseCoordinates])
+  const mapOverlapSegments = liveOverlap ? computedOverlap : props.overlapSegments
   const mapData = { ...mapProps, overlapSegments: mapOverlapSegments }
 
   return (
@@ -312,7 +326,22 @@ function TrainingRouteSvgDetail({
   const overlapPolylines =
     overlapSegments
       ?.map(seg => {
-        const slice = downsample(sliceByMiles(coordinates, seg.trainingStartMi, seg.trainingEndMi), 1500)
+        const source =
+          courseCoordinates &&
+          courseCoordinates.length >= 2 &&
+          seg.courseStartMi != null &&
+          seg.courseEndMi != null
+            ? courseCoordinates
+            : coordinates
+        const lo =
+          source === courseCoordinates
+            ? Math.min(seg.courseStartMi!, seg.courseEndMi!)
+            : seg.trainingStartMi
+        const hi =
+          source === courseCoordinates
+            ? Math.max(seg.courseStartMi!, seg.courseEndMi!)
+            : seg.trainingEndMi
+        const slice = downsample(sliceByMiles(source, lo, hi), 1500)
         if (slice.length < 2) return null
         return project(slice, minLon, maxLon, minLat, maxLat, vbW, vbH, pad)
       })

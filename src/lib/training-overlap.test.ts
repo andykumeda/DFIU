@@ -201,6 +201,27 @@ describe('computeTrainingMapOverlap', () => {
     expect(ranges[0].trainingEndMi).toBeLessThan(ranges[1].trainingStartMi)
   })
 
+  it('does not include an off-course canyon dip inside an overlap range', () => {
+    const lat = 34.21
+    const dLon = 0.05 / (69 * Math.cos((lat * Math.PI) / 180))
+    const dLat = 0.12 / 69
+    const course: [number, number][] = Array.from({ length: 61 }, (_, i) => [-118.16 + i * dLon, lat])
+    const onA = course.slice(0, 21)
+    const dip: [number, number][] = Array.from({ length: 16 }, (_, i) => [
+      onA[onA.length - 1][0] + (i + 1) * dLon,
+      lat - dLat,
+    ])
+    const onB = course.slice(40)
+    const training = [...onA, ...dip, ...onB]
+
+    const ranges = computeTrainingMapOverlap(training, course)
+    expect(ranges.length).toBeGreaterThanOrEqual(2)
+    const coversDip = ranges.some(
+      range => range.trainingStartMi < 1.3 && range.trainingEndMi > 2.2
+    )
+    expect(coversDip).toBe(false)
+  })
+
   it('does not paint a distant parallel trail as overlap', () => {
     const course: [number, number][] = [
       [-118.2, 34.2],

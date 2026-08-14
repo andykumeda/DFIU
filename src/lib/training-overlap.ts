@@ -14,11 +14,11 @@ export const OVERLAP_SAMPLE_STEP_MI = 0.05
 /** Bridge brief off-course gaps along the training route (GPS dropouts / switchbacks). */
 export const OVERLAP_GAP_BRIDGE_MI = 0.4
 
-/** Map painting uses a tighter snap (~80 m) so a converging trail stays blue until it meets the race. */
-export const MAP_OVERLAP_BUFFER_MI = 0.05
+/** Map painting uses a tighter snap (~55 m) so a parallel canyon trail stays blue. */
+export const MAP_OVERLAP_BUFFER_MI = 0.035
 
-/** Map painting only bridges tiny GPS gaps; longer approaches must remain blue. */
-export const MAP_OVERLAP_GAP_BRIDGE_MI = 0.1
+/** Map painting does not bridge off-course dips; only tiny GPS gaps. */
+export const MAP_OVERLAP_GAP_BRIDGE_MI = 0.06
 
 /**
  * Training can be near a race junction (aid, saddle) without following the race
@@ -52,6 +52,8 @@ export interface TrainingOverlapResult {
 export interface TrainingMapOverlapSegment {
   trainingStartMi: number
   trainingEndMi: number
+  courseStartMi: number
+  courseEndMi: number
 }
 
 type LonLat = [number, number]
@@ -188,6 +190,56 @@ export function computeTrainingMapOverlap(
   const bufferMi = options?.bufferMi ?? MAP_OVERLAP_BUFFER_MI
   const gapBridgeMi = options?.gapBridgeMi ?? MAP_OVERLAP_GAP_BRIDGE_MI
   const { coords, miles } = downsampleByDistance(trainingCoords, OVERLAP_SAMPLE_STEP_MI)
+  const GRID_DEG = 0.001
+  const grid = new Map<string, number[]>()
+  const addSeg = (key: string, seg: number) => {
+    const list = grid.get(key)
+    if (list) list.push(seg)
+    else grid.set(key, [seg])
+  }
+  for (let s = 0; s < courseCoords.length - 1; s++) {
+    const [lon1, lat1] = courseCoords[s]
+    const [lon2, lat2] = courseCoords[s + 1]
+    const x1 = Math.floor(lon1 / GRID_DEG)
+    const y1 = Math.floor(lat1 / GRID_DEG)
+    const x2 = Math.floor(lon2 / GRID_DEG)
+    const y2 = Math.floor(lat2 / GRID_DEG)
+    for (let x = Math.min(x1, x2); x <= Math.max(x1, x2); x++) {
+      for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++) addSeg(`${x}:${y}`, s)
+    }
+  }
+  const courseCum = cumulativeMiles(courseCoords)
+
+  const nearestOnCourse = (lat: number, lon: number) => {
+    const gx = Math.floor(lon / GRID_DEG)
+    const gy = Math.floor(lat / GRID_DEG)
+    const seen = new Set<number>()
+    let bestDist = Infinity
+    let bestIndex = 0
+    let bestLat = lat
+    let bestLon = lon
+    for (let dx = -2; dx <= 2; dx++) {
+      for (let dy = -2; dy <= 2; dy++) {
+        const segs = grid.get(`${gx + dx}:${gy + dy}`)
+        if (!segs) continue
+        for (const s of segs) {
+          if (seen.has(s)) continue
+          seen.add(s)
+          const snapped = getNearestPointOnLine({ lat, lon }, [courseCoords[s], courseCoords[s + 1]])
+          if (snapped && snapped.distance < bestDist) {
+            bestDist = snapped.distance
+            bestIndex = s
+            bestLat = snapped.lat
+            bestLon = snapped.lon
+          }
+        }
+      }
+    }
+    if (bestDist === Infinity) return null
+    const along = getDistance(courseCoords[bestIndex][1], courseCoords[bestIndex][0], bestLat, bestLon)
+    return { distance: bestDist, courseMi: courseCum[bestIndex] + along }
+  }
+
   const ranges: TrainingMapOverlapSegment[] = []
   type MapHit = { trainingMi: number; courseMi: number }
   let streak: MapHit[] = []
@@ -202,7 +254,13 @@ export function computeTrainingMapOverlap(
     const trimmedStart = start + trim
     const trimmedEnd = lastHit - trim
     if (trimmedEnd - trimmedStart < 0.05) return
-    ranges.push({ trainingStartMi: round2(trimmedStart), trainingEndMi: round2(trimmedEnd) })
+    const courseMiles = followed.map(h => h.courseMi)
+    ranges.push({
+      trainingStartMi: round2(trimmedStart),
+      trainingEndMi: round2(trimmedEnd),
+      courseStartMi: round2(Math.min(...courseMiles)),
+      courseEndMi: round2(Math.max(...courseMiles)),
+    })
   }
 
   const flushStreak = () => {
@@ -225,13 +283,9 @@ export function computeTrainingMapOverlap(
 
   for (let i = 0; i < coords.length; i++) {
     const [lon, lat] = coords[i]
-    const nearest = getNearestPointOnLine({ lat, lon }, courseCoords)
+    const nearest = nearestOnCourse(lat, lon)
     if (nearest != null && nearest.distance <= bufferMi) {
-      const courseMi = getDistanceFromStart(courseCoords, nearest.index, {
-        lat: nearest.lat,
-        lon: nearest.lon,
-      })
-      streak.push({ trainingMi: miles[i], courseMi })
+      streak.push({ trainingMi: miles[i], courseMi: nearest.courseMi })
     } else if (streak.length > 0 && miles[i] - streak[streak.length - 1].trainingMi > gapBridgeMi) {
       flushStreak()
     }
@@ -243,6 +297,8 @@ export function computeTrainingMapOverlap(
     const prev = merged[merged.length - 1]
     if (prev && range.trainingStartMi <= prev.trainingEndMi + 0.4) {
       prev.trainingEndMi = Math.max(prev.trainingEndMi, range.trainingEndMi)
+      prev.courseStartMi = Math.min(prev.courseStartMi, range.courseStartMi)
+      prev.courseEndMi = Math.max(prev.courseEndMi, range.courseEndMi)
     } else {
       merged.push({ ...range })
     }

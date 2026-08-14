@@ -45,7 +45,12 @@ function sliceByMiles(line: [number, number][], startMi: number, endMi: number):
 export interface TrainingRouteMapboxProps {
   coordinates: [number, number][]
   courseCoordinates?: [number, number][]
-  overlapSegments?: { trainingStartMi: number; trainingEndMi: number }[]
+  overlapSegments?: {
+    trainingStartMi: number
+    trainingEndMi: number
+    courseStartMi?: number
+    courseEndMi?: number
+  }[]
   className?: string
   onFail?: () => void
   interactive?: boolean
@@ -95,6 +100,23 @@ function setOrAddLine(
   }
 }
 
+function overlapSlice(
+  data: MapData,
+  segment: NonNullable<MapData['overlapSegments']>[number]
+): [number, number][] {
+  if (
+    data.courseCoordinates &&
+    data.courseCoordinates.length >= 2 &&
+    segment.courseStartMi != null &&
+    segment.courseEndMi != null
+  ) {
+    const lo = Math.min(segment.courseStartMi, segment.courseEndMi)
+    const hi = Math.max(segment.courseStartMi, segment.courseEndMi)
+    return sliceByMiles(data.courseCoordinates, lo, hi)
+  }
+  return sliceByMiles(data.coordinates, segment.trainingStartMi, segment.trainingEndMi)
+}
+
 function drawRouteData(map: mapboxgl.Map, data: MapData) {
   if (data.coordinates.length < 2) return
 
@@ -130,7 +152,7 @@ function drawRouteData(map: mapboxgl.Map, data: MapData) {
       .map(segment =>
         lineFeature(
           downsample(
-            sliceByMiles(data.coordinates, segment.trainingStartMi, segment.trainingEndMi),
+            overlapSlice(data, segment),
             2000
           )
         )
@@ -145,7 +167,13 @@ function drawRouteData(map: mapboxgl.Map, data: MapData) {
         { 'line-color': OVERLAP_COLOR, 'line-opacity': 1 },
         6
       )
+    } else {
+      const source = map.getSource(SOURCE_IDS.overlap) as mapboxgl.GeoJSONSource | undefined
+      if (source) source.setData({ type: 'FeatureCollection', features: [] })
     }
+  } else {
+    const source = map.getSource(SOURCE_IDS.overlap) as mapboxgl.GeoJSONSource | undefined
+    if (source) source.setData({ type: 'FeatureCollection', features: [] })
   }
 
   const bounds = new mapboxgl.LngLatBounds()
