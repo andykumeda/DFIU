@@ -26,6 +26,9 @@ function toRow(raw: TrainingRoute): TrainingRouteRow {
   }
 }
 
+const LIST_COLUMNS =
+  'id,race_id,name,notes,distance_miles,elevation_gain_ft,elevation_loss_ft,geometry,start_lat,start_lon,finish_lat,finish_lon,overlap_miles,overlap_segments,strava_activity_inputs,strava_activity_results,sort_order,created_at,updated_at,created_by'
+
 function courseCoordsFromGeometry(geometry: unknown): [number, number][] {
   return extractCoordinates(geometry)
 }
@@ -69,7 +72,7 @@ export function useTrainingRoutes(raceId: string, courseGeometry: unknown) {
     setLoading(true)
     const { data, error } = await supabase
       .from('training_routes')
-      .select('*')
+      .select(LIST_COLUMNS)
       .eq('race_id', raceId)
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: true })

@@ -64,6 +64,15 @@ function sliceByMiles(line: [number, number][], startMi: number, endMi: number):
   return out.length >= 2 ? out : line.slice(0, Math.min(2, line.length))
 }
 
+function mercatorY(lat: number): number {
+  const clamped = Math.max(-85.051128, Math.min(85.051128, lat))
+  return Math.log(Math.tan(Math.PI / 4 + (clamped * Math.PI) / 360))
+}
+
+function latFromMercatorY(y: number): number {
+  return ((2 * Math.atan(Math.exp(y)) - Math.PI / 2) * 180) / Math.PI
+}
+
 function project(
   coords: [number, number][],
   minLon: number,
@@ -85,6 +94,50 @@ function project(
     .join(' ')
 }
 
+function projectMercator(
+  coords: [number, number][],
+  box: { minLon: number; minLat: number; maxLon: number; maxLat: number },
+  vbW: number,
+  vbH: number
+): string {
+  const minX = box.minLon
+  const spanX = Math.max(box.maxLon - box.minLon, 1e-6)
+  const maxY = mercatorY(box.maxLat)
+  const spanY = Math.max(maxY - mercatorY(box.minLat), 1e-8)
+  return coords
+    .map(([lon, lat]) => {
+      const x = ((lon - minX) / spanX) * vbW
+      const y = ((maxY - mercatorY(lat)) / spanY) * vbH
+      return `${x.toFixed(2)},${y.toFixed(2)}`
+    })
+    .join(' ')
+}
+
+/** Expand a lon/lat box so its Web Mercator aspect matches the thumbnail. */
+export function fitLonLatBox(
+  minLon: number,
+  minLat: number,
+  maxLon: number,
+  maxLat: number,
+  aspectWOverH: number
+): { minLon: number; minLat: number; maxLon: number; maxLat: number } {
+  const midLon = (minLon + maxLon) / 2
+  const midY = (mercatorY(minLat) + mercatorY(maxLat)) / 2
+  let lonSpan = Math.max(maxLon - minLon, 1e-5)
+  let ySpan = Math.max(mercatorY(maxLat) - mercatorY(minLat), 1e-8)
+  const xSpan = lonSpan * (Math.PI / 180)
+  if (xSpan / ySpan < aspectWOverH) lonSpan = (aspectWOverH * ySpan * 180) / Math.PI
+  else ySpan = xSpan / aspectWOverH
+  lonSpan *= 1.16
+  ySpan *= 1.16
+  return {
+    minLon: midLon - lonSpan / 2,
+    maxLon: midLon + lonSpan / 2,
+    minLat: latFromMercatorY(midY - ySpan / 2),
+    maxLat: latFromMercatorY(midY + ySpan / 2),
+  }
+}
+
 export function TrainingRouteSvgPreview({
   coordinates,
   className,
@@ -102,7 +155,7 @@ export function TrainingRouteSvgPreview({
     )
   }
 
-  const line = downsample(coordinates, 800)
+  const line = downsample(coordinates, 400)
   let minLon = Infinity
   let maxLon = -Infinity
   let minLat = Infinity
@@ -115,25 +168,52 @@ export function TrainingRouteSvgPreview({
   }
   const vbW = 100
   const vbH = 56
-  const points = project(line, minLon, maxLon, minLat, maxLat, vbW, vbH, 0.08)
+  const fitted = fitLonLatBox(minLon, minLat, maxLon, maxLat, vbW / vbH)
+  const points = projectMercator(line, fitted, vbW, vbH)
+  const token = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
+  const mapUrl = token
+    ? `https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/static/[${fitted.minLon},${fitted.minLat},${fitted.maxLon},${fitted.maxLat}]/400x224@2x?attribution=false&logo=false&access_token=${token}`
+    : null
 
   return (
-    <svg
-      viewBox={`0 0 ${vbW} ${vbH}`}
-      preserveAspectRatio="xMidYMid meet"
-      className={className ?? 'w-full h-full'}
-      aria-hidden
-    >
-      <rect width={vbW} height={vbH} fill="#0a0a0a" />
-      <polyline
-        points={points}
-        fill="none"
-        stroke="#3b82f6"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+    <div className={`relative overflow-hidden bg-[#d4ddd0] ${className ?? 'w-full h-full'}`}>
+      {mapUrl ? (
+        <img
+          src={mapUrl}
+          alt=""
+          decoding="async"
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      ) : null}
+      <svg
+        viewBox={`0 0 ${vbW} ${vbH}`}
+        preserveAspectRatio="xMidYMid slice"
+        className="absolute inset-0 h-full w-full"
+        aria-hidden
+      >
+        <polyline
+          points={points}
+          fill="none"
+          stroke="#0a0a0a"
+          strokeWidth="2.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <polyline
+          points={points}
+          fill="none"
+          stroke="#2563eb"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+      {mapUrl ? (
+        <span className="absolute bottom-0.5 left-1 text-[7px] leading-none text-neutral-800/70 pointer-events-none">
+          © Mapbox © OpenStreetMap
+        </span>
+      ) : null}
+    </div>
   )
 }
 

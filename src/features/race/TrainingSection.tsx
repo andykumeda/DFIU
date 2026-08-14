@@ -35,6 +35,8 @@ interface TrainingSectionProps {
   resetToken?: number
   /** Private share link: show Import/Create chrome disabled (owner-like, no writes). */
   showDisabledActions?: boolean
+  /** When false, skip Plan A work so a hidden keep-alive list stays cheap. */
+  isActive?: boolean
 }
 
 function truncateNotes(notes: string | null, max = 100): string | null {
@@ -52,6 +54,7 @@ export function TrainingSection({
   runnerProfile,
   resetToken = 0,
   showDisabledActions = false,
+  isActive = true,
 }: TrainingSectionProps) {
   const {
     routes,
@@ -81,6 +84,7 @@ export function TrainingSection({
   const [planA, setPlanA] = useState<PacePlanResult | null>(null)
 
   useEffect(() => {
+    if (!isActive) return
     if (!plans.hasCalculated || !course?.elevation_samples || !(planAMinutes > 0)) {
       const handle = setTimeout(() => setPlanA(null), 0)
       return () => clearTimeout(handle)
@@ -114,6 +118,7 @@ export function TrainingSection({
     race,
     clock24h,
     runnerProfile,
+    isActive,
   ])
 
   const planAReady = plans.hasCalculated && planA != null
@@ -243,7 +248,7 @@ export function TrainingSection({
   }
 
   return (
-    <div className="race-tab-page p-4 md:p-8 max-w-7xl mx-auto animate-in fade-in duration-500">
+    <div className="race-tab-page p-4 md:p-8 max-w-7xl mx-auto">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
           <h2 className="text-2xl font-bold text-white flex items-center gap-2">
@@ -371,7 +376,7 @@ function TrainingRouteCard({
   return (
     <article className="bg-neutral-900 border border-neutral-800 hover:border-neutral-700 rounded-xl overflow-hidden flex flex-col transition-colors">
       <button type="button" onClick={onOpen} className="text-left block w-full">
-        <div className="h-44 bg-neutral-950 relative overflow-hidden">
+        <div className="h-44 bg-[#d4ddd0] relative overflow-hidden">
           {coords.length >= 2 ? (
             <TrainingRouteSvgPreview
               coordinates={coords}

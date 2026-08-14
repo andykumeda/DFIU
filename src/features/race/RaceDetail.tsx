@@ -2275,20 +2275,19 @@ export function RaceDetail({ raceId }: { raceId: string }) {
           </div>
         )}
 
-        {activeTab === 'training' && (
-          <div className="animate-in fade-in duration-500">
-            <TrainingSection
-              race={race}
-              course={course || null}
-              waypoints={waypoints}
-              terrainNodes={terrainNodes}
-              clock24h={clock24h}
-              runnerProfile={userRunnerProfile}
-              resetToken={trainingResetToken}
-              showDisabledActions={isShareView && !isOwner}
-            />
-          </div>
-        )}
+        <div className={activeTab === 'training' ? '' : 'hidden'}>
+          <TrainingSection
+            race={race}
+            course={course || null}
+            waypoints={waypoints}
+            terrainNodes={terrainNodes}
+            clock24h={clock24h}
+            runnerProfile={userRunnerProfile}
+            resetToken={trainingResetToken}
+            showDisabledActions={isShareView && !isOwner}
+            isActive={activeTab === 'training'}
+          />
+        </div>
 
         {activeTab === 'drop_bags' && (
           <div className="animate-in fade-in duration-500">
