@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-13
 **Branch:** `main`
-**Status:** Training tab keep-alive + slimmer list fetch; card thumbnails use a Mapbox static outdoors basemap under the route polyline.
+**Status:** Training map overlap ignores radial snaps onto a different race visit (Markham Saddle → Red Box).
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -13,7 +13,7 @@
 
 ## Just finished
 
-- Training tab stays mounted (hidden) so switching back does not refetch; list query omits `raw_gpx` / elevation samples; Plan A waits until the tab is shown. Card thumbnails draw the route over a Mapbox Static outdoors image instead of a black field.
+- Training map overlap no longer paints a fire-road approach (Markham Saddle → Red Box) just because it meets an aid the race visits on another road. Orange requires snapped race miles to follow the training line; radial snaps and visit jumps stay blue. The Chantry shared stem stays orange.
 - Training list cards use a static SVG route thumbnail. They no longer run Mapbox or full-course overlap snaps (that was N times 2.5–5s after overlap painting moved onto TrainingRouteDetailMap).
 - Confirmed Training-detail latency is client overlap snapping (Turf against the full AC100 GPX, ~2.5–5s). HTML ~200–340ms and gzip JS ~450ms. Kept the accurate full-course snap rather than a faster vertex/downsample approximation.
 - Tightened Training map overlap to a 0.05-mile GPX snap and trimmed range ends by that radius so the approach to a race junction (e.g. Spruce Grove) stays blue until the traces meet. Heading/visit checks stay off so a true shared stem remains orange.

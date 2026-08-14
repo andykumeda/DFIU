@@ -20,6 +20,14 @@ export const MAP_OVERLAP_BUFFER_MI = 0.05
 /** Map painting only bridges tiny GPS gaps; longer approaches must remain blue. */
 export const MAP_OVERLAP_GAP_BRIDGE_MI = 0.1
 
+/**
+ * Training can be near a race junction (aid, saddle) without following the race
+ * trail. If training miles grow much faster than snapped course miles, it is a
+ * radial approach — keep it blue.
+ */
+export const TRAIL_FOLLOW_SLACK_MI = 0.25
+export const TRAIL_FOLLOW_MAX_RATIO = 1.5
+
 /** Merge course-mile clusters closer than this into one displayed range. */
 export const COURSE_RANGE_MERGE_MI = 1.25
 
@@ -135,12 +143,40 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100
 }
 
+function followsRaceTrail(trainingSpanMi: number, courseSpanMi: number): boolean {
+  return trainingSpanMi <= courseSpanMi * TRAIL_FOLLOW_MAX_RATIO + TRAIL_FOLLOW_SLACK_MI
+}
+
+/** Longest sub-streak whose training length still matches covered race miles. */
+function longestTrailFollowingHits<T extends { trainingMi: number; courseMi: number }>(
+  hits: T[]
+): T[] {
+  if (hits.length < 2) return []
+  let best: T[] = []
+  let bestSpan = -1
+  for (let i = 0; i < hits.length; i++) {
+    let minC = hits[i].courseMi
+    let maxC = hits[i].courseMi
+    for (let j = i; j < hits.length; j++) {
+      minC = Math.min(minC, hits[j].courseMi)
+      maxC = Math.max(maxC, hits[j].courseMi)
+      const trainingSpan = hits[j].trainingMi - hits[i].trainingMi
+      if (!followsRaceTrail(trainingSpan, maxC - minC)) continue
+      if (trainingSpan > bestSpan) {
+        bestSpan = trainingSpan
+        best = hits.slice(i, j + 1)
+      }
+    }
+  }
+  return best
+}
+
 /**
- * Paint overlap where training GPX is within snap distance of race GPX.
- * Heading and course-mile jumps are ignored so a shared stem stays orange
- * when the race turns off onto a loop. Range ends are trimmed by the snap
- * radius so a trail that only converges on the race is not painted orange
- * before the actual junction.
+ * Paint overlap where training GPX follows the race line, not merely passes
+ * near it. Shared stems stay orange (same coordinates, advancing race miles).
+ * A fire road into an aid the race visits on another road stays blue: snapped
+ * race miles jump or stall while training miles keep growing. Range ends are
+ * trimmed by the snap radius so a converging trail stays blue until the join.
  */
 export function computeTrainingMapOverlap(
   trainingCoords: LonLat[],
@@ -153,33 +189,65 @@ export function computeTrainingMapOverlap(
   const gapBridgeMi = options?.gapBridgeMi ?? MAP_OVERLAP_GAP_BRIDGE_MI
   const { coords, miles } = downsampleByDistance(trainingCoords, OVERLAP_SAMPLE_STEP_MI)
   const ranges: TrainingMapOverlapSegment[] = []
-  let start: number | null = null
-  let lastHit: number | null = null
+  type MapHit = { trainingMi: number; courseMi: number }
+  let streak: MapHit[] = []
 
-  const flush = () => {
-    if (start == null || lastHit == null) return
+  const emit = (hits: MapHit[]) => {
+    const followed = longestTrailFollowingHits(hits)
+    if (followed.length < 2) return
+    const start = followed[0].trainingMi
+    const lastHit = followed[followed.length - 1].trainingMi
     const span = lastHit - start
     const trim = Math.min(bufferMi, span / 3)
     const trimmedStart = start + trim
     const trimmedEnd = lastHit - trim
     if (trimmedEnd - trimmedStart < 0.05) return
     ranges.push({ trainingStartMi: round2(trimmedStart), trainingEndMi: round2(trimmedEnd) })
-    start = null
-    lastHit = null
+  }
+
+  const flushStreak = () => {
+    if (streak.length < 2) {
+      streak = []
+      return
+    }
+    let part: MapHit[] = [streak[0]]
+    for (let i = 1; i < streak.length; i++) {
+      if (Math.abs(streak[i].courseMi - streak[i - 1].courseMi) > COURSE_JUMP_SPLIT_MI) {
+        emit(part)
+        part = [streak[i]]
+      } else {
+        part.push(streak[i])
+      }
+    }
+    emit(part)
+    streak = []
   }
 
   for (let i = 0; i < coords.length; i++) {
     const [lon, lat] = coords[i]
     const nearest = getNearestPointOnLine({ lat, lon }, courseCoords)
     if (nearest != null && nearest.distance <= bufferMi) {
-      if (start == null) start = miles[i]
-      lastHit = miles[i]
-    } else if (lastHit != null && miles[i] - lastHit > gapBridgeMi) {
-      flush()
+      const courseMi = getDistanceFromStart(courseCoords, nearest.index, {
+        lat: nearest.lat,
+        lon: nearest.lon,
+      })
+      streak.push({ trainingMi: miles[i], courseMi })
+    } else if (streak.length > 0 && miles[i] - streak[streak.length - 1].trainingMi > gapBridgeMi) {
+      flushStreak()
     }
   }
-  flush()
-  return ranges
+  flushStreak()
+  ranges.sort((a, b) => a.trainingStartMi - b.trainingStartMi)
+  const merged: TrainingMapOverlapSegment[] = []
+  for (const range of ranges) {
+    const prev = merged[merged.length - 1]
+    if (prev && range.trainingStartMi <= prev.trainingEndMi + 0.4) {
+      prev.trainingEndMi = Math.max(prev.trainingEndMi, range.trainingEndMi)
+    } else {
+      merged.push({ ...range })
+    }
+  }
+  return merged
 }
 
 type AssignedHit = { trainingMi: number; courseMi: number; lat: number; lon: number }
@@ -472,6 +540,7 @@ export function computeTrainingOverlap(
     if (!cur) return
     const courseSpan = Math.abs(cur.courseEnd - cur.courseStart)
     const trainingSpan = cur.trainingEnd - cur.trainingStart
+    if (!followsRaceTrail(trainingSpan, courseSpan)) return
     if (courseSpan >= 0.15 || trainingSpan >= 0.2) {
       streaks.push(cur)
     }

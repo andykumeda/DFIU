@@ -292,6 +292,37 @@ describe('computeTrainingMapOverlap', () => {
     expect(first).toBeTruthy()
     expect(first.trainingStartMi).toBeGreaterThan(0.7)
   })
+
+  it('does not paint a fire-road approach into an aid the race visits on another road', () => {
+    const lat = 34.25
+    const dLon = 0.05 / (69 * Math.cos((lat * Math.PI) / 180))
+    const dLat = 0.05 / 69
+    const redBoxPass: [number, number][] = Array.from({ length: 41 }, (_, i) => [-118.12 + i * dLon, lat])
+    const laterPass: [number, number][] = Array.from({ length: 41 }, (_, i) => [
+      -118.12 + i * dLon,
+      lat - 20 * dLat,
+    ])
+    const connector: [number, number][] = Array.from({ length: 8 }, (_, i) => [
+      redBoxPass[redBoxPass.length - 1][0],
+      lat - (i + 1) * dLat * 2.5,
+    ])
+    const course = [...redBoxPass, ...connector, ...laterPass]
+    const south = laterPass[20]
+    const redBox = redBoxPass[20]
+    const steps = 25
+    const training: [number, number][] = Array.from({ length: steps }, (_, i) => {
+      const t = i / (steps - 1)
+      return [south[0] + (redBox[0] - south[0]) * t, south[1] + (redBox[1] - south[1]) * t]
+    })
+
+    const ranges = computeTrainingMapOverlap(training, course)
+    expect(ranges.every(range => range.trainingEndMi < 0.85)).toBe(true)
+
+    const analysis = computeTrainingOverlap(training, course)
+    expect(
+      analysis.segments.every(seg => Math.abs(seg.courseEndMi - seg.courseStartMi) > 0.2 || seg.trainingEndMi < 0.5)
+    ).toBe(true)
+  })
 })
 
 describe('buildTrainingOverlapUpdates', () => {
