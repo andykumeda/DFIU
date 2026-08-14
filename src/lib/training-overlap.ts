@@ -144,6 +144,14 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100
 }
 
+function indexAtCourseMile(courseCum: number[], mile: number): number {
+  if (courseCum.length < 2) return 0
+  for (let i = 0; i < courseCum.length - 1; i++) {
+    if (courseCum[i + 1] >= mile) return i
+  }
+  return courseCum.length - 2
+}
+
 function headingDegrees(a: LonLat, b: LonLat): number | null {
   const meanLat = ((a[1] + b[1]) / 2) * (Math.PI / 180)
   const east = (b[0] - a[0]) * Math.cos(meanLat)
@@ -178,6 +186,8 @@ function hasMatchingTrailDirection(
  * close to the displayed race geometry. This is intentionally geometry-first
  * for map painting: persisted overlap metadata can be stale after a course or
  * route edit, while the map should always color the lines the user can see.
+ * Course-mile continuity keeps an out-and-back from dropping to "training only"
+ * when GPS is slightly closer to the other visit of the same trail.
  */
 export function computeTrainingMapOverlap(
   trainingCoords: LonLat[],
@@ -190,7 +200,7 @@ export function computeTrainingMapOverlap(
   const gapBridgeMi = options?.gapBridgeMi ?? MAP_OVERLAP_GAP_BRIDGE_MI
   const headingToleranceDeg = options?.headingToleranceDeg ?? MAP_OVERLAP_HEADING_TOLERANCE_DEG
   const { coords, miles } = downsampleByDistance(trainingCoords, OVERLAP_SAMPLE_STEP_MI)
-  const sampledCourse = downsampleByDistance(courseCoords, OVERLAP_SAMPLE_STEP_MI)
+  const courseCum = cumulativeMiles(courseCoords)
   const ranges: TrainingMapOverlapSegment[] = []
   let start: number | null = null
   let lastHit: number | null = null
@@ -206,16 +216,41 @@ export function computeTrainingMapOverlap(
 
   for (let i = 0; i < coords.length; i++) {
     const [lon, lat] = coords[i]
-    const nearest = getNearestPointOnLine({ lat, lon }, sampledCourse.coords)
-    const nearestCourseMi = nearest ? sampledCourse.miles[Math.min(nearest.index, sampledCourse.miles.length - 1)] : null
-    const courseJump = nearestCourseMi != null && lastCourseMi != null
-      ? Math.abs(nearestCourseMi - lastCourseMi)
-      : 0
-    const onCourse =
+    const pt = { lat, lon }
+    const nearest = getNearestPointOnLine(pt, courseCoords)
+    let nearestCourseMi =
+      nearest != null
+        ? getDistanceFromStart(courseCoords, nearest.index, { lat: nearest.lat, lon: nearest.lon })
+        : null
+    const courseJump =
+      nearestCourseMi != null && lastCourseMi != null ? Math.abs(nearestCourseMi - lastCourseMi) : 0
+    let onCourse =
       nearest != null &&
       nearest.distance <= bufferMi &&
-      hasMatchingTrailDirection(coords, i, sampledCourse.coords, nearest.index, headingToleranceDeg) &&
+      hasMatchingTrailDirection(coords, i, courseCoords, nearest.index, headingToleranceDeg) &&
       courseJump <= MAP_OVERLAP_COURSE_JUMP_MI
+
+    // Out-and-back GPS traces sit on the same trail. Unconstrained nearest can
+    // jump to the other visit and look like a branch; stay on the current visit
+    // when that trail is still underfoot.
+    if (!onCourse && lastCourseMi != null) {
+      const hintedMi = snapNearPredictedMile(
+        pt,
+        courseCoords,
+        courseCum,
+        lastCourseMi,
+        bufferMi,
+        MAP_OVERLAP_COURSE_JUMP_MI
+      )
+      if (hintedMi != null) {
+        const hintedIndex = indexAtCourseMile(courseCum, hintedMi)
+        if (hasMatchingTrailDirection(coords, i, courseCoords, hintedIndex, headingToleranceDeg)) {
+          onCourse = true
+          nearestCourseMi = hintedMi
+        }
+      }
+    }
+
     if (onCourse) {
       if (start == null) start = miles[i]
       lastHit = miles[i]

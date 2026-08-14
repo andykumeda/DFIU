@@ -218,6 +218,24 @@ describe('computeTrainingMapOverlap', () => {
     expect(computeTrainingMapOverlap(training, course)).toEqual([])
   })
 
+  it('keeps painting overlap when an out-and-back return trace is closer than the current visit', () => {
+    const outbound = makeLine(37, -122, 81, 0.05)
+    const dLon = 0.00055
+    const returnTrace = outbound.map(([lon, lat]) => [lon + dLon, lat] as [number, number]).reverse()
+    const course = [...outbound, ...returnTrace.slice(1)]
+    const training: [number, number][] = outbound.map((pt, i) => {
+      const t = i / (outbound.length - 1)
+      const drift = t > 0.35 && t < 0.65 ? dLon * 0.7 : 0
+      return [pt[0] + drift, pt[1]]
+    })
+
+    const ranges = computeTrainingMapOverlap(training, course)
+
+    expect(ranges).toHaveLength(1)
+    expect(ranges[0].trainingStartMi).toBe(0)
+    expect(ranges[0].trainingEndMi).toBeGreaterThan(3.5)
+  })
+
   it('stops painting when a route turns onto a perpendicular branch', () => {
     const course: [number, number][] = [
       [-118.2, 34.2],

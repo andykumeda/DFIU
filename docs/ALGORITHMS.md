@@ -75,6 +75,8 @@ Training overlap is geometric, not name-based. DFIU:
 
 The total overlap is unique course-mile coverage across the assigned race-mile ranges.
 
+Map coloring is stricter (about 0.06 mi) so a nearby parallel trail stays blue. It still follows the current race visit: if unconstrained nearest-point jumps to a later out-and-back pass of the same trail, the map keeps the orange overlap instead of opening a false training-only gap.
+
 ## Strava training analysis
 
 For every detected overlap pair, DFIU calculates the Plan A time for only that race-mile span. It compares that span with the corresponding training-mile span independently; it does not create one misleading total for a whole training run with disconnected overlap sections.

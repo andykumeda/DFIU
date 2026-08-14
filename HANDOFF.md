@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-13
 **Branch:** `main`
-**Status:** Training route detail maps use continuous course-mile tracking and no longer display tiny reverse/duplicate overlap artifacts.
+**Status:** Training detail maps keep orange overlap on shared out-and-back trail when GPS is closer to the other race visit.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -13,6 +13,7 @@
 
 ## Just finished
 
+- Fixed Training overlap coloring on shared out-and-back trail. Map painting now snaps to full course geometry and stays on the current race visit when unconstrained nearest-point jumps to the return pass, so that stretch stays orange instead of blue.
 - Fixed Training route navigation by restoring immediate local selection while retaining shareable `?training=` URLs. Reselecting the Training tab returns to the list without breaking later card clicks.
 - Fixed Training detail-map overlap rendering. The map tracks course-mile progression with direction-aware proximity, a 0.06-mile visual tolerance, and a 0.4-mile bridge for normal shared-trail GPS gaps. The detail breakdown filters sub-quarter-mile reverse/duplicate snaps such as `24.8–24.6`.
 - Removed the Ask Strava panel and its query gateway. The Training page retains its prior Strava connection and Training Analysis flows.
@@ -30,7 +31,7 @@
 
 ## Open
 
-- Last product deployment: Training overlap gap/bend fix (current commit); production URL is `https://dfiu.app/race/fca7696b-6093-49a7-be8a-ba3c0a480643?demo=1&training=30a7927b-1283-47ca-9968-45ec803dfef1`.
+- Last product deployment: Training out-and-back overlap visit-lock; production URL is `https://dfiu.app/race/fca7696b-6093-49a7-be8a-ba3c0a480643?demo=1&training=30a7927b-1283-47ca-9968-45ec803dfef1`.
 - Smoke-test the merged pace/terrain UI in production.
 - Design and implement the opt-in post-event feedback email flow.
 - Rotate Strava secret; verify RBAC with a second account; `/admin` + owner-transfer UI.
