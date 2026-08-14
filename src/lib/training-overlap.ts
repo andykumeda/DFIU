@@ -14,6 +14,15 @@ export const OVERLAP_SAMPLE_STEP_MI = 0.05
 /** Bridge brief off-course gaps along the training route (GPS dropouts / switchbacks). */
 export const OVERLAP_GAP_BRIDGE_MI = 0.4
 
+/** Map painting only bridges tiny GPS gaps; longer nearby branches must remain blue. */
+export const MAP_OVERLAP_GAP_BRIDGE_MI = 0.1
+
+/** Map painting is stricter than analysis so nearby parallel trails remain blue. */
+export const MAP_OVERLAP_BUFFER_MI = 0.06
+
+/** Nearby paths must follow the same trail direction (either travel direction is valid). */
+export const OVERLAP_HEADING_TOLERANCE_DEG = 45
+
 /** Merge course-mile clusters closer than this into one displayed range. */
 export const COURSE_RANGE_MERGE_MI = 1.25
 
@@ -129,6 +138,35 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100
 }
 
+function headingDegrees(a: LonLat, b: LonLat): number | null {
+  const meanLat = ((a[1] + b[1]) / 2) * (Math.PI / 180)
+  const east = (b[0] - a[0]) * Math.cos(meanLat)
+  const north = b[1] - a[1]
+  if (Math.hypot(east, north) < 1e-9) return null
+  return (Math.atan2(east, north) * 180) / Math.PI
+}
+
+/** Same trail can be traveled in either direction, so compare headings modulo 180°. */
+function hasMatchingTrailDirection(
+  training: LonLat[],
+  trainingIndex: number,
+  course: LonLat[],
+  courseIndex: number,
+  toleranceDeg: number
+): boolean {
+  const trainingStart = training[Math.max(0, trainingIndex - 1)]
+  const trainingEnd = training[Math.min(training.length - 1, trainingIndex + 1)]
+  const courseStart = course[Math.max(0, Math.min(courseIndex, course.length - 2))]
+  const courseEnd = course[Math.min(course.length - 1, Math.max(1, courseIndex + 1))]
+  const trainingHeading = headingDegrees(trainingStart, trainingEnd)
+  const courseHeading = headingDegrees(courseStart, courseEnd)
+  if (trainingHeading == null || courseHeading == null) return true
+
+  const rawDifference = Math.abs(((trainingHeading - courseHeading + 540) % 360) - 180)
+  const undirectedDifference = Math.min(rawDifference, 180 - rawDifference)
+  return undirectedDifference <= toleranceDeg
+}
+
 /**
  * Find the portions of the displayed training geometry that are physically
  * close to the displayed race geometry. This is intentionally geometry-first
@@ -138,12 +176,13 @@ function round2(n: number): number {
 export function computeTrainingMapOverlap(
   trainingCoords: LonLat[],
   courseCoords: LonLat[],
-  options?: { bufferMi?: number; gapBridgeMi?: number }
+  options?: { bufferMi?: number; gapBridgeMi?: number; headingToleranceDeg?: number }
 ): TrainingMapOverlapSegment[] {
   if (trainingCoords.length < 2 || courseCoords.length < 2) return []
 
-  const bufferMi = options?.bufferMi ?? OVERLAP_BUFFER_MI
-  const gapBridgeMi = options?.gapBridgeMi ?? OVERLAP_GAP_BRIDGE_MI
+  const bufferMi = options?.bufferMi ?? MAP_OVERLAP_BUFFER_MI
+  const gapBridgeMi = options?.gapBridgeMi ?? MAP_OVERLAP_GAP_BRIDGE_MI
+  const headingToleranceDeg = options?.headingToleranceDeg ?? OVERLAP_HEADING_TOLERANCE_DEG
   const { coords, miles } = downsampleByDistance(trainingCoords, OVERLAP_SAMPLE_STEP_MI)
   const sampledCourse = downsampleByDistance(courseCoords, OVERLAP_SAMPLE_STEP_MI).coords
   const ranges: TrainingMapOverlapSegment[] = []
@@ -160,7 +199,10 @@ export function computeTrainingMapOverlap(
   for (let i = 0; i < coords.length; i++) {
     const [lon, lat] = coords[i]
     const nearest = getNearestPointOnLine({ lat, lon }, sampledCourse)
-    const onCourse = nearest != null && nearest.distance <= bufferMi
+    const onCourse =
+      nearest != null &&
+      nearest.distance <= bufferMi &&
+      hasMatchingTrailDirection(coords, i, sampledCourse, nearest.index, headingToleranceDeg)
     if (onCourse) {
       if (start == null) start = miles[i]
       lastHit = miles[i]

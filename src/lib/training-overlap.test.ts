@@ -200,6 +200,45 @@ describe('computeTrainingMapOverlap', () => {
     expect(ranges.length).toBeGreaterThanOrEqual(2)
     expect(ranges[0].trainingEndMi).toBeLessThan(ranges[1].trainingStartMi)
   })
+
+  it('does not paint a nearby parallel trail as overlap', () => {
+    const course: [number, number][] = [
+      [-118.2, 34.2],
+      [-118.16, 34.2],
+      [-118.12, 34.2],
+    ]
+    // About 180 ft north of the course: close enough for broad route analysis,
+    // but visibly a separate trail and therefore not map overlap.
+    const training: [number, number][] = [
+      [-118.2, 34.201],
+      [-118.16, 34.201],
+      [-118.12, 34.201],
+    ]
+
+    expect(computeTrainingMapOverlap(training, course)).toEqual([])
+  })
+
+  it('stops painting when a route turns onto a perpendicular branch', () => {
+    const course: [number, number][] = [
+      [-118.2, 34.2],
+      [-118.16, 34.2],
+      [-118.12, 34.2],
+    ]
+    const training: [number, number][] = [
+      [-118.2, 34.2],
+      [-118.18, 34.2],
+      [-118.16, 34.2],
+      [-118.16, 34.205],
+      [-118.16, 34.21],
+    ]
+
+    const ranges = computeTrainingMapOverlap(training, course)
+
+    expect(ranges).toHaveLength(1)
+    // The matching eastbound approach is ~2.3 mi; the northbound branch adds
+    // another ~0.7 mi and must stay blue.
+    expect(ranges[0].trainingEndMi).toBeLessThan(2.5)
+  })
 })
 
 describe('buildTrainingOverlapUpdates', () => {
