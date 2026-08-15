@@ -36,7 +36,7 @@ type StrategyMode = 'planA' | 'planB' | 'planC'
 
 /** Past-finish calibration UI — keep wired; hide until the flow is productized. */
 const SHOW_PREDICTION_CALIBRATION = false
-/** Independent P10–P90 estimate, calibrated from selected Strava race history. */
+/** Independent estimated-finish range, calibrated from selected race history. */
 const SHOW_ABILITY_BASED_PREDICTION = true
 
 const strategyColors: Record<StrategyMode, {
@@ -702,15 +702,16 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                         {SHOW_ABILITY_BASED_PREDICTION && prediction && <div className="rounded-xl border border-violet-900/70 bg-violet-950/20 p-4 print:hidden">
                             <div className="flex flex-wrap items-baseline justify-between gap-2">
                                 <div>
-                                    <div className="text-xs font-semibold uppercase tracking-wider text-violet-300">Ability-based prediction</div>
-                                    <div className="mt-1 text-2xl font-black font-mono text-white">P50 {formatDuration(prediction.p50TotalMinutes)}</div>
+                                    <div className="text-xs font-semibold uppercase tracking-wider text-violet-300">Estimated finish</div>
+                                    <div className="mt-1 text-2xl font-black font-mono text-white">{formatDuration(prediction.p50TotalMinutes)}</div>
                                 </div>
-                                <div className="text-right text-sm text-violet-200">P10–P90 {formatDuration(prediction.p10TotalMinutes)}–{formatDuration(prediction.p90TotalMinutes)}<br /><span className="text-xs text-neutral-400">{prediction.confidence} confidence · {history.length} selected finish{history.length === 1 ? '' : 'es'}</span></div>
+                                <div className="text-right text-sm text-violet-200">Faster–slower {formatDuration(prediction.p10TotalMinutes)}–{formatDuration(prediction.p90TotalMinutes)}<br /><span className="text-xs text-neutral-400">{prediction.confidence} confidence · {history.length} selected finish{history.length === 1 ? '' : 'es'}</span></div>
                             </div>
                             <p className="mt-2 text-xs text-neutral-400">
-                                {history.length === 0
-                                    ? <>No race history is selected. This range uses a default 15:00/mi flat baseline — a conservative uncalibrated trail/ultra placeholder, not your measured ability. Add finishes in Settings to calibrate it. <Link to="/documentation/algorithms#ability-based-prediction" className="font-semibold text-violet-300 hover:text-violet-200">How this prediction is calculated</Link></>
-                                    : <>Includes {formatDuration(prediction.p50MovingMinutes)} moving and {formatDuration(prediction.p50StoppedMinutes)} expected stops. The goal plan remains target-time driven; this is an independent estimate. <Link to="/documentation/algorithms#ability-based-prediction" className="font-semibold text-violet-300 hover:text-violet-200">How this prediction is calculated</Link></>}
+                                This is a band around one simulated finish for this course, not 10th/50th/90th percentiles of race results. {history.length === 0
+                                    ? <>No race history is selected. The range uses a default 15:00/mi flat baseline — a conservative uncalibrated trail/ultra placeholder, not your measured ability. Add finishes in Settings to calibrate it. </>
+                                    : <>Includes {formatDuration(prediction.p50MovingMinutes)} moving and {formatDuration(prediction.p50StoppedMinutes)} expected stops. The goal plan remains a time you set. </>}
+                                <Link to="/documentation/algorithms#ability-based-prediction" className="font-semibold text-violet-300 hover:text-violet-200">How this prediction is calculated</Link>
                             </p>
                             <div className="mt-3 flex flex-wrap items-center gap-3">
                                 <Link to="/settings#race-history" className="text-xs font-semibold text-violet-300 hover:text-violet-200">
@@ -724,11 +725,11 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                                             const hours = Math.floor(minutes / 60)
                                             const mins = minutes % 60
                                             setPlanA(`${hours}:${mins.toString().padStart(2, '0')}`)
-                                            toast.success('Plan A set to the predicted P50 time')
+                                            toast.success('Plan A set to the estimated finish')
                                         }}
                                         className="rounded bg-violet-600 hover:bg-violet-500 px-3 py-1.5 text-xs font-semibold text-white"
                                     >
-                                        Use P50 as Plan A
+                                        Use estimate as Plan A
                                     </button>
                                 )}
                             </div>

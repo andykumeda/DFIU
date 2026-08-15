@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-14
 **Branch:** `main`
-**Status:** Clarifying the empty-history ability card and documenting the 15 min/mi default.
+**Status:** Relabeling P10/P50/P90 as an estimated finish and faster/slower range.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -15,7 +15,7 @@
 ## Just finished
 
 - Settings → Race history: tagged Strava races and **Import GPX** (distance, gain, first-to-last timestamps; enter HH:MM if the file has no times).
-- Ability card states the 15:00/mi default when no history is selected and hides **Use P50 as Plan A** until finishes exist. Docs record that 15 is an uncalibrated placeholder, not a fitted statistic.
+- Relabeled the ability card to estimated finish and a faster–slower range, with on-card copy that these are not result percentiles.
 
 ## Open
 

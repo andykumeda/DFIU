@@ -44,7 +44,17 @@ Every eligible aid/crew/drop-bag/water/medical waypoint uses its explicit delay 
 
 ## Ability-based prediction
 
-A separate predictor estimates a P10–P50–P90 finish from a calibrated flat baseline, then applies **this event’s** GPX, terrain, night/heat/altitude, limited profile tweaks, and expected aid stops. Past races do not draw the Plan A/B/C chart. They only set how fast the predictor thinks you are. Plan A changes only if you explicitly apply the P50.
+A separate predictor estimates a finish for this course from a calibrated flat baseline, then applies **this event’s** GPX, terrain, night/heat/altitude, limited profile tweaks, and expected aid stops. Past races do not draw the Plan A/B/C chart. They only set how fast the predictor thinks you are. Plan A changes only if you explicitly apply the estimate.
+
+### What the estimated finish and range mean
+
+The card shows one **estimated finish** (internally P50) and a **faster–slower range** (internally P10–P90). These are **not** “10% / 50% / 90% of runners finish by this time,” and they are not percentiles from a results field.
+
+- **Estimated finish:** the model’s simulated total (moving time plus expected stops) for this course.
+- **Faster bound:** that same total scaled down by the uncertainty spread.
+- **Slower bound:** that same total scaled up by the spread.
+
+The spread is ±18% with no history, ±11% with some history, and ±7% when evidence is stronger (total weight ≥ 2). More selected finishes tighten the band; they do not turn it into a statistical quantile.
 
 ### Step 1: Turn each past race into one equivalent flat pace
 
@@ -87,7 +97,7 @@ blend = min(0.80, 0.35 + total_weight × 0.20)
 calibrated pace = default × (1 − blend) + observed × blend
 ```
 
-No history stays at the default with low confidence and a wide P10–P90 (±18%). Some history mixes toward the observed pace (medium, ±11%). Stronger evidence (total weight ≥ 2) is high confidence (±7%). History can contribute at most 80%; 20% of the default always remains. That calibrated pace is the only number past races contribute.
+No history stays at the default with low confidence and a wide faster–slower range (±18%). Some history mixes toward the observed pace (medium, ±11%). Stronger evidence (total weight ≥ 2) is high confidence (±7%). History can contribute at most 80%; 20% of the default always remains. That calibrated pace is the only number past races contribute.
 
 ### Step 4: Apply that pace to this event’s course
 
@@ -104,7 +114,7 @@ segment time = calibrated_pace × segment_miles × grade × terrain × condition
 - **Conditions** stack on that segment’s clock time after the scheduled start: night (~+8%, more on technical trail), altitude above 5,000 ft (small, capped), heat if forecast high is above 75°F during hot hours, and extra cost on steep technical descents.
 - In this predictor, the runner profile only tweaks **technical** and **altitude** (weak/strong). Climbing, descending, heat, and pacing-style sliders reshape Plan A’s distribution, not this baseline.
 
-Aid, crew, drop-bag, water, and medical stops add their delay (or the runner’s default). Start, Finish, and landmarks add none. P50 is moving time plus stops. P10 and P90 scale that total by the spread above.
+Aid, crew, drop-bag, water, and medical stops add their delay (or the runner’s default). Start, Finish, and landmarks add none. The estimated finish is moving time plus stops. The faster and slower bounds scale that total by the spread above.
 
 ### What past elevation does not do
 
@@ -157,7 +167,8 @@ Strava moving time is used exclusively. With distance/time/moving streams, DFIU 
 
 - They do not replace race, medical, weather, access, or navigation judgment.
 - They do not learn a runner-specific physiology model from Strava automatically. Selected tagged races only calibrate the independent ability prediction’s flat baseline.
-- They do not change Plan A/B/C from history unless the runner applies the predicted P50.
+- They do not change Plan A/B/C from history unless the runner applies the estimated finish.
+- They do not report 10th/50th/90th percentiles of race results; the faster–slower range is a heuristic band around one simulated finish.
 - They do not calculate traffic-aware crew travel time or in-app driving routes.
 - They cannot correct an inaccurate GPX, missing elevation data, or a poor GPS trace.
 
