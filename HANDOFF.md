@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-14
 **Branch:** `main`
-**Status:** Race history supports Strava plus GPX import; shorter finishes are down-weighted vs the planned distance.
+**Status:** Ability-prediction docs are linked from the Pace card.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -15,7 +15,7 @@
 ## Just finished
 
 - Settings → Race history: tagged Strava races and **Import GPX** (distance, gain, first-to-last timestamps; enter HH:MM if the file has no times).
-- Ability prediction weights history by recency × `min(1, history miles / target miles)` (floor 0.15). A 50K/50-mile/100K still counts for a 100, but less than a similar-distance finish. Plan A unchanged unless **Use P50 as Plan A**.
+- Documented the ability-prediction walkthrough in `docs/ALGORITHMS.md` and linked it from the Pace card (`/documentation/algorithms#ability-based-prediction`).
 
 ## Open
 

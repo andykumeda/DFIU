@@ -44,17 +44,71 @@ Every eligible aid/crew/drop-bag/water/medical waypoint uses its explicit delay 
 
 ## Ability-based prediction
 
-A separate predictor estimates a P10–P50–P90 finish from a calibrated flat baseline, then applies grade, terrain, night, heat, altitude, limited profile tweaks, and expected aid stops. It does not replace Plan A/B/C.
+A separate predictor estimates a P10–P50–P90 finish from a calibrated flat baseline, then applies **this event’s** GPX, terrain, night/heat/altitude, limited profile tweaks, and expected aid stops. Past races do not draw the Plan A/B/C chart. They only set how fast the predictor thinks you are. Plan A changes only if you explicitly apply the P50.
 
-Selected Strava races, imported GPX finishes, and any other saved `runner_history` rows calibrate that baseline:
+### Step 1: Turn each past race into one equivalent flat pace
 
-- equivalent pace = moving time / distance / a bounded elevation cost
-- weight = recency decay × distance similarity to the event being planned (`min(1, history miles / target miles)`, floored at 0.15)
-- blend into the default 15 min/mi flat baseline, capped at 80% influence
+Each saved finish contributes distance, time (moving time when present, otherwise finish time), total elevation gain, and date. The model does **not** replay that past race’s elevation profile.
 
-A 50K, 50-mile, or 100K finish still informs the baseline, but it cannot dominate a 100-mile prediction the way an equal-distance finish can. Shorter races tend to be faster; the similarity weight is what keeps that from making an ultra look too quick.
+```text
+equivalent pace = time / distance / gain cost
+gain cost = 1 + min(0.35, (gain_ft / distance_mi) / 10,000)
+```
 
-Strava offers activities tagged as a Race (`workout_type` 1) with sport Run, TrailRun, or VirtualRun. GPX import uses track distance, elevation, and first-to-last timestamps as finish time. The user chooses which finishes to keep. Plan A changes only if the runner explicitly applies the P50.
+Extra gain makes the equivalent pace faster than raw minutes-per-mile (you were “better on the flat” than the clock suggests). Gain cost is capped at +35%.
+
+### Step 2: Weight that pace for this event
+
+```text
+weight = recency × distance similarity
+recency = exp(−age_in_days / 365)
+similarity = min(1, max(0.15, past_miles / this_event_miles))
+```
+
+An undated finish is treated as one year old. For a 100-mile event:
+
+| Past race | Similarity |
+| --- | ---: |
+| 50K (~31 mi) | ~0.31 |
+| 50 mi | 0.50 |
+| 100K (~62 mi) | ~0.62 |
+| 100 mi or longer | 1.00 |
+
+A 50K still informs the baseline; it cannot outweigh a similar-distance finish. The model then takes a weighted average of those equivalent paces.
+
+### Step 3: Blend with a default
+
+Default flat pace is 15 min/mi unless a runner baseline is set.
+
+```text
+blend = min(0.80, 0.35 + total_weight × 0.20)
+calibrated pace = default × (1 − blend) + observed × blend
+```
+
+No history stays at the default with low confidence and a wide P10–P90 (±18%). Some history mixes toward the observed pace (medium, ±11%). Stronger evidence (total weight ≥ 2) is high confidence (±7%). History can contribute at most 80%; 20% of the default always remains. That calibrated pace is the only number past races contribute.
+
+### Step 4: Apply that pace to this event’s course
+
+The predictor walks this race’s elevation samples in order:
+
+```text
+segment time = calibrated_pace × segment_miles × grade × terrain × conditions
+```
+
+**This event’s** elevation profile enters here:
+
+- **Grade** uses the Minetti energy-cost curve on consecutive GPX points (uphill costs more; moderate downhill helps; extreme downhill is bounded).
+- **Terrain** uses this course’s terrain nodes (`difficulty / 100`).
+- **Conditions** stack on that segment’s clock time after the scheduled start: night (~+8%, more on technical trail), altitude above 5,000 ft (small, capped), heat if forecast high is above 75°F during hot hours, and extra cost on steep technical descents.
+- In this predictor, the runner profile only tweaks **technical** and **altitude** (weak/strong). Climbing, descending, heat, and pacing-style sliders reshape Plan A’s distribution, not this baseline.
+
+Aid, crew, drop-bag, water, and medical stops add their delay (or the runner’s default). Start, Finish, and landmarks add none. P50 is moving time plus stops. P10 and P90 scale that total by the spread above.
+
+### What past elevation does not do
+
+Past races contribute **total gain**, not a mile-by-mile clone of that old course. Stored past terrain difficulty and past altitude are not used in the calibration math. The model does not learn climbing skill from a prior ultra; that remains the Settings strength slider, which mainly affects Plan A.
+
+Strava offers activities tagged as a Race (`workout_type` 1) with sport Run, TrailRun, or VirtualRun. GPX import uses track distance, elevation, and first-to-last timestamps as finish time. The user chooses which finishes to keep.
 
 ## Live re-anchoring
 
