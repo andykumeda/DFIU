@@ -78,7 +78,9 @@ A 50K still informs the baseline; it cannot outweigh a similar-distance finish. 
 
 ### Step 3: Blend with a default
 
-Default flat pace is 15 min/mi unless a runner baseline is set.
+With no selected finishes, the predictor still runs. It uses a default **15:00 per mile** on flat runnable ground. That value is a conservative uncalibrated placeholder for trail/ultra planning — a round number in the all-day hiking/running band, not a statistic fitted from DFIU results or a road-race equivalent. It exists so the card can show a wide, explicitly low-confidence range instead of looking like a precise personal estimate.
+
+If a runner baseline is stored on the profile, that replaces 15; the Settings UI does not currently expose that field, so almost everyone starts at 15 until history is added.
 
 ```text
 blend = min(0.80, 0.35 + total_weight × 0.20)

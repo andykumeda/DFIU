@@ -56,7 +56,7 @@ Use **Settings** to set your runner profile and default aid-station delay. The p
 
 Below the profile, **Race history** can pull tagged Strava races or import a GPX from a watch or race file. Choose which finishes to include; those calibrate an independent P10–P90 predicted range on **Pace Plan**. They do not change Plan A unless you choose **Use P50 as Plan A**. A 50K, 50-mile, or 100K result still counts, but less than a similar-distance finish when you are planning a 100. Short road races stay unchecked by default in the Strava list. Only activities marked as a Race in Strava appear there; untagged efforts are not guessed from titles.
 
-The Pace Plan page also shows that ability-based range after you calculate, with a link back to Settings to edit the selection and a link to the [ability-based prediction](/documentation/algorithms#ability-based-prediction) algorithm notes.
+The Pace Plan page also shows that ability-based range after you calculate. With no selected finishes it still appears, labeled as a low-confidence default (15:00 per mile on flat, not your measured ability). Add Strava or GPX finishes in Settings to calibrate it. The card links to Settings and to the [ability-based prediction](/documentation/algorithms#ability-based-prediction) algorithm notes.
 
 ## Overview, Crew, and Live
 

@@ -707,12 +707,16 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                                 </div>
                                 <div className="text-right text-sm text-violet-200">P10–P90 {formatDuration(prediction.p10TotalMinutes)}–{formatDuration(prediction.p90TotalMinutes)}<br /><span className="text-xs text-neutral-400">{prediction.confidence} confidence · {history.length} selected finish{history.length === 1 ? '' : 'es'}</span></div>
                             </div>
-                            <p className="mt-2 text-xs text-neutral-400">Includes {formatDuration(prediction.p50MovingMinutes)} moving and {formatDuration(prediction.p50StoppedMinutes)} expected stops. The goal plan remains target-time driven; this is an independent estimate. <Link to="/documentation/algorithms#ability-based-prediction" className="font-semibold text-violet-300 hover:text-violet-200">How this prediction is calculated</Link></p>
+                            <p className="mt-2 text-xs text-neutral-400">
+                                {history.length === 0
+                                    ? <>No race history is selected. This range uses a default 15:00/mi flat baseline — a conservative uncalibrated trail/ultra placeholder, not your measured ability. Add finishes in Settings to calibrate it. <Link to="/documentation/algorithms#ability-based-prediction" className="font-semibold text-violet-300 hover:text-violet-200">How this prediction is calculated</Link></>
+                                    : <>Includes {formatDuration(prediction.p50MovingMinutes)} moving and {formatDuration(prediction.p50StoppedMinutes)} expected stops. The goal plan remains target-time driven; this is an independent estimate. <Link to="/documentation/algorithms#ability-based-prediction" className="font-semibold text-violet-300 hover:text-violet-200">How this prediction is calculated</Link></>}
+                            </p>
                             <div className="mt-3 flex flex-wrap items-center gap-3">
                                 <Link to="/settings#race-history" className="text-xs font-semibold text-violet-300 hover:text-violet-200">
-                                    {history.length} selected finish{history.length === 1 ? '' : 'es'} · edit in Settings
+                                    {history.length === 0 ? 'Add race history in Settings' : `${history.length} selected finish${history.length === 1 ? '' : 'es'} · edit in Settings`}
                                 </Link>
-                                {canEdit && (
+                                {canEdit && history.length > 0 && (
                                     <button
                                         type="button"
                                         onClick={() => {

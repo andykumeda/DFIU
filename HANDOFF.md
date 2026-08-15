@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-14
 **Branch:** `main`
-**Status:** Ability-prediction docs are linked from the Pace card.
+**Status:** Clarifying the empty-history ability card and documenting the 15 min/mi default.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -15,7 +15,7 @@
 ## Just finished
 
 - Settings → Race history: tagged Strava races and **Import GPX** (distance, gain, first-to-last timestamps; enter HH:MM if the file has no times).
-- Documented the ability-prediction walkthrough in `docs/ALGORITHMS.md` and linked it from the Pace card (`/documentation/algorithms#ability-based-prediction`).
+- Ability card states the 15:00/mi default when no history is selected and hides **Use P50 as Plan A** until finishes exist. Docs record that 15 is an uncalibrated placeholder, not a fitted statistic.
 
 ## Open
 
