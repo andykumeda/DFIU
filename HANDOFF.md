@@ -1,17 +1,22 @@
 # Handoff Document
 
-**Date:** 2026-08-13
+**Date:** 2026-08-14
 **Branch:** `main`
-**Status:** Overlap orange is on the training line only, not the whole race GPX.
+**Status:** Strava race calibration is implemented for the independent P10–P90 ability prediction.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Frontend: latest local deploy includes the signup access-code request note, access-code gate, and Buy Me a Coffee support link.
+- Frontend: latest local deploy includes Strava race history in Settings and the Pace ability card.
 - OG: `dfiu-og` serves `og-default.png` (left) by default; Facebook/Instagram UAs get `og-ig.png` (centered).
+- Backend: `runner_history.strava_activity_id` applied on linked DFIU; `strava-activity` `list-races` deployed.
 
 ## Just finished
+
+- Settings → Race history (Strava) lists tagged running races (`workout_type` 1). Selected finishes write to `runner_history` and calibrate `predictPace` only. Plan A stays a user goal unless **Use P50 as Plan A**.
+- Pace tab shows the ability-based P10–P90 card with a Settings link.
+- Applied scoped migration `20260815000100_runner_history_strava_activity.sql` via `supabase db query --linked` (not `db push`).
 
 - Overlap orange is drawn on the training GPS, not the race GPX (painting race miles 91–101 had turned the whole visible course red). Off-course dips stay out of those training-mile ranges.
 - Training list cards use a static SVG route thumbnail. They no longer run Mapbox or full-course overlap snaps (that was N times 2.5–5s after overlap painting moved onto TrainingRouteDetailMap).

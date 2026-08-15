@@ -51,7 +51,7 @@ Never expose Strava or Visual Crossing secrets in client variables. They belong 
 The app uses Supabase RLS and RPCs for race access, membership, and selected protected operations. Schema changes are kept in `supabase/migrations/`; current Edge Functions are:
 
 - `strava-auth` — OAuth start/callback; gateway JWT verification is disabled because a user may not have a DFIU session yet. OAuth state provides CSRF protection.
-- `strava-activity` — authenticated activity and connection lookup.
+- `strava-activity` — authenticated activity lookup, connection status, and tagged-race listing.
 - `weather` — authenticated weather fetch using the server-side Visual Crossing key.
 - `invite-race-member` — authenticated, permission-checked invite workflow.
 

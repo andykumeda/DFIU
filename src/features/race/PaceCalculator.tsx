@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import { Course, Race, TerrainNode, Waypoint } from '@/types/database'
 import { calculatePacePlan, isPaceChartWaypoint, type PacePlanResult, usesAidStationDefaultDelay } from './pace-utils'
@@ -35,8 +36,8 @@ type StrategyMode = 'planA' | 'planB' | 'planC'
 
 /** Past-finish calibration UI — keep wired; hide until the flow is productized. */
 const SHOW_PREDICTION_CALIBRATION = false
-/** Keep predictPace wired; hide the P10–P90 ability card until product wants it back. */
-const SHOW_ABILITY_BASED_PREDICTION = false
+/** Independent P10–P90 estimate, calibrated from selected Strava race history. */
+const SHOW_ABILITY_BASED_PREDICTION = true
 
 const strategyColors: Record<StrategyMode, {
     active: string
@@ -704,9 +705,29 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                                     <div className="text-xs font-semibold uppercase tracking-wider text-violet-300">Ability-based prediction</div>
                                     <div className="mt-1 text-2xl font-black font-mono text-white">P50 {formatDuration(prediction.p50TotalMinutes)}</div>
                                 </div>
-                                <div className="text-right text-sm text-violet-200">P10–P90 {formatDuration(prediction.p10TotalMinutes)}–{formatDuration(prediction.p90TotalMinutes)}<br /><span className="text-xs text-neutral-400">{prediction.confidence} confidence · {history.length} past finish{history.length === 1 ? '' : 'es'}</span></div>
+                                <div className="text-right text-sm text-violet-200">P10–P90 {formatDuration(prediction.p10TotalMinutes)}–{formatDuration(prediction.p90TotalMinutes)}<br /><span className="text-xs text-neutral-400">{prediction.confidence} confidence · {history.length} selected finish{history.length === 1 ? '' : 'es'}</span></div>
                             </div>
                             <p className="mt-2 text-xs text-neutral-400">Includes {formatDuration(prediction.p50MovingMinutes)} moving and {formatDuration(prediction.p50StoppedMinutes)} expected stops. The goal plan remains target-time driven; this is an independent estimate.</p>
+                            <div className="mt-3 flex flex-wrap items-center gap-3">
+                                <Link to="/settings#race-history" className="text-xs font-semibold text-violet-300 hover:text-violet-200">
+                                    {history.length} selected finish{history.length === 1 ? '' : 'es'} · edit in Settings
+                                </Link>
+                                {canEdit && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const minutes = Math.max(1, Math.round(prediction.p50TotalMinutes))
+                                            const hours = Math.floor(minutes / 60)
+                                            const mins = minutes % 60
+                                            setPlanA(`${hours}:${mins.toString().padStart(2, '0')}`)
+                                            toast.success('Plan A set to the predicted P50 time')
+                                        }}
+                                        className="rounded bg-violet-600 hover:bg-violet-500 px-3 py-1.5 text-xs font-semibold text-white"
+                                    >
+                                        Use P50 as Plan A
+                                    </button>
+                                )}
+                            </div>
                             {targetMin > 0 && (targetMin < prediction.p10TotalMinutes || targetMin > prediction.p90TotalMinutes) && <p className="mt-2 flex items-center gap-1 text-xs text-amber-300"><AlertTriangle className="h-3.5 w-3.5" /> The selected goal is outside this model’s current expected range.</p>}
                         </div>}
 

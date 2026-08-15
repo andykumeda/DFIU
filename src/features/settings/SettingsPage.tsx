@@ -6,6 +6,7 @@ import { useAuth } from '@/features/auth/AuthContext'
 import { Link } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import { RunnerProfilePanel } from '@/features/race/RunnerProfilePanel'
+import { StravaRaceHistoryPanel } from '@/features/race/StravaRaceHistoryPanel'
 import { DEFAULT_RUNNER_PROFILE, parseRunnerProfile, type RunnerPacingProfile } from '@/features/race/runner-profile'
 import { SupportDfiU } from '@/components/ui/SupportDfiU'
 import { SiteFooter } from '@/components/ui/SiteFooter'
@@ -45,8 +46,8 @@ export default function SettingsPage() {
 
     useEffect(() => {
         if (loading) return
-        if (window.location.hash !== '#runner-profile') return
-        const el = document.getElementById('runner-profile')
+        if (window.location.hash !== '#runner-profile' && window.location.hash !== '#race-history') return
+        const el = document.getElementById(window.location.hash.slice(1))
         el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }, [loading])
 
@@ -323,6 +324,8 @@ export default function SettingsPage() {
                         canEdit={true}
                         onChange={runner_profile => setFormData(prev => ({ ...prev, runner_profile }))}
                     />
+
+                    <StravaRaceHistoryPanel />
 
                     <div className="flex justify-end">
                         <button

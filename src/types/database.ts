@@ -729,6 +729,7 @@ export type Database = {
           moving_minutes: number | null
           terrain_difficulty: number | null
           altitude_ft: number | null
+          strava_activity_id: number | null
           created_at: string
           updated_at: string
         }
@@ -743,6 +744,7 @@ export type Database = {
           moving_minutes?: number | null
           terrain_difficulty?: number | null
           altitude_ft?: number | null
+          strava_activity_id?: number | null
           created_at?: string
           updated_at?: string
         }
@@ -757,6 +759,7 @@ export type Database = {
           moving_minutes?: number | null
           terrain_difficulty?: number | null
           altitude_ft?: number | null
+          strava_activity_id?: number | null
           created_at?: string
           updated_at?: string
         }

@@ -1,9 +1,9 @@
 // Edge function: strava-activity
 //
-// Fetches a single Strava activity for the authenticated DFIU user. OAuth
-// access/refresh tokens are stored per DFIU user (not per race or race owner)
-// in public.strava_connections with RLS and client privileges disabled; they
-// are never returned to the app.
+// Fetches Strava activities for the authenticated DFIU user (one activity by
+// ID, or a paginated list of tagged races). OAuth access/refresh tokens are
+// stored per DFIU user (not per race or race owner) in public.strava_connections
+// with RLS and client privileges disabled; they are never returned to the app.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2"
@@ -105,6 +105,11 @@ serve(async (req) => {
             return json({ connected: true, athleteName: athleteName ?? `Strava athlete ${connection.athlete_id}` })
         }
 
+        if (action === 'list-races') {
+            const listed = await listTaggedRaces(accessToken)
+            return json(listed)
+        }
+
         const activityId = parseActivityId(activity)
         if (!activityId) throw new HttpError('Enter a valid Strava activity link or ID', 400)
 
@@ -134,6 +139,102 @@ serve(async (req) => {
         return json({ error: message }, status)
     }
 })
+
+const STRAVA_RACE_WORKOUT_TYPE = 1
+const STRAVA_RUNNING_SPORT_TYPES = new Set(['Run', 'TrailRun', 'VirtualRun'])
+const LIST_RACES_PER_PAGE = 200
+const LIST_RACES_MAX_PAGES = 8
+const LIST_RACES_LOOKBACK_SECONDS = 3 * 365 * 24 * 60 * 60
+
+function isTaggedRunningRace(activity: {
+    sport_type?: string
+    type?: string
+    workout_type?: number | null
+}): boolean {
+    const sport = activity.sport_type || activity.type
+    if (!sport || !STRAVA_RUNNING_SPORT_TYPES.has(sport)) return false
+    return activity.workout_type === STRAVA_RACE_WORKOUT_TYPE
+}
+
+async function listTaggedRaces(accessToken: string): Promise<{
+    races: {
+        id: number
+        name: string
+        sportType: string
+        startDate: string | null
+        distanceMeters: number
+        movingSeconds: number
+        elapsedSeconds: number
+        elevationGainMeters: number
+    }[]
+    truncated: boolean
+    scanned: number
+}> {
+    const after = Math.floor(Date.now() / 1000) - LIST_RACES_LOOKBACK_SECONDS
+    const races: ReturnType<typeof summarizeListedRace>[] = []
+    let scanned = 0
+    let truncated = false
+
+    for (let page = 1; page <= LIST_RACES_MAX_PAGES; page++) {
+        const params = new URLSearchParams({
+            per_page: String(LIST_RACES_PER_PAGE),
+            page: String(page),
+            after: String(after),
+        })
+        const response = await fetch(`https://www.strava.com/api/v3/athlete/activities?${params.toString()}`, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+        })
+        if (response.status === 401 || response.status === 403) {
+            throw new HttpError('Strava did not allow access to your activities', 403)
+        }
+        if (response.status === 429) throw new HttpError('Strava rate limit reached. Try again in a few minutes.', 429)
+        if (!response.ok) throw new HttpError('Unable to load Strava races', 502)
+
+        const pageActivities = await response.json()
+        if (!Array.isArray(pageActivities)) throw new HttpError('Unable to load Strava races', 502)
+        scanned += pageActivities.length
+        for (const activity of pageActivities) {
+            const summary = summarizeListedRace(activity)
+            if (summary) races.push(summary)
+        }
+        if (pageActivities.length < LIST_RACES_PER_PAGE) {
+            return { races, truncated, scanned }
+        }
+        if (page === LIST_RACES_MAX_PAGES) truncated = true
+    }
+
+    return { races, truncated, scanned }
+}
+
+function summarizeListedRace(activity: {
+    id?: number
+    name?: string
+    sport_type?: string
+    type?: string
+    workout_type?: number | null
+    distance?: number
+    moving_time?: number
+    elapsed_time?: number
+    total_elevation_gain?: number
+    start_date?: string
+    start_date_local?: string
+}) {
+    if (!isTaggedRunningRace(activity)) return null
+    const id = Number(activity.id)
+    if (!Number.isFinite(id) || id <= 0) return null
+    const sport = activity.sport_type || activity.type || 'Run'
+    const start = activity.start_date_local || activity.start_date || null
+    return {
+        id,
+        name: typeof activity.name === 'string' && activity.name.trim() ? activity.name.trim() : 'Strava race',
+        sportType: sport,
+        startDate: typeof start === 'string' ? start : null,
+        distanceMeters: Number(activity.distance) || 0,
+        movingSeconds: Number(activity.moving_time) || 0,
+        elapsedSeconds: Number(activity.elapsed_time) || 0,
+        elevationGainMeters: Number(activity.total_elevation_gain) || 0,
+    }
+}
 
 function parseActivityId(value: unknown): string | null {
     if (typeof value !== 'string') return null

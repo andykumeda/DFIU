@@ -42,7 +42,19 @@ The runner profile makes bounded adjustments for climbing, descending, flats, te
 
 Every eligible aid/crew/drop-bag/water/medical waypoint uses its explicit delay when supplied; otherwise the runner’s default aid-station delay is used. Start, Finish, and landmarks receive no default stop time.
 
-### Live re-anchoring
+## Ability-based prediction
+
+A separate predictor estimates a P10–P50–P90 finish from a calibrated flat baseline, then applies grade, terrain, night, heat, altitude, limited profile tweaks, and expected aid stops. It does not replace Plan A/B/C.
+
+Selected Strava races (and any other saved `runner_history` rows) calibrate that baseline:
+
+- equivalent pace = moving time / distance / a bounded elevation cost
+- weight = recency decay × distance versus marathon
+- blend into the default 15 min/mi flat baseline, capped at 80% influence
+
+Only Strava activities tagged as a Race (`workout_type` 1) with sport Run, TrailRun, or VirtualRun are offered. The user chooses which of those finishes to keep. Unchecked activities are not stored. Plan A changes only if the runner explicitly applies the P50.
+
+## Live re-anchoring
 
 When a check-in is recorded, the app uses actual elapsed progress to re-extrapolate the remaining plan. This is more grounded than pre-race assumptions, but it still assumes the remaining course will follow the factor model.
 
@@ -86,7 +98,8 @@ Strava moving time is used exclusively. With distance/time/moving streams, DFIU 
 ## What the algorithms do not do
 
 - They do not replace race, medical, weather, access, or navigation judgment.
-- They do not learn a runner-specific physiology model from Strava automatically.
+- They do not learn a runner-specific physiology model from Strava automatically. Selected tagged races only calibrate the independent ability prediction’s flat baseline.
+- They do not change Plan A/B/C from history unless the runner applies the predicted P50.
 - They do not calculate traffic-aware crew travel time or in-app driving routes.
 - They cannot correct an inaccurate GPX, missing elevation data, or a poor GPS trace.
 

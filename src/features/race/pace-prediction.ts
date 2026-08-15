@@ -66,13 +66,17 @@ function supportsDelay(wp: PaceModelInput['waypoints'][number]) {
   return wp.type !== 'start' && wp.type !== 'finish' && wp.type !== 'landmark'
 }
 
+export function equivalentFlatPace(distanceMi: number, minutes: number, elevationGainFt = 0) {
+  const gainCost = 1 + Math.min(0.35, (elevationGainFt / distanceMi) / 10000)
+  return minutes / distanceMi / gainCost
+}
+
 function historyBaseline(history: RunnerHistoryEntry[], fallback: number, now: Date) {
   let numerator = 0
   let denominator = 0
   for (const item of history) {
     if (!Number.isFinite(item.distanceMi) || item.distanceMi <= 0 || !Number.isFinite(item.finishMinutes) || item.finishMinutes <= 0) continue
-    const gainCost = 1 + Math.min(0.35, ((item.elevationGainFt ?? 0) / item.distanceMi) / 10000)
-    const equivalentPace = (item.movingMinutes ?? item.finishMinutes) / item.distanceMi / gainCost
+    const equivalentPace = equivalentFlatPace(item.distanceMi, item.movingMinutes ?? item.finishMinutes, item.elevationGainFt ?? 0)
     const ageDays = item.racedAt ? Math.max(0, (now.getTime() - new Date(item.racedAt).getTime()) / 86400000) : 365
     const recency = Math.exp(-ageDays / 365)
     const distanceWeight = Math.min(1.5, Math.max(0.5, item.distanceMi / 26.2))
