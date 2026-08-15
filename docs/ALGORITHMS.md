@@ -120,7 +120,7 @@ Aid, crew, drop-bag, water, and medical stops add their delay (or the runner’s
 
 Past races contribute **total gain**, not a mile-by-mile clone of that old course. Stored past terrain difficulty and past altitude are not used in the calibration math. The model does not learn climbing skill from a prior ultra; that remains the Settings strength slider, which mainly affects Plan A.
 
-Strava offers activities tagged as a Race (`workout_type` 1) with sport Run, TrailRun, or VirtualRun. GPX import uses track distance, elevation, and first-to-last timestamps as finish time. The user chooses which finishes to keep.
+Strava offers activities tagged as a Race (`workout_type` 1) with sport Run, TrailRun, or VirtualRun, started within the last 1,095 days (three × 365). The listing also stops after eight pages of 200 activities. GPX import uses track distance, elevation, and first-to-last timestamps as finish time. The user chooses which finishes to keep.
 
 ## Live re-anchoring
 

@@ -10,6 +10,7 @@ import { parseFinishTimeInput, raceDraftFromGpx, type GpxRaceDraft } from './rac
 import {
   equivalentPaceForRace,
   shouldDefaultSelectStravaRace,
+  stravaRaceLookbackDate,
   stravaRaceToHistoryDraft,
   type StravaRaceSummary,
 } from './strava-races'
@@ -250,6 +251,7 @@ export function StravaRaceHistoryPanel() {
     }
   }
 
+  const lookbackLabel = stravaRaceLookbackDate().toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
   const importedHistory = savedHistory.filter(row => row.stravaActivityId == null || !(row.stravaActivityId > 0))
 
   const importGpx = async (file: File) => {
@@ -321,7 +323,7 @@ export function StravaRaceHistoryPanel() {
         Selected finishes calibrate an independent predicted range. Shorter races than the event you are planning count less — a 50K or 50-miler will not outweigh a 100-mile result. They do not change Plan A unless you apply that prediction on the Pace tab.
       </p>
       <p className="text-xs text-neutral-500 mb-4">
-        <strong className="text-neutral-300">Find races</strong> lists only Strava <strong className="text-neutral-300">Run, Trail Run, and Virtual Run</strong> activities that you marked as a <strong className="text-neutral-300">Race</strong> in Strava (the Race workout type), from about the last three years. It does not search titles and does not include untagged runs, rides, or workouts. If a race is missing, mark it as a Race on Strava and find again, or import a GPX.
+        <strong className="text-neutral-300">Find races</strong> lists only Strava <strong className="text-neutral-300">Run, Trail Run, and Virtual Run</strong> activities that you marked as a <strong className="text-neutral-300">Race</strong> in Strava (the Race workout type), with a start date on or after <strong className="text-neutral-300">{lookbackLabel}</strong> (a three-year window). It does not search titles and does not include untagged runs, rides, or workouts. A race older than that date will not appear — mark it as a Race in Strava if it is inside the window, or import a GPX.
       </p>
 
       <p className="text-sm text-neutral-300 mb-3">
@@ -376,11 +378,11 @@ export function StravaRaceHistoryPanel() {
       </div>
 
       {races && rows.length === 0 && (
-        <p className="text-sm text-neutral-500">No Strava running activities marked as a Race were found in the last three years. Open the activity in Strava, set type to Race, then find again — or import a GPX.</p>
+        <p className="text-sm text-neutral-500">No Strava running activities marked as a Race were found on or after {lookbackLabel}. Open the activity in Strava, set type to Race, then find again — or import a GPX.</p>
       )}
 
       {truncated && (
-        <p className="mb-3 text-xs text-amber-300">Stopped after recent activity pages. Older tagged races may be missing.</p>
+        <p className="mb-3 text-xs text-amber-300">Search stopped after about 1,600 activities inside the window starting {lookbackLabel}. A tagged race after that date can still be missing if it is older in your Strava feed. Import a GPX for anything outside this search.</p>
       )}
 
       {rows.length > 0 && (

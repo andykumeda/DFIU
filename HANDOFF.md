@@ -15,7 +15,7 @@
 ## Just finished
 
 - Settings → Race history: tagged Strava races and **Import GPX** (distance, gain, first-to-last timestamps; enter HH:MM if the file has no times).
-- Settings Race history now states that Find races only returns Strava running activities marked as Race (last ~3 years; no title search).
+- Settings Race history states Find races: tagged Race running activities on or after a shown three-year cutoff date.
 
 ## Open
 

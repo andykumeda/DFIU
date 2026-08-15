@@ -45,6 +45,13 @@ const METERS_TO_FEET = 3.28084
 const SHORT_RACE_MILES = 10
 const DEFAULT_SELECT_MILES = 13.1
 
+/** Matches the Strava list-races Edge Function lookback (3 × 365 days). */
+export const STRAVA_RACE_LOOKBACK_MS = 3 * 365 * 24 * 60 * 60 * 1000
+
+export function stravaRaceLookbackDate(now = new Date()) {
+  return new Date(now.getTime() - STRAVA_RACE_LOOKBACK_MS)
+}
+
 export function isStravaRunningSport(sport: string | undefined): sport is StravaRunningSportType {
   return sport === 'Run' || sport === 'TrailRun' || sport === 'VirtualRun'
 }
