@@ -11,6 +11,7 @@
 - Frontend: latest local deploy includes Strava race history in Settings and the Pace ability card.
 - OG: `dfiu-og` serves `og-default.png` (left) by default; Facebook/Instagram UAs get `og-ig.png` (centered).
 - Backend: `runner_history.strava_activity_id` applied on linked DFIU; `strava-activity` `list-races` deployed.
+- `git describe`: `a1ceaa7`
 
 ## Just finished
 
@@ -39,7 +40,7 @@
 
 ## Open
 
-- Last product deployment: Training list static SVG previews; production URL is `https://dfiu.app/race/fca7696b-6093-49a7-be8a-ba3c0a480643?demo=1`.
-- Smoke-test the merged pace/terrain UI in production.
+- Last product deployment: Strava race calibration (`a1ceaa7`); production URL is `https://dfiu.app/race/fca7696b-6093-49a7-be8a-ba3c0a480643?demo=1`.
+- Smoke-test Settings race history + Pace ability card with a Strava-connected account.
 - Design and implement the opt-in post-event feedback email flow.
 - Rotate Strava secret; verify RBAC with a second account; `/admin` + owner-transfer UI.
