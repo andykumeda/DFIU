@@ -54,7 +54,7 @@ Plan A, B, and C are goal-time plans. Enter or edit a goal time and the plan rec
 
 Use **Settings** to set your runner profile and default aid-station delay. The profile adapts the plan for your climbing, descending, technical-terrain, night, temperature, altitude, and pacing-style strengths. It is a planning aid, not a guarantee.
 
-Below the profile, **Race history (Strava)** finds activities you tagged as races on Strava. Choose which finishes to include; those calibrate an independent P10–P90 predicted range on **Pace Plan**. They do not change Plan A unless you choose **Use P50 as Plan A**. Short road races stay unchecked by default because they can make an ultra prediction look too fast. Only activities marked as a Race in Strava appear; untagged efforts are not guessed from titles.
+Below the profile, **Race history** can pull tagged Strava races or import a GPX from a watch or race file. Choose which finishes to include; those calibrate an independent P10–P90 predicted range on **Pace Plan**. They do not change Plan A unless you choose **Use P50 as Plan A**. A 50K, 50-mile, or 100K result still counts, but less than a similar-distance finish when you are planning a 100. Short road races stay unchecked by default in the Strava list. Only activities marked as a Race in Strava appear there; untagged efforts are not guessed from titles.
 
 The Pace Plan page also shows that ability-based range after you calculate, with a link back to Settings to edit the selection.
 

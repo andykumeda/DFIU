@@ -2,45 +2,24 @@
 
 **Date:** 2026-08-14
 **Branch:** `main`
-**Status:** Strava race calibration is implemented for the independent P10–P90 ability prediction.
+**Status:** Race history supports Strava plus GPX import; shorter finishes are down-weighted vs the planned distance.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Frontend: latest local deploy includes Strava race history in Settings and the Pace ability card.
+- Frontend: Settings race history (Strava + GPX) and Pace ability card.
 - OG: `dfiu-og` serves `og-default.png` (left) by default; Facebook/Instagram UAs get `og-ig.png` (centered).
-- Backend: `runner_history.strava_activity_id` applied on linked DFIU; `strava-activity` `list-races` deployed.
-- `git describe`: `a1ceaa7`
+- Backend: `runner_history.strava_activity_id` applied; `strava-activity` `list-races` deployed.
 
 ## Just finished
 
-- Settings → Race history (Strava) lists tagged running races (`workout_type` 1). Selected finishes write to `runner_history` and calibrate `predictPace` only. Plan A stays a user goal unless **Use P50 as Plan A**.
-- Pace tab shows the ability-based P10–P90 card with a Settings link.
-- Applied scoped migration `20260815000100_runner_history_strava_activity.sql` via `supabase db query --linked` (not `db push`).
-
-- Overlap orange is drawn on the training GPS, not the race GPX (painting race miles 91–101 had turned the whole visible course red). Off-course dips stay out of those training-mile ranges.
-- Training list cards use a static SVG route thumbnail. They no longer run Mapbox or full-course overlap snaps (that was N times 2.5–5s after overlap painting moved onto TrainingRouteDetailMap).
-- Confirmed Training-detail latency is client overlap snapping (Turf against the full AC100 GPX, ~2.5–5s). HTML ~200–340ms and gzip JS ~450ms. Kept the accurate full-course snap rather than a faster vertex/downsample approximation.
-- Tightened Training map overlap to a 0.05-mile GPX snap and trimmed range ends by that radius so the approach to a race junction (e.g. Spruce Grove) stays blue until the traces meet. Heading/visit checks stay off so a true shared stem remains orange.
-- Simplified Training map overlap to GPX coordinate distance (~0.12 mi). Heading and course-mile jump checks were dropping the shared stem at the Chantry loop. A training sample is orange when it is that close to the race line.
-- Fixed Training route navigation by restoring immediate local selection while retaining shareable `?training=` URLs. Reselecting the Training tab returns to the list without breaking later card clicks.
-- Removed the Ask Strava panel and its query gateway. The Training page retains its prior Strava connection and Training Analysis flows.
-- Removed page-level bottom padding from standard race-tab shells on mobile while preserving desktop spacing. Production Resources and Overview both measure a 0 px trailing gap at 390x844, with no browser console errors or warnings.
-- Enabled Nginx gzip compression for JavaScript, JSON, XML, SVG, CSS, and text responses. Verified the production main bundle now transfers at about 305 KB instead of 1.06 MB and Mapbox at about 462 KB instead of 1.68 MB.
-- Contained elastic page overscroll and made the `html`, `body`, and app-root backgrounds opaque dark. Verified the production training detail at 390x844 loads the correct route/title in about 2.8 seconds without exposing a blank page canvas below the content.
-- Training-route links preserve the race share token and now expose route-specific Open Graph title/description metadata.
-- Restored five accidentally emptied production modules and confirmed the TypeScript/Vite build.
-- Merged the pace/terrain UI fixes: mobile goal panel and overscroll behavior, print columns below the splits chart, and full terrain-segment highlighting/pan behavior.
-- iMessage's composite crawler UA now receives the left-aligned image; Facebook/Instagram still receive the centered image.
-- OG HTML responses now include `Content-Length`, correct empty-body `HEAD` handling, and `Vary: User-Agent`.
-- Added the Support DFIU card to Settings and About, plus a persistent footer link across the app. Configured the donation destination as `https://buymeacoffee.com/andyk`; email follow-up is deferred.
-- Added public `/about` and `/documentation` pages, with contact email and the maintained user guide rendered in-app. Deployed to production.
-- Added a default `67` access-code gate before either email/password or Strava signup; read-only and demo viewing remain public.
+- Settings → Race history: tagged Strava races and **Import GPX** (distance, gain, first-to-last timestamps; enter HH:MM if the file has no times).
+- Ability prediction weights history by recency × `min(1, history miles / target miles)` (floor 0.15). A 50K/50-mile/100K still counts for a 100, but less than a similar-distance finish. Plan A unchanged unless **Use P50 as Plan A**.
 
 ## Open
 
-- Last product deployment: Strava race calibration (`a1ceaa7`); production URL is `https://dfiu.app/race/fca7696b-6093-49a7-be8a-ba3c0a480643?demo=1`.
-- Smoke-test Settings race history + Pace ability card with a Strava-connected account.
+- Last product deployment: pending this batch; production URL is `https://dfiu.app/race/fca7696b-6093-49a7-be8a-ba3c0a480643?demo=1`.
+- Smoke-test Settings race history (Strava + GPX) and Pace ability card.
 - Design and implement the opt-in post-event feedback email flow.
 - Rotate Strava secret; verify RBAC with a second account; `/admin` + owner-transfer UI.

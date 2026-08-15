@@ -46,13 +46,15 @@ Every eligible aid/crew/drop-bag/water/medical waypoint uses its explicit delay 
 
 A separate predictor estimates a P10–P50–P90 finish from a calibrated flat baseline, then applies grade, terrain, night, heat, altitude, limited profile tweaks, and expected aid stops. It does not replace Plan A/B/C.
 
-Selected Strava races (and any other saved `runner_history` rows) calibrate that baseline:
+Selected Strava races, imported GPX finishes, and any other saved `runner_history` rows calibrate that baseline:
 
 - equivalent pace = moving time / distance / a bounded elevation cost
-- weight = recency decay × distance versus marathon
+- weight = recency decay × distance similarity to the event being planned (`min(1, history miles / target miles)`, floored at 0.15)
 - blend into the default 15 min/mi flat baseline, capped at 80% influence
 
-Only Strava activities tagged as a Race (`workout_type` 1) with sport Run, TrailRun, or VirtualRun are offered. The user chooses which of those finishes to keep. Unchecked activities are not stored. Plan A changes only if the runner explicitly applies the P50.
+A 50K, 50-mile, or 100K finish still informs the baseline, but it cannot dominate a 100-mile prediction the way an equal-distance finish can. Shorter races tend to be faster; the similarity weight is what keeps that from making an ultra look too quick.
+
+Strava offers activities tagged as a Race (`workout_type` 1) with sport Run, TrailRun, or VirtualRun. GPX import uses track distance, elevation, and first-to-last timestamps as finish time. The user chooses which finishes to keep. Plan A changes only if the runner explicitly applies the P50.
 
 ## Live re-anchoring
 

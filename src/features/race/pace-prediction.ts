@@ -1,7 +1,7 @@
 import type { Race, TerrainNode, Waypoint } from '@/types/database'
 import type { RunnerPacingProfile } from './runner-profile'
 
-export const PACE_MODEL_VERSION = 'terrain-hybrid-v1'
+export const PACE_MODEL_VERSION = 'terrain-hybrid-v1.1'
 
 export interface RunnerHistoryEntry {
   distanceMi: number
@@ -71,7 +71,13 @@ export function equivalentFlatPace(distanceMi: number, minutes: number, elevatio
   return minutes / distanceMi / gainCost
 }
 
-function historyBaseline(history: RunnerHistoryEntry[], fallback: number, now: Date) {
+/** Shorter history than the target event counts less; equal-or-longer counts fully. */
+export function historyDistanceSimilarity(historyMi: number, targetMi: number) {
+  if (!(historyMi > 0) || !(targetMi > 0)) return 0
+  return Math.min(1, Math.max(0.15, historyMi / targetMi))
+}
+
+function historyBaseline(history: RunnerHistoryEntry[], fallback: number, now: Date, targetMi: number) {
   let numerator = 0
   let denominator = 0
   for (const item of history) {
@@ -79,8 +85,7 @@ function historyBaseline(history: RunnerHistoryEntry[], fallback: number, now: D
     const equivalentPace = equivalentFlatPace(item.distanceMi, item.movingMinutes ?? item.finishMinutes, item.elevationGainFt ?? 0)
     const ageDays = item.racedAt ? Math.max(0, (now.getTime() - new Date(item.racedAt).getTime()) / 86400000) : 365
     const recency = Math.exp(-ageDays / 365)
-    const distanceWeight = Math.min(1.5, Math.max(0.5, item.distanceMi / 26.2))
-    const weight = recency * distanceWeight
+    const weight = recency * historyDistanceSimilarity(item.distanceMi, targetMi)
     numerator += equivalentPace * weight
     denominator += weight
   }
@@ -102,7 +107,7 @@ function isNight(date: Date, race: Partial<Race>) {
 export function predictPace(input: PaceModelInput): PacePrediction {
   const samples = input.courseProfile.filter((sample, index, all) => index === 0 || sample.distance > all[index - 1].distance)
   const fallback = Math.max(3, input.baselineFlatPace ?? 15)
-  const calibration = historyBaseline(input.history ?? [], fallback, input.now ?? new Date())
+  const calibration = historyBaseline(input.history ?? [], fallback, input.now ?? new Date(), input.totalDistance)
   const start = input.race.start_datetime ? new Date(input.race.start_datetime) : undefined
   let elapsed = 0
   const factors: PaceFactorAttribution[] = []
