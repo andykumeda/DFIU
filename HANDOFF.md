@@ -19,7 +19,7 @@
 
 ## Open
 
-- Last product deployment: GPX race history + distance weighting (`b7a9a9c`); production URL is `https://dfiu.app/race/fca7696b-6093-49a7-be8a-ba3c0a480643?demo=1`.
+- Last product deployment: ability-prediction docs + Pace card link (`24724e3`); production URL is `https://dfiu.app/race/fca7696b-6093-49a7-be8a-ba3c0a480643?demo=1`.
 - Smoke-test Settings race history (Strava + GPX) and Pace ability card.
 - Design and implement the opt-in post-event feedback email flow.
 - Rotate Strava secret; verify RBAC with a second account; `/admin` + owner-transfer UI.
