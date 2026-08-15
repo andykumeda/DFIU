@@ -320,6 +320,9 @@ export function StravaRaceHistoryPanel() {
       <p className="text-xs text-neutral-500 mb-4">
         Selected finishes calibrate an independent predicted range. Shorter races than the event you are planning count less — a 50K or 50-miler will not outweigh a 100-mile result. They do not change Plan A unless you apply that prediction on the Pace tab.
       </p>
+      <p className="text-xs text-neutral-500 mb-4">
+        <strong className="text-neutral-300">Find races</strong> lists only Strava <strong className="text-neutral-300">Run, Trail Run, and Virtual Run</strong> activities that you marked as a <strong className="text-neutral-300">Race</strong> in Strava (the Race workout type), from about the last three years. It does not search titles and does not include untagged runs, rides, or workouts. If a race is missing, mark it as a Race on Strava and find again, or import a GPX.
+      </p>
 
       <p className="text-sm text-neutral-300 mb-3">
         {savedHistory.length > 0
@@ -373,7 +376,7 @@ export function StravaRaceHistoryPanel() {
       </div>
 
       {races && rows.length === 0 && (
-        <p className="text-sm text-neutral-500">No tagged running races found in the last three years. In Strava, mark an activity as a Race to include it here.</p>
+        <p className="text-sm text-neutral-500">No Strava running activities marked as a Race were found in the last three years. Open the activity in Strava, set type to Race, then find again — or import a GPX.</p>
       )}
 
       {truncated && (
@@ -382,8 +385,8 @@ export function StravaRaceHistoryPanel() {
 
       {rows.length > 0 && (
         <>
-          <p className="mb-2 text-[11px] text-neutral-600">
-            Short road races stay unchecked by default — they can make an ultra prediction look too fast.
+          <p className="mb-2 text-[11px] text-neutral-500">
+            These are the activities Strava has tagged as Race. Short road races stay unchecked by default so they do not pull an ultra estimate too fast.
           </p>
           <ul className="space-y-2 max-h-80 overflow-y-auto">
             {rows.map(({ race, draft, equivalentPace }) => (

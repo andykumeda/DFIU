@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-14
 **Branch:** `main`
-**Status:** Relabeling P10/P50/P90 as an estimated finish and faster/slower range.
+**Status:** Spelling out Strava Find-races criteria on the Settings card.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -15,7 +15,7 @@
 ## Just finished
 
 - Settings → Race history: tagged Strava races and **Import GPX** (distance, gain, first-to-last timestamps; enter HH:MM if the file has no times).
-- Relabeled the ability card to estimated finish and a faster–slower range, with on-card copy that these are not result percentiles.
+- Settings Race history now states that Find races only returns Strava running activities marked as Race (last ~3 years; no title search).
 
 ## Open
 
