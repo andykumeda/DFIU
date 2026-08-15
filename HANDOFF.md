@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-14
 **Branch:** `main`
-**Status:** Spelling out Strava Find-races criteria on the Settings card.
+**Status:** Show Plan C race cutoff hours next to the safety buffer.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -14,8 +14,7 @@
 
 ## Just finished
 
-- Settings → Race history: tagged Strava races and **Import GPX** (distance, gain, first-to-last timestamps; enter HH:MM if the file has no times).
-- Settings Race history states Find races: tagged Race running activities on or after a shown three-year cutoff date.
+- Pace Plan C shows the race overall cutoff in hours (HH:MM) next to the safety buffer, plus the resulting Plan C finish (cutoff minus buffer).
 
 ## Open
 

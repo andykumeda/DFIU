@@ -6,7 +6,7 @@ import { toast } from 'react-hot-toast'
 import { Course, Race, TerrainNode, Waypoint } from '@/types/database'
 import { calculatePacePlan, isPaceChartWaypoint, type PacePlanResult, usesAidStationDefaultDelay } from './pace-utils'
 import { predictPace, type RunnerHistoryEntry, type PacePrediction } from './pace-prediction'
-import { usePacePlans, computePlanMinutes } from './usePacePlans'
+import { usePacePlans, computePlanMinutes, parseCutoffMinutes } from './usePacePlans'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/features/auth/AuthContext'
 import {
@@ -82,6 +82,19 @@ const PACE_PRINT_COLUMN_WEIGHTS: Record<PaceChartColumnId, number> = {
     cutoffTime: 12,
 }
 
+function formatElapsedHhMm(totalMinutes: number): string {
+    const h = Math.floor(totalMinutes / 60)
+    const m = Math.round(totalMinutes % 60)
+    return `${h}:${m.toString().padStart(2, '0')}`
+}
+
+function formatCutoffHoursLabel(totalMinutes: number): string {
+    const hours = Math.floor(totalMinutes / 60)
+    const mins = Math.round(totalMinutes % 60)
+    if (mins === 0) return `${hours} hours`
+    return `${hours} hours ${mins} min`
+}
+
 export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h = false, unitsDistance = 'miles', runnerProfile, onUpdateWaypointDelay }: PaceCalculatorProps) {
     const { user } = useAuth()
     const [strategyMode, setStrategyMode] = useState<StrategyMode>('planA')
@@ -98,6 +111,7 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
     const { planATimeStr, planBTimeStr, planCBufferStr } = plans
 
     const { a: planAMinutes, b: planBMinutes, c: planCMinutes } = computePlanMinutes(plans, race.overall_cutoff)
+    const cutoffMinutes = parseCutoffMinutes(race.overall_cutoff)
     const paceChartWaypoints = useMemo(() => waypoints.filter(isPaceChartWaypoint), [waypoints])
 
     useEffect(() => {
@@ -611,6 +625,17 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                         {strategyMode === 'planC' && !race.overall_cutoff && (
                             <div className="text-red-400 text-xs mb-2">Race has no overall cutoff time set.</div>
                         )}
+                        {strategyMode === 'planC' && race.overall_cutoff && (
+                            <div className="mb-3 rounded-lg border border-neutral-800 bg-neutral-950 px-4 py-3">
+                                <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">Race cutoff</div>
+                                <div className="mt-0.5 font-mono text-lg text-white">
+                                    {formatElapsedHhMm(cutoffMinutes)}
+                                    <span className="ml-2 text-sm font-sans text-neutral-400">
+                                        ({formatCutoffHoursLabel(cutoffMinutes)})
+                                    </span>
+                                </div>
+                            </div>
+                        )}
                         <input
                             type="text"
                             className={`w-full bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-3 text-white text-lg font-mono placeholder-neutral-600 focus:ring-2 ${currentStrategy.focus} outline-none`}
@@ -634,9 +659,10 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                             </div>
                         )}
 
-                        {strategyMode === 'planC' && race.overall_cutoff && (
-                            <div className="mt-2 text-xs text-neutral-500">
-                                Race Cutoff: {race.overall_cutoff}
+                        {strategyMode === 'planC' && planCMinutes != null && planCMinutes > 0 && (
+                            <div className="mt-2 text-sm text-orange-300 font-mono">
+                                Plan C finish: {formatElapsedHhMm(planCMinutes)}
+                                <span className="ml-1 font-sans text-neutral-500">(cutoff minus buffer)</span>
                             </div>
                         )}
                     </div>

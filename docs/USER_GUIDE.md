@@ -50,7 +50,7 @@ For a confirmed out-and-back, DFIU detects a continuous reverse-direction pass o
 
 ## Pace Plan
 
-Plan A, B, and C are goal-time plans. Enter or edit a goal time and the plan recalculates automatically. The plan includes moving time and aid-station stops, then shows predicted arrival time, segment pace, elapsed pace, and cutoff margin for each relevant course location.
+Plan A, B, and C are goal-time plans. Enter or edit a goal time and the plan recalculates automatically. Plan C also shows the race’s overall cutoff in hours next to the safety buffer, then the resulting finish (cutoff minus buffer). The plan includes moving time and aid-station stops, then shows predicted arrival time, segment pace, elapsed pace, and cutoff margin for each relevant course location.
 
 Use **Settings** to set your runner profile and default aid-station delay. The profile adapts the plan for your climbing, descending, technical-terrain, night, temperature, altitude, and pacing-style strengths. It is a planning aid, not a guarantee.
 
