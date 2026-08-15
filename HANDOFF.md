@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-14
 **Branch:** `main`
-**Status:** Show Plan C race cutoff hours next to the safety buffer.
+**Status:** Put Plan C buffer label between cutoff hours and the buffer field.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -14,7 +14,7 @@
 
 ## Just finished
 
-- Pace Plan C shows the race overall cutoff in hours (HH:MM) next to the safety buffer, plus the resulting Plan C finish (cutoff minus buffer).
+- Pace Plan C order: race cutoff hours, then “Safety Buffer Before Cutoff”, then the buffer field.
 
 ## Open
 

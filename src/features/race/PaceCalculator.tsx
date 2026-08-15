@@ -617,11 +617,6 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
 
                     {/* Main Input */}
                     <div className="mb-6">
-                        <label className="block text-sm font-medium text-neutral-400 mb-2">
-                            {strategyMode === 'planA' ? 'Goal Total Time (HH:MM)' :
-                                strategyMode === 'planC' ? 'Safety Buffer Before Cutoff (HH:MM)' :
-                                    'Goal Total Time (calculated midpoint)'}
-                        </label>
                         {strategyMode === 'planC' && !race.overall_cutoff && (
                             <div className="text-red-400 text-xs mb-2">Race has no overall cutoff time set.</div>
                         )}
@@ -636,6 +631,11 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                                 </div>
                             </div>
                         )}
+                        <label className="block text-sm font-medium text-neutral-400 mb-2">
+                            {strategyMode === 'planA' ? 'Goal Total Time (HH:MM)' :
+                                strategyMode === 'planC' ? 'Safety Buffer Before Cutoff (HH:MM)' :
+                                    'Goal Total Time (calculated midpoint)'}
+                        </label>
                         <input
                             type="text"
                             className={`w-full bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-3 text-white text-lg font-mono placeholder-neutral-600 focus:ring-2 ${currentStrategy.focus} outline-none`}
