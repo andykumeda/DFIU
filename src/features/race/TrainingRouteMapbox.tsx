@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
+import { formatTrainingMapHover, hoverMilesAtPoint } from './training-map-hover'
 
 /** Keep in sync with TrainingRouteDetailMap legend / SVG strokes. */
 const COURSE_COLOR = '#9333ea'
@@ -64,6 +65,7 @@ export interface TrainingRouteMapboxProps {
   highlightedOverlap?: { trainingStartMi: number; trainingEndMi: number } | null
   className?: string
   onFail?: () => void
+  onHoverMiles?: (label: string | null) => void
   interactive?: boolean
   showControls?: boolean
 }
@@ -79,6 +81,7 @@ const SOURCE_IDS = {
   overlap: 'training-detail-overlap',
   highlightHalo: 'training-detail-highlight-halo',
   highlight: 'training-detail-highlight',
+  hover: 'training-detail-hover',
 } as const
 
 function lineFeature(coordinates: [number, number][]): GeoJSON.Feature<GeoJSON.LineString> {
@@ -111,6 +114,38 @@ function setOrAddLine(
       paint: { ...paint, 'line-width': width },
     })
   }
+}
+
+function ensureHoverLayer(map: mapboxgl.Map) {
+  if (!map.getSource(SOURCE_IDS.hover)) {
+    map.addSource(SOURCE_IDS.hover, {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] },
+    })
+  }
+  if (!map.getLayer(SOURCE_IDS.hover)) {
+    map.addLayer({
+      id: SOURCE_IDS.hover,
+      type: 'circle',
+      source: SOURCE_IDS.hover,
+      paint: {
+        'circle-radius': 6,
+        'circle-color': '#facc15',
+        'circle-stroke-width': 2,
+        'circle-stroke-color': '#111111',
+      },
+    })
+  }
+}
+
+function setHoverPoint(map: mapboxgl.Map, coordinate: [number, number] | null) {
+  const source = map.getSource(SOURCE_IDS.hover) as mapboxgl.GeoJSONSource | undefined
+  if (!source) return
+  source.setData(
+    coordinate
+      ? { type: 'Feature', geometry: { type: 'Point', coordinates: coordinate }, properties: {} }
+      : { type: 'FeatureCollection', features: [] }
+  )
 }
 
 function drawRouteData(map: mapboxgl.Map, data: MapData) {
@@ -210,6 +245,8 @@ function drawRouteData(map: mapboxgl.Map, data: MapData) {
     }
   }
 
+  ensureHoverLayer(map)
+
   const bounds = new mapboxgl.LngLatBounds()
   const fitLine = highlightSlice.length >= 2 ? highlightSlice : training
   fitLine.forEach(coordinate => bounds.extend(coordinate))
@@ -231,6 +268,7 @@ export function TrainingRouteMapbox({
   highlightedOverlap = null,
   className,
   onFail,
+  onHoverMiles,
   interactive = true,
   showControls = true,
 }: TrainingRouteMapboxProps) {
@@ -239,11 +277,13 @@ export function TrainingRouteMapbox({
   const styleReadyRef = useRef(false)
   const dataRef = useRef<MapData>({ coordinates, courseCoordinates, overlapSegments, highlightedOverlap })
   const onFailRef = useRef(onFail)
+  const onHoverMilesRef = useRef(onHoverMiles)
 
   useEffect(() => {
     dataRef.current = { coordinates, courseCoordinates, overlapSegments, highlightedOverlap }
     onFailRef.current = onFail
-  }, [coordinates, courseCoordinates, overlapSegments, highlightedOverlap, onFail])
+    onHoverMilesRef.current = onHoverMiles
+  }, [coordinates, courseCoordinates, overlapSegments, highlightedOverlap, onFail, onHoverMiles])
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
@@ -297,6 +337,38 @@ export function TrainingRouteMapbox({
     map.on('style.load', handleStyleLoad)
     map.on('error', handleError)
 
+    const clearHover = () => {
+      if (disposed || mapRef.current !== map) return
+      setHoverPoint(map, null)
+      onHoverMilesRef.current?.(null)
+      if (interactive) map.getCanvas().style.cursor = ''
+    }
+    const handleMouseMove = (event: mapboxgl.MapMouseEvent) => {
+      if (disposed || mapRef.current !== map || !interactive) return
+      const data = dataRef.current
+      const hover = hoverMilesAtPoint(
+        event.lngLat.lng,
+        event.lngLat.lat,
+        data.coordinates,
+        data.overlapSegments
+      )
+      if (!hover) {
+        clearHover()
+        return
+      }
+      const projected = map.project([hover.lon, hover.lat])
+      const pixelDistance = Math.hypot(projected.x - event.point.x, projected.y - event.point.y)
+      if (pixelDistance > 16) {
+        clearHover()
+        return
+      }
+      setHoverPoint(map, [hover.lon, hover.lat])
+      onHoverMilesRef.current?.(formatTrainingMapHover(hover.raceMile, hover.trainingMile))
+      map.getCanvas().style.cursor = 'pointer'
+    }
+    map.on('mousemove', handleMouseMove)
+    map.on('mouseout', clearHover)
+
     const ro = new ResizeObserver(() => {
       if (!disposed && mapRef.current === map && styleReadyRef.current) map.resize()
     })
@@ -309,6 +381,8 @@ export function TrainingRouteMapbox({
       ro.disconnect()
       map.off('style.load', handleStyleLoad)
       map.off('error', handleError)
+      map.off('mousemove', handleMouseMove)
+      map.off('mouseout', clearHover)
       if (mapRef.current === map) mapRef.current = null
       try {
         map.remove()

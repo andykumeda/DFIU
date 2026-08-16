@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-15
 **Branch:** `main`
-**Status:** Highlight clicked training overlap sections on the course map.
+**Status:** Show race and training miles on hover over the training map.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -14,7 +14,7 @@
 
 ## Just finished
 
-- Training route detail: clicking a course-overlap section or a Strava analysis section highlights that stretch on the map (yellow) and zooms to it. Click again to clear.
+- Training map hover shows `Race: Mile XX.X | Training: Mile YY.Y` along the route.
 
 ## Open
 

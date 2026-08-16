@@ -273,8 +273,11 @@ export function TrainingRouteDetailMap(props: TrainingRouteDetailMapProps) {
     }, 0)
     return () => window.clearTimeout(handle)
   }, [liveOverlap, props.coordinates, props.courseCoordinates])
-  const mapOverlapSegments = liveOverlap ? computedOverlap : props.overlapSegments
+  const mapOverlapSegments = liveOverlap
+    ? computedOverlap ?? props.overlapSegments
+    : props.overlapSegments
   const mapData = { ...mapProps, overlapSegments: mapOverlapSegments }
+  const [hoverLabel, setHoverLabel] = useState<string | null>(null)
 
   return (
     <div className={`relative ${className ?? 'w-full h-full'}`}>
@@ -282,9 +285,19 @@ export function TrainingRouteDetailMap(props: TrainingRouteDetailMapProps) {
         <TrainingRouteSvgDetail {...mapData} className="w-full h-full" />
       ) : (
         <Suspense fallback={<TrainingRouteSvgDetail {...mapData} className="w-full h-full" />}>
-          <TrainingRouteMapbox {...mapData} className="w-full h-full" onFail={handleMapFailure} />
+          <TrainingRouteMapbox
+            {...mapData}
+            className="w-full h-full"
+            onFail={handleMapFailure}
+            onHoverMiles={setHoverLabel}
+          />
         </Suspense>
       )}
+      {hoverLabel ? (
+        <div className="absolute top-3 left-1/2 z-10 -translate-x-1/2 rounded-full border border-neutral-700 bg-black/70 px-3 py-1.5 text-xs font-mono tabular-nums text-neutral-200 shadow-sm backdrop-blur-sm pointer-events-none">
+          {hoverLabel}
+        </div>
+      ) : null}
       {showLegend ? <TrainingMapLegend /> : null}
     </div>
   )
