@@ -606,9 +606,6 @@ export function computeTrainingOverlap(
     return { overlapMiles: 0, segments: [] }
   }
 
-  const inKeptCourse = (courseMi: number) =>
-    courseRanges.some(r => courseMi >= r.start - 0.15 && courseMi <= r.end + 0.15)
-
   type Streak = {
     trainingStart: number
     trainingEnd: number
@@ -631,7 +628,7 @@ export function computeTrainingOverlap(
 
   // Build streaks per leg so out-and-back halves stay separate even on one visit.
   for (const leg of legs) {
-    const keptHits = leg.filter(h => inKeptCourse(h.courseMi))
+    const keptHits = leg
     if (keptHits.length < 2) continue
 
     let cur: Streak | null = null
@@ -683,12 +680,21 @@ export function computeTrainingOverlap(
   // `courseRanges` contains every proximity hit used to discover candidates.
   // Some of those hits are later rejected by `followsRaceTrail`; totals must
   // therefore come from the accepted segments, not the broader candidate set.
-  const overlapMiles = round2(uniqueCourseMiles(segments))
+  // The map uses the same trail-following decision against the globally
+  // nearest course point. If continuity assignment latched onto a nearby
+  // parallel visit, prefer the map's accepted ranges so the numeric summary
+  // cannot disagree with the orange overlay.
+  const mapSegments = computeTrainingMapOverlap(trainingCoords, courseCoords)
+  const mapOverlapMiles = uniqueCourseMiles(mapSegments)
+  const acceptedSegments = mapSegments.length >= segments.length && mapOverlapMiles > uniqueCourseMiles(segments) + 0.25
+    ? mapSegments
+    : segments
+  const overlapMiles = round2(uniqueCourseMiles(acceptedSegments))
   if (overlapMiles < 0.1) {
     return { overlapMiles: 0, segments: [] }
   }
 
-  return { overlapMiles, segments }
+  return { overlapMiles, segments: acceptedSegments }
 }
 
 export function formatOverlapSummary(

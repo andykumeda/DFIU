@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-16
 **Branch:** `main`
-**Status:** Training overlap totals count accepted race-course segments only; validated and deployed to production.
+**Status:** Training overlap summary now follows the same accepted trail ranges as the map; validated and deployed to production.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -19,9 +19,14 @@
 - Added a compact real-geometry regression covering the race course, proposed training route, and completed Strava activity.
 - Training map hover shows `Race: Mile XX.X | Training: Mile YY.Y` along the route.
 
+## Just finished
+
+- Fixed the reported Strawberry Peak mismatch by using the map's accepted trail-following ranges when continuity assignment undercounts a shared section. The live result now follows the orange overlay (`14.16 mi`, with the same two accepted ranges).
+- Validated with 92 tests, lint (existing warnings only), and a production HTTP smoke check after deployment.
+
 ## Open
 
-- Last product deployment: accepted-segment Training overlap totals (`03ed7af`); production URL is `https://dfiu.app/race/fca7696b-6093-49a7-be8a-ba3c0a480643?training=394b45d7-d2ca-451f-97c7-62bdf6451373`.
+- Last product deployment: map-aligned Training overlap summary (pending commit hash); production URL is `https://dfiu.app/race/fca7696b-6093-49a7-be8a-ba3c0a480643?training=394b45d7-d2ca-451f-97c7-62bdf6451373`.
 - Smoke-test Settings race history (Strava + GPX) and Pace ability card.
 - Design and implement the opt-in post-event feedback email flow.
 - Rotate Strava secret; verify RBAC with a second account; `/admin` + owner-transfer UI.
