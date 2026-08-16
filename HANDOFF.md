@@ -1,8 +1,8 @@
 # Handoff Document
 
-**Date:** 2026-08-14
+**Date:** 2026-08-15
 **Branch:** `main`
-**Status:** Put Plan C buffer label between cutoff hours and the buffer field.
+**Status:** Highlight clicked training overlap sections on the course map.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -14,7 +14,7 @@
 
 ## Just finished
 
-- Pace Plan C order: race cutoff hours, then “Safety Buffer Before Cutoff”, then the buffer field.
+- Training route detail: clicking a course-overlap section or a Strava analysis section highlights that stretch on the map (yellow) and zooms to it. Click again to clear.
 
 ## Open
 

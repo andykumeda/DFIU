@@ -6,6 +6,8 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 const COURSE_COLOR = '#9333ea'
 const TRAINING_COLOR = '#2563eb'
 const OVERLAP_COLOR = '#ea580c'
+const HIGHLIGHT_HALO = '#fef08a'
+const HIGHLIGHT_COLOR = '#facc15'
 
 function downsample(line: [number, number][], maxPoints: number): [number, number][] {
   if (line.length <= maxPoints) return line
@@ -32,14 +34,22 @@ function cumulativeMiles(line: [number, number][]): number[] {
   return cum
 }
 
-function sliceByMiles(line: [number, number][], startMi: number, endMi: number): [number, number][] {
+function sliceByMiles(
+  line: [number, number][],
+  startMi: number,
+  endMi: number,
+  fallbackToStart = true
+): [number, number][] {
   if (line.length < 2) return line
+  const lo = Math.min(startMi, endMi)
+  const hi = Math.max(startMi, endMi)
   const cum = cumulativeMiles(line)
   const out: [number, number][] = []
   for (let i = 0; i < line.length; i++) {
-    if (cum[i] >= startMi - 0.01 && cum[i] <= endMi + 0.01) out.push(line[i])
+    if (cum[i] >= lo - 0.01 && cum[i] <= hi + 0.01) out.push(line[i])
   }
-  return out.length >= 2 ? out : line.slice(0, Math.min(2, line.length))
+  if (out.length >= 2) return out
+  return fallbackToStart ? line.slice(0, Math.min(2, line.length)) : []
 }
 
 export interface TrainingRouteMapboxProps {
@@ -51,6 +61,7 @@ export interface TrainingRouteMapboxProps {
     courseStartMi?: number
     courseEndMi?: number
   }[]
+  highlightedOverlap?: { trainingStartMi: number; trainingEndMi: number } | null
   className?: string
   onFail?: () => void
   interactive?: boolean
@@ -59,13 +70,15 @@ export interface TrainingRouteMapboxProps {
 
 type MapData = Pick<
   TrainingRouteMapboxProps,
-  'coordinates' | 'courseCoordinates' | 'overlapSegments'
+  'coordinates' | 'courseCoordinates' | 'overlapSegments' | 'highlightedOverlap'
 >
 
 const SOURCE_IDS = {
   course: 'training-detail-course',
   training: 'training-detail-route',
   overlap: 'training-detail-overlap',
+  highlightHalo: 'training-detail-highlight-halo',
+  highlight: 'training-detail-highlight',
 } as const
 
 function lineFeature(coordinates: [number, number][]): GeoJSON.Feature<GeoJSON.LineString> {
@@ -130,6 +143,7 @@ function drawRouteData(map: mapboxgl.Map, data: MapData) {
     4
   )
 
+  const overlapSelected = Boolean(data.highlightedOverlap)
   if (data.overlapSegments && data.overlapSegments.length > 0) {
     const features: GeoJSON.Feature<GeoJSON.LineString>[] = data.overlapSegments
       .map(segment =>
@@ -147,9 +161,13 @@ function drawRouteData(map: mapboxgl.Map, data: MapData) {
         map,
         SOURCE_IDS.overlap,
         { type: 'FeatureCollection', features },
-        { 'line-color': OVERLAP_COLOR, 'line-opacity': 1 },
-        6
+        { 'line-color': OVERLAP_COLOR, 'line-opacity': overlapSelected ? 0.35 : 1 },
+        overlapSelected ? 5 : 6
       )
+      if (map.getLayer(SOURCE_IDS.overlap)) {
+        map.setPaintProperty(SOURCE_IDS.overlap, 'line-opacity', overlapSelected ? 0.35 : 1)
+        map.setPaintProperty(SOURCE_IDS.overlap, 'line-width', overlapSelected ? 5 : 6)
+      }
     } else {
       const source = map.getSource(SOURCE_IDS.overlap) as mapboxgl.GeoJSONSource | undefined
       if (source) source.setData({ type: 'FeatureCollection', features: [] })
@@ -159,11 +177,49 @@ function drawRouteData(map: mapboxgl.Map, data: MapData) {
     if (source) source.setData({ type: 'FeatureCollection', features: [] })
   }
 
+  const highlightSlice = data.highlightedOverlap
+    ? downsample(
+        sliceByMiles(
+          data.coordinates,
+          data.highlightedOverlap.trainingStartMi,
+          data.highlightedOverlap.trainingEndMi,
+          false
+        ),
+        2000
+      )
+    : []
+  if (highlightSlice.length >= 2) {
+    setOrAddLine(
+      map,
+      SOURCE_IDS.highlightHalo,
+      lineFeature(highlightSlice),
+      { 'line-color': HIGHLIGHT_HALO, 'line-opacity': 0.95 },
+      12
+    )
+    setOrAddLine(
+      map,
+      SOURCE_IDS.highlight,
+      lineFeature(highlightSlice),
+      { 'line-color': HIGHLIGHT_COLOR, 'line-opacity': 1 },
+      7
+    )
+  } else {
+    for (const id of [SOURCE_IDS.highlightHalo, SOURCE_IDS.highlight]) {
+      const source = map.getSource(id) as mapboxgl.GeoJSONSource | undefined
+      if (source) source.setData(lineFeature([]))
+    }
+  }
+
   const bounds = new mapboxgl.LngLatBounds()
-  training.forEach(coordinate => bounds.extend(coordinate))
+  const fitLine = highlightSlice.length >= 2 ? highlightSlice : training
+  fitLine.forEach(coordinate => bounds.extend(coordinate))
   if (!bounds.isEmpty()) {
     map.resize()
-    map.fitBounds(bounds, { padding: 48, maxZoom: 14, duration: 0 })
+    map.fitBounds(bounds, {
+      padding: highlightSlice.length >= 2 ? 72 : 48,
+      maxZoom: highlightSlice.length >= 2 ? 15 : 14,
+      duration: highlightSlice.length >= 2 ? 400 : 0,
+    })
   }
 }
 
@@ -172,6 +228,7 @@ export function TrainingRouteMapbox({
   coordinates,
   courseCoordinates,
   overlapSegments,
+  highlightedOverlap = null,
   className,
   onFail,
   interactive = true,
@@ -180,13 +237,13 @@ export function TrainingRouteMapbox({
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<mapboxgl.Map | null>(null)
   const styleReadyRef = useRef(false)
-  const dataRef = useRef<MapData>({ coordinates, courseCoordinates, overlapSegments })
+  const dataRef = useRef<MapData>({ coordinates, courseCoordinates, overlapSegments, highlightedOverlap })
   const onFailRef = useRef(onFail)
 
   useEffect(() => {
-    dataRef.current = { coordinates, courseCoordinates, overlapSegments }
+    dataRef.current = { coordinates, courseCoordinates, overlapSegments, highlightedOverlap }
     onFailRef.current = onFail
-  }, [coordinates, courseCoordinates, overlapSegments, onFail])
+  }, [coordinates, courseCoordinates, overlapSegments, highlightedOverlap, onFail])
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
@@ -275,7 +332,7 @@ export function TrainingRouteMapbox({
       }
     })
     return () => cancelAnimationFrame(frame)
-  }, [coordinates, courseCoordinates, overlapSegments])
+  }, [coordinates, courseCoordinates, overlapSegments, highlightedOverlap])
 
   return <div ref={containerRef} className={className ?? 'w-full h-full'} />
 }

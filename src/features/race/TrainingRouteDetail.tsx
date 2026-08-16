@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { ArrowLeft, Download, ExternalLink, MapPin, Mountain, Route as RouteIcon, Share2, Trash2 } from 'lucide-react'
 import type { Course, Json, Race } from '@/types/database'
 import type { TrainingRouteRow } from './useTrainingRoutes'
@@ -13,7 +13,7 @@ import {
 } from '@/lib/training-overlap'
 import type { PacePlanResult } from './pace-utils'
 import { formatHM, getOverlapRacePace } from './race-day-utils'
-import { sortOverlapSegmentsByRaceMile } from './training-analysis'
+import { isSameTrainingOverlap, sortOverlapSegmentsByRaceMile } from './training-analysis'
 import { TrainingAnalysisPanel, type StravaActivity } from './TrainingAnalysisPanel'
 
 interface TrainingRouteDetailProps {
@@ -51,6 +51,11 @@ export function TrainingRouteDetail({
   const [deleting, setDeleting] = useState(false)
   const [shareState, setShareState] = useState<'idle' | 'copied' | 'error'>('idle')
   const [showCourseRoute, setShowCourseRoute] = useState(true)
+  const [highlightedOverlap, setHighlightedOverlap] = useState<{
+    trainingStartMi: number
+    trainingEndMi: number
+  } | null>(null)
+  const mapSectionRef = useRef<HTMLDivElement>(null)
 
   const trainingCoords = useMemo(() => extractCoordinates(route.geometry), [route.geometry])
   const courseCoords = useMemo(
@@ -83,6 +88,11 @@ export function TrainingRouteDetail({
   )
 
   const dirty = name.trim() !== route.name || notes !== (route.notes ?? '')
+
+  const selectOverlap = (segment: { trainingStartMi: number; trainingEndMi: number }) => {
+    setHighlightedOverlap(current => (isSameTrainingOverlap(current, segment) ? null : segment))
+    mapSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }
 
   const handleExport = () => {
     const gpx = route.raw_gpx?.trim() || buildTrainingRouteGpx(route.name, trainingCoords)
@@ -200,11 +210,12 @@ export function TrainingRouteDetail({
           <input type="checkbox" checked={showCourseRoute} onChange={event => setShowCourseRoute(event.target.checked)} className="accent-blue-500" />
           Show race course
         </label>
-        <div className="rounded-xl overflow-hidden border border-neutral-800 bg-neutral-950 h-[360px] md:h-[420px]">
+        <div ref={mapSectionRef} className="rounded-xl overflow-hidden border border-neutral-800 bg-neutral-950 h-[360px] md:h-[420px]">
         <TrainingRouteDetailMap
           coordinates={trainingCoords}
           courseCoordinates={showCourseRoute && courseCoords.length >= 2 ? courseCoords : undefined}
           overlapSegments={route.overlapSegments}
+          highlightedOverlap={highlightedOverlap}
           showLegend
           className="w-full h-full"
         />
@@ -312,7 +323,7 @@ export function TrainingRouteDetail({
             })}
           </p>
           {orderedOverlapSegments.length > 0 && (
-            <ul className="mt-3 space-y-3 text-sm text-neutral-400">
+            <ul className="mt-3 space-y-2 text-sm text-neutral-400">
               {orderedOverlapSegments.map((seg, i) => {
                 const pace = planAReady
                   ? getOverlapRacePace(
@@ -323,23 +334,35 @@ export function TrainingRouteDetail({
                       clock24h
                     )
                   : null
+                const selected = isSameTrainingOverlap(highlightedOverlap, seg)
                 return (
-                  <li key={i} className="space-y-1">
-                    <div>
-                      Course mi {seg.courseStartMi.toFixed(1)}–{seg.courseEndMi.toFixed(1)}
-                      <span className="text-neutral-600">
-                        {' '}
-                        (training {seg.trainingStartMi.toFixed(1)}–{seg.trainingEndMi.toFixed(1)})
-                      </span>
-                    </div>
-                    {pace && (
-                      <div className="text-emerald-400/95 text-sm">
-                        Plan A{' '}
-                        {pace.enterTimeOfDay && pace.exitTimeOfDay
-                          ? `${pace.enterTimeOfDay} – ${pace.exitTimeOfDay} (${formatHM(pace.durationMin)})`
-                          : `(${formatHM(pace.durationMin)})`}
+                  <li key={i}>
+                    <button
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => selectOverlap(seg)}
+                      className={`w-full text-left rounded-lg px-3 py-2 space-y-1 transition-colors ${
+                        selected
+                          ? 'bg-yellow-400/15 border border-yellow-400/50 text-neutral-200'
+                          : 'border border-transparent hover:bg-neutral-800/70 hover:text-neutral-200'
+                      }`}
+                    >
+                      <div>
+                        Course mi {seg.courseStartMi.toFixed(1)}–{seg.courseEndMi.toFixed(1)}
+                        <span className="text-neutral-600">
+                          {' '}
+                          (training {seg.trainingStartMi.toFixed(1)}–{seg.trainingEndMi.toFixed(1)})
+                        </span>
                       </div>
-                    )}
+                      {pace && (
+                        <div className="text-emerald-400/95 text-sm">
+                          Plan A{' '}
+                          {pace.enterTimeOfDay && pace.exitTimeOfDay
+                            ? `${pace.enterTimeOfDay} – ${pace.exitTimeOfDay} (${formatHM(pace.durationMin)})`
+                            : `(${formatHM(pace.durationMin)})`}
+                        </div>
+                      )}
+                    </button>
                   </li>
                 )
               })}
@@ -358,6 +381,8 @@ export function TrainingRouteDetail({
           race={race}
           clock24h={clock24h}
           hideRoutePicker
+          highlightedOverlap={highlightedOverlap}
+          onHighlightOverlap={selectOverlap}
           savedActivityInputs={Array.isArray(route.strava_activity_inputs) ? route.strava_activity_inputs.filter((value): value is string => typeof value === 'string') : []}
           savedActivityResults={Array.isArray(route.strava_activity_results) ? route.strava_activity_results as unknown as StravaActivity[] : []}
           onSaveActivityInputs={inputs => onUpdate(route.id, { strava_activity_inputs: inputs })}

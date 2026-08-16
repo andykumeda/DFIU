@@ -11,6 +11,7 @@ import {
   formatDurationWords,
   getTrainingAnalysisDelta,
   getTrainingSegmentMovingMinutes,
+  isSameTrainingOverlap,
 } from './training-analysis'
 
 export interface StravaActivity {
@@ -39,6 +40,8 @@ interface TrainingAnalysisPanelProps {
   race: Race
   clock24h: boolean
   hideRoutePicker?: boolean
+  highlightedOverlap?: { trainingStartMi: number; trainingEndMi: number } | null
+  onHighlightOverlap?: (segment: { trainingStartMi: number; trainingEndMi: number }) => void
   savedActivityInputs?: string[]
   savedActivityResults?: StravaActivity[]
   onSaveActivityInputs?: (inputs: string[]) => Promise<void>
@@ -51,6 +54,8 @@ export function TrainingAnalysisPanel({
   race,
   clock24h,
   hideRoutePicker = false,
+  highlightedOverlap = null,
+  onHighlightOverlap,
   savedActivityInputs = [],
   savedActivityResults = [],
   onSaveActivityInputs,
@@ -246,6 +251,8 @@ export function TrainingAnalysisPanel({
                   label={`Section ${index + 1}: race mi ${segment.courseMilesLabel}`}
                   value={`Plan A ${segment.raceDurationLabel ?? 'not generated'}`}
                   detail={`training mi ${segment.trainingMilesLabel}`}
+                  selected={isSameTrainingOverlap(highlightedOverlap, segment)}
+                  onSelect={onHighlightOverlap ? () => onHighlightOverlap(segment) : undefined}
                 />
               ))}
             </div>
@@ -299,7 +306,17 @@ export function TrainingAnalysisPanel({
             </div>
             <div className="mt-4 space-y-3">
               {comparisons.map(({ segment, index, movingMinutes, delta }) => (
-                <div key={`${segment.courseMilesLabel}-${segment.trainingMilesLabel}`} className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-3">
+                <button
+                  key={`${segment.courseMilesLabel}-${segment.trainingMilesLabel}`}
+                  type="button"
+                  aria-pressed={isSameTrainingOverlap(highlightedOverlap, segment)}
+                  onClick={() => onHighlightOverlap?.(segment)}
+                  className={`w-full text-left rounded-lg border p-3 transition-colors ${
+                    isSameTrainingOverlap(highlightedOverlap, segment)
+                      ? 'border-yellow-400/50 bg-yellow-400/10'
+                      : 'border-neutral-800 bg-neutral-900/60 hover:border-neutral-600'
+                  }`}
+                >
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <p className="text-sm font-medium text-white">Section {index + 1}: race mi {segment.courseMilesLabel}</p>
                     <p className={delta.tone === 'faster' ? 'text-sm font-medium text-emerald-300' : delta.tone === 'slower' ? 'text-sm font-medium text-orange-300' : 'text-sm font-medium text-neutral-200'}>{delta.label}</p>
@@ -309,7 +326,7 @@ export function TrainingAnalysisPanel({
                     <SummaryMetric label="Moving time" value={formatDurationWords(movingMinutes)} />
                     <SummaryMetric label="Plan A time" value={segment.raceDurationLabel ?? '—'} />
                   </dl>
-                </div>
+                </button>
               ))}
             </div>
           </div>
@@ -319,12 +336,37 @@ export function TrainingAnalysisPanel({
   )
 }
 
-function SummaryMetric({ label, value, detail }: { label: string; value: string; detail?: string }) {
-  return (
-    <div className="rounded-lg bg-neutral-950/70 border border-neutral-800 px-3 py-2.5">
+function SummaryMetric({
+  label,
+  value,
+  detail,
+  selected = false,
+  onSelect,
+}: {
+  label: string
+  value: string
+  detail?: string
+  selected?: boolean
+  onSelect?: () => void
+}) {
+  const className = `rounded-lg px-3 py-2.5 border ${
+    selected
+      ? 'bg-yellow-400/10 border-yellow-400/50'
+      : 'bg-neutral-950/70 border-neutral-800'
+  }${onSelect ? ' w-full text-left transition-colors hover:border-neutral-600' : ''}`
+  const body = (
+    <>
       <p className="text-xs uppercase tracking-wide text-neutral-500">{label}</p>
       <p className="mt-1 text-neutral-100 font-medium">{value}</p>
       {detail && <p className="mt-0.5 text-xs text-neutral-500">{detail}</p>}
-    </div>
+    </>
   )
+  if (onSelect) {
+    return (
+      <button type="button" aria-pressed={selected} onClick={onSelect} className={className}>
+        {body}
+      </button>
+    )
+  }
+  return <div className={className}>{body}</div>
 }

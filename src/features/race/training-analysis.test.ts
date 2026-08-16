@@ -5,6 +5,7 @@ import {
   getTrainingAnalysisDelta,
   getOverlappingMovingMinutes,
   getTrainingSegmentMovingMinutes,
+  isSameTrainingOverlap,
 } from './training-analysis'
 
 function makePlan(
@@ -124,5 +125,13 @@ describe('getTrainingSegmentMovingMinutes', () => {
 
     expect(getTrainingSegmentMovingMinutes(activity.movingSeconds, activity.distanceMiles, { trainingStartMi: 0, trainingEndMi: 2 }, activity.stream)).toBeCloseTo(20)
     expect(getTrainingSegmentMovingMinutes(activity.movingSeconds, activity.distanceMiles, { trainingStartMi: 10, trainingEndMi: 14 }, activity.stream)).toBeCloseTo(30)
+  })
+})
+
+describe('isSameTrainingOverlap', () => {
+  it('matches training mile ranges within a small tolerance', () => {
+    expect(isSameTrainingOverlap({ trainingStartMi: 10, trainingEndMi: 14 }, { trainingStartMi: 10.02, trainingEndMi: 14.01 })).toBe(true)
+    expect(isSameTrainingOverlap({ trainingStartMi: 10, trainingEndMi: 14 }, { trainingStartMi: 0, trainingEndMi: 6 })).toBe(false)
+    expect(isSameTrainingOverlap(null, { trainingStartMi: 10, trainingEndMi: 14 })).toBe(false)
   })
 })

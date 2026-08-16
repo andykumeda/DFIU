@@ -48,6 +48,17 @@ export function formatDurationWords(minutes: number): string {
   return `${hours} hour${hours === 1 ? '' : 's'} ${mins} min${mins === 1 ? '' : 's'}`
 }
 
+export function isSameTrainingOverlap(
+  a: { trainingStartMi: number; trainingEndMi: number } | null | undefined,
+  b: { trainingStartMi: number; trainingEndMi: number }
+): boolean {
+  if (!a) return false
+  return (
+    Math.abs(a.trainingStartMi - b.trainingStartMi) < 0.05 &&
+    Math.abs(a.trainingEndMi - b.trainingEndMi) < 0.05
+  )
+}
+
 /** Race-order sort: earlier course miles first; longer span before short reverse stubs. */
 export function sortOverlapSegmentsByRaceMile<T extends OverlapSegment>(segments: T[]): T[] {
   return [...segments].sort((a, b) => {

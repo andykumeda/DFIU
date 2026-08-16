@@ -7,6 +7,8 @@ import { computeTrainingMapOverlap } from '@/lib/training-overlap'
 const COURSE_COLOR = '#9333ea'
 const TRAINING_COLOR = '#2563eb'
 const OVERLAP_COLOR = '#ea580c'
+const HIGHLIGHT_HALO = '#fef08a'
+const HIGHLIGHT_COLOR = '#facc15'
 
 function TrainingMapLegend() {
   return (
@@ -23,6 +25,10 @@ function TrainingMapLegend() {
         <div className="flex items-center gap-1 whitespace-nowrap">
           <span className="inline-block h-0.5 w-2.5 rounded sm:w-3" style={{ backgroundColor: OVERLAP_COLOR }} />
           <span>Overlap</span>
+        </div>
+        <div className="flex items-center gap-1 whitespace-nowrap">
+          <span className="inline-block h-0.5 w-2.5 rounded sm:w-3" style={{ backgroundColor: HIGHLIGHT_COLOR }} />
+          <span>Selected section</span>
         </div>
       </div>
     </div>
@@ -54,14 +60,22 @@ function cumulativeMiles(line: [number, number][]): number[] {
   return cum
 }
 
-function sliceByMiles(line: [number, number][], startMi: number, endMi: number): [number, number][] {
+function sliceByMiles(
+  line: [number, number][],
+  startMi: number,
+  endMi: number,
+  fallbackToStart = true
+): [number, number][] {
   if (line.length < 2) return line
+  const lo = Math.min(startMi, endMi)
+  const hi = Math.max(startMi, endMi)
   const cum = cumulativeMiles(line)
   const out: [number, number][] = []
   for (let i = 0; i < line.length; i++) {
-    if (cum[i] >= startMi - 0.01 && cum[i] <= endMi + 0.01) out.push(line[i])
+    if (cum[i] >= lo - 0.01 && cum[i] <= hi + 0.01) out.push(line[i])
   }
-  return out.length >= 2 ? out : line.slice(0, Math.min(2, line.length))
+  if (out.length >= 2) return out
+  return fallbackToStart ? line.slice(0, Math.min(2, line.length)) : []
 }
 
 function mercatorY(lat: number): number {
@@ -229,6 +243,7 @@ interface TrainingRouteDetailMapProps {
     courseStartMi?: number
     courseEndMi?: number
   }[]
+  highlightedOverlap?: { trainingStartMi: number; trainingEndMi: number } | null
   className?: string
   interactive?: boolean
   showControls?: boolean
@@ -279,6 +294,7 @@ function TrainingRouteSvgDetail({
   coordinates,
   courseCoordinates,
   overlapSegments,
+  highlightedOverlap,
   className,
 }: TrainingRouteDetailMapProps) {
   if (coordinates.length < 2) {
@@ -323,6 +339,7 @@ function TrainingRouteSvgDetail({
   const trainingPoints = project(training, minLon, maxLon, minLat, maxLat, vbW, vbH, pad)
   const coursePoints =
     coursePts.length >= 2 ? project(coursePts, minLon, maxLon, minLat, maxLat, vbW, vbH, pad) : null
+  const overlapSelected = Boolean(highlightedOverlap)
   const overlapPolylines =
     overlapSegments
       ?.map(seg => {
@@ -331,6 +348,14 @@ function TrainingRouteSvgDetail({
         return project(slice, minLon, maxLon, minLat, maxLat, vbW, vbH, pad)
       })
       .filter((p): p is string => !!p) ?? []
+  const highlightPts = highlightedOverlap
+    ? downsample(
+        sliceByMiles(coordinates, highlightedOverlap.trainingStartMi, highlightedOverlap.trainingEndMi, false),
+        1500
+      )
+    : []
+  const highlightPoints =
+    highlightPts.length >= 2 ? project(highlightPts, minLon, maxLon, minLat, maxLat, vbW, vbH, pad) : null
 
   return (
     <svg
@@ -366,11 +391,32 @@ function TrainingRouteSvgDetail({
           points={pts}
           fill="none"
           stroke={OVERLAP_COLOR}
+          strokeOpacity={overlapSelected ? 0.35 : 1}
           strokeWidth="6"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
       ))}
+      {highlightPoints && (
+        <>
+          <polyline
+            points={highlightPoints}
+            fill="none"
+            stroke={HIGHLIGHT_HALO}
+            strokeWidth="12"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <polyline
+            points={highlightPoints}
+            fill="none"
+            stroke={HIGHLIGHT_COLOR}
+            strokeWidth="7"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </>
+      )}
     </svg>
   )
 }
