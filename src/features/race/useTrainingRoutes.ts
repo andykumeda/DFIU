@@ -11,6 +11,7 @@ import {
   parseOverlapSegments,
   nameFromGpxFileName,
   nameFromRawGpx,
+  uniqueCourseMiles,
   type OverlapSegment,
 } from '@/lib/training-overlap'
 import { getDistance } from '@/lib/geo-utils'
@@ -20,9 +21,13 @@ export type TrainingRouteRow = TrainingRoute & {
 }
 
 function toRow(raw: TrainingRoute): TrainingRouteRow {
+  const overlapSegments = parseOverlapSegments(raw.overlap_segments)
   return {
     ...raw,
-    overlapSegments: parseOverlapSegments(raw.overlap_segments),
+    // Older rows may have totals derived from candidate proximity hits that
+    // were later rejected. Normalize from the accepted segments on every read.
+    overlap_miles: Math.round(uniqueCourseMiles(overlapSegments) * 100) / 100,
+    overlapSegments,
   }
 }
 

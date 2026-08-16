@@ -150,10 +150,10 @@ Training overlap is geometric, not name-based. DFIU:
 4. Detects clear out-and-back turnarounds:
    - If the race revisits the same trail later (disconnected visits), the return leg maps onto that later pass — separate segments and times of day (e.g. Shortcut to Newcomb).
    - If the race itself is a continuous out-and-back, course miles keep advancing through the turnaround as one span (e.g. Shortcut to Hillyer).
-5. Merges nearby course-mile clusters within 1.25 mi for displayed coverage summaries.
+5. Merges nearby course-mile candidate hits within 1.25 mi, then rejects streaks whose training distance does not plausibly follow the race trail.
 6. Filters the special false match that can occur when a course Start and Finish share coordinates.
 
-The total overlap is unique course-mile coverage across the assigned race-mile ranges.
+The total overlap is unique course-mile coverage across the accepted race-mile segments only. Nearby candidate hits that fail the trail-following check are excluded from both the segments and the total; repeated passes over the same accepted race miles count once.
 
 Map coloring snaps training GPX to the race line within about 0.035 mi and paints orange on the training line only where those samples sit on the race. Purple is the race; blue is training-only. An off-course canyon dip or fire-road approach stays blue.
 

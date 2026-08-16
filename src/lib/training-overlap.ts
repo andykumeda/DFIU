@@ -56,6 +56,33 @@ export interface TrainingMapOverlapSegment {
   courseEndMi: number
 }
 
+/** Merge accepted race-course spans so repeated passes are counted only once. */
+export function uniqueCourseMileRanges(
+  segments: Pick<OverlapSegment, 'courseStartMi' | 'courseEndMi'>[]
+): { start: number; end: number }[] {
+  const sorted = segments
+    .map(segment => ({
+      start: Math.min(segment.courseStartMi, segment.courseEndMi),
+      end: Math.max(segment.courseStartMi, segment.courseEndMi),
+    }))
+    .filter(range => range.end > range.start)
+    .sort((a, b) => a.start - b.start)
+  const merged: { start: number; end: number }[] = []
+  for (const range of sorted) {
+    const current = merged[merged.length - 1]
+    if (!current || range.start > current.end + 1e-6) merged.push({ ...range })
+    else current.end = Math.max(current.end, range.end)
+  }
+  return merged
+}
+
+/** Unique accepted race-course coverage, excluding gaps and rejected nearby trails. */
+export function uniqueCourseMiles(
+  segments: Pick<OverlapSegment, 'courseStartMi' | 'courseEndMi'>[]
+): number {
+  return uniqueCourseMileRanges(segments).reduce((sum, range) => sum + range.end - range.start, 0)
+}
+
 type LonLat = [number, number]
 
 function cumulativeMiles(line: LonLat[]): number[] {
@@ -646,19 +673,20 @@ export function computeTrainingOverlap(
     return { overlapMiles: 0, segments: [] }
   }
 
-  const overlapMiles = round2(
-    courseRanges.reduce((sum, r) => sum + Math.max(0, r.end - r.start), 0)
-  )
-  if (overlapMiles < 0.1) {
-    return { overlapMiles: 0, segments: [] }
-  }
-
   const segments: OverlapSegment[] = streaks.map(s => ({
     courseStartMi: round2(s.courseStart),
     courseEndMi: round2(s.courseEnd),
     trainingStartMi: round2(s.trainingStart),
     trainingEndMi: round2(s.trainingEnd),
   }))
+
+  // `courseRanges` contains every proximity hit used to discover candidates.
+  // Some of those hits are later rejected by `followsRaceTrail`; totals must
+  // therefore come from the accepted segments, not the broader candidate set.
+  const overlapMiles = round2(uniqueCourseMiles(segments))
+  if (overlapMiles < 0.1) {
+    return { overlapMiles: 0, segments: [] }
+  }
 
   return { overlapMiles, segments }
 }

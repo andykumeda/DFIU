@@ -1,5 +1,11 @@
 import type { Race } from '@/types/database'
-import type { OverlapSegment } from '@/lib/training-overlap'
+import {
+  uniqueCourseMileRanges,
+  uniqueCourseMiles,
+  type OverlapSegment,
+} from '@/lib/training-overlap'
+
+export { uniqueCourseMileRanges, uniqueCourseMiles }
 import type { PacePlanResult } from './pace-utils'
 import { getOverlapRacePace } from './race-day-utils'
 
@@ -70,30 +76,6 @@ export function sortOverlapSegmentsByRaceMile<T extends OverlapSegment>(segments
     if (aSpan !== bSpan) return bSpan - aSpan
     return a.courseStartMi - b.courseStartMi
   })
-}
-
-/** Unique course-mile coverage (merge overlapping / reverse+forward passes). */
-export function uniqueCourseMileRanges(
-  segments: OverlapSegment[]
-): { start: number; end: number }[] {
-  const sorted = segments
-    .map(s => ({
-      start: Math.min(s.courseStartMi, s.courseEndMi),
-      end: Math.max(s.courseStartMi, s.courseEndMi),
-    }))
-    .filter(r => r.end > r.start)
-    .sort((a, b) => a.start - b.start)
-  const merged: { start: number; end: number }[] = []
-  for (const r of sorted) {
-    const cur = merged[merged.length - 1]
-    if (!cur || r.start > cur.end + 1e-6) merged.push({ ...r })
-    else cur.end = Math.max(cur.end, r.end)
-  }
-  return merged
-}
-
-export function uniqueCourseMiles(segments: OverlapSegment[]): number {
-  return uniqueCourseMileRanges(segments).reduce((sum, r) => sum + (r.end - r.start), 0)
 }
 
 /**
