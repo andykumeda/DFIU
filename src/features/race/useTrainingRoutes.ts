@@ -20,12 +20,16 @@ export type TrainingRouteRow = TrainingRoute & {
   overlapSegments: OverlapSegment[]
 }
 
-function toRow(raw: TrainingRoute): TrainingRouteRow {
-  const overlapSegments = parseOverlapSegments(raw.overlap_segments)
+function toRow(raw: TrainingRoute, courseGeometry?: unknown): TrainingRouteRow {
+  const storedSegments = parseOverlapSegments(raw.overlap_segments)
+  const computed = courseGeometry
+    ? computeTrainingOverlap(extractCoordinates(raw.geometry), extractCoordinates(courseGeometry))
+    : null
+  const overlapSegments = computed ? computed.segments : storedSegments
   return {
     ...raw,
-    // Older rows may have totals derived from candidate proximity hits that
-    // were later rejected. Normalize from the accepted segments on every read.
+    // Recompute from current geometry so persisted overlap segments do not go
+    // stale when the matching algorithm changes or the race course is edited.
     overlap_miles: Math.round(uniqueCourseMiles(overlapSegments) * 100) / 100,
     overlapSegments,
   }
@@ -83,10 +87,10 @@ export function useTrainingRoutes(raceId: string, courseGeometry: unknown) {
       .order('created_at', { ascending: true })
 
     if (!error && data) {
-      setRoutes((data as TrainingRoute[]).map(toRow))
+      setRoutes((data as TrainingRoute[]).map(raw => toRow(raw, courseGeometry)))
     }
     setLoading(false)
-  }, [raceId])
+  }, [raceId, courseGeometry])
 
   React.useEffect(() => {
     void reload()
@@ -149,7 +153,7 @@ export function useTrainingRoutes(raceId: string, courseGeometry: unknown) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabase.from('training_routes') as any).insert(row).select('*').single()
     if (error) throw error
-    const created = toRow(data as TrainingRoute)
+    const created = toRow(data as TrainingRoute, courseGeometry)
     setRoutes(prev => [...prev, created])
     return created
   }
@@ -185,7 +189,7 @@ export function useTrainingRoutes(raceId: string, courseGeometry: unknown) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabase.from('training_routes') as any).insert(row).select('*').single()
     if (error) throw error
-    const created = toRow(data as TrainingRoute)
+    const created = toRow(data as TrainingRoute, courseGeometry)
     setRoutes(prev => [...prev, created])
     return created
   }
@@ -203,7 +207,7 @@ export function useTrainingRoutes(raceId: string, courseGeometry: unknown) {
       .select('*')
       .single()
     if (error) throw error
-    const next = toRow(data as TrainingRoute)
+    const next = toRow(data as TrainingRoute, courseGeometry)
     setRoutes(prev => prev.map(r => (r.id === id ? next : r)))
   }
 

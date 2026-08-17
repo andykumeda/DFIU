@@ -24,10 +24,11 @@
 - Preserved raw accepted map sections for statistics while retaining merged ranges only for visual display.
 - Confirmed Plan A goal edits recompute the pace plan and all derived Training/Strava comparisons; persisted activity data is intentionally unchanged.
 - Fixed the remaining mismatch where the map showed three accepted sections but the summary retained only two continuity-assigned sections.
+- Route loading now recomputes overlap sections from current route/course geometry, so existing persisted rows cannot keep stale statistics after algorithm changes.
 
 ## Open
 
-- Last product deployment: raw-section Training overlap statistics (`4d180df`); production URL is `https://dfiu.app/race/fca7696b-6093-49a7-be8a-ba3c0a480643?training=394b45d7-d2ca-451f-97c7-62bdf6451373`.
+- Last product deployment: raw-section Training overlap statistics plus stale-row recomputation (pending commit hash); production URL is `https://dfiu.app/race/fca7696b-6093-49a7-be8a-ba3c0a480643?training=394b45d7-d2ca-451f-97c7-62bdf6451373`.
 - Smoke-test Settings race history (Strava + GPX) and Pace ability card.
 - Design and implement the opt-in post-event feedback email flow.
 - Rotate Strava secret; verify RBAC with a second account; `/admin` + owner-transfer UI.
