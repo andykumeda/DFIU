@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-16
 **Branch:** `main`
-**Status:** Training overlap statistics now use every raw accepted map section (without display merging); route loading avoids the expensive full matcher. Plan A changes recompute derived training comparisons. Validated and deployed.
+**Status:** Training overlap statistics now use every raw accepted map section (without display merging); route loading avoids the expensive full matcher. Plan A changes now propagate immediately across the page and recompute derived training comparisons.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -26,10 +26,12 @@
 - Fixed the remaining mismatch where the map showed three accepted sections but the summary retained only two continuity-assigned sections.
 - Route loading now recomputes overlap sections from current route/course geometry, so existing persisted rows cannot keep stale statistics after algorithm changes.
 - Performance fix: route loading uses the grid-based map matcher (~57 ms on the reported route) instead of the full continuity matcher (~2.6 s per route).
+- The Pace Plan editor and Training section currently have separate `usePacePlans` instances; the editor's local Plan A change can wait for realtime propagation before Training recalculates.
+- Added a same-page custom event so separate hook instances receive Plan A edits immediately; Supabase realtime remains the cross-tab/user path.
 
 ## Open
 
-- Last product deployment: fast raw-section route loading (`7b0cf96`); production URL is `https://dfiu.app/race/fca7696b-6093-49a7-be8a-ba3c0a480643?training=394b45d7-d2ca-451f-97c7-62bdf6451373`.
+- Last product deployment: immediate Plan A propagation (`pending commit hash`); production URL is `https://dfiu.app/race/fca7696b-6093-49a7-be8a-ba3c0a480643?training=394b45d7-d2ca-451f-97c7-62bdf6451373`.
 - Smoke-test Settings race history (Strava + GPX) and Pace ability card.
 - Design and implement the opt-in post-event feedback email flow.
 - Rotate Strava secret; verify RBAC with a second account; `/admin` + owner-transfer UI.

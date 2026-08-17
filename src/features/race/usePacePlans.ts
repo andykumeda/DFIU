@@ -29,6 +29,7 @@ const DEFAULTS: PacePlans = {
 }
 
 const legacyKey = (raceId: string) => `pace_plans_${raceId}`
+const localPlanEvent = (raceId: string) => `dfiu:pace-plans:${raceId}`
 
 function readLegacyLocal(raceId: string): PacePlans | null {
     try {
@@ -159,6 +160,20 @@ export function usePacePlans(raceId: string) {
         return () => { supabase.removeChannel(channel) }
     }, [raceId, isDemoMode])
 
+    // Pace Calculator and Training each mount their own hook instance. Propagate
+    // local edits immediately so derived Training/Strava data does not wait for
+    // the Supabase realtime round trip or a manual refresh.
+    React.useEffect(() => {
+        if (typeof window === 'undefined') return
+        const handleLocalUpdate = (event: Event) => {
+            const next = (event as CustomEvent<PacePlans>).detail
+            if (next) setPlans(next)
+        }
+        const eventName = localPlanEvent(raceId)
+        window.addEventListener(eventName, handleLocalUpdate)
+        return () => window.removeEventListener(eventName, handleLocalUpdate)
+    }, [raceId])
+
     const persist = async (next: PacePlans) => {
         if (!canEdit) return
         if (isDemoMode) {
@@ -173,6 +188,9 @@ export function usePacePlans(raceId: string) {
         setPlans(prev => {
             const next = { ...prev, ...patch }
             void persist(next)
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent(localPlanEvent(raceId), { detail: next }))
+            }
             return next
         })
     }
