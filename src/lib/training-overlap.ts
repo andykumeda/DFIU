@@ -210,7 +210,7 @@ function longestTrailFollowingHits<T extends { trainingMi: number; courseMi: num
 export function computeTrainingMapOverlap(
   trainingCoords: LonLat[],
   courseCoords: LonLat[],
-  options?: { bufferMi?: number; gapBridgeMi?: number }
+  options?: { bufferMi?: number; gapBridgeMi?: number; mergeAdjacent?: boolean }
 ): TrainingMapOverlapSegment[] {
   if (trainingCoords.length < 2 || courseCoords.length < 2) return []
 
@@ -319,6 +319,8 @@ export function computeTrainingMapOverlap(
   }
   flushStreak()
   ranges.sort((a, b) => a.trainingStartMi - b.trainingStartMi)
+  if (options?.mergeAdjacent === false) return ranges
+
   const merged: TrainingMapOverlapSegment[] = []
   for (const range of ranges) {
     const prev = merged[merged.length - 1]
@@ -684,9 +686,9 @@ export function computeTrainingOverlap(
   // nearest course point. If continuity assignment latched onto a nearby
   // parallel visit, prefer the map's accepted ranges so the numeric summary
   // cannot disagree with the orange overlay.
-  const mapSegments = computeTrainingMapOverlap(trainingCoords, courseCoords)
+  const mapSegments = computeTrainingMapOverlap(trainingCoords, courseCoords, { mergeAdjacent: false })
   const mapOverlapMiles = uniqueCourseMiles(mapSegments)
-  const acceptedSegments = mapSegments.length >= segments.length && mapOverlapMiles > uniqueCourseMiles(segments) + 0.25
+  const acceptedSegments = mapSegments.length === segments.length && mapOverlapMiles > uniqueCourseMiles(segments) + 0.25
     ? mapSegments
     : segments
   const overlapMiles = round2(uniqueCourseMiles(acceptedSegments))

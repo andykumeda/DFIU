@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-16
 **Branch:** `main`
-**Status:** Training overlap summary now follows the same accepted trail ranges as the map; validated and deployed to production.
+**Status:** Training overlap statistics preserve separate accepted sections; Plan A changes recompute derived training comparisons. Validated and deployed.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -21,12 +21,12 @@
 
 ## Just finished
 
-- Fixed the reported Strawberry Peak mismatch by using the map's accepted trail-following ranges when continuity assignment undercounts a shared section. The live result now follows the orange overlay (`14.16 mi`, with the same two accepted ranges).
-- Validated with 92 tests, lint (existing warnings only), and a production HTTP smoke check after deployment.
+- Preserved raw accepted map sections for statistics while retaining merged ranges only for visual display.
+- Confirmed Plan A goal edits recompute the pace plan and all derived Training/Strava comparisons; persisted activity data is intentionally unchanged.
 
 ## Open
 
-- Last product deployment: map-aligned Training overlap summary (`31b2281`); production URL is `https://dfiu.app/race/fca7696b-6093-49a7-be8a-ba3c0a480643?training=394b45d7-d2ca-451f-97c7-62bdf6451373`.
+- Last product deployment: section-preserving Training overlap statistics (pending commit hash); production URL is `https://dfiu.app/race/fca7696b-6093-49a7-be8a-ba3c0a480643?training=394b45d7-d2ca-451f-97c7-62bdf6451373`.
 - Smoke-test Settings race history (Strava + GPX) and Pace ability card.
 - Design and implement the opt-in post-event feedback email flow.
 - Rotate Strava secret; verify RBAC with a second account; `/admin` + owner-transfer UI.
