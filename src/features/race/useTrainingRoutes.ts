@@ -7,6 +7,7 @@ import type { GpxParseResult } from '@/lib/gpx-parser'
 import {
   buildTrainingOverlapUpdates,
   computeTrainingOverlap,
+  computeTrainingMapOverlap,
   extractCoordinates,
   parseOverlapSegments,
   nameFromGpxFileName,
@@ -23,9 +24,9 @@ export type TrainingRouteRow = TrainingRoute & {
 function toRow(raw: TrainingRoute, courseGeometry?: unknown): TrainingRouteRow {
   const storedSegments = parseOverlapSegments(raw.overlap_segments)
   const computed = courseGeometry
-    ? computeTrainingOverlap(extractCoordinates(raw.geometry), extractCoordinates(courseGeometry))
+    ? computeTrainingMapOverlap(extractCoordinates(raw.geometry), extractCoordinates(courseGeometry), { mergeAdjacent: false })
     : null
-  const overlapSegments = computed ? computed.segments : storedSegments
+  const overlapSegments = computed ?? storedSegments
   return {
     ...raw,
     // Recompute from current geometry so persisted overlap segments do not go
