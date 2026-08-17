@@ -17,12 +17,11 @@ describe('reported training overlap regression', () => {
     ) as Fixture
     const proposed = computeTrainingOverlap(fixture.proposed, fixture.course)
     const completed = computeTrainingOverlap(fixture.completed, fixture.course)
-
-    expect(proposed.segments).toHaveLength(3)
-    expect(completed.segments).toHaveLength(3)
+    expect(proposed.segments).toHaveLength(4)
+    expect(completed.segments).toHaveLength(4)
     expect(proposed.overlapMiles).toBeCloseTo(uniqueCourseMiles(proposed.segments), 2)
     expect(completed.overlapMiles).toBeCloseTo(uniqueCourseMiles(completed.segments), 2)
-    expect(proposed.overlapMiles).toBeCloseTo(10.62, 2)
-    expect(completed.overlapMiles).toBeCloseTo(10.52, 2)
+    expect(proposed.overlapMiles).toBeCloseTo(12.8, 2)
+    expect(completed.overlapMiles).toBeCloseTo(12.78, 2)
   })
 })

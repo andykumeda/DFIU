@@ -2,13 +2,13 @@
 
 **Date:** 2026-08-16
 **Branch:** `main`
-**Status:** Training overlap statistics preserve separate accepted sections; Plan A changes recompute derived training comparisons. Validated and deployed.
+**Status:** Training overlap statistics now use every raw accepted map section (without display merging); Plan A changes recompute derived training comparisons. Validated and deployed.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Training route `394b45d7-d2ca-451f-97c7-62bdf6451373` shows `8.5 mi on course, +1,422 ft (mi 10.5–11.3, mi 16.9–24.6)` with a clean browser console.
+- Training route `394b45d7-d2ca-451f-97c7-62bdf6451373` now derives statistics from the raw accepted map sections, including the route's opening overlap section.
 - Frontend: Pace Plan C shows race cutoff hours plus safety buffer.
 - OG: `dfiu-og` serves `og-default.png` (left) by default; Facebook/Instagram UAs get `og-ig.png` (centered).
 - Backend: `runner_history.strava_activity_id` applied; `strava-activity` `list-races` deployed.
@@ -23,10 +23,11 @@
 
 - Preserved raw accepted map sections for statistics while retaining merged ranges only for visual display.
 - Confirmed Plan A goal edits recompute the pace plan and all derived Training/Strava comparisons; persisted activity data is intentionally unchanged.
+- Fixed the remaining mismatch where the map showed three accepted sections but the summary retained only two continuity-assigned sections.
 
 ## Open
 
-- Last product deployment: section-preserving Training overlap statistics (`def7e83`); production URL is `https://dfiu.app/race/fca7696b-6093-49a7-be8a-ba3c0a480643?training=394b45d7-d2ca-451f-97c7-62bdf6451373`.
+- Last product deployment: raw-section Training overlap statistics (pending commit hash); production URL is `https://dfiu.app/race/fca7696b-6093-49a7-be8a-ba3c0a480643?training=394b45d7-d2ca-451f-97c7-62bdf6451373`.
 - Smoke-test Settings race history (Strava + GPX) and Pace ability card.
 - Design and implement the opt-in post-event feedback email flow.
 - Rotate Strava secret; verify RBAC with a second account; `/admin` + owner-transfer UI.

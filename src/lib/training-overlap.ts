@@ -688,7 +688,7 @@ export function computeTrainingOverlap(
   // cannot disagree with the orange overlay.
   const mapSegments = computeTrainingMapOverlap(trainingCoords, courseCoords, { mergeAdjacent: false })
   const mapOverlapMiles = uniqueCourseMiles(mapSegments)
-  const acceptedSegments = mapSegments.length === segments.length && mapOverlapMiles > uniqueCourseMiles(segments) + 0.25
+  const acceptedSegments = mapOverlapMiles > uniqueCourseMiles(segments) + 0.25
     ? mapSegments
     : segments
   const overlapMiles = round2(uniqueCourseMiles(acceptedSegments))
