@@ -2,13 +2,13 @@
 
 **Date:** 2026-08-19
 **Branch:** `main`
-**Status:** Training overlap data now groups brief same-direction GPS fragments into one analytical section, while preserving raw unique-mile totals and keeping real revisits/reversals separate. Imported GPX waypoints render as labeled markers on training detail maps.
+**Status:** Training detail now includes the course-style elevation profile directly below the map. Imported Start, Finish, and Water points use distinct color-and-symbol treatments on the map and profile.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Frontend deployed from `2c792e9`; the remote production bundle was checked for that exact build hash after deployment.
+- Training elevation profile and semantic GPX marker feature committed as `aef4ff3` and deployed.
 - Training route `2a8fa4b3-636c-4b49-8b24-f56f78b5c1c0` now shows one course-overlap row and one Training Analysis section: race mi `11.3–42.6`, training mi `0.0–31.3`.
 - Reference route `06a3df4b-95fb-47b5-b410-526654db6c9e` visibly shows Start, Finish, and both Water waypoints from its imported GPX.
 - Waypoint GPX is fetched only for the selected route, so route-list loading does not download every large source file.
@@ -18,6 +18,11 @@
 - Backend: `runner_history.strava_activity_id` applied; `strava-activity` `list-races` deployed.
 
 ## Just finished
+
+- Added the course-style elevation profile beneath training detail maps, including mile and imported GPX waypoint markers.
+- Start, Finish, and Water now render as green `S`, red `F`, and blue `W` map badges; the SVG fallback also gives Finish a distinct square shape.
+- Elevation samples remain out of the lightweight list query and load only with the selected route detail, alongside its raw GPX.
+- Validation: 100 tests pass; build passes; lint has 0 errors and 49 pre-existing warnings; `git diff --check` passes. Production browser checks passed at 320, 768, 1024, and 1440 px with an empty error/warning console.
 
 - Added a full production-geometry regression for the seven-fragment/one-continuous-section failure, plus focused continuity, GPX parsing, data projection, and waypoint-feature tests.
 - Production browser verification confirmed the single overlap section, four reference-route waypoint markers, and a clean console.
@@ -41,7 +46,7 @@
 
 ## Open
 
-- Last product deployment: overlap grouping + imported GPX waypoint markers (`2c792e9`).
+- Last product deployment: training elevation profile + semantic GPX waypoint markers (`aef4ff3`).
 - Smoke-test Settings race history (Strava + GPX) and Pace ability card.
 - Design and implement the opt-in post-event feedback email flow.
 - Rotate Strava secret; verify RBAC with a second account; `/admin` + owner-transfer UI.
