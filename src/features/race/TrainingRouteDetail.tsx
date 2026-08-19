@@ -249,6 +249,8 @@ export function TrainingRouteDetail({
               waypoints={trainingWaypoints}
               overlapSegments={route.overlapSegments}
               highlightedOverlap={highlightedOverlap}
+              highlightMile={hoveredTrainingMile ?? undefined}
+              onHoverMile={setHoveredTrainingMile}
               showLegend
               className="w-full h-full"
             />

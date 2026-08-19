@@ -1,10 +1,21 @@
-import { getDistanceFromStart, getNearestPointOnLine } from '@/lib/geo-utils'
+import { getCoordinateAtDistance, getDistanceFromStart, getNearestPointOnLine } from '@/lib/geo-utils'
 
 export interface TrainingHoverMiles {
   trainingMile: number
   raceMile: number | null
   lon: number
   lat: number
+}
+
+export function coordinateAtTrainingMile(
+  trainingMile: number,
+  training: [number, number][]
+): [number, number] | null {
+  if (!Number.isFinite(trainingMile) || training.length < 2) return null
+  return getCoordinateAtDistance(
+    { type: 'LineString', coordinates: training },
+    Math.max(0, trainingMile) * 1609.344
+  )
 }
 
 export function raceMileForTrainingMile(

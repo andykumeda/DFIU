@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import type { GpxWaypoint } from '@/lib/gpx-parser'
-import { formatTrainingMapHover, hoverMilesAtPoint } from './training-map-hover'
+import { coordinateAtTrainingMile, formatTrainingMapHover, hoverMilesAtPoint } from './training-map-hover'
 import { trainingWaypointFeatureCollection } from './training-map-waypoints'
 
 /** Keep in sync with TrainingRouteDetailMap legend / SVG strokes. */
@@ -69,6 +69,8 @@ export interface TrainingRouteMapboxProps {
   className?: string
   onFail?: () => void
   onHoverMiles?: (label: string | null) => void
+  onHoverMile?: (mile: number | null) => void
+  highlightMile?: number
   interactive?: boolean
   showControls?: boolean
 }
@@ -332,6 +334,8 @@ export function TrainingRouteMapbox({
   className,
   onFail,
   onHoverMiles,
+  onHoverMile,
+  highlightMile,
   interactive = true,
   showControls = true,
 }: TrainingRouteMapboxProps) {
@@ -341,12 +345,14 @@ export function TrainingRouteMapbox({
   const dataRef = useRef<MapData>({ coordinates, courseCoordinates, overlapSegments, highlightedOverlap, waypoints })
   const onFailRef = useRef(onFail)
   const onHoverMilesRef = useRef(onHoverMiles)
+  const onHoverMileRef = useRef(onHoverMile)
 
   useEffect(() => {
     dataRef.current = { coordinates, courseCoordinates, overlapSegments, highlightedOverlap, waypoints }
     onFailRef.current = onFail
     onHoverMilesRef.current = onHoverMiles
-  }, [coordinates, courseCoordinates, overlapSegments, highlightedOverlap, waypoints, onFail, onHoverMiles])
+    onHoverMileRef.current = onHoverMile
+  }, [coordinates, courseCoordinates, overlapSegments, highlightedOverlap, waypoints, onFail, onHoverMiles, onHoverMile])
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
@@ -404,6 +410,7 @@ export function TrainingRouteMapbox({
       if (disposed || mapRef.current !== map) return
       setHoverPoint(map, null)
       onHoverMilesRef.current?.(null)
+      onHoverMileRef.current?.(null)
       if (interactive) map.getCanvas().style.cursor = ''
     }
     const handleMouseMove = (event: mapboxgl.MapMouseEvent) => {
@@ -427,6 +434,7 @@ export function TrainingRouteMapbox({
       }
       setHoverPoint(map, [hover.lon, hover.lat])
       onHoverMilesRef.current?.(formatTrainingMapHover(hover.raceMile, hover.trainingMile))
+      onHoverMileRef.current?.(hover.trainingMile)
       map.getCanvas().style.cursor = 'pointer'
     }
     map.on('mousemove', handleMouseMove)
@@ -470,6 +478,17 @@ export function TrainingRouteMapbox({
     })
     return () => cancelAnimationFrame(frame)
   }, [coordinates, courseCoordinates, overlapSegments, highlightedOverlap, waypoints])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !styleReadyRef.current) return
+    if (highlightMile == null) {
+      setHoverPoint(map, null)
+      return
+    }
+    const coordinate = coordinateAtTrainingMile(highlightMile, coordinates)
+    setHoverPoint(map, coordinate)
+  }, [coordinates, highlightMile])
 
   return <div ref={containerRef} className={className ?? 'w-full h-full'} />
 }

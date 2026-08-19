@@ -2,6 +2,11 @@ import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { computeTrainingMapOverlap } from '@/lib/training-overlap'
 import type { GpxWaypoint } from '@/lib/gpx-parser'
 import { trainingWaypointStyle } from './training-map-waypoints'
+import {
+  coordinateAtTrainingMile,
+  formatTrainingMapHover,
+  raceMileForTrainingMile,
+} from './training-map-hover'
 
 /** Card previews stay SVG-only (no Mapbox in the main bundle). */
 
@@ -258,6 +263,8 @@ interface TrainingRouteDetailMapProps {
   showControls?: boolean
   /** Color key for race / training / overlap — detail view only, not preview cards. */
   showLegend?: boolean
+  highlightMile?: number
+  onHoverMile?: (mile: number | null) => void
 }
 
 const TrainingRouteMapbox = lazy(() =>
@@ -287,6 +294,13 @@ export function TrainingRouteDetailMap(props: TrainingRouteDetailMapProps) {
     : props.overlapSegments
   const mapData = { ...mapProps, overlapSegments: mapOverlapSegments }
   const [hoverLabel, setHoverLabel] = useState<string | null>(null)
+  const controlledHoverLabel = props.highlightMile == null
+    ? null
+    : formatTrainingMapHover(
+        raceMileForTrainingMile(props.highlightMile, mapOverlapSegments),
+        props.highlightMile
+      )
+  const visibleHoverLabel = hoverLabel ?? controlledHoverLabel
 
   return (
     <div className={`relative ${className ?? 'w-full h-full'}`}>
@@ -299,12 +313,13 @@ export function TrainingRouteDetailMap(props: TrainingRouteDetailMapProps) {
             className="w-full h-full"
             onFail={handleMapFailure}
             onHoverMiles={setHoverLabel}
+            onHoverMile={props.onHoverMile}
           />
         </Suspense>
       )}
-      {hoverLabel ? (
+      {visibleHoverLabel ? (
         <div className="absolute top-3 left-1/2 z-10 -translate-x-1/2 rounded-full border border-neutral-700 bg-black/70 px-3 py-1.5 text-xs font-mono tabular-nums text-neutral-200 shadow-sm backdrop-blur-sm pointer-events-none">
-          {hoverLabel}
+          {visibleHoverLabel}
         </div>
       ) : null}
       {showLegend ? <TrainingMapLegend /> : null}
@@ -318,6 +333,7 @@ function TrainingRouteSvgDetail({
   overlapSegments,
   waypoints = [],
   highlightedOverlap,
+  highlightMile,
   className,
 }: TrainingRouteDetailMapProps) {
   if (coordinates.length < 2) {
@@ -387,6 +403,15 @@ function TrainingRouteSvgDetail({
       x: ((waypoint.lon - minLon) / Math.max(maxLon - minLon, 1e-6)) * (1 - 2 * pad) * vbW + pad * vbW,
       y: (1 - (waypoint.lat - minLat) / Math.max(maxLat - minLat, 1e-6)) * (1 - 2 * pad) * vbH + pad * vbH,
     }))
+  const highlightedCoordinate = highlightMile == null
+    ? null
+    : coordinateAtTrainingMile(highlightMile, coordinates)
+  const highlightedPoint = highlightedCoordinate
+    ? {
+        x: ((highlightedCoordinate[0] - minLon) / Math.max(maxLon - minLon, 1e-6)) * (1 - 2 * pad) * vbW + pad * vbW,
+        y: (1 - (highlightedCoordinate[1] - minLat) / Math.max(maxLat - minLat, 1e-6)) * (1 - 2 * pad) * vbH + pad * vbH,
+      }
+    : null
 
   return (
     <svg
@@ -446,6 +471,12 @@ function TrainingRouteSvgDetail({
             strokeLinecap="round"
             strokeLinejoin="round"
           />
+        </>
+      )}
+      {highlightedPoint && (
+        <>
+          <circle cx={highlightedPoint.x} cy={highlightedPoint.y} r="10" fill={HIGHLIGHT_HALO} fillOpacity="0.8" />
+          <circle cx={highlightedPoint.x} cy={highlightedPoint.y} r="5" fill={HIGHLIGHT_COLOR} stroke="#111827" strokeWidth="2" />
         </>
       )}
       {waypointPoints.map((waypoint, index) => (

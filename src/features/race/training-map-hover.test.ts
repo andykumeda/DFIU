@@ -1,5 +1,26 @@
 import { describe, expect, it } from 'vitest'
-import { formatTrainingMapHover, hoverMilesAtPoint, raceMileForTrainingMile } from './training-map-hover'
+import {
+  coordinateAtTrainingMile,
+  formatTrainingMapHover,
+  hoverMilesAtPoint,
+  raceMileForTrainingMile,
+} from './training-map-hover'
+
+describe('coordinateAtTrainingMile', () => {
+  it('returns the corresponding route coordinate for an elevation-profile mile', () => {
+    const training: [number, number][] = [
+      [-118.0, 34.0],
+      [-118.0, 34.02],
+    ]
+
+    expect(coordinateAtTrainingMile(0, training)).toEqual(training[0])
+    const middle = coordinateAtTrainingMile(0.5, training)
+    expect(middle).not.toBeNull()
+    expect(middle![0]).toBeCloseTo(-118, 5)
+    expect(middle![1]).toBeGreaterThan(34)
+    expect(middle![1]).toBeLessThan(34.02)
+  })
+})
 
 describe('raceMileForTrainingMile', () => {
   it('interpolates race miles along a forward overlap', () => {
