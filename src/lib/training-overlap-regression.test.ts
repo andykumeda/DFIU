@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { buildTrainingPlanSummary } from '@/features/race/training-analysis'
+import { trainingMapDisplaySegments } from '@/features/race/training-map-segments'
 import { computeTrainingMapOverlap, computeTrainingOverlap, uniqueCourseMiles } from './training-overlap'
 
 type Fixture = {
@@ -39,6 +40,7 @@ describe('reported training overlap regression', () => {
       mergeAdjacent: false,
     })
     const mapSegments = computeTrainingMapOverlap(fixture.training, fixture.course)
+    const initialMapSegments = trainingMapDisplaySegments(rawSegments)
     const summary = buildTrainingPlanSummary(
       rawSegments,
       null,
@@ -47,6 +49,7 @@ describe('reported training overlap regression', () => {
     )
 
     expect(rawSegments).toHaveLength(7)
+    expect(initialMapSegments).toEqual(mapSegments)
     expect(mapSegments).toHaveLength(1)
     expect(summary?.segments).toHaveLength(1)
     expect(summary?.segments[0]).toMatchObject({

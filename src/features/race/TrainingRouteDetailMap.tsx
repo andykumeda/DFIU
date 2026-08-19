@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { computeTrainingMapOverlap } from '@/lib/training-overlap'
 import type { GpxWaypoint } from '@/lib/gpx-parser'
 import { trainingWaypointStyle } from './training-map-waypoints'
@@ -7,6 +7,7 @@ import {
   formatTrainingMapHover,
   raceMileForTrainingMile,
 } from './training-map-hover'
+import { trainingMapDisplaySegments } from './training-map-segments'
 
 /** Card previews stay SVG-only (no Mapbox in the main bundle). */
 
@@ -279,19 +280,36 @@ export function TrainingRouteDetailMap(props: TrainingRouteDetailMapProps) {
   const { className, showLegend = false, ...mapProps } = props
   const liveOverlap =
     !staticPreview && !!props.courseCoordinates && props.courseCoordinates.length >= 2
-  const [computedOverlap, setComputedOverlap] = useState<typeof props.overlapSegments>(undefined)
+  const initialDisplayOverlap = useMemo(
+    () => trainingMapDisplaySegments(props.overlapSegments),
+    [props.overlapSegments]
+  )
+  const [computedOverlap, setComputedOverlap] = useState<{
+    trainingCoordinates: [number, number][]
+    courseCoordinates: [number, number][]
+    segments: NonNullable<typeof props.overlapSegments>
+  } | null>(null)
   useEffect(() => {
     if (!liveOverlap || !props.courseCoordinates) return
     const training = props.coordinates
     const course = props.courseCoordinates
     const handle = window.setTimeout(() => {
-      setComputedOverlap(computeTrainingMapOverlap(training, course))
+      setComputedOverlap({
+        trainingCoordinates: training,
+        courseCoordinates: course,
+        segments: computeTrainingMapOverlap(training, course),
+      })
     }, 0)
     return () => window.clearTimeout(handle)
   }, [liveOverlap, props.coordinates, props.courseCoordinates])
+  const currentComputedOverlap =
+    computedOverlap?.trainingCoordinates === props.coordinates &&
+    computedOverlap.courseCoordinates === props.courseCoordinates
+      ? computedOverlap.segments
+      : undefined
   const mapOverlapSegments = liveOverlap
-    ? computedOverlap ?? props.overlapSegments
-    : props.overlapSegments
+    ? currentComputedOverlap ?? initialDisplayOverlap
+    : initialDisplayOverlap
   const mapData = { ...mapProps, overlapSegments: mapOverlapSegments }
   const [hoverLabel, setHoverLabel] = useState<string | null>(null)
   const controlledHoverLabel = props.highlightMile == null
