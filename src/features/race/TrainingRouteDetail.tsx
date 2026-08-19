@@ -1,9 +1,11 @@
 import { useMemo, useRef, useState } from 'react'
 import { ArrowLeft, Download, ExternalLink, MapPin, Mountain, Route as RouteIcon, Share2, Trash2 } from 'lucide-react'
 import type { Course, Json, Race } from '@/types/database'
-import { parseGpxWaypoints } from '@/lib/gpx-parser'
+import { parseGpxWaypoints, sampleElevationProfile } from '@/lib/gpx-parser'
 import type { TrainingRouteRow } from './useTrainingRoutes'
 import { TrainingRouteDetailMap } from './TrainingRouteDetailMap'
+import { ElevationProfile } from '@/features/course/ElevationProfile'
+import { trainingElevationWaypoints } from './training-map-waypoints'
 import {
   directionsUrl,
   extractCoordinates,
@@ -53,6 +55,7 @@ export function TrainingRouteDetail({
   const [deleting, setDeleting] = useState(false)
   const [shareState, setShareState] = useState<'idle' | 'copied' | 'error'>('idle')
   const [showCourseRoute, setShowCourseRoute] = useState(true)
+  const [hoveredTrainingMile, setHoveredTrainingMile] = useState<number | null>(null)
   const [highlightedOverlap, setHighlightedOverlap] = useState<{
     trainingStartMi: number
     trainingEndMi: number
@@ -67,6 +70,26 @@ export function TrainingRouteDetail({
   const trainingWaypoints = useMemo(
     () => parseGpxWaypoints(route.raw_gpx ?? ''),
     [route.raw_gpx]
+  )
+  const elevationProfile = useMemo(() => {
+    if (!Array.isArray(route.elevation_samples)) return []
+    return route.elevation_samples.flatMap(sample => {
+      if (!sample || typeof sample !== 'object' || Array.isArray(sample)) return []
+      const distance = Number((sample as { distance?: unknown }).distance)
+      const elevation = Number((sample as { elevation?: unknown }).elevation)
+      return Number.isFinite(distance) && Number.isFinite(elevation) ? [{ distance, elevation }] : []
+    })
+  }, [route.elevation_samples])
+  const sampledElevationProfile = useMemo(
+    () => sampleElevationProfile(elevationProfile, 200),
+    [elevationProfile]
+  )
+  const trainingDistance = route.distance_miles
+    ?? elevationProfile[elevationProfile.length - 1]?.distance
+    ?? 0
+  const elevationWaypoints = useMemo(
+    () => trainingElevationWaypoints(trainingWaypoints, trainingCoords, trainingDistance),
+    [trainingWaypoints, trainingCoords, trainingDistance]
   )
   const hasStart =
     route.start_lat != null &&
@@ -218,16 +241,31 @@ export function TrainingRouteDetail({
           <input type="checkbox" checked={showCourseRoute} onChange={event => setShowCourseRoute(event.target.checked)} className="accent-blue-500" />
           Show race course
         </label>
-        <div ref={mapSectionRef} className="rounded-xl overflow-hidden border border-neutral-800 bg-neutral-950 h-[360px] md:h-[420px]">
-        <TrainingRouteDetailMap
-          coordinates={trainingCoords}
-          courseCoordinates={showCourseRoute && courseCoords.length >= 2 ? courseCoords : undefined}
-          waypoints={trainingWaypoints}
-          overlapSegments={route.overlapSegments}
-          highlightedOverlap={highlightedOverlap}
-          showLegend
-          className="w-full h-full"
-        />
+        <div ref={mapSectionRef} className="rounded-xl overflow-hidden border border-neutral-800 bg-neutral-950">
+          <div className="h-[360px] md:h-[420px]">
+            <TrainingRouteDetailMap
+              coordinates={trainingCoords}
+              courseCoordinates={showCourseRoute && courseCoords.length >= 2 ? courseCoords : undefined}
+              waypoints={trainingWaypoints}
+              overlapSegments={route.overlapSegments}
+              highlightedOverlap={highlightedOverlap}
+              showLegend
+              className="w-full h-full"
+            />
+          </div>
+          <div
+            className="h-32 md:h-40 border-t border-neutral-800 bg-neutral-900"
+            aria-label="Training route elevation profile"
+          >
+            <ElevationProfile
+              data={sampledElevationProfile}
+              totalDistance={trainingDistance}
+              onHover={setHoveredTrainingMile}
+              highlightDistance={hoveredTrainingMile ?? undefined}
+              showMileMarkers
+              waypoints={elevationWaypoints}
+            />
+          </div>
         </div>
       </div>
 

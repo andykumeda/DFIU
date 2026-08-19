@@ -18,8 +18,9 @@ import {
 import { getDistance } from '@/lib/geo-utils'
 import { TRAINING_ROUTE_DETAIL_COLUMNS, TRAINING_ROUTE_LIST_COLUMNS } from './training-route-fields'
 
-export type TrainingRouteRow = Omit<TrainingRoute, 'raw_gpx'> & {
+export type TrainingRouteRow = Omit<TrainingRoute, 'raw_gpx' | 'elevation_samples'> & {
   raw_gpx?: string | null
+  elevation_samples?: TrainingRoute['elevation_samples']
   overlapSegments: OverlapSegment[]
 }
 
@@ -112,15 +113,19 @@ export function useTrainingRoutes(raceId: string, courseGeometry: unknown) {
     }
   }, [raceId, reload])
 
-  const loadRouteGpx = React.useCallback(async (id: string) => {
+  const loadRouteDetail = React.useCallback(async (id: string) => {
     const { data, error } = await supabase
       .from('training_routes')
       .select(TRAINING_ROUTE_DETAIL_COLUMNS)
       .eq('id', id)
       .single()
     if (error) throw error
-    const rawGpx = (data as Pick<TrainingRoute, 'raw_gpx'>).raw_gpx
-    setRoutes(previous => previous.map(route => route.id === id ? { ...route, raw_gpx: rawGpx } : route))
+    const detail = data as Pick<TrainingRoute, 'raw_gpx' | 'elevation_samples'>
+    setRoutes(previous => previous.map(route => route.id === id ? {
+      ...route,
+      raw_gpx: detail.raw_gpx,
+      elevation_samples: detail.elevation_samples,
+    } : route))
   }, [])
 
   const createFromGpx = async (result: GpxParseResult, rawGpx: string, fileName?: string) => {
@@ -240,7 +245,7 @@ export function useTrainingRoutes(raceId: string, courseGeometry: unknown) {
     loading,
     canEdit,
     reload,
-    loadRouteGpx,
+    loadRouteDetail,
     createFromGpx,
     createManualRoute,
     updateRoute,

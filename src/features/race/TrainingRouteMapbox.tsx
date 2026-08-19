@@ -85,6 +85,7 @@ const SOURCE_IDS = {
   highlightHalo: 'training-detail-highlight-halo',
   highlight: 'training-detail-highlight',
   waypoints: 'training-detail-waypoints',
+  waypointSymbols: 'training-detail-waypoint-symbols',
   waypointLabels: 'training-detail-waypoint-labels',
   hover: 'training-detail-hover',
 } as const
@@ -155,10 +156,26 @@ function setOrAddWaypoints(map: mapboxgl.Map, waypoints: GpxWaypoint[]) {
       type: 'circle',
       source: SOURCE_IDS.waypoints,
       paint: {
-        'circle-radius': 6,
-        'circle-color': '#facc15',
+        'circle-radius': ['match', ['get', 'kind'], 'start', 8, 'finish', 8, 7],
+        'circle-color': ['get', 'color'],
         'circle-stroke-width': 2,
         'circle-stroke-color': '#111827',
+      },
+    })
+  }
+  if (!map.getLayer(SOURCE_IDS.waypointSymbols)) {
+    map.addLayer({
+      id: SOURCE_IDS.waypointSymbols,
+      type: 'symbol',
+      source: SOURCE_IDS.waypoints,
+      layout: {
+        'text-field': ['get', 'markerLabel'],
+        'text-size': 10,
+        'text-font': ['DIN Offc Pro Bold', 'Arial Unicode MS Bold'],
+        'text-allow-overlap': true,
+      },
+      paint: {
+        'text-color': '#ffffff',
       },
     })
   }

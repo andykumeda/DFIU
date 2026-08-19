@@ -60,7 +60,7 @@ export function TrainingSection({
     routes,
     loading,
     canEdit,
-    loadRouteGpx,
+    loadRouteDetail,
     createFromGpx,
     createManualRoute,
     updateRoute,
@@ -145,11 +145,11 @@ export function TrainingSection({
   }, [routeIdFromUrl])
 
   useEffect(() => {
-    if (!selectedId || !selected || selected.raw_gpx !== undefined) return
-    void loadRouteGpx(selectedId).catch(caught => {
-      setError(caught instanceof Error ? caught.message : 'Failed to load training route GPX')
+    if (!selectedId || !selected || (selected.raw_gpx !== undefined && selected.elevation_samples !== undefined)) return
+    void loadRouteDetail(selectedId).catch(caught => {
+      setError(caught instanceof Error ? caught.message : 'Failed to load training route details')
     })
-  }, [selectedId, selected, loadRouteGpx])
+  }, [selectedId, selected, loadRouteDetail])
 
   useEffect(() => {
     if (!resetToken) return

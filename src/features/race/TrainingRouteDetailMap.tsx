@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { computeTrainingMapOverlap } from '@/lib/training-overlap'
 import type { GpxWaypoint } from '@/lib/gpx-parser'
+import { trainingWaypointStyle } from './training-map-waypoints'
 
 /** Card previews stay SVG-only (no Mapbox in the main bundle). */
 
@@ -32,8 +33,10 @@ function TrainingMapLegend() {
           <span>Selected section</span>
         </div>
         <div className="flex items-center gap-1 whitespace-nowrap">
-          <span className="inline-block h-2 w-2 rounded-full border border-neutral-900" style={{ backgroundColor: HIGHLIGHT_COLOR }} />
-          <span>GPX waypoint</span>
+          <span className="inline-flex h-3 w-3 items-center justify-center rounded-full bg-green-600 text-[7px] font-bold text-white">S</span>
+          <span className="inline-flex h-3 w-3 items-center justify-center rounded-sm bg-red-600 text-[7px] font-bold text-white">F</span>
+          <span className="inline-flex h-3 w-3 items-center justify-center rounded-full bg-blue-600 text-[7px] font-bold text-white">W</span>
+          <span>GPX points</span>
         </div>
       </div>
     </div>
@@ -380,6 +383,7 @@ function TrainingRouteSvgDetail({
     .filter(waypoint => inView([waypoint.lon, waypoint.lat]))
     .map(waypoint => ({
       ...waypoint,
+      ...trainingWaypointStyle(waypoint.name),
       x: ((waypoint.lon - minLon) / Math.max(maxLon - minLon, 1e-6)) * (1 - 2 * pad) * vbW + pad * vbW,
       y: (1 - (waypoint.lat - minLat) / Math.max(maxLat - minLat, 1e-6)) * (1 - 2 * pad) * vbH + pad * vbH,
     }))
@@ -447,7 +451,14 @@ function TrainingRouteSvgDetail({
       {waypointPoints.map((waypoint, index) => (
         <g key={`${waypoint.name}-${index}`}>
           <title>{waypoint.name}</title>
-          <circle cx={waypoint.x} cy={waypoint.y} r="6" fill={HIGHLIGHT_COLOR} stroke="#111827" strokeWidth="2" />
+          {waypoint.kind === 'finish' ? (
+            <rect x={waypoint.x - 7} y={waypoint.y - 7} width="14" height="14" rx="2" fill={waypoint.color} stroke="#111827" strokeWidth="2" />
+          ) : (
+            <circle cx={waypoint.x} cy={waypoint.y} r="7" fill={waypoint.color} stroke="#111827" strokeWidth="2" />
+          )}
+          <text x={waypoint.x} y={waypoint.y + 3.5} textAnchor="middle" fill="#ffffff" fontSize="9" fontWeight="800">
+            {waypoint.markerLabel}
+          </text>
           <text
             x={waypoint.x}
             y={waypoint.y + 18}
