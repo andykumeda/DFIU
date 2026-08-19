@@ -8,6 +8,7 @@
 
 ## Current production snapshot
 
+- Frontend deployed from `2c792e9`; the remote production bundle was checked for that exact build hash after deployment.
 - Training route `2a8fa4b3-636c-4b49-8b24-f56f78b5c1c0` now shows one course-overlap row and one Training Analysis section: race mi `11.3–42.6`, training mi `0.0–31.3`.
 - Reference route `06a3df4b-95fb-47b5-b410-526654db6c9e` visibly shows Start, Finish, and both Water waypoints from its imported GPX.
 - Waypoint GPX is fetched only for the selected route, so route-list loading does not download every large source file.
@@ -40,7 +41,7 @@
 
 ## Open
 
-- Last product deployment: immediate Plan A propagation (`64cb3d4`); production URL is `https://dfiu.app/race/fca7696b-6093-49a7-be8a-ba3c0a480643?training=394b45d7-d2ca-451f-97c7-62bdf6451373`.
+- Last product deployment: overlap grouping + imported GPX waypoint markers (`2c792e9`).
 - Smoke-test Settings race history (Strava + GPX) and Pace ability card.
 - Design and implement the opt-in post-event feedback email flow.
 - Rotate Strava secret; verify RBAC with a second account; `/admin` + owner-transfer UI.
