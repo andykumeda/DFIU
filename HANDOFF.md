@@ -2,13 +2,13 @@
 
 **Date:** 2026-08-19
 **Branch:** `main`
-**Status:** Training detail now includes the course-style elevation profile directly below the map. Imported Start, Finish, and Water points use distinct color-and-symbol treatments on the map and profile.
+**Status:** Training map and elevation profile hover are synchronized bidirectionally: either surface highlights the corresponding route point and training/race mileage.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Training elevation profile and semantic GPX marker feature committed as `aef4ff3` and deployed.
+- Bidirectional training map/elevation hover committed as `af512e0` and deployed.
 - Training route `2a8fa4b3-636c-4b49-8b24-f56f78b5c1c0` now shows one course-overlap row and one Training Analysis section: race mi `11.3–42.6`, training mi `0.0–31.3`.
 - Reference route `06a3df4b-95fb-47b5-b410-526654db6c9e` visibly shows Start, Finish, and both Water waypoints from its imported GPX.
 - Waypoint GPX is fetched only for the selected route, so route-list loading does not download every large source file.
@@ -18,6 +18,10 @@
 - Backend: `runner_history.strava_activity_id` applied; `strava-activity` `list-races` deployed.
 
 ## Just finished
+
+- Added shared training-mile hover state: map hover moves the elevation-profile highlight, while profile hover places the matching marker and mileage label on the map.
+- Added route-mile-to-coordinate coverage and retained the same synchronization in the SVG map fallback for externally controlled highlights.
+- Validation: 101 tests pass; build passes; lint has 0 errors and 49 pre-existing warnings; `git diff --check` passes. Live pointer checks passed in both directions at 320, 768, 1024, and 1440 px with an empty browser error/warning console.
 
 - Added the course-style elevation profile beneath training detail maps, including mile and imported GPX waypoint markers.
 - Start, Finish, and Water now render as green `S`, red `F`, and blue `W` map badges; the SVG fallback also gives Finish a distinct square shape.
@@ -46,7 +50,7 @@
 
 ## Open
 
-- Last product deployment: training elevation profile + semantic GPX waypoint markers (`aef4ff3`).
+- Last product deployment: synchronized training map/elevation hover (`af512e0`).
 - Smoke-test Settings race history (Strava + GPX) and Pace ability card.
 - Design and implement the opt-in post-event feedback email flow.
 - Rotate Strava secret; verify RBAC with a second account; `/admin` + owner-transfer UI.
