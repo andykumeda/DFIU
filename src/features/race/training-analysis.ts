@@ -1,5 +1,6 @@
 import type { Race } from '@/types/database'
 import {
+  mergeContinuousOverlapSegments,
   uniqueCourseMileRanges,
   uniqueCourseMiles,
   type OverlapSegment,
@@ -82,8 +83,9 @@ export function sortOverlapSegmentsByRaceMile<T extends OverlapSegment>(segments
  * Summarize a training route for comparison. Every detected overlapping segment
  * contributes to the Plan A goal; no non-overlap portion is included.
  * Segments are ordered by race course mile (when they occur during the race).
- * Race segment miles/time use unique course coverage so reverse+forward on the
- * same stretch is not double-counted (matches “mi on course”).
+ * Race miles retain unique raw accepted coverage so GPS gaps and repeated
+ * passes are not over-counted. Plan time uses the grouped continuous spans so
+ * its section totals match the single entry/exit range shown to the user.
  */
 export function buildTrainingPlanSummary(
   segments: OverlapSegment[],
@@ -93,19 +95,21 @@ export function buildTrainingPlanSummary(
 ): TrainingPlanSummary | null {
   if (segments.length === 0) return null
 
-  const ordered = sortOverlapSegmentsByRaceMile(segments)
-  const uniqueRanges = uniqueCourseMileRanges(ordered)
+  const grouped = mergeContinuousOverlapSegments(segments)
+  const ordered = sortOverlapSegmentsByRaceMile(grouped)
+  const uniqueRanges = uniqueCourseMileRanges(segments)
+  const paceRanges = uniqueCourseMileRanges(grouped)
   const raceMilesTotal = uniqueRanges.reduce((sum, r) => sum + (r.end - r.start), 0)
-  const trainingMilesTotal = ordered.reduce(
+  const trainingMilesTotal = segments.reduce(
     (total, segment) => total + Math.abs(segment.trainingEndMi - segment.trainingStartMi),
     0
   )
 
-  const uniquePaces = uniqueRanges.map(range =>
+  const uniquePaces = paceRanges.map(range =>
     getOverlapRacePace(plan, range.start, range.end, race, clock24h)
   )
   const availableUniquePaces = uniquePaces.filter((pace): pace is NonNullable<typeof pace> => pace != null)
-  const raceDurationMinutes = availableUniquePaces.length === uniqueRanges.length && uniqueRanges.length > 0
+  const raceDurationMinutes = availableUniquePaces.length === paceRanges.length && paceRanges.length > 0
     ? availableUniquePaces.reduce((total, pace) => total + pace.durationMin, 0)
     : null
 
@@ -116,7 +120,7 @@ export function buildTrainingPlanSummary(
       .map(range => `${formatMile(range.start)}–${formatMile(range.end)}`)
       .join(', '),
     raceMilesTotal,
-    raceTimeLabel: availableUniquePaces.length === uniqueRanges.length
+    raceTimeLabel: availableUniquePaces.length === paceRanges.length
       ? availableUniquePaces.map(pace => pace.enterTimeOfDay && pace.exitTimeOfDay ? `${pace.enterTimeOfDay}–${pace.exitTimeOfDay}` : '').filter(Boolean).join(', ') || null
       : null,
     raceDurationMinutes,

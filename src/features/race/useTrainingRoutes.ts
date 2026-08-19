@@ -16,8 +16,10 @@ import {
   type OverlapSegment,
 } from '@/lib/training-overlap'
 import { getDistance } from '@/lib/geo-utils'
+import { TRAINING_ROUTE_DETAIL_COLUMNS, TRAINING_ROUTE_LIST_COLUMNS } from './training-route-fields'
 
-export type TrainingRouteRow = TrainingRoute & {
+export type TrainingRouteRow = Omit<TrainingRoute, 'raw_gpx'> & {
+  raw_gpx?: string | null
   overlapSegments: OverlapSegment[]
 }
 
@@ -35,9 +37,6 @@ function toRow(raw: TrainingRoute, courseGeometry?: unknown): TrainingRouteRow {
     overlapSegments,
   }
 }
-
-const LIST_COLUMNS =
-  'id,race_id,name,notes,distance_miles,elevation_gain_ft,elevation_loss_ft,geometry,start_lat,start_lon,finish_lat,finish_lon,overlap_miles,overlap_segments,strava_activity_inputs,strava_activity_results,sort_order,created_at,updated_at,created_by'
 
 function courseCoordsFromGeometry(geometry: unknown): [number, number][] {
   return extractCoordinates(geometry)
@@ -82,7 +81,7 @@ export function useTrainingRoutes(raceId: string, courseGeometry: unknown) {
     setLoading(true)
     const { data, error } = await supabase
       .from('training_routes')
-      .select(LIST_COLUMNS)
+      .select(TRAINING_ROUTE_LIST_COLUMNS)
       .eq('race_id', raceId)
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: true })
@@ -112,6 +111,17 @@ export function useTrainingRoutes(raceId: string, courseGeometry: unknown) {
       supabase.removeChannel(channel)
     }
   }, [raceId, reload])
+
+  const loadRouteGpx = React.useCallback(async (id: string) => {
+    const { data, error } = await supabase
+      .from('training_routes')
+      .select(TRAINING_ROUTE_DETAIL_COLUMNS)
+      .eq('id', id)
+      .single()
+    if (error) throw error
+    const rawGpx = (data as Pick<TrainingRoute, 'raw_gpx'>).raw_gpx
+    setRoutes(previous => previous.map(route => route.id === id ? { ...route, raw_gpx: rawGpx } : route))
+  }, [])
 
   const createFromGpx = async (result: GpxParseResult, rawGpx: string, fileName?: string) => {
     if (!canEdit) return null
@@ -230,6 +240,7 @@ export function useTrainingRoutes(raceId: string, courseGeometry: unknown) {
     loading,
     canEdit,
     reload,
+    loadRouteGpx,
     createFromGpx,
     createManualRoute,
     updateRoute,

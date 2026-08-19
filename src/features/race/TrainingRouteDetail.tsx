@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { ArrowLeft, Download, ExternalLink, MapPin, Mountain, Route as RouteIcon, Share2, Trash2 } from 'lucide-react'
 import type { Course, Json, Race } from '@/types/database'
+import { parseGpxWaypoints } from '@/lib/gpx-parser'
 import type { TrainingRouteRow } from './useTrainingRoutes'
 import { TrainingRouteDetailMap } from './TrainingRouteDetailMap'
 import {
@@ -9,6 +10,7 @@ import {
   formatOverlapSummary,
   courseOverlapElevationGainFt,
   isPointToPointRoute,
+  mergeContinuousOverlapSegments,
   returnDirectionsUrl,
 } from '@/lib/training-overlap'
 import type { PacePlanResult } from './pace-utils'
@@ -62,6 +64,10 @@ export function TrainingRouteDetail({
     () => (course ? extractCoordinates(course.geometry) : []),
     [course]
   )
+  const trainingWaypoints = useMemo(
+    () => parseGpxWaypoints(route.raw_gpx ?? ''),
+    [route.raw_gpx]
+  )
   const hasStart =
     route.start_lat != null &&
     route.start_lon != null &&
@@ -78,7 +84,9 @@ export function TrainingRouteDetail({
     isPointToPointRoute(route.start_lat, route.start_lon, route.finish_lat, route.finish_lon)
   const orderedOverlapSegments = useMemo(
     () => sortOverlapSegmentsByRaceMile(
-      route.overlapSegments.filter(segment => Math.abs(segment.courseEndMi - segment.courseStartMi) >= 0.25)
+      mergeContinuousOverlapSegments(route.overlapSegments).filter(
+        segment => Math.abs(segment.courseEndMi - segment.courseStartMi) >= 0.25
+      )
     ),
     [route.overlapSegments]
   )
@@ -214,6 +222,7 @@ export function TrainingRouteDetail({
         <TrainingRouteDetailMap
           coordinates={trainingCoords}
           courseCoordinates={showCourseRoute && courseCoords.length >= 2 ? courseCoords : undefined}
+          waypoints={trainingWaypoints}
           overlapSegments={route.overlapSegments}
           highlightedOverlap={highlightedOverlap}
           showLegend

@@ -1,7 +1,9 @@
 import { useEffect, useRef } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
+import type { GpxWaypoint } from '@/lib/gpx-parser'
 import { formatTrainingMapHover, hoverMilesAtPoint } from './training-map-hover'
+import { trainingWaypointFeatureCollection } from './training-map-waypoints'
 
 /** Keep in sync with TrainingRouteDetailMap legend / SVG strokes. */
 const COURSE_COLOR = '#9333ea'
@@ -62,6 +64,7 @@ export interface TrainingRouteMapboxProps {
     courseStartMi?: number
     courseEndMi?: number
   }[]
+  waypoints?: GpxWaypoint[]
   highlightedOverlap?: { trainingStartMi: number; trainingEndMi: number } | null
   className?: string
   onFail?: () => void
@@ -72,7 +75,7 @@ export interface TrainingRouteMapboxProps {
 
 type MapData = Pick<
   TrainingRouteMapboxProps,
-  'coordinates' | 'courseCoordinates' | 'overlapSegments' | 'highlightedOverlap'
+  'coordinates' | 'courseCoordinates' | 'overlapSegments' | 'highlightedOverlap' | 'waypoints'
 >
 
 const SOURCE_IDS = {
@@ -81,6 +84,8 @@ const SOURCE_IDS = {
   overlap: 'training-detail-overlap',
   highlightHalo: 'training-detail-highlight-halo',
   highlight: 'training-detail-highlight',
+  waypoints: 'training-detail-waypoints',
+  waypointLabels: 'training-detail-waypoint-labels',
   hover: 'training-detail-hover',
 } as const
 
@@ -133,6 +138,45 @@ function ensureHoverLayer(map: mapboxgl.Map) {
         'circle-color': '#facc15',
         'circle-stroke-width': 2,
         'circle-stroke-color': '#111111',
+      },
+    })
+  }
+}
+
+function setOrAddWaypoints(map: mapboxgl.Map, waypoints: GpxWaypoint[]) {
+  const data = trainingWaypointFeatureCollection(waypoints)
+  const source = map.getSource(SOURCE_IDS.waypoints) as mapboxgl.GeoJSONSource | undefined
+  if (source) source.setData(data)
+  else map.addSource(SOURCE_IDS.waypoints, { type: 'geojson', data })
+
+  if (!map.getLayer(SOURCE_IDS.waypoints)) {
+    map.addLayer({
+      id: SOURCE_IDS.waypoints,
+      type: 'circle',
+      source: SOURCE_IDS.waypoints,
+      paint: {
+        'circle-radius': 6,
+        'circle-color': '#facc15',
+        'circle-stroke-width': 2,
+        'circle-stroke-color': '#111827',
+      },
+    })
+  }
+  if (!map.getLayer(SOURCE_IDS.waypointLabels)) {
+    map.addLayer({
+      id: SOURCE_IDS.waypointLabels,
+      type: 'symbol',
+      source: SOURCE_IDS.waypoints,
+      layout: {
+        'text-field': ['get', 'name'],
+        'text-size': 12,
+        'text-offset': [0, 1.1],
+        'text-anchor': 'top',
+      },
+      paint: {
+        'text-color': '#ffffff',
+        'text-halo-color': '#111827',
+        'text-halo-width': 2,
       },
     })
   }
@@ -246,6 +290,7 @@ function drawRouteData(map: mapboxgl.Map, data: MapData) {
   }
 
   ensureHoverLayer(map)
+  setOrAddWaypoints(map, data.waypoints ?? [])
 
   const bounds = new mapboxgl.LngLatBounds()
   const fitLine = highlightSlice.length >= 2 ? highlightSlice : training
@@ -265,6 +310,7 @@ export function TrainingRouteMapbox({
   coordinates,
   courseCoordinates,
   overlapSegments,
+  waypoints = [],
   highlightedOverlap = null,
   className,
   onFail,
@@ -275,15 +321,15 @@ export function TrainingRouteMapbox({
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<mapboxgl.Map | null>(null)
   const styleReadyRef = useRef(false)
-  const dataRef = useRef<MapData>({ coordinates, courseCoordinates, overlapSegments, highlightedOverlap })
+  const dataRef = useRef<MapData>({ coordinates, courseCoordinates, overlapSegments, highlightedOverlap, waypoints })
   const onFailRef = useRef(onFail)
   const onHoverMilesRef = useRef(onHoverMiles)
 
   useEffect(() => {
-    dataRef.current = { coordinates, courseCoordinates, overlapSegments, highlightedOverlap }
+    dataRef.current = { coordinates, courseCoordinates, overlapSegments, highlightedOverlap, waypoints }
     onFailRef.current = onFail
     onHoverMilesRef.current = onHoverMiles
-  }, [coordinates, courseCoordinates, overlapSegments, highlightedOverlap, onFail, onHoverMiles])
+  }, [coordinates, courseCoordinates, overlapSegments, highlightedOverlap, waypoints, onFail, onHoverMiles])
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
@@ -406,7 +452,7 @@ export function TrainingRouteMapbox({
       }
     })
     return () => cancelAnimationFrame(frame)
-  }, [coordinates, courseCoordinates, overlapSegments, highlightedOverlap])
+  }, [coordinates, courseCoordinates, overlapSegments, highlightedOverlap, waypoints])
 
   return <div ref={containerRef} className={className ?? 'w-full h-full'} />
 }

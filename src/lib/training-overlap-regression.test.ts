@@ -1,11 +1,17 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { computeTrainingOverlap, uniqueCourseMiles } from './training-overlap'
+import { buildTrainingPlanSummary } from '@/features/race/training-analysis'
+import { computeTrainingMapOverlap, computeTrainingOverlap, uniqueCourseMiles } from './training-overlap'
 
 type Fixture = {
   course: [number, number][]
   proposed: [number, number][]
   completed: [number, number][]
+}
+
+type ContinuousFixture = {
+  course: [number, number][]
+  training: [number, number][]
 }
 
 describe('reported training overlap regression', () => {
@@ -23,5 +29,29 @@ describe('reported training overlap regression', () => {
     expect(completed.overlapMiles).toBeCloseTo(uniqueCourseMiles(completed.segments), 2)
     expect(proposed.overlapMiles).toBeCloseTo(12.8, 2)
     expect(completed.overlapMiles).toBeCloseTo(12.78, 2)
+  })
+
+  it('reports one analytical section when the map paints one continuous overlap', () => {
+    const fixture = JSON.parse(
+      readFileSync(new URL('./fixtures/clear-creek-continuous-overlap.json', import.meta.url), 'utf8')
+    ) as ContinuousFixture
+    const rawSegments = computeTrainingMapOverlap(fixture.training, fixture.course, {
+      mergeAdjacent: false,
+    })
+    const mapSegments = computeTrainingMapOverlap(fixture.training, fixture.course)
+    const summary = buildTrainingPlanSummary(
+      rawSegments,
+      null,
+      { start_datetime: null, timezone: null },
+      false
+    )
+
+    expect(rawSegments).toHaveLength(7)
+    expect(mapSegments).toHaveLength(1)
+    expect(summary?.segments).toHaveLength(1)
+    expect(summary?.segments[0]).toMatchObject({
+      courseMilesLabel: '11.3–42.6',
+      trainingMilesLabel: '0.0–31.3',
+    })
   })
 })

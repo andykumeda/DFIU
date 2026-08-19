@@ -4,6 +4,7 @@ import {
   clusterMileRanges,
   computeTrainingOverlap,
   computeTrainingMapOverlap,
+  mergeContinuousOverlapSegments,
   downsampleByDistance,
   formatOverlapSummary,
   nameFromGpxFileName,
@@ -343,6 +344,28 @@ describe('computeTrainingMapOverlap', () => {
     expect(
       analysis.segments.every(seg => Math.abs(seg.courseEndMi - seg.courseStartMi) > 0.2 || seg.trainingEndMi < 0.5)
     ).toBe(true)
+  })
+})
+
+describe('mergeContinuousOverlapSegments', () => {
+  it('joins brief same-direction GPS fragments into one trail section', () => {
+    expect(mergeContinuousOverlapSegments([
+      { courseStartMi: 11.25, courseEndMi: 16.3, trainingStartMi: 0.04, trainingEndMi: 5.44 },
+      { courseStartMi: 16.82, courseEndMi: 33.61, trainingStartMi: 5.57, trainingEndMi: 22.27 },
+      { courseStartMi: 33.72, courseEndMi: 35.6, trainingStartMi: 22.46, trainingEndMi: 24.27 },
+    ])).toEqual([
+      { courseStartMi: 11.25, courseEndMi: 35.6, trainingStartMi: 0.04, trainingEndMi: 24.27 },
+    ])
+  })
+
+  it('keeps a nearby but distant course visit and a direction reversal separate', () => {
+    const segments = mergeContinuousOverlapSegments([
+      { courseStartMi: 10, courseEndMi: 12, trainingStartMi: 0, trainingEndMi: 2 },
+      { courseStartMi: 30, courseEndMi: 32, trainingStartMi: 2.1, trainingEndMi: 4 },
+      { courseStartMi: 32, courseEndMi: 30, trainingStartMi: 4, trainingEndMi: 6 },
+    ])
+
+    expect(segments).toHaveLength(3)
   })
 })
 

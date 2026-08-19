@@ -56,6 +56,53 @@ export interface TrainingMapOverlapSegment {
   courseEndMi: number
 }
 
+/**
+ * Raw matcher streaks can split briefly when two recordings drift apart even
+ * though both traces continue along the same trail. Join only ranges that are
+ * close in training order and continue in the same direction on the course.
+ * This keeps genuine revisits, branches, and out-and-back reversals separate.
+ */
+export function mergeContinuousOverlapSegments(
+  segments: OverlapSegment[],
+  trainingGapMi = 0.4,
+  courseGapMi = 0.75
+): OverlapSegment[] {
+  const sorted = [...segments].sort(
+    (a, b) => Math.min(a.trainingStartMi, a.trainingEndMi) - Math.min(b.trainingStartMi, b.trainingEndMi)
+  )
+  const merged: OverlapSegment[] = []
+
+  for (const segment of sorted) {
+    const next = { ...segment }
+    const previous = merged[merged.length - 1]
+    if (!previous) {
+      merged.push(next)
+      continue
+    }
+
+    const previousDirection = Math.sign(previous.courseEndMi - previous.courseStartMi)
+    const nextDirection = Math.sign(next.courseEndMi - next.courseStartMi)
+    const trainingGap = Math.min(next.trainingStartMi, next.trainingEndMi) -
+      Math.max(previous.trainingStartMi, previous.trainingEndMi)
+    const courseGap = Math.abs(next.courseStartMi - previous.courseEndMi)
+    const continuous =
+      previousDirection !== 0 &&
+      previousDirection === nextDirection &&
+      trainingGap >= -0.05 &&
+      trainingGap <= trainingGapMi &&
+      courseGap <= courseGapMi
+
+    if (continuous) {
+      previous.trainingEndMi = next.trainingEndMi
+      previous.courseEndMi = next.courseEndMi
+    } else {
+      merged.push(next)
+    }
+  }
+
+  return merged
+}
+
 /** Merge accepted race-course spans so repeated passes are counted only once. */
 export function uniqueCourseMileRanges(
   segments: Pick<OverlapSegment, 'courseStartMi' | 'courseEndMi'>[]
@@ -323,11 +370,11 @@ export function computeTrainingMapOverlap(
 
   const merged: TrainingMapOverlapSegment[] = []
   for (const range of ranges) {
-    const prev = merged[merged.length - 1]
-    if (prev && range.trainingStartMi <= prev.trainingEndMi + 0.4) {
-      prev.trainingEndMi = Math.max(prev.trainingEndMi, range.trainingEndMi)
-      prev.courseStartMi = Math.min(prev.courseStartMi, range.courseStartMi)
-      prev.courseEndMi = Math.max(prev.courseEndMi, range.courseEndMi)
+    const previous = merged[merged.length - 1]
+    if (previous && range.trainingStartMi <= previous.trainingEndMi + 0.4) {
+      previous.trainingEndMi = Math.max(previous.trainingEndMi, range.trainingEndMi)
+      previous.courseStartMi = Math.min(previous.courseStartMi, range.courseStartMi)
+      previous.courseEndMi = Math.max(previous.courseEndMi, range.courseEndMi)
     } else {
       merged.push({ ...range })
     }

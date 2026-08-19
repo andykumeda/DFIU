@@ -43,6 +43,48 @@ export interface GpxParseResult {
     waypoints: GpxWaypoint[] // parsed <wpt> elements
 }
 
+function decodeXmlText(value: string): string {
+    const decodeCodePoint = (code: string, radix: number) => {
+        const parsed = parseInt(code, radix)
+        return Number.isInteger(parsed) && parsed >= 0 && parsed <= 0x10ffff
+            ? String.fromCodePoint(parsed)
+            : ''
+    }
+    return value
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&apos;/g, "'")
+        .replace(/&#(\d+);/g, (_, code: string) => decodeCodePoint(code, 10))
+        .replace(/&#x([\da-f]+);/gi, (_, code: string) => decodeCodePoint(code, 16))
+        .replace(/&amp;/g, '&')
+}
+
+/** Read top-level GPX waypoints without reparsing the full track geometry. */
+export function parseGpxWaypoints(gpxString: string): GpxWaypoint[] {
+    const waypoints: GpxWaypoint[] = []
+    const waypointPattern = /<(?:[\w.-]+:)?wpt\b([^>]*)>([\s\S]*?)<\/(?:[\w.-]+:)?wpt\s*>/gi
+    let match: RegExpExecArray | null
+
+    while ((match = waypointPattern.exec(gpxString)) !== null) {
+        const attributes = match[1]
+        const body = match[2]
+        const latMatch = /\blat\s*=\s*["']([^"']+)["']/i.exec(attributes)
+        const lonMatch = /\blon\s*=\s*["']([^"']+)["']/i.exec(attributes)
+        const lat = Number(latMatch?.[1])
+        const lon = Number(lonMatch?.[1])
+        if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
+            continue
+        }
+        const nameMatch = /<(?:[\w.-]+:)?name\b[^>]*>([\s\S]*?)<\/(?:[\w.-]+:)?name\s*>/i.exec(body)
+        const name = decodeXmlText(nameMatch?.[1]?.replace(/<[^>]+>/g, '').trim() || '') ||
+            `Waypoint ${waypoints.length + 1}`
+        waypoints.push({ name, lat, lon })
+    }
+
+    return waypoints
+}
+
 /**
  * Calculate distance between two points using Haversine formula
  * Returns distance in miles
@@ -266,18 +308,7 @@ export function parseGpx(gpxString: string): GpxParseResult {
         ? sampleElevationProfile(elevationProfile, 5000)
         : elevationProfile
 
-    // Parse top-level <wpt> elements
-    const gpxWaypoints: GpxWaypoint[] = []
-    const wptElements = doc.querySelectorAll('gpx > wpt')
-    let wptIndex = 1
-    wptElements.forEach(wpt => {
-        const lat = parseFloat(wpt.getAttribute('lat') || '0')
-        const lon = parseFloat(wpt.getAttribute('lon') || '0')
-        const nameEl = wpt.querySelector('name')
-        const name = nameEl?.textContent?.trim() || `Aid Station ${wptIndex}`
-        gpxWaypoints.push({ name, lat, lon })
-        wptIndex++
-    })
+    const gpxWaypoints = parseGpxWaypoints(gpxString)
 
     return {
         name: gpxName || tracks.find(t => t.name)?.name || null,

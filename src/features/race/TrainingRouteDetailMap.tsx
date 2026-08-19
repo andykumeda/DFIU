@@ -1,5 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { computeTrainingMapOverlap } from '@/lib/training-overlap'
+import type { GpxWaypoint } from '@/lib/gpx-parser'
 
 /** Card previews stay SVG-only (no Mapbox in the main bundle). */
 
@@ -29,6 +30,10 @@ function TrainingMapLegend() {
         <div className="flex items-center gap-1 whitespace-nowrap">
           <span className="inline-block h-0.5 w-2.5 rounded sm:w-3" style={{ backgroundColor: HIGHLIGHT_COLOR }} />
           <span>Selected section</span>
+        </div>
+        <div className="flex items-center gap-1 whitespace-nowrap">
+          <span className="inline-block h-2 w-2 rounded-full border border-neutral-900" style={{ backgroundColor: HIGHLIGHT_COLOR }} />
+          <span>GPX waypoint</span>
         </div>
       </div>
     </div>
@@ -243,6 +248,7 @@ interface TrainingRouteDetailMapProps {
     courseStartMi?: number
     courseEndMi?: number
   }[]
+  waypoints?: GpxWaypoint[]
   highlightedOverlap?: { trainingStartMi: number; trainingEndMi: number } | null
   className?: string
   interactive?: boolean
@@ -307,6 +313,7 @@ function TrainingRouteSvgDetail({
   coordinates,
   courseCoordinates,
   overlapSegments,
+  waypoints = [],
   highlightedOverlap,
   className,
 }: TrainingRouteDetailMapProps) {
@@ -369,6 +376,13 @@ function TrainingRouteSvgDetail({
     : []
   const highlightPoints =
     highlightPts.length >= 2 ? project(highlightPts, minLon, maxLon, minLat, maxLat, vbW, vbH, pad) : null
+  const waypointPoints = waypoints
+    .filter(waypoint => inView([waypoint.lon, waypoint.lat]))
+    .map(waypoint => ({
+      ...waypoint,
+      x: ((waypoint.lon - minLon) / Math.max(maxLon - minLon, 1e-6)) * (1 - 2 * pad) * vbW + pad * vbW,
+      y: (1 - (waypoint.lat - minLat) / Math.max(maxLat - minLat, 1e-6)) * (1 - 2 * pad) * vbH + pad * vbH,
+    }))
 
   return (
     <svg
@@ -430,6 +444,25 @@ function TrainingRouteSvgDetail({
           />
         </>
       )}
+      {waypointPoints.map((waypoint, index) => (
+        <g key={`${waypoint.name}-${index}`}>
+          <title>{waypoint.name}</title>
+          <circle cx={waypoint.x} cy={waypoint.y} r="6" fill={HIGHLIGHT_COLOR} stroke="#111827" strokeWidth="2" />
+          <text
+            x={waypoint.x}
+            y={waypoint.y + 18}
+            textAnchor="middle"
+            fill="#ffffff"
+            stroke="#111827"
+            strokeWidth="3"
+            paintOrder="stroke"
+            fontSize="12"
+            fontWeight="600"
+          >
+            {waypoint.name}
+          </text>
+        </g>
+      ))}
     </svg>
   )
 }
