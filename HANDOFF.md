@@ -2,13 +2,13 @@
 
 **Date:** 2026-08-19
 **Branch:** `main`
-**Status:** Training map and elevation profile hover are synchronized bidirectionally: either surface highlights the corresponding route point and training/race mileage.
+**Status:** Training preview-to-detail navigation and hard refresh now use the same single-section overlap display; raw matcher fragments remain available only for statistics.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Bidirectional training map/elevation hover committed as `af512e0` and deployed.
+- Initial training overlap display stabilization committed as `e523821` and deployed.
 - Training route `2a8fa4b3-636c-4b49-8b24-f56f78b5c1c0` now shows one course-overlap row and one Training Analysis section: race mi `11.3–42.6`, training mi `0.0–31.3`.
 - Reference route `06a3df4b-95fb-47b5-b410-526654db6c9e` visibly shows Start, Finish, and both Water waypoints from its imported GPX.
 - Waypoint GPX is fetched only for the selected route, so route-list loading does not download every large source file.
@@ -18,6 +18,11 @@
 - Backend: `runner_history.strava_activity_id` applied; `strava-activity` `list-races` deployed.
 
 ## Just finished
+
+- Fixed the route-selection race: raw matcher fragments are synchronously normalized for the map's first paint, and deferred overlap results are accepted only when they belong to the current training/course coordinate pair.
+- Extended the full Clear Creek production-geometry regression to prove the initial display projection equals the final one-section map calculation.
+- Exact browser flow verified from Training previews into the second Clear Creek route: navigation and hard refresh both show `Course mi 11.3–42.6 (training 0.0–31.3)`, with one continuous orange section and a clean console.
+- Validation: 101 tests pass; build passes; lint has 0 errors and 49 pre-existing warnings; `git diff --check` passes.
 
 - Added shared training-mile hover state: map hover moves the elevation-profile highlight, while profile hover places the matching marker and mileage label on the map.
 - Added route-mile-to-coordinate coverage and retained the same synchronization in the SVG map fallback for externally controlled highlights.
@@ -50,7 +55,7 @@
 
 ## Open
 
-- Last product deployment: synchronized training map/elevation hover (`af512e0`).
+- Last product deployment: stable initial training overlap display (`e523821`).
 - Smoke-test Settings race history (Strava + GPX) and Pace ability card.
 - Design and implement the opt-in post-event feedback email flow.
 - Rotate Strava secret; verify RBAC with a second account; `/admin` + owner-transfer UI.
