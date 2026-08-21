@@ -1,15 +1,17 @@
 # Handoff Document
 
-**Date:** 2026-08-19
+**Date:** 2026-08-20
 **Branch:** `main`
-**Status:** Training preview-to-detail navigation and hard refresh now use the same single-section overlap display; raw matcher fragments remain available only for statistics.
+**Status:** Training-course overlaps now split at official race aid stations, with the same named sections used by the map, Plan A analysis, and Strava comparisons.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
+- Aid-station segmentation feature committed as `bc88736` and deployed. The supplied Clear Creek route shows four sections: Clear Creek → Josephine Peak → Redbox → Newcomb Saddle 1 → Shortcut Saddle 1.
+
 - Initial training overlap display stabilization committed as `e523821` and deployed.
-- Training route `2a8fa4b3-636c-4b49-8b24-f56f78b5c1c0` now shows one course-overlap row and one Training Analysis section: race mi `11.3–42.6`, training mi `0.0–31.3`.
+- Training route `06a3df4b-95fb-47b5-b410-526654db6c9e` shows four course-overlap rows and four Training Analysis sections across race mi `11.3–42.6`, training mi `0.0–31.3`.
 - Reference route `06a3df4b-95fb-47b5-b410-526654db6c9e` visibly shows Start, Finish, and both Water waypoints from its imported GPX.
 - Waypoint GPX is fetched only for the selected route, so route-list loading does not download every large source file.
 - Training route `394b45d7-d2ca-451f-97c7-62bdf6451373` now derives statistics from the raw accepted map sections, including the route's opening overlap section.
@@ -18,6 +20,11 @@
 - Backend: `runner_history.strava_activity_id` applied; `strava-activity` `list-races` deployed.
 
 ## Just finished
+
+- Added a shared aid-station section projector that splits cleaned continuous overlaps at official `aid_station` course miles and interpolates the corresponding training-mile boundaries.
+- Applied the sections consistently to the interactive map, overlap list, Plan A timing, and per-section Strava moving-time comparisons; total overlap mileage remains unchanged.
+- Exact production browser verification passed for the supplied URL: four named sections are visible, selecting Josephine Peak → Redbox highlights that section, and the warning/error console is empty.
+- Validation: 102 tests pass; build passes; lint has 0 errors and 49 pre-existing warnings; `git diff --check` passes. No side branches or additional worktrees remain.
 
 - Fixed the route-selection race: raw matcher fragments are synchronously normalized for the map's first paint, and deferred overlap results are accepted only when they belong to the current training/course coordinate pair.
 - Extended the full Clear Creek production-geometry regression to prove the initial display projection equals the final one-section map calculation.
@@ -55,7 +62,7 @@
 
 ## Open
 
-- Last product deployment: stable initial training overlap display (`e523821`).
+- Last product deployment: official aid-station training sections (`bc88736`).
 - Smoke-test Settings race history (Strava + GPX) and Pace ability card.
 - Design and implement the opt-in post-event feedback email flow.
 - Rotate Strava secret; verify RBAC with a second account; `/admin` + owner-transfer UI.
