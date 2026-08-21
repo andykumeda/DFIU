@@ -9,16 +9,12 @@ import { trainingElevationWaypoints } from './training-map-waypoints'
 import {
   directionsUrl,
   extractCoordinates,
-  formatOverlapSummary,
-  courseOverlapElevationGainFt,
   isPointToPointRoute,
   returnDirectionsUrl,
 } from '@/lib/training-overlap'
 import type { PacePlanResult } from './pace-utils'
-import { formatHM, getOverlapRacePace } from './race-day-utils'
-import { isSameTrainingOverlap, sortOverlapSegmentsByRaceMile } from './training-analysis'
+import { isSameTrainingOverlap } from './training-analysis'
 import { TrainingAnalysisPanel, type StravaActivity } from './TrainingAnalysisPanel'
-import { aidStationSectionLabel, splitOverlapAtAidStations } from './training-aid-segments'
 
 interface TrainingRouteDetailProps {
   route: TrainingRouteRow
@@ -27,10 +23,8 @@ interface TrainingRouteDetailProps {
   race: Race
   canEdit: boolean
   planA: PacePlanResult | null
-  planAReady: boolean
   planAGoalMinutes: number
   clock24h?: boolean
-  courseElevationSamples?: { distance: number; elevation: number }[] | null
   onBack: () => void
   onUpdate: (id: string, patch: { name?: string; notes?: string | null; strava_activity_inputs?: string[]; strava_activity_results?: Json }) => Promise<void>
   onDelete: (id: string) => Promise<void>
@@ -43,10 +37,8 @@ export function TrainingRouteDetail({
   race,
   canEdit,
   planA,
-  planAReady,
   planAGoalMinutes,
   clock24h = false,
-  courseElevationSamples = null,
   onBack,
   onUpdate,
   onDelete,
@@ -107,18 +99,6 @@ export function TrainingRouteDetail({
     hasStart &&
     hasFinish &&
     isPointToPointRoute(route.start_lat, route.start_lon, route.finish_lat, route.finish_lon)
-  const orderedOverlapSegments = useMemo(
-    () => sortOverlapSegmentsByRaceMile(
-      splitOverlapAtAidStations(route.overlapSegments, aidStations).filter(
-        segment => Math.abs(segment.courseEndMi - segment.courseStartMi) >= 0.25
-      )
-    ),
-    [route.overlapSegments, aidStations]
-  )
-  const overlapElevFt = useMemo(
-    () => courseOverlapElevationGainFt(courseElevationSamples, route.overlapSegments),
-    [courseElevationSamples, route.overlapSegments]
-  )
 
   const dirty = name.trim() !== route.name || notes !== (route.notes ?? '')
 
@@ -367,68 +347,6 @@ export function TrainingRouteDetail({
           </div>
         )}
 
-        <div className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-4">
-          <div className="text-xs uppercase tracking-wide text-neutral-500 mb-1">Course overlap</div>
-          <p className="text-sm text-neutral-200">
-            {formatOverlapSummary(route.overlap_miles, route.overlapSegments, {
-              elevationGainFt: overlapElevFt,
-            })}
-          </p>
-          {orderedOverlapSegments.length > 0 && (
-            <ul className="mt-3 space-y-2 text-sm text-neutral-400">
-              {orderedOverlapSegments.map((seg, i) => {
-                const pace = planAReady
-                  ? getOverlapRacePace(
-                      planA,
-                      seg.courseStartMi,
-                      seg.courseEndMi,
-                      race,
-                      clock24h
-                    )
-                  : null
-                const selected = isSameTrainingOverlap(highlightedOverlap, seg)
-                return (
-                  <li key={i}>
-                    <button
-                      type="button"
-                      aria-pressed={selected}
-                      onClick={() => selectOverlap(seg)}
-                      className={`w-full text-left rounded-lg px-3 py-2 space-y-1 transition-colors ${
-                        selected
-                          ? 'bg-yellow-400/15 border border-yellow-400/50 text-neutral-200'
-                          : 'border border-transparent hover:bg-neutral-800/70 hover:text-neutral-200'
-                      }`}
-                    >
-                      <div>
-                        {aidStationSectionLabel(seg) && (
-                          <span className="block font-medium text-neutral-200">{aidStationSectionLabel(seg)}</span>
-                        )}
-                        Course mi {seg.courseStartMi.toFixed(1)}–{seg.courseEndMi.toFixed(1)}
-                        <span className="text-neutral-600">
-                          {' '}
-                          (training {seg.trainingStartMi.toFixed(1)}–{seg.trainingEndMi.toFixed(1)})
-                        </span>
-                      </div>
-                      {pace && (
-                        <div className="text-emerald-400/95 text-sm">
-                          Plan A{' '}
-                          {pace.enterTimeOfDay && pace.exitTimeOfDay
-                            ? `${pace.enterTimeOfDay} – ${pace.exitTimeOfDay} (${formatHM(pace.durationMin)})`
-                            : `(${formatHM(pace.durationMin)})`}
-                        </div>
-                      )}
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-          {route.overlapSegments.length > 0 && !planAReady && (
-            <p className="mt-3 text-xs text-neutral-500">
-              Set a valid Plan A goal on the Pace tab to see predicted time of day for this overlap.
-            </p>
-          )}
-        </div>
         <TrainingAnalysisPanel
           routes={[route]}
           planA={planA}

@@ -122,7 +122,6 @@ export function TrainingSection({
     isActive,
   ])
 
-  const planAReady = plans.hasCalculated && planA != null
   const selected = selectedId ? routes.find(r => r.id === selectedId) ?? null : null
   const selectedRouteReady = selected?.id === selectedId
   const courseCoordinates = useMemo(
@@ -244,10 +243,8 @@ export function TrainingSection({
           race={race}
           canEdit={canEdit}
           planA={planA}
-          planAReady={planAReady}
           planAGoalMinutes={planAMinutes}
           clock24h={clock24h}
-          courseElevationSamples={courseElevationSamples}
           onBack={closeRoute}
           onUpdate={updateRoute}
           onDelete={deleteRoute}
