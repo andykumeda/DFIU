@@ -2,13 +2,13 @@
 
 **Date:** 2026-08-20
 **Branch:** `main`
-**Status:** Training route details use one map-linked Route Plan section list; any Strava comparison appears inline on those same rows.
+**Status:** Training Route Plan ignores isolated sub-quarter-mile GPS proximity artifacts, preventing nonsensical same-aid-station sections while preserving meaningful overlaps.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Route-plan UI consolidation committed as `be5124f` and deployed: duplicate Course Overlap/Training Analysis section cards are replaced by a single section list.
+- Proximity-artifact fix committed as `4f7657f` and deployed. The reported Loma Alta Loop now displays five meaningful sections, without the `Redbox → Redbox` ~0.2-mile artifact.
 
 - Aid-station segmentation feature committed as `bc88736` and deployed. The supplied Clear Creek route shows four sections: Clear Creek → Josephine Peak → Redbox → Newcomb Saddle 1 → Shortcut Saddle 1.
 
@@ -22,6 +22,11 @@
 - Backend: `runner_history.strava_activity_id` applied; `strava-activity` `list-races` deployed.
 
 ## Just finished
+
+- Restored the prior 0.25-mile presentation threshold at the shared Route Plan summary layer: isolated GPX/course proximity blips are excluded from displayed sections, Plan A totals, and Strava comparisons.
+- Added a regression that reproduces a 0.2-mile fragment around Redbox and verifies it cannot create a same-station section.
+- Exact live verification passed on `training=6a62fba8-e15e-4321-a692-76ac5de1b8c9`: five sections remain, the Redbox row is gone, and the Plan A on-course total updates accordingly.
+- Validation: 104 tests pass; build passes; lint has 0 errors and 49 pre-existing warnings; `git diff --check` passes.
 
 - Replaced the duplicate Course Overlap and Training Analysis card stacks with a Route Plan: compact training/on-course/Plan A summary, then one selectable section list tied to the map.
 - Inline Strava moving time and Plan A delta now appear on those same rows. Multiple analyzed runs remain available through a compact selector; the import controls stay collapsed until needed.
@@ -72,7 +77,7 @@
 
 ## Open
 
-- Last product deployment: consolidated Training Route Plan (`be5124f`).
+- Last product deployment: Training GPS proximity-artifact filter (`4f7657f`).
 - Smoke-test Settings race history (Strava + GPX) and Pace ability card.
 - Design and implement the opt-in post-event feedback email flow.
 - Rotate Strava secret; verify RBAC with a second account; `/admin` + owner-transfer UI.
