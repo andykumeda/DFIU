@@ -77,3 +77,32 @@ See `HANDOFF.md` for the active queue. Highlights:
 - Add offline/PWA support for Crew View if still prioritized.
 - Finish or retire the Pacer View placeholder.
 - Decide whether to port remaining deploy hardening from `codex/fix-vite-chunk-deploy`.
+
+## Cursor Cloud specific instructions
+
+This repo is a **frontend-only Vite SPA**; there is no backend service in the repo — the
+backend is a **hosted Supabase project**. "Running the app" means running the Vite dev
+server (`npm run dev`, serves on `http://localhost:5173`). Standard commands are already
+documented in `README.md` / `package.json` (`dev`, `lint`, `test`, `build`, `preview`).
+
+- **Env vars are required at dev/build time.** Vite reads `VITE_SUPABASE_URL`,
+  `VITE_SUPABASE_ANON_KEY`, and `VITE_MAPBOX_TOKEN` from `.env.local` (gitignored). With
+  placeholder/dummy values, the UI renders and all client-side logic works (pace engine,
+  routing, and the full `npm test` suite), but **auth, database queries, and Mapbox tiles
+  will not function**. For full end-to-end auth/DB/map testing, set real project values as
+  Secrets (mirrored into `.env.local`). CI (`.github/workflows/ci.yml`) builds with dummy
+  `VITE_*` values, so lint/test/build all pass fully offline.
+- **Do not run `npm run deploy`** in the cloud. It is an SSH/rsync push to a production web
+  host (`DEPLOY_HOST`) and is unrelated to environment verification; it will fail without
+  SSH access. AGENTS.md's "deploy after every build" rule targets the maintainer's real
+  environment, not cloud setup runs.
+- **Do not run `supabase db push` / migration repair.** The hosted migration history has
+  diverged from this checkout and there is no `supabase/config.toml`; see `HANDOFF.md`.
+- Git hooks (husky) run on commit: `scripts/verify-critical-files.sh` (fails if core source
+  files are missing) plus `lint-staged` (`eslint --fix` on staged `*.ts/tsx`). Never bypass
+  or remove them.
+- **Egress:** live auth/DB/map calls go to the hosted Supabase project subdomain
+  (`<project-ref>.supabase.co`) and to `api.mapbox.com` / `events.mapbox.com`. The default
+  cloud sandbox blocks these (DNS resolves but the connection is reset), so signup/login,
+  database reads, and map tiles fail in the browser until those domains are added to the
+  agent's network egress allowlist. lint/test/build/dev do not need egress.
