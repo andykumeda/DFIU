@@ -6,6 +6,24 @@
 > been lost and confused before by uncommitted changes, stranded worktrees, and
 > branches that diverged from `main`. Follow it exactly.
 
+## Engineering Guidance
+
+### Think Before Coding
+
+Don't assume. Surface assumptions, tradeoffs, and ambiguity before implementing. If a simpler approach exists, say so; if something is unclear, stop and name the question.
+
+### Simplicity First
+
+Prefer the minimum code that solves the request. Avoid speculative features, abstractions, configurability, or error handling that were not requested.
+
+### Surgical Changes
+
+Touch only what the request requires. Match existing style and do not refactor unrelated code. Remove only imports, variables, or functions orphaned by your own changes.
+
+### Goal-Driven Execution
+
+Define verifiable success criteria, then loop until they pass. For multi-step work, state a brief plan with verification for each step.
+
 ## Mandatory Agent Workflow
 
 Failure to follow these rules is how work gets lost. Do all of them.
