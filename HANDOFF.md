@@ -2,13 +2,13 @@
 
 **Date:** 2026-08-20
 **Branch:** `main`
-**Status:** Training Plan A aid-station sections now use the same departure-to-arrival timing as Pace Plan’s Time to Next, excluding the starting aid-station stop.
+**Status:** Training route details use one map-linked Route Plan section list; any Strava comparison appears inline on those same rows.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Current production snapshot
 
-- Timing-alignment fix committed as `dbb2732`; Training sections now exclude their departing aid stop, matching Pace Plan’s Time to Next.
+- Route-plan UI consolidation committed as `be5124f` and deployed: duplicate Course Overlap/Training Analysis section cards are replaced by a single section list.
 
 - Aid-station segmentation feature committed as `bc88736` and deployed. The supplied Clear Creek route shows four sections: Clear Creek → Josephine Peak → Redbox → Newcomb Saddle 1 → Shortcut Saddle 1.
 
@@ -22,6 +22,10 @@
 - Backend: `runner_history.strava_activity_id` applied; `strava-activity` `list-races` deployed.
 
 ## Just finished
+
+- Replaced the duplicate Course Overlap and Training Analysis card stacks with a Route Plan: compact training/on-course/Plan A summary, then one selectable section list tied to the map.
+- Inline Strava moving time and Plan A delta now appear on those same rows. Multiple analyzed runs remain available through a compact selector; the import controls stay collapsed until needed.
+- Validation: 103 tests pass; build passes; lint has 0 errors and 49 pre-existing warnings; `git diff --check` passes. The supplied live route visibly renders its four sections once, with its saved Strava comparison inline.
 
 - Corrected the two-minute aid-stop discrepancy: Training’s Plan A time for an aid-to-aid section now starts at the first aid station’s planned departure and ends at the next arrival, exactly as Pace Plan’s Time to Next does.
 - Added a regression for Josephine Peak → Redbox’s two-minute starting stop; it verifies the displayed duration is 2:20 rather than the raw 2:22 arrival-to-arrival interval.
@@ -68,7 +72,7 @@
 
 ## Open
 
-- Last product deployment: pace section timing alignment (`dbb2732`).
+- Last product deployment: consolidated Training Route Plan (`be5124f`).
 - Smoke-test Settings race history (Strava + GPX) and Pace ability card.
 - Design and implement the opt-in post-event feedback email flow.
 - Rotate Strava secret; verify RBAC with a second account; `/admin` + owner-transfer UI.
