@@ -106,30 +106,25 @@ export function buildTrainingPlanSummary(
   const sectioned = splitOverlapAtAidStations(grouped, aidStations)
   const ordered = sortOverlapSegmentsByRaceMile(sectioned)
   const uniqueRanges = uniqueCourseMileRanges(segments)
-  const paceRanges = uniqueCourseMileRanges(grouped)
   const raceMilesTotal = uniqueRanges.reduce((sum, r) => sum + (r.end - r.start), 0)
   const trainingMilesTotal = segments.reduce(
     (total, segment) => total + Math.abs(segment.trainingEndMi - segment.trainingStartMi),
     0
   )
 
-  const uniquePaces = paceRanges.map(range =>
-    getOverlapRacePace(plan, range.start, range.end, race, clock24h)
-  )
-  const availableUniquePaces = uniquePaces.filter((pace): pace is NonNullable<typeof pace> => pace != null)
-  const raceDurationMinutes = availableUniquePaces.length === paceRanges.length && paceRanges.length > 0
-    ? availableUniquePaces.reduce((total, pace) => total + pace.durationMin, 0)
-    : null
-
   const paces = ordered.map(segment => getOverlapRacePace(plan, segment.courseStartMi, segment.courseEndMi, race, clock24h))
+  const availablePaces = paces.filter((pace): pace is NonNullable<typeof pace> => pace != null)
+  const raceDurationMinutes = availablePaces.length === paces.length && paces.length > 0
+    ? availablePaces.reduce((total, pace) => total + pace.durationMin, 0)
+    : null
 
   return {
     raceMilesLabel: uniqueRanges
       .map(range => `${formatMile(range.start)}–${formatMile(range.end)}`)
       .join(', '),
     raceMilesTotal,
-    raceTimeLabel: availableUniquePaces.length === paceRanges.length
-      ? availableUniquePaces.map(pace => pace.enterTimeOfDay && pace.exitTimeOfDay ? `${pace.enterTimeOfDay}–${pace.exitTimeOfDay}` : '').filter(Boolean).join(', ') || null
+    raceTimeLabel: availablePaces.length === paces.length
+      ? availablePaces.map(pace => pace.enterTimeOfDay && pace.exitTimeOfDay ? `${pace.enterTimeOfDay}–${pace.exitTimeOfDay}` : '').filter(Boolean).join(', ') || null
       : null,
     raceDurationMinutes,
     raceDurationLabel: raceDurationMinutes != null ? formatDurationWords(raceDurationMinutes) : null,

@@ -34,6 +34,8 @@ export interface PacePlanResult {
     waypointArrivals: {
         waypointId: string
         arrivalTime: number // minutes from start
+        /** Minutes from start after this waypoint's planned stop. */
+        departureTime?: number
         timeOfDay: string // ISO string or formatted time
         segmentMile: number // distance from prev waypoint
         segmentTime: string // formatted duration
@@ -412,6 +414,7 @@ export function calculatePacePlan(
                     waypointArrivals.push({
                         waypointId: wp.id,
                         arrivalTime: 0,
+                        departureTime: 0,
                         timeOfDay: startTime ? formatTimeOfDay(0, startTime, timeZone, clock24h) : '00:00',
                         segmentMile: 0,
                         segmentTime: '--',
@@ -438,10 +441,12 @@ export function calculatePacePlan(
                     const segDist = wp.mile - prevWaypointDist
                     const segPace = segDist > 0 ? segmentTimeMin / segDist : 0
                     const ovPace = wp.mile > 0 ? arrivalTime / wp.mile : 0
+                    const delay = waypointDelays[wp.id] || 0
 
                     waypointArrivals.push({
                         waypointId: wp.id,
                         arrivalTime,
+                        departureTime: arrivalTime + delay,
                         timeOfDay: formatTimeOfDay(arrivalTime, startTime, timeZone, clock24h),
                         segmentMile: segDist,
                         segmentTime: formatDuration(segmentTimeMin),
@@ -455,7 +460,6 @@ export function calculatePacePlan(
                     prevWaypointDist = wp.mile
 
                     // Add delay
-                    const delay = waypointDelays[wp.id] || 0
                     currentElapsedTime += delay
                     prevDepartureTime = arrivalTime + delay
                     waypointIdx++
@@ -482,6 +486,7 @@ export function calculatePacePlan(
             waypointArrivals.push({
                 waypointId: wp.id,
                 arrivalTime: currentElapsedTime,
+                departureTime: currentElapsedTime + (waypointDelays[wp.id] || 0),
                 timeOfDay: formatTimeOfDay(currentElapsedTime, startTime, timeZone, clock24h),
                 segmentMile: segDist,
                 segmentTime: formatDuration(segmentTimeMin),
@@ -508,6 +513,7 @@ export function calculatePacePlan(
             waypointArrivals.unshift({
                 waypointId: '__synthetic_start__',
                 arrivalTime: 0,
+                departureTime: 0,
                 timeOfDay: startTime ? formatTimeOfDay(0, startTime, timeZone, clock24h) : '00:00',
                 segmentMile: 0,
                 segmentTime: '--',
@@ -531,6 +537,7 @@ export function calculatePacePlan(
             waypointArrivals.push({
                 waypointId: '__synthetic_finish__',
                 arrivalTime: currentElapsedTime,
+                departureTime: currentElapsedTime,
                 timeOfDay: formatTimeOfDay(currentElapsedTime, startTime, timeZone, clock24h),
                 segmentMile: segDist,
                 segmentTime: formatDuration(segTimeMin),
@@ -685,14 +692,15 @@ function applyActualCheckins(
         } else {
             newElapsed = anchor.observedElapsed + (wa.arrivalTime - anchorPlanned) * paceRatio
         }
-        return { ...wa, arrivalTime: newElapsed }
+        const stopMinutes = Math.max(0, (wa.departureTime ?? wa.arrivalTime) - wa.arrivalTime)
+        return { ...wa, arrivalTime: newElapsed, departureTime: newElapsed + stopMinutes }
     })
 
     let prev: typeof remappedArrivals[number] | null = null
     for (let i = 0; i < remappedArrivals.length; i++) {
         const wa = remappedArrivals[i]
         const segDist = prev ? Math.max(0, wa.mile - prev.mile) : 0
-        const segTimeMin = prev ? Math.max(0, wa.arrivalTime - prev.arrivalTime) : 0
+        const segTimeMin = prev ? Math.max(0, wa.arrivalTime - (prev.departureTime ?? prev.arrivalTime)) : 0
         wa.segmentMile = segDist
         wa.segmentTime = prev ? formatDuration(segTimeMin) : '--'
         wa.segmentPace = segDist > 0 ? segTimeMin / segDist : 0

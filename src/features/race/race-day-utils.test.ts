@@ -6,7 +6,7 @@ import {
   getOverlapRacePace,
 } from './race-day-utils'
 
-function makePlan(arrivals: { mile: number; arrivalTime: number }[]): PacePlanResult {
+function makePlan(arrivals: { mile: number; arrivalTime: number; departureTime?: number }[]): PacePlanResult {
   return {
     splits: [],
     totalTime: arrivals[arrivals.length - 1]?.arrivalTime ?? 0,
@@ -18,6 +18,7 @@ function makePlan(arrivals: { mile: number; arrivalTime: number }[]): PacePlanRe
       mile: a.mile,
       name: `WP ${i}`,
       arrivalTime: a.arrivalTime,
+      departureTime: a.departureTime,
       timeOfDay: '--',
       segmentMile: i === 0 ? 0 : a.mile - arrivals[i - 1].mile,
       segmentTime: '--',
@@ -69,6 +70,17 @@ describe('getOverlapRacePace', () => {
     expect(mid!.durationMin).toBe(120)
     expect(mid!.enterTimeOfDay).toBeNull()
     expect(mid!.exitTimeOfDay).toBeNull()
+  })
+
+  it('uses the same departure-to-arrival duration as the Pace Plan for an aid-to-aid section', () => {
+    const plan = makePlan([
+      { mile: 0, arrivalTime: 0 },
+      { mile: 15.3, arrivalTime: 317, departureTime: 319 },
+      { mile: 24.61, arrivalTime: 459 },
+    ])
+
+    const section = getOverlapRacePace(plan, 15.3, 24.61, null)
+    expect(section?.durationMin).toBe(140)
   })
 
   it('formats clock times when race start is set', () => {

@@ -60,6 +60,14 @@ export function getElapsedMinutesAtMile(plan: PacePlanResult | null | undefined,
     return null
 }
 
+/** Departure time at an exact waypoint; otherwise the interpolated arrival time. */
+export function getDepartureMinutesAtMile(plan: PacePlanResult | null | undefined, mile: number): number | null {
+    if (!plan || !Number.isFinite(mile)) return null
+    const waypoint = plan.waypointArrivals.find(arrival => Math.abs(arrival.mile - mile) < 0.01)
+    if (waypoint && Number.isFinite(waypoint.departureTime)) return waypoint.departureTime!
+    return getElapsedMinutesAtMile(plan, mile)
+}
+
 export function formatPaceMinPerMile(minPerMile: number): string {
     if (!Number.isFinite(minPerMile) || minPerMile <= 0) return '--'
     let m = Math.floor(minPerMile)
@@ -110,7 +118,7 @@ export function getOverlapRacePace(
     const span = end - start
     if (!(span > 0)) return null
 
-    const t0 = getElapsedMinutesAtMile(plan, start)
+    const t0 = getDepartureMinutesAtMile(plan, start)
     const t1 = getElapsedMinutesAtMile(plan, end)
     if (t0 == null || t1 == null) return null
 
