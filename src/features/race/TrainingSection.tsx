@@ -240,6 +240,7 @@ export function TrainingSection({
         <TrainingRouteDetail
           route={selected}
           course={course}
+          aidStations={waypoints}
           race={race}
           canEdit={canEdit}
           planA={planA}
@@ -332,6 +333,7 @@ export function TrainingSection({
                 planA={planA}
                 planAGoalMinutes={planAMinutes}
                 race={race}
+                aidStations={waypoints}
                 clock24h={clock24h}
                 courseElevationSamples={courseElevationSamples}
                 onOpen={() => openRoute(route.id)}
@@ -350,6 +352,7 @@ function TrainingRouteCard({
   planA,
   planAGoalMinutes,
   race,
+  aidStations,
   clock24h,
   courseElevationSamples,
   onOpen,
@@ -359,6 +362,7 @@ function TrainingRouteCard({
   planA: PacePlanResult | null
   planAGoalMinutes: number
   race: Race
+  aidStations: Pick<Waypoint, 'name' | 'mile' | 'type'>[]
   clock24h: boolean
   courseElevationSamples: { distance: number; elevation: number }[] | null
   onOpen: () => void
@@ -380,7 +384,7 @@ function TrainingRouteCard({
     hasStart &&
     hasFinish &&
     isPointToPointRoute(route.start_lat, route.start_lon, route.finish_lat, route.finish_lon)
-  const planSummary = buildTrainingPlanSummary(route.overlapSegments, planA, race, clock24h)
+  const planSummary = buildTrainingPlanSummary(route.overlapSegments, planA, race, clock24h, aidStations)
   const planGoalLabel = planAGoalMinutes > 0 ? ` (${formatDurationWords(planAGoalMinutes)} goal)` : ''
   const overlapElevFt = courseOverlapElevationGainFt(courseElevationSamples, route.overlapSegments)
 

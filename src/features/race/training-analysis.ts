@@ -9,6 +9,11 @@ import {
 export { uniqueCourseMileRanges, uniqueCourseMiles }
 import type { PacePlanResult } from './pace-utils'
 import { getOverlapRacePace } from './race-day-utils'
+import {
+  aidStationSectionLabel,
+  splitOverlapAtAidStations,
+  type OfficialAidStation,
+} from './training-aid-segments'
 
 export interface TrainingPlanSummary {
   raceMilesLabel: string
@@ -22,6 +27,7 @@ export interface TrainingPlanSummary {
 }
 
 export interface TrainingPlanSegment {
+  sectionLabel: string | null
   courseMilesLabel: string
   trainingMilesLabel: string
   trainingStartMi: number
@@ -91,12 +97,14 @@ export function buildTrainingPlanSummary(
   segments: OverlapSegment[],
   plan: PacePlanResult | null | undefined,
   race: Pick<Race, 'start_datetime' | 'timezone'>,
-  clock24h = false
+  clock24h = false,
+  aidStations: OfficialAidStation[] = []
 ): TrainingPlanSummary | null {
   if (segments.length === 0) return null
 
   const grouped = mergeContinuousOverlapSegments(segments)
-  const ordered = sortOverlapSegmentsByRaceMile(grouped)
+  const sectioned = splitOverlapAtAidStations(grouped, aidStations)
+  const ordered = sortOverlapSegmentsByRaceMile(sectioned)
   const uniqueRanges = uniqueCourseMileRanges(segments)
   const paceRanges = uniqueCourseMileRanges(grouped)
   const raceMilesTotal = uniqueRanges.reduce((sum, r) => sum + (r.end - r.start), 0)
@@ -130,6 +138,7 @@ export function buildTrainingPlanSummary(
       .join(', '),
     trainingMilesTotal,
     segments: ordered.map((segment, index) => ({
+      sectionLabel: aidStationSectionLabel(segment),
       courseMilesLabel: `${formatMile(segment.courseStartMi)}–${formatMile(segment.courseEndMi)}`,
       trainingMilesLabel: `${formatMile(segment.trainingStartMi)}–${formatMile(segment.trainingEndMi)}`,
       trainingStartMi: segment.trainingStartMi,

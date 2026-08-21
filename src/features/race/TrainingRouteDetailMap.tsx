@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
-import { computeTrainingMapOverlap } from '@/lib/training-overlap'
+import { computeTrainingMapOverlap, type OverlapSegment } from '@/lib/training-overlap'
 import type { GpxWaypoint } from '@/lib/gpx-parser'
 import { trainingWaypointStyle } from './training-map-waypoints'
 import {
@@ -8,6 +8,7 @@ import {
   raceMileForTrainingMile,
 } from './training-map-hover'
 import { trainingMapDisplaySegments } from './training-map-segments'
+import { splitOverlapAtAidStations, type OfficialAidStation } from './training-aid-segments'
 
 /** Card previews stay SVG-only (no Mapbox in the main bundle). */
 
@@ -258,6 +259,7 @@ interface TrainingRouteDetailMapProps {
     courseEndMi?: number
   }[]
   waypoints?: GpxWaypoint[]
+  aidStations?: OfficialAidStation[]
   highlightedOverlap?: { trainingStartMi: number; trainingEndMi: number } | null
   className?: string
   interactive?: boolean
@@ -277,7 +279,7 @@ export function TrainingRouteDetailMap(props: TrainingRouteDetailMapProps) {
   const staticPreview = props.interactive === false
   const [useSvg, setUseSvg] = useState(staticPreview || !import.meta.env.VITE_MAPBOX_TOKEN)
   const handleMapFailure = useCallback(() => setUseSvg(true), [])
-  const { className, showLegend = false, ...mapProps } = props
+  const { className, showLegend = false, aidStations = [], ...mapProps } = props
   const liveOverlap =
     !staticPreview && !!props.courseCoordinates && props.courseCoordinates.length >= 2
   const initialDisplayOverlap = useMemo(
@@ -307,9 +309,20 @@ export function TrainingRouteDetailMap(props: TrainingRouteDetailMapProps) {
     computedOverlap.courseCoordinates === props.courseCoordinates
       ? computedOverlap.segments
       : undefined
-  const mapOverlapSegments = liveOverlap
+  const continuousMapOverlapSegments = liveOverlap
     ? currentComputedOverlap ?? initialDisplayOverlap
     : initialDisplayOverlap
+  const mapOverlapSegments = useMemo(
+    () => continuousMapOverlapSegments.every(segment =>
+      Number.isFinite(segment.courseStartMi) && Number.isFinite(segment.courseEndMi)
+    )
+      ? splitOverlapAtAidStations(
+          continuousMapOverlapSegments as OverlapSegment[],
+          aidStations
+        )
+      : continuousMapOverlapSegments,
+    [continuousMapOverlapSegments, aidStations]
+  )
   const mapData = { ...mapProps, overlapSegments: mapOverlapSegments }
   const [hoverLabel, setHoverLabel] = useState<string | null>(null)
   const controlledHoverLabel = props.highlightMile == null

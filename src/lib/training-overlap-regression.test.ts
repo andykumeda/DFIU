@@ -32,7 +32,7 @@ describe('reported training overlap regression', () => {
     expect(completed.overlapMiles).toBeCloseTo(12.78, 2)
   })
 
-  it('reports one analytical section when the map paints one continuous overlap', () => {
+  it('splits the continuous Clear Creek overlap at its official aid stations', () => {
     const fixture = JSON.parse(
       readFileSync(new URL('./fixtures/clear-creek-continuous-overlap.json', import.meta.url), 'utf8')
     ) as ContinuousFixture
@@ -41,20 +41,40 @@ describe('reported training overlap regression', () => {
     })
     const mapSegments = computeTrainingMapOverlap(fixture.training, fixture.course)
     const initialMapSegments = trainingMapDisplaySegments(rawSegments)
-    const summary = buildTrainingPlanSummary(
+    const continuousSummary = buildTrainingPlanSummary(
       rawSegments,
       null,
       { start_datetime: null, timezone: null },
       false
     )
+    const aidStationSummary = buildTrainingPlanSummary(
+      rawSegments,
+      null,
+      { start_datetime: null, timezone: null },
+      false,
+      [
+        { name: 'Clear Creek', mile: 11.32, type: 'aid_station' },
+        { name: 'Josephine Peak', mile: 15.34, type: 'aid_station' },
+        { name: 'Redbox', mile: 24.62, type: 'aid_station' },
+        { name: 'Newcomb Saddle 1', mile: 33.18, type: 'aid_station' },
+        { name: 'Shortcut Saddle 1', mile: 42.61, type: 'aid_station' },
+      ]
+    )
 
     expect(rawSegments).toHaveLength(7)
     expect(initialMapSegments).toEqual(mapSegments)
     expect(mapSegments).toHaveLength(1)
-    expect(summary?.segments).toHaveLength(1)
-    expect(summary?.segments[0]).toMatchObject({
+    expect(continuousSummary?.segments).toHaveLength(1)
+    expect(continuousSummary?.segments[0]).toMatchObject({
       courseMilesLabel: '11.3–42.6',
       trainingMilesLabel: '0.0–31.3',
     })
+    expect(aidStationSummary?.segments.map(segment => segment.sectionLabel)).toEqual([
+      'Clear Creek → Josephine Peak',
+      'Josephine Peak → Redbox',
+      'Redbox → Newcomb Saddle 1',
+      'Newcomb Saddle 1 → Shortcut Saddle 1',
+    ])
+    expect(aidStationSummary?.segments).toHaveLength(4)
   })
 })

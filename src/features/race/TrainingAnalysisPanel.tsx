@@ -3,7 +3,7 @@ import { Activity, BarChart3, Link2, LoaderCircle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { STRAVA_RETURN_TO_STORAGE_KEY } from '@/features/auth/StravaCallback'
 import { messageFromFunctionError } from '@/features/auth/strava-function-error'
-import type { Race } from '@/types/database'
+import type { Race, Waypoint } from '@/types/database'
 import type { PacePlanResult } from './pace-utils'
 import type { TrainingRouteRow } from './useTrainingRoutes'
 import {
@@ -39,6 +39,7 @@ interface TrainingAnalysisPanelProps {
   planAGoalMinutes: number
   race: Race
   clock24h: boolean
+  aidStations?: Pick<Waypoint, 'name' | 'mile' | 'type'>[]
   hideRoutePicker?: boolean
   highlightedOverlap?: { trainingStartMi: number; trainingEndMi: number } | null
   onHighlightOverlap?: (segment: { trainingStartMi: number; trainingEndMi: number }) => void
@@ -53,6 +54,7 @@ export function TrainingAnalysisPanel({
   planA,
   race,
   clock24h,
+  aidStations = [],
   hideRoutePicker = false,
   highlightedOverlap = null,
   onHighlightOverlap,
@@ -91,9 +93,9 @@ export function TrainingAnalysisPanel({
   const summary = useMemo(
     () =>
       selectedRoute
-        ? buildTrainingPlanSummary(selectedRoute.overlapSegments, planA, race, clock24h)
+        ? buildTrainingPlanSummary(selectedRoute.overlapSegments, planA, race, clock24h, aidStations)
         : null,
-    [selectedRoute, planA, race, clock24h]
+    [selectedRoute, planA, race, clock24h, aidStations]
   )
   const analyzeActivity = async () => {
     if (!activityInput.trim()) {
@@ -248,7 +250,7 @@ export function TrainingAnalysisPanel({
               {summary.segments.map((segment, index) => (
                 <SummaryMetric
                   key={`${segment.courseMilesLabel}-${segment.trainingMilesLabel}`}
-                  label={`Section ${index + 1}: race mi ${segment.courseMilesLabel}`}
+                  label={`Section ${index + 1}: ${segment.sectionLabel ? `${segment.sectionLabel} · ` : ''}race mi ${segment.courseMilesLabel}`}
                   value={`Plan A ${segment.raceDurationLabel ?? 'not generated'}`}
                   detail={`training mi ${segment.trainingMilesLabel}`}
                   selected={isSameTrainingOverlap(highlightedOverlap, segment)}
@@ -318,7 +320,7 @@ export function TrainingAnalysisPanel({
                   }`}
                 >
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <p className="text-sm font-medium text-white">Section {index + 1}: race mi {segment.courseMilesLabel}</p>
+                    <p className="text-sm font-medium text-white">Section {index + 1}: {segment.sectionLabel ? `${segment.sectionLabel} · ` : ''}race mi {segment.courseMilesLabel}</p>
                     <p className={delta.tone === 'faster' ? 'text-sm font-medium text-emerald-300' : delta.tone === 'slower' ? 'text-sm font-medium text-orange-300' : 'text-sm font-medium text-neutral-200'}>{delta.label}</p>
                   </div>
                   <dl className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">

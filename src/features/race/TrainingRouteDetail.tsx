@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { ArrowLeft, Download, ExternalLink, MapPin, Mountain, Route as RouteIcon, Share2, Trash2 } from 'lucide-react'
-import type { Course, Json, Race } from '@/types/database'
+import type { Course, Json, Race, Waypoint } from '@/types/database'
 import { parseGpxWaypoints, sampleElevationProfile } from '@/lib/gpx-parser'
 import type { TrainingRouteRow } from './useTrainingRoutes'
 import { TrainingRouteDetailMap } from './TrainingRouteDetailMap'
@@ -12,17 +12,18 @@ import {
   formatOverlapSummary,
   courseOverlapElevationGainFt,
   isPointToPointRoute,
-  mergeContinuousOverlapSegments,
   returnDirectionsUrl,
 } from '@/lib/training-overlap'
 import type { PacePlanResult } from './pace-utils'
 import { formatHM, getOverlapRacePace } from './race-day-utils'
 import { isSameTrainingOverlap, sortOverlapSegmentsByRaceMile } from './training-analysis'
 import { TrainingAnalysisPanel, type StravaActivity } from './TrainingAnalysisPanel'
+import { aidStationSectionLabel, splitOverlapAtAidStations } from './training-aid-segments'
 
 interface TrainingRouteDetailProps {
   route: TrainingRouteRow
   course: Course | null
+  aidStations: Pick<Waypoint, 'name' | 'mile' | 'type'>[]
   race: Race
   canEdit: boolean
   planA: PacePlanResult | null
@@ -38,6 +39,7 @@ interface TrainingRouteDetailProps {
 export function TrainingRouteDetail({
   route,
   course,
+  aidStations,
   race,
   canEdit,
   planA,
@@ -107,11 +109,11 @@ export function TrainingRouteDetail({
     isPointToPointRoute(route.start_lat, route.start_lon, route.finish_lat, route.finish_lon)
   const orderedOverlapSegments = useMemo(
     () => sortOverlapSegmentsByRaceMile(
-      mergeContinuousOverlapSegments(route.overlapSegments).filter(
+      splitOverlapAtAidStations(route.overlapSegments, aidStations).filter(
         segment => Math.abs(segment.courseEndMi - segment.courseStartMi) >= 0.25
       )
     ),
-    [route.overlapSegments]
+    [route.overlapSegments, aidStations]
   )
   const overlapElevFt = useMemo(
     () => courseOverlapElevationGainFt(courseElevationSamples, route.overlapSegments),
@@ -248,6 +250,7 @@ export function TrainingRouteDetail({
               courseCoordinates={showCourseRoute && courseCoords.length >= 2 ? courseCoords : undefined}
               waypoints={trainingWaypoints}
               overlapSegments={route.overlapSegments}
+              aidStations={aidStations}
               highlightedOverlap={highlightedOverlap}
               highlightMile={hoveredTrainingMile ?? undefined}
               onHoverMile={setHoveredTrainingMile}
@@ -397,6 +400,9 @@ export function TrainingRouteDetail({
                       }`}
                     >
                       <div>
+                        {aidStationSectionLabel(seg) && (
+                          <span className="block font-medium text-neutral-200">{aidStationSectionLabel(seg)}</span>
+                        )}
                         Course mi {seg.courseStartMi.toFixed(1)}–{seg.courseEndMi.toFixed(1)}
                         <span className="text-neutral-600">
                           {' '}
@@ -429,6 +435,7 @@ export function TrainingRouteDetail({
           planAGoalMinutes={planAGoalMinutes}
           race={race}
           clock24h={clock24h}
+          aidStations={aidStations}
           hideRoutePicker
           highlightedOverlap={highlightedOverlap}
           onHighlightOverlap={selectOverlap}

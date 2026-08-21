@@ -34,6 +34,45 @@ function makePlan(
 }
 
 describe('buildTrainingPlanSummary', () => {
+  it('splits a continuous overlap into official aid-to-aid sections', () => {
+    const summary = buildTrainingPlanSummary(
+      [{ courseStartMi: 11.3, courseEndMi: 42.6, trainingStartMi: 0, trainingEndMi: 31.3 }],
+      makePlan([
+        { mile: 11.3, arrivalTime: 60 },
+        { mile: 18.2, arrivalTime: 120 },
+        { mile: 25.1, arrivalTime: 180 },
+        { mile: 33.4, arrivalTime: 260 },
+        { mile: 42.6, arrivalTime: 350 },
+      ]),
+      { start_datetime: '2026-08-01T00:00:00.000Z', timezone: 'UTC' },
+      false,
+      [
+        { name: 'Clear Creek', mile: 11.3, type: 'aid_station' },
+        { name: 'Josephine Peak', mile: 18.2, type: 'aid_station' },
+        { name: 'Red Box', mile: 25.1, type: 'aid_station' },
+        { name: 'Newcomb', mile: 33.4, type: 'aid_station' },
+        { name: 'Shortcut', mile: 42.6, type: 'aid_station' },
+        { name: 'Scenic point', mile: 28, type: 'landmark' },
+      ]
+    )
+
+    expect(summary?.segments).toHaveLength(4)
+    expect(summary?.segments.map(segment => segment.sectionLabel)).toEqual([
+      'Clear Creek → Josephine Peak',
+      'Josephine Peak → Red Box',
+      'Red Box → Newcomb',
+      'Newcomb → Shortcut',
+    ])
+    expect(summary?.segments.map(segment => segment.courseMilesLabel)).toEqual([
+      '11.3–18.2',
+      '18.2–25.1',
+      '25.1–33.4',
+      '33.4–42.6',
+    ])
+    expect(summary?.trainingMilesTotal).toBeCloseTo(31.3)
+    expect(summary?.raceMilesTotal).toBeCloseTo(31.3)
+  })
+
   it('sums every overlapping race segment for the Plan A goal', () => {
     const summary = buildTrainingPlanSummary(
       [
