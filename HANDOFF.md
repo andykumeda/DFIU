@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-21
 **Branch:** `main`
-**Status:** Training Route Plan ignores isolated sub-quarter-mile GPS proximity artifacts, preventing nonsensical same-aid-station sections while preserving meaningful overlaps. Repository guidance is consolidated in `AGENTS.md` for Codex and other `AGENTS.md`-based harnesses.
+**Status:** Training Route Plan ignores isolated sub-quarter-mile GPS proximity artifacts, preventing nonsensical same-aid-station sections while preserving meaningful overlaps. Reusable Codex guidance is global; DFIU-specific rules remain in `AGENTS.md`.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -23,7 +23,7 @@
 
 ## Just finished
 
-- Consolidated the useful generic engineering guidance from `CLAUDE.md` into `AGENTS.md` and removed the redundant Claude-only file.
+- Created a global Codex `AGENTS.md` for reusable engineering guidance; removed the duplicated generic section from this repository’s local `AGENTS.md`.
 - Configured GitHub Issues, default triage labels, and single-context domain-doc rules in `docs/agents/`; added the harness-neutral `## Agent skills` block to `AGENTS.md`.
 
 - Restored the prior 0.25-mile presentation threshold at the shared Route Plan summary layer: isolated GPX/course proximity blips are excluded from displayed sections, Plan A totals, and Strava comparisons.
