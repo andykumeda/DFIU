@@ -116,6 +116,23 @@ describe('buildTrainingPlanSummary', () => {
     expect(summary!.segments.map(s => s.courseMilesLabel)).toEqual(['24.6–33', '25–24.6', '72.7–87.3'])
   })
 
+  it('does not promote a tiny GPS proximity fragment at an aid station into a route-plan section', () => {
+    const summary = buildTrainingPlanSummary(
+      [
+        { courseStartMi: 0.4, courseEndMi: 10.5, trainingStartMi: 0.4, trainingEndMi: 10.4 },
+        { courseStartMi: 24.6, courseEndMi: 24.8, trainingStartMi: 14.4, trainingEndMi: 14.6 },
+      ],
+      null,
+      { start_datetime: null, timezone: null },
+      false,
+      [{ name: 'Redbox', mile: 24.7, type: 'aid_station' }]
+    )
+
+    expect(summary?.segments.map(segment => segment.courseMilesLabel)).toEqual(['0.4–10.5'])
+    expect(summary?.segments.map(segment => segment.sectionLabel)).not.toContain('Redbox → Redbox')
+    expect(summary?.raceMilesTotal).toBeCloseTo(10.1)
+  })
+
   it('does not double-count reverse then forward on the same course miles', () => {
     // Sam Merrill to Finish shape: reverse 95.64→90.44 then forward 90.44→100.85.
     const summary = buildTrainingPlanSummary(

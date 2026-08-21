@@ -48,6 +48,11 @@ export interface TrainingAnalysisDelta {
   tone: 'faster' | 'slower' | 'even'
 }
 
+// GPS traces and an older course GPX can briefly converge near an aid station
+// without sharing a usable route section. This matches the prior detail-view
+// threshold and keeps those proximity blips out of planning and comparisons.
+const MIN_ROUTE_PLAN_SECTION_MI = 0.25
+
 function formatMile(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1)
 }
@@ -104,10 +109,15 @@ export function buildTrainingPlanSummary(
 
   const grouped = mergeContinuousOverlapSegments(segments)
   const sectioned = splitOverlapAtAidStations(grouped, aidStations)
-  const ordered = sortOverlapSegmentsByRaceMile(sectioned)
-  const uniqueRanges = uniqueCourseMileRanges(segments)
+  const meaningfulSections = sectioned.filter(
+    segment => Math.abs(segment.courseEndMi - segment.courseStartMi) >= MIN_ROUTE_PLAN_SECTION_MI
+  )
+  if (meaningfulSections.length === 0) return null
+
+  const ordered = sortOverlapSegmentsByRaceMile(meaningfulSections)
+  const uniqueRanges = uniqueCourseMileRanges(meaningfulSections)
   const raceMilesTotal = uniqueRanges.reduce((sum, r) => sum + (r.end - r.start), 0)
-  const trainingMilesTotal = segments.reduce(
+  const trainingMilesTotal = meaningfulSections.reduce(
     (total, segment) => total + Math.abs(segment.trainingEndMi - segment.trainingStartMi),
     0
   )
