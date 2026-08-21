@@ -1,8 +1,8 @@
 # Handoff Document
 
-**Date:** 2026-08-20
+**Date:** 2026-08-21
 **Branch:** `main`
-**Status:** Training Route Plan ignores isolated sub-quarter-mile GPS proximity artifacts, preventing nonsensical same-aid-station sections while preserving meaningful overlaps.
+**Status:** Training Route Plan ignores isolated sub-quarter-mile GPS proximity artifacts, preventing nonsensical same-aid-station sections while preserving meaningful overlaps. Repository engineering-skill configuration is now recorded for Codex and other `AGENTS.md`-based harnesses.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
@@ -22,6 +22,8 @@
 - Backend: `runner_history.strava_activity_id` applied; `strava-activity` `list-races` deployed.
 
 ## Just finished
+
+- Configured GitHub Issues, default triage labels, and single-context domain-doc rules in `docs/agents/`; added the harness-neutral `## Agent skills` block to `AGENTS.md`.
 
 - Restored the prior 0.25-mile presentation threshold at the shared Route Plan summary layer: isolated GPX/course proximity blips are excluded from displayed sections, Plan A totals, and Strava comparisons.
 - Added a regression that reproduces a 0.2-mile fragment around Redbox and verifies it cannot create a same-station section.

@@ -77,3 +77,17 @@ See `HANDOFF.md` for the active queue. Highlights:
 - Add offline/PWA support for Crew View if still prioritized.
 - Finish or retire the Pacer View placeholder.
 - Decide whether to port remaining deploy hardening from `codex/fix-vite-chunk-deploy`.
+
+## Agent skills
+
+### Issue tracker
+
+Issues and specs live in GitHub Issues for `andykumeda/DFIU`, operated with the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Use the default canonical labels: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, and `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+This is a single-context repository: read root `CONTEXT.md` and root `docs/adr/` when present. See `docs/agents/domain.md`.
