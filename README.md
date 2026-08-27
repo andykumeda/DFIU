@@ -39,7 +39,7 @@ DFIU helps you centralize your course, pace plan, logistics, and crew info in on
 -   **Mile Markers:** Toggle mile markers along the route (auto-scaled by distance).
 -   **Terrain Segments:** Colored five-level terrain overlays, map/profile range selection, sidebar editing, selection highlighting, and reviewed reverse-direction out-and-back pairing.
 -   **Pace Plans:** Automatically recalculated Plan A/B/C goal-time plans with grade, terrain, time-of-day, weather, runner-profile, and aid-station-delay factors; optional independent P10/P50/P90 prediction from a baseline and history.
--   **Training & Strava:** GPX import or snapped manual route creation, persistent course-overlap detection, persistent multi-activity Strava analysis, and moving-time comparisons for each individual overlapping section.
+-   **Training & Strava:** GPX import or snapped manual route creation, direction-aware course-overlap detection, GPS-correlated multi-activity Strava analysis, and moving-time comparisons for each individual overlapping section.
 -   **Resources:** Reorderable links and Markdown text resources with icon choices and optional print-ready rendering.
 -   **Crew View:** Mobile-first `/race/:id/crew` view with predicted runner location, next crew aid station, Google Maps destination links, drop bag details, and runner arrival check-ins.
 -   **Live Event:** Live tab with optional livestream + Race Result embeds, runner location map, and followed-runner ETAs.

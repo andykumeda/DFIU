@@ -150,6 +150,7 @@ Training overlap is geometric, not name-based. DFIU:
 4. Detects clear out-and-back turnarounds:
    - If the race revisits the same trail later (disconnected visits), the return leg maps onto that later pass — separate segments and times of day (e.g. Shortcut to Newcomb).
    - If the race itself is a continuous out-and-back, course miles keep advancing through the turnaround as one span (e.g. Shortcut to Hillyer).
+   - If the race uses the corridor only once, outbound and return remain separate directional passes; the race-direction pass is used for Plan A and repeated race miles are excluded.
 5. Merges nearby course-mile candidate hits within 1.25 mi, then rejects streaks whose training distance does not plausibly follow the race trail.
 6. Filters the special false match that can occur when a course Start and Finish share coordinates.
 
@@ -161,7 +162,7 @@ Map coloring snaps training GPX to the race line within about 0.035 mi and paint
 
 For every detected overlap pair, DFIU calculates the Plan A time for only that race-mile span. It compares that span with the corresponding training-mile span independently; it does not create one misleading total for a whole training run with disconnected overlap sections.
 
-Strava moving time is used exclusively. With distance/time/moving streams, DFIU apportions moving seconds to the exact overlap interval. Without streams, it falls back to a distance-weighted share of total moving time. Approach miles, breaks, and elapsed time are excluded from the comparison as far as the available data permits.
+Strava moving time is used exclusively. With GPS and distance/time/moving streams, DFIU first correlates the activity trace to the race GPX, then apportions moving seconds to the spatially matched race interval. This handles an activity whose start, finish, or turnaround differs from the saved training route, and counts moving samples even when Strava repeats a rounded distance value. The large GPS stream is used transiently; only compact race/activity segment mappings are saved. Without streams, DFIU falls back to a distance-weighted share of total moving time. Approach miles, breaks, and elapsed time are excluded from the comparison as far as the available data permits.
 
 ## What the algorithms do not do
 

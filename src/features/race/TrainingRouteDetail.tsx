@@ -361,6 +361,7 @@ export function TrainingRouteDetail({
           savedActivityResults={Array.isArray(route.strava_activity_results) ? route.strava_activity_results as unknown as StravaActivity[] : []}
           onSaveActivityInputs={inputs => onUpdate(route.id, { strava_activity_inputs: inputs })}
           onSaveActivityResults={results => onUpdate(route.id, { strava_activity_results: results as unknown as Json })}
+          courseCoordinates={courseCoords}
         />
       </div>
     </div>

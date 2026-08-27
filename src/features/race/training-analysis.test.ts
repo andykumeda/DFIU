@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest'
 import type { PacePlanResult } from './pace-utils'
 import {
   buildTrainingPlanSummary,
+  buildActivityCourseSegments,
+  getActivityCourseSlices,
+  getActivitySliceMovingMinutes,
   getTrainingAnalysisDelta,
   getOverlappingMovingMinutes,
   getTrainingSegmentMovingMinutes,
@@ -113,7 +116,7 @@ describe('buildTrainingPlanSummary', () => {
     )
 
     expect(summary!.raceMilesLabel).toBe('24.6–33, 72.7–87.3')
-    expect(summary!.segments.map(s => s.courseMilesLabel)).toEqual(['24.6–33', '25–24.6', '72.7–87.3'])
+    expect(summary!.segments.map(s => s.courseMilesLabel)).toEqual(['24.6–33', '72.7–87.3'])
   })
 
   it('does not promote a tiny GPS proximity fragment at an aid station into a route-plan section', () => {
@@ -147,7 +150,27 @@ describe('buildTrainingPlanSummary', () => {
 
     expect(summary!.raceMilesTotal).toBeCloseTo(10.41, 4)
     expect(summary!.raceMilesLabel).toBe('90.4–100.8')
-    expect(summary!.trainingMilesTotal).toBeCloseTo(15.05, 4)
+    expect(summary!.trainingMilesTotal).toBeCloseTo(9.94, 4)
+    expect(summary!.segments).toHaveLength(1)
+  })
+
+  it('uses only the race-direction half of a full out-and-back training route', () => {
+    const summary = buildTrainingPlanSummary(
+      [
+        { courseStartMi: 0, courseEndMi: 10, trainingStartMi: 0, trainingEndMi: 10 },
+        { courseStartMi: 10, courseEndMi: 0, trainingStartMi: 10, trainingEndMi: 20 },
+      ],
+      makePlan([
+        { mile: 0, arrivalTime: 0 },
+        { mile: 10, arrivalTime: 120 },
+      ]),
+      { start_datetime: '2026-08-01T00:00:00.000Z', timezone: 'UTC' }
+    )
+
+    expect(summary?.raceMilesTotal).toBeCloseTo(10)
+    expect(summary?.trainingMilesTotal).toBeCloseTo(10)
+    expect(summary?.raceDurationMinutes).toBeCloseTo(120)
+    expect(summary?.segments).toHaveLength(1)
   })
 })
 
@@ -181,6 +204,54 @@ describe('getTrainingSegmentMovingMinutes', () => {
 
     expect(getTrainingSegmentMovingMinutes(activity.movingSeconds, activity.distanceMiles, { trainingStartMi: 0, trainingEndMi: 2 }, activity.stream)).toBeCloseTo(20)
     expect(getTrainingSegmentMovingMinutes(activity.movingSeconds, activity.distanceMiles, { trainingStartMi: 10, trainingEndMi: 14 }, activity.stream)).toBeCloseTo(30)
+  })
+
+  it('counts moving intervals even when Strava repeats the rounded distance value', () => {
+    const stream = {
+      distanceMeters: [0, 1609.344, 1609.344, 2 * 1609.344],
+      elapsedSeconds: [0, 600, 720, 1320],
+      moving: [true, true, true, true],
+    }
+
+    expect(getTrainingSegmentMovingMinutes(1320, 2, { trainingStartMi: 0, trainingEndMi: 2 }, stream)).toBeCloseTo(22)
+  })
+})
+
+describe('Strava GPS correlation', () => {
+  it('maps an offset out-and-back activity to the shared race corridor once', () => {
+    const dLat = 0.1 / 69
+    const course = Array.from({ length: 201 }, (_, index) => [-122, 37 + index * dLat] as [number, number])
+    const outbound = course.slice(7, 104).map(([lon, lat]) => [lat, lon] as [number, number])
+    const latlng = [...outbound, ...outbound.slice(0, -1).reverse()]
+    const activitySegments = buildActivityCourseSegments(latlng, 19.2, course)
+
+    expect(activitySegments).toHaveLength(1)
+    expect(activitySegments[0].courseStartMi).toBeGreaterThan(0.5)
+    expect(activitySegments[0].courseEndMi).toBeGreaterThan(10)
+    expect(activitySegments[0].trainingEndMi).toBeLessThan(10)
+
+    const slices = getActivityCourseSlices(
+      { courseStartMi: 0, courseEndMi: 10 },
+      activitySegments
+    )
+    expect(slices).toHaveLength(1)
+    expect(slices[0].trainingStartMi).toBeLessThan(0.2)
+    expect(slices[0].trainingEndMi).toBeGreaterThan(8.5)
+  })
+
+  it('uses timestamps from the race-direction pass instead of the faster return', () => {
+    const dLat = 0.1 / 69
+    const course = Array.from({ length: 121 }, (_, index) => [-122, 37 + index * dLat] as [number, number])
+    const outbound = course.slice(0, 101).map(([lon, lat]) => [lat, lon] as [number, number])
+    const latlng = [...outbound, ...outbound.slice(0, -1).reverse()]
+    const elapsedSeconds = latlng.map((_, index) => index <= 100 ? index * 60 : 6000 + (index - 100) * 30)
+    const moving = latlng.map(() => true)
+    const activitySegments = buildActivityCourseSegments(latlng, 20, course, elapsedSeconds)
+    const slices = getActivityCourseSlices({ courseStartMi: 0, courseEndMi: 10 }, activitySegments)
+
+    expect(slices).toHaveLength(1)
+    expect(getActivitySliceMovingMinutes(slices[0], { elapsedSeconds, moving })).toBeGreaterThan(95)
+    expect(getActivitySliceMovingMinutes(slices[0], { elapsedSeconds, moving })).toBeLessThan(101)
   })
 })
 

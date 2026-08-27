@@ -1,10 +1,18 @@
 # Handoff Document
 
-**Date:** 2026-08-21
+**Date:** 2026-08-27
 **Branch:** `main`
-**Status:** Training Route Plan ignores isolated sub-quarter-mile GPS proximity artifacts, preventing nonsensical same-aid-station sections while preserving meaningful overlaps. Reusable Codex guidance is global; DFIU-specific rules remain in `AGENTS.md`.
+**Status:** Complete: corrected and deployed Training/Strava calculations for race `fca7696b-6093-49a7-be8a-ba3c0a480643`, route `ec6d73f7-ee26-48eb-8ed9-df6d6f598eb4`, and Strava activity `19868480612`.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
+
+## Latest deployment
+
+- Preserved GPX direction so an out-and-back training route contributes only the pass matching race direction; a one-pass race corridor can no longer fabricate later course miles from the return leg.
+- Added transient Strava `latlng` retrieval and race-GPX correlation. Saved activity mappings use exact activity timestamps for moving-time comparisons and do not persist the large GPS stream.
+- Exact GPX verification: training overlap is race mi `0.07–10.31` outbound plus `10.31–0.07` return, with `10.24` unique race miles; Strava's race-direction pass maps to race mi `0.70–10.32` and activity mi approximately `0.04–10.01`.
+- Production frontend and `strava-activity` Edge Function deployed. The exact route renders `10.2 mi`, one section, race mi `0.1–10.3`, training mi `0.0–10.4`, and Plan A `2 hours 49 mins`.
+- Validation: 109 tests pass; build passes; lint has 0 errors and 49 pre-existing warnings; `git diff --check` passes. No side branches or additional worktrees remain.
 
 ## Current production snapshot
 

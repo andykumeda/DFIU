@@ -7,12 +7,17 @@ import type { Race, Waypoint } from '@/types/database'
 import type { PacePlanResult } from './pace-utils'
 import type { TrainingRouteRow } from './useTrainingRoutes'
 import {
+  type ActivityCourseSlice,
+  buildActivityCourseSegments,
   buildTrainingPlanSummary,
   formatDurationWords,
+  getActivityCourseSlices,
+  getActivitySliceMovingMinutes,
   getTrainingAnalysisDelta,
   getTrainingSegmentMovingMinutes,
   isSameTrainingOverlap,
 } from './training-analysis'
+import { getOverlapRacePace } from './race-day-utils'
 
 export interface StravaActivity {
   id: number
@@ -25,7 +30,9 @@ export interface StravaActivity {
     distanceMeters: number[]
     elapsedSeconds: number[]
     moving: boolean[]
+    latlng?: [number, number][]
   } | null
+  courseSegments?: ActivityCourseSlice[]
 }
 
 interface StravaConnectionStatus {
@@ -47,6 +54,7 @@ interface TrainingAnalysisPanelProps {
   savedActivityResults?: StravaActivity[]
   onSaveActivityInputs?: (inputs: string[]) => Promise<void>
   onSaveActivityResults?: (results: StravaActivity[]) => Promise<void>
+  courseCoordinates: [number, number][]
 }
 
 export function TrainingAnalysisPanel({
@@ -62,6 +70,7 @@ export function TrainingAnalysisPanel({
   savedActivityResults = [],
   onSaveActivityInputs,
   onSaveActivityResults,
+  courseCoordinates,
 }: TrainingAnalysisPanelProps) {
   const savedActivityInputValue = savedActivityInputs.join('\n')
   const savedActivityResultsValue = JSON.stringify(savedActivityResults)
@@ -106,16 +115,34 @@ export function TrainingAnalysisPanel({
   const activityComparisons = useMemo(() => {
     if (!summary || !activeActivity) return []
     return summary.segments.map(segment => {
-      const movingMinutes = getTrainingSegmentMovingMinutes(
-        activeActivity.movingSeconds,
-        activeActivity.distanceMiles,
-        segment,
-        activeActivity.stream
-      )
-      if (movingMinutes == null || segment.raceDurationMinutes == null) return null
-      return { movingMinutes, delta: getTrainingAnalysisDelta(movingMinutes, segment.raceDurationMinutes) }
+      const slices = activeActivity.courseSegments?.length
+        ? getActivityCourseSlices(segment, activeActivity.courseSegments)
+        : [segment]
+      if (slices.length === 0) return null
+      const movingParts = slices.map(slice => activeActivity.courseSegments?.length
+        ? getActivitySliceMovingMinutes(slice, activeActivity.stream)
+        : getTrainingSegmentMovingMinutes(
+            activeActivity.movingSeconds,
+            activeActivity.distanceMiles,
+            slice,
+            activeActivity.stream
+          ))
+      if (movingParts.some(value => value == null)) return null
+      const movingMinutes = movingParts.filter((value): value is number => value != null)
+        .reduce((total, value) => total + value, 0)
+      const planParts = activeActivity.courseSegments?.length
+        ? slices.map(slice => getOverlapRacePace(planA, slice.courseStartMi, slice.courseEndMi, race, clock24h)?.durationMin ?? null)
+        : [segment.raceDurationMinutes]
+      if (planParts.some(value => value == null)) return null
+      const planMinutes = planParts.filter((value): value is number => value != null)
+        .reduce((total, value) => total + value, 0)
+      return {
+        movingMinutes,
+        delta: getTrainingAnalysisDelta(movingMinutes, planMinutes),
+        spatiallyMatched: Boolean(activeActivity.courseSegments?.length),
+      }
     })
-  }, [activeActivity, summary])
+  }, [activeActivity, clock24h, planA, race, summary])
   const analyzeActivity = async () => {
     if (!activityInput.trim()) {
       setError('Paste a Strava activity link or enter its numeric activity ID.')
@@ -138,7 +165,22 @@ export function TrainingAnalysisPanel({
         })
         if (invokeError) throw invokeError
         if (!data?.movingSeconds || !data?.distanceMiles) throw new Error(data?.error || 'Strava activity needs moving time and distance')
-        results.push(data as StravaActivity)
+        const loaded = data as StravaActivity
+        const courseSegments = buildActivityCourseSegments(
+          loaded.stream?.latlng,
+          loaded.distanceMiles,
+          courseCoordinates,
+          loaded.stream?.elapsedSeconds
+        )
+        results.push({
+          ...loaded,
+          stream: loaded.stream ? {
+            distanceMeters: loaded.stream.distanceMeters,
+            elapsedSeconds: loaded.stream.elapsedSeconds,
+            moving: loaded.stream.moving,
+          } : null,
+          ...(courseSegments.length > 0 ? { courseSegments } : {}),
+        })
       }
       if (onSaveActivityResults) await onSaveActivityResults(results)
       setActivities(results)
@@ -231,7 +273,7 @@ export function TrainingAnalysisPanel({
                       {comparison && (
                         <div className="mt-3 grid grid-cols-2 gap-3 border-t border-neutral-800 pt-3 text-sm sm:max-w-md sm:ml-auto">
                           <div><p className="text-xs text-neutral-500">Your moving time</p><p className="font-medium text-white">{formatDurationWords(comparison.movingMinutes)}</p></div>
-                          <div><p className="text-xs text-neutral-500">Against Plan A</p><p className={comparison.delta.tone === 'faster' ? 'font-medium text-emerald-300' : comparison.delta.tone === 'slower' ? 'font-medium text-orange-300' : 'font-medium text-neutral-200'}>{comparison.delta.label}</p></div>
+                          <div><p className="text-xs text-neutral-500">{comparison.spatiallyMatched ? 'Against matched Plan A' : 'Against Plan A'}</p><p className={comparison.delta.tone === 'faster' ? 'font-medium text-emerald-300' : comparison.delta.tone === 'slower' ? 'font-medium text-orange-300' : 'font-medium text-neutral-200'}>{comparison.delta.label}</p></div>
                         </div>
                       )}
                     </button>

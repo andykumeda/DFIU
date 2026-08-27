@@ -77,7 +77,7 @@ Open a training route to:
 - Connect Strava and enter one or more activity links or IDs, one per line.
 - Compare each matched training section independently with Plan A.
 
-DFIU uses Strava **moving time**, not elapsed time. When Strava streams are available, it uses the timing of each matched training portion; otherwise it uses a clearly limited distance-weighted moving-time estimate. Results and activity entries are saved with the training route and remain available in later sessions.
+DFIU uses Strava **moving time**, not elapsed time. When Strava GPS and timing streams are available, it correlates the activity trace directly with the race GPX and uses only the matching directional pass. This means an out-and-back activity can contribute only its outbound half when the race runs that corridor once, even if the activity and saved training route start at different places. Otherwise DFIU uses a clearly limited distance-weighted moving-time estimate. Results and activity entries are saved with the training route and remain available in later sessions.
 
 ## Resources
 

@@ -315,7 +315,7 @@ export function computeTrainingMapOverlap(
   }
 
   const ranges: TrainingMapOverlapSegment[] = []
-  type MapHit = { trainingMi: number; courseMi: number }
+  type MapHit = { trainingMi: number; courseMi: number; lat: number; lon: number }
   let streak: MapHit[] = []
 
   const emit = (hits: MapHit[]) => {
@@ -328,12 +328,15 @@ export function computeTrainingMapOverlap(
     const trimmedStart = start + trim
     const trimmedEnd = lastHit - trim
     if (trimmedEnd - trimmedStart < 0.05) return
-    const courseMiles = followed.map(h => h.courseMi)
+    const courseMiles = followed.map(hit => hit.courseMi)
+    const courseLo = Math.min(...courseMiles)
+    const courseHi = Math.max(...courseMiles)
+    const forward = followed[followed.length - 1].courseMi >= followed[0].courseMi
     ranges.push({
       trainingStartMi: round2(trimmedStart),
       trainingEndMi: round2(trimmedEnd),
-      courseStartMi: round2(Math.min(...courseMiles)),
-      courseEndMi: round2(Math.max(...courseMiles)),
+      courseStartMi: round2(forward ? courseLo : courseHi),
+      courseEndMi: round2(forward ? courseHi : courseLo),
     })
   }
 
@@ -345,13 +348,13 @@ export function computeTrainingMapOverlap(
     let part: MapHit[] = [streak[0]]
     for (let i = 1; i < streak.length; i++) {
       if (Math.abs(streak[i].courseMi - streak[i - 1].courseMi) > COURSE_JUMP_SPLIT_MI) {
-        emit(part)
+        for (const leg of splitAndRemapOutAndBack(part, courseCoords, bufferMi)) emit(leg)
         part = [streak[i]]
       } else {
         part.push(streak[i])
       }
     }
-    emit(part)
+    for (const leg of splitAndRemapOutAndBack(part, courseCoords, bufferMi)) emit(leg)
     streak = []
   }
 
@@ -359,7 +362,7 @@ export function computeTrainingMapOverlap(
     const [lon, lat] = coords[i]
     const nearest = nearestOnCourse(lat, lon)
     if (nearest != null && nearest.distance <= bufferMi) {
-      streak.push({ trainingMi: miles[i], courseMi: nearest.courseMi })
+      streak.push({ trainingMi: miles[i], courseMi: nearest.courseMi, lat, lon })
     } else if (streak.length > 0 && miles[i] - streak[streak.length - 1].trainingMi > gapBridgeMi) {
       flushStreak()
     }
@@ -368,6 +371,9 @@ export function computeTrainingMapOverlap(
   ranges.sort((a, b) => a.trainingStartMi - b.trainingStartMi)
   if (options?.mergeAdjacent === false) return ranges
 
+  // Map painting cares about continuous training geometry, even when the same
+  // physical trail corresponds to two race visits. Callers doing calculations
+  // request raw direction-preserving ranges with `mergeAdjacent: false`.
   const merged: TrainingMapOverlapSegment[] = []
   for (const range of ranges) {
     const previous = merged[merged.length - 1]
@@ -463,7 +469,7 @@ function snapNearPredictedMile(
  * Find a clear out-and-back turnaround index within a contiguous hit stretch.
  * Returns null when the stretch is not a directional out-and-back.
  */
-function findTurnaroundIndex(hits: AssignedHit[]): number | null {
+function findTurnaroundIndex<T extends { courseMi: number }>(hits: T[]): number | null {
   if (hits.length < 12) return null
 
   const earlyCount = Math.max(4, Math.floor(hits.length / 5))
@@ -511,12 +517,20 @@ function splitAndRemapOutAndBack(
   const returning = hits.slice(turnIdx).map(h => ({ ...h }))
   if (returning.length < 2) return [hits]
 
-  const turn = hits[turnIdx]
-  const earlyTrend = hits[Math.max(4, Math.floor(hits.length / 5)) - 1].courseMi - hits[0].courseMi
+  const probeOffset = Math.max(1, Math.floor((returning.length - 1) / 2))
+  const probe = returning[probeOffset]
+
+  // A course with nearby parallel/repeated visits can make snapping reverse
+  // even while the athlete continues forward. Require the physical trace to
+  // revisit an earlier part of itself before treating it as an out-and-back.
+  const outboundTrace = outbound.slice(0, Math.max(2, outbound.length - 2)).map(h => [h.lon, h.lat] as LonLat)
+  const retrace = getNearestPointOnLine({ lat: probe.lat, lon: probe.lon }, outboundTrace)
+  if (!retrace || retrace.distance > bufferMi * 1.5) return [hits]
+
   const outLo = Math.min(...outbound.map(h => h.courseMi))
   const outHi = Math.max(...outbound.map(h => h.courseMi))
-  const returnEnd = returning[returning.length - 1].courseMi
-  const retracingOutbound = returnEnd >= outLo - 0.3 && returnEnd <= outHi + 0.3
+  const returnEndMi = returning[returning.length - 1].courseMi
+  const retracingOutbound = returnEndMi >= outLo - 0.3 && returnEndMi <= outHi + 0.3
 
   if (!retracingOutbound) {
     // Course miles already continue past the turnaround (mirrored race OAB).
@@ -524,30 +538,28 @@ function splitAndRemapOutAndBack(
     return [outbound, returning]
   }
 
-  const visits = getAllVisitsOnLine({ lat: turn.lat, lon: turn.lon }, courseCoords, bufferMi, 0.75).filter(
+  // Probe well into the returning leg. At a turnaround apex, both race visits
+  // share the same mile; farther down the trail a real later race visit has a
+  // distinct course mile that can be selected unambiguously.
+  const visits = getAllVisitsOnLine({ lat: probe.lat, lon: probe.lon }, courseCoords, bufferMi, 0.75).filter(
     v => v.distance <= bufferMi
   )
-  const candidates = visits.filter(v => Math.abs(v.mile - turn.courseMi) > COURSE_JUMP_SPLIT_MI)
+  const candidates = visits.filter(v => Math.abs(v.mile - probe.courseMi) > COURSE_JUMP_SPLIT_MI)
 
   if (candidates.length > 0) {
     // Race revisits this trail later/earlier — map return onto that pass.
-    const preferLater = earlyTrend < 0
-    const chosen =
-      candidates.find(v => (preferLater ? v.mile > turn.courseMi : v.mile < turn.courseMi)) ??
-      candidates.sort((a, b) => Math.abs(b.mile - turn.courseMi) - Math.abs(a.mile - turn.courseMi))[0]
+    const chosen = candidates.sort((a, b) => Math.abs(b.mile - probe.courseMi) - Math.abs(a.mile - probe.courseMi))[0]
 
+    const direction = chosen.mile >= probe.courseMi ? 1 : -1
     for (let i = 0; i < returning.length; i++) {
-      returning[i].courseMi = chosen.mile + (turn.courseMi - hits[turnIdx + i].courseMi)
+      returning[i].courseMi = chosen.mile + direction * (returning[i].trainingMi - probe.trainingMi)
     }
     return [outbound, returning]
   }
 
-  // Continuous race out-and-back: mirror mistaken reverse-on-same-visit snaps
-  // past the apex so miles keep advancing (Hillyer).
-  for (let i = 0; i < returning.length; i++) {
-    returning[i].courseMi = 2 * turn.courseMi - hits[turnIdx + i].courseMi
-  }
-  return [outbound.concat(returning.slice(1))]
+  // The race only traverses this corridor once. Preserve the two directional
+  // training passes; do not invent later race miles for the return leg.
+  return [outbound, returning]
 }
 
 /**

@@ -156,6 +156,23 @@ describe('computeTrainingOverlap', () => {
     expect(Math.max(returnSeg.courseStartMi, returnSeg.courseEndMi)).toBeGreaterThan(5)
   })
 
+  it('keeps both training directions on a race corridor that is traversed once', () => {
+    // Race continues beyond the turnaround; training runs its first 10 miles
+    // out and back. The return must not be mirrored onto invented miles 10–20.
+    const course = makeLine(37, -122, 201, 0.1)
+    const outbound = course.slice(0, 101)
+    const training = [...outbound, ...outbound.slice(0, -1).reverse()]
+
+    const raw = computeTrainingMapOverlap(training, course, { mergeAdjacent: false })
+    expect(raw.some(segment => segment.courseEndMi > segment.courseStartMi)).toBe(true)
+    expect(raw.some(segment => segment.courseEndMi < segment.courseStartMi)).toBe(true)
+
+    const result = computeTrainingOverlap(training, course)
+    expect(result.overlapMiles).toBeGreaterThan(9)
+    expect(result.overlapMiles).toBeLessThan(11)
+    expect(Math.max(...result.segments.flatMap(segment => [segment.courseStartMi, segment.courseEndMi]))).toBeLessThan(11)
+  })
+
   it('handles empty inputs', () => {
     expect(computeTrainingOverlap([], [])).toEqual({ overlapMiles: 0, segments: [] })
     expect(computeTrainingOverlap([[0, 0]], [[1, 1], [2, 2]])).toEqual({

@@ -248,6 +248,7 @@ type ActivityDistanceTimeStream = {
     distanceMeters: number[]
     elapsedSeconds: number[]
     moving: boolean[]
+    latlng?: [number, number][]
 }
 
 async function getActivityDistanceTimeStream(accessToken: string, activityId: string): Promise<ActivityDistanceTimeStream | null> {
@@ -255,7 +256,7 @@ async function getActivityDistanceTimeStream(accessToken: string, activityId: st
     // or privacy-restricted activities, in which case the client uses its safe
     // moving-time-only distance-weighted fallback.
     const params = new URLSearchParams({
-        keys: 'time,distance,moving',
+        keys: 'time,distance,moving,latlng',
         key_by_type: 'true',
     })
     const response = await fetch(`https://www.strava.com/api/v3/activities/${activityId}/streams?${params.toString()}`, {
@@ -267,10 +268,16 @@ async function getActivityDistanceTimeStream(accessToken: string, activityId: st
     const distanceMeters = numberStream(streams.distance?.data)
     const elapsedSeconds = numberStream(streams.time?.data)
     const moving = booleanStream(streams.moving?.data)
+    const latlng = latLngStream(streams.latlng?.data)
     if (distanceMeters.length < 2 || distanceMeters.length !== elapsedSeconds.length || elapsedSeconds.length !== moving.length) {
         return null
     }
-    return { distanceMeters, elapsedSeconds, moving }
+    return {
+        distanceMeters,
+        elapsedSeconds,
+        moving,
+        ...(latlng.length === distanceMeters.length ? { latlng } : {}),
+    }
 }
 
 function numberStream(data: unknown): number[] {
@@ -282,6 +289,14 @@ function numberStream(data: unknown): number[] {
 function booleanStream(data: unknown): boolean[] {
     if (!Array.isArray(data)) return []
     return data.map(value => value === true || value === 1 || value === 'true')
+}
+
+function latLngStream(data: unknown): [number, number][] {
+    if (!Array.isArray(data)) return []
+    const values = data.map(value => Array.isArray(value) ? [Number(value[0]), Number(value[1])] as [number, number] : null)
+    return values.every((value): value is [number, number] => value != null && Number.isFinite(value[0]) && Number.isFinite(value[1]))
+        ? values
+        : []
 }
 
 async function getValidAccessToken(input: {
