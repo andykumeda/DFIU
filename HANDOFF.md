@@ -2,13 +2,15 @@
 
 **Date:** 2026-08-31
 **Branch:** `main`
-**Status:** In progress: refine the desktop Training detail columns from annotated production feedback.
+**Status:** Complete: deployed the annotated desktop Training detail column order.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Latest deployment
 
-- Current task: make `Route plan` the first content in the desktop right column. Move the route title/name, description, distance/elevation, directions, and `Compare a completed Strava run` beneath the map in the left column; preserve the stacked mobile flow.
+- `Route plan` now begins at the top of the desktop right column. The route title/name, description, distance/elevation, directions, and `Compare a completed Strava run` render beneath the map in the left column without duplicating Training Analysis state.
+- Exact production verification passed on training route `be2975d3-6e19-43ef-82db-01805a142857`: the top desktop viewport shows map left / Route plan right, the lower viewport shows Strava controls left / Section 4 right while the map remains sticky, and the 390 px order remains map → route details → Route plan → Strava.
+- Validation: 111 tests pass; build passes; lint has 0 errors and 49 pre-existing warnings; `git diff --check` passes. Production serves `index-B0fyzod9.js`; the browser warning/error console is empty. Product deployment commit is `4d46d80`; no side branches or additional worktrees remain.
 
 - Projected Strava subsections now integrate moving time over their actual activity-distance bounds instead of linearly interpolated timestamps across a coarse course match. Timestamp-only saved activities retain the existing fallback.
 - Exact production verification on activity `19953468815`, training route `be2975d3-6e19-43ef-82db-01805a142857`: Section 1 remains `1 hour 11 mins` / `7 mins slower than Plan A`; Section 4 is corrected from `36 mins` / `4 mins slower` to `22 mins` / `9 mins faster`.
