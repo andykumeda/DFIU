@@ -37,6 +37,9 @@ export const COURSE_RANGE_MERGE_MI = 1.25
  */
 export const COURSE_JUMP_SPLIT_MI = 2.5
 
+/** Treat near-identical snaps as the same corridor and prefer course-mile continuity. */
+const COURSE_VISIT_DISTANCE_TIE_MI = 0.002
+
 export interface OverlapSegment {
   courseStartMi: number
   courseEndMi: number
@@ -263,6 +266,7 @@ export function computeTrainingMapOverlap(
 
   const bufferMi = options?.bufferMi ?? MAP_OVERLAP_BUFFER_MI
   const gapBridgeMi = options?.gapBridgeMi ?? MAP_OVERLAP_GAP_BRIDGE_MI
+  const preserveVisitContinuity = options?.mergeAdjacent !== false
   const { coords, miles } = downsampleByDistance(trainingCoords, OVERLAP_SAMPLE_STEP_MI)
   const GRID_DEG = 0.001
   const grid = new Map<string, number[]>()
@@ -284,7 +288,7 @@ export function computeTrainingMapOverlap(
   }
   const courseCum = cumulativeMiles(courseCoords)
 
-  const nearestOnCourse = (lat: number, lon: number) => {
+  const nearestOnCourse = (lat: number, lon: number, predictedCourseMi: number | null) => {
     const gx = Math.floor(lon / GRID_DEG)
     const gy = Math.floor(lat / GRID_DEG)
     const seen = new Set<number>()
@@ -292,6 +296,7 @@ export function computeTrainingMapOverlap(
     let bestIndex = 0
     let bestLat = lat
     let bestLon = lon
+    let hinted: { distance: number; courseMi: number } | null = null
     for (let dx = -2; dx <= 2; dx++) {
       for (let dy = -2; dy <= 2; dy++) {
         const segs = grid.get(`${gx + dx}:${gy + dy}`)
@@ -306,10 +311,24 @@ export function computeTrainingMapOverlap(
             bestLat = snapped.lat
             bestLon = snapped.lon
           }
+          if (snapped && predictedCourseMi != null && snapped.distance <= bufferMi) {
+            const along = getDistance(courseCoords[s][1], courseCoords[s][0], snapped.lat, snapped.lon)
+            const courseMi = courseCum[s] + along
+            const mileDiff = Math.abs(courseMi - predictedCourseMi)
+            const hintedDiff = hinted ? Math.abs(hinted.courseMi - predictedCourseMi) : Infinity
+            if (
+              mileDiff <= COURSE_JUMP_SPLIT_MI &&
+              (mileDiff < hintedDiff - 1e-6 ||
+                (Math.abs(mileDiff - hintedDiff) <= 1e-6 && snapped.distance < hinted!.distance))
+            ) {
+              hinted = { distance: snapped.distance, courseMi }
+            }
+          }
         }
       }
     }
     if (bestDist === Infinity) return null
+    if (hinted && hinted.distance <= bestDist + COURSE_VISIT_DISTANCE_TIE_MI) return hinted
     const along = getDistance(courseCoords[bestIndex][1], courseCoords[bestIndex][0], bestLat, bestLon)
     return { distance: bestDist, courseMi: courseCum[bestIndex] + along }
   }
@@ -317,6 +336,9 @@ export function computeTrainingMapOverlap(
   const ranges: TrainingMapOverlapSegment[] = []
   type MapHit = { trainingMi: number; courseMi: number; lat: number; lon: number }
   let streak: MapHit[] = []
+  let lastCourseMi: number | null = null
+  let courseVelocity: number | null = null
+  let lastTrainingMi: number | null = null
 
   const emit = (hits: MapHit[]) => {
     const followed = longestTrailFollowingHits(hits)
@@ -360,11 +382,34 @@ export function computeTrainingMapOverlap(
 
   for (let i = 0; i < coords.length; i++) {
     const [lon, lat] = coords[i]
-    const nearest = nearestOnCourse(lat, lon)
+    const trainingMi = miles[i]
+    const trainingDelta = lastTrainingMi == null ? 0 : Math.max(1e-6, trainingMi - lastTrainingMi)
+    const predictedCourseMi = lastCourseMi == null
+      ? null
+      : lastCourseMi + (courseVelocity ?? 0) * trainingDelta
+    const nearest = nearestOnCourse(lat, lon, preserveVisitContinuity ? predictedCourseMi : null)
     if (nearest != null && nearest.distance <= bufferMi) {
-      streak.push({ trainingMi: miles[i], courseMi: nearest.courseMi, lat, lon })
-    } else if (streak.length > 0 && miles[i] - streak[streak.length - 1].trainingMi > gapBridgeMi) {
+      streak.push({ trainingMi, courseMi: nearest.courseMi, lat, lon })
+      if (lastCourseMi != null && lastTrainingMi != null) {
+        const courseDelta = nearest.courseMi - lastCourseMi
+        if (Math.abs(courseDelta) <= COURSE_JUMP_SPLIT_MI) {
+          const instantaneousVelocity = courseDelta / trainingDelta
+          if (Math.abs(instantaneousVelocity) <= 4) {
+            courseVelocity = courseVelocity == null
+              ? instantaneousVelocity
+              : courseVelocity * 0.4 + instantaneousVelocity * 0.6
+          }
+        } else {
+          courseVelocity = null
+        }
+      }
+      lastCourseMi = nearest.courseMi
+      lastTrainingMi = trainingMi
+    } else if (streak.length > 0 && trainingMi - streak[streak.length - 1].trainingMi > gapBridgeMi) {
       flushStreak()
+      lastCourseMi = null
+      courseVelocity = null
+      lastTrainingMi = null
     }
   }
   flushStreak()

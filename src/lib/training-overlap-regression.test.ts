@@ -77,4 +77,18 @@ describe('reported training overlap regression', () => {
     ])
     expect(aidStationSummary?.segments).toHaveLength(4)
   })
+
+  it('keeps the final approach red when start and finish reuse the same corridor', () => {
+    const fixture = JSON.parse(
+      // Reflected and reduced from the reported Angeles Crest route so the
+      // repeated start/finish geometry is retained without storing its location.
+      readFileSync(new URL('./fixtures/repeated-start-finish-overlap.json', import.meta.url), 'utf8')
+    ) as ContinuousFixture
+
+    const segments = computeTrainingMapOverlap(fixture.training, fixture.course)
+
+    expect(segments).toHaveLength(1)
+    expect(segments[0].trainingStartMi).toBeLessThan(0.1)
+    expect(segments[0].trainingEndMi).toBeGreaterThan(1)
+  })
 })

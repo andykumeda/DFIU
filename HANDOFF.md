@@ -1,12 +1,14 @@
 # Handoff Document
 
-**Date:** 2026-08-27
+**Date:** 2026-08-31
 **Branch:** `main`
-**Status:** Complete: corrected and deployed Training/Strava calculations for race `fca7696b-6093-49a7-be8a-ba3c0a480643`, route `ec6d73f7-ee26-48eb-8ed9-df6d6f598eb4`, and Strava activity `19868480612`.
+**Status:** In progress: correct the missing final overlap on race `fca7696b-6093-49a7-be8a-ba3c0a480643`, training route `eeccaffc-1a9f-4648-a5e5-6bc7893f0fe5`. Production currently leaves the final approach blue after a reverse-direction overlap ending around training mi 17.4 / race mi 0.9.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Latest deployment
+
+- Current task is not deployed yet. Exact acceptance case: the blue training segment immediately before the finish must render red overlap on `?training=eeccaffc-1a9f-4648-a5e5-6bc7893f0fe5`.
 
 - Preserved GPX direction so an out-and-back training route contributes only the pass matching race direction; a one-pass race corridor can no longer fabricate later course miles from the return leg.
 - Added transient Strava `latlng` retrieval and race-GPX correlation. Saved activity mappings use exact activity timestamps for moving-time comparisons and do not persist the large GPS stream.
