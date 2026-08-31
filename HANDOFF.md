@@ -2,13 +2,15 @@
 
 **Date:** 2026-08-31
 **Branch:** `main`
-**Status:** In progress: correct the missing final overlap on race `fca7696b-6093-49a7-be8a-ba3c0a480643`, training route `eeccaffc-1a9f-4648-a5e5-6bc7893f0fe5`. Production currently leaves the final approach blue after a reverse-direction overlap ending around training mi 17.4 / race mi 0.9.
+**Status:** Complete: corrected and deployed the missing final visual overlap on race `fca7696b-6093-49a7-be8a-ba3c0a480643`, training route `eeccaffc-1a9f-4648-a5e5-6bc7893f0fe5`.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Latest deployment
 
-- Current task is not deployed yet. Exact acceptance case: the blue training segment immediately before the finish must render red overlap on `?training=eeccaffc-1a9f-4648-a5e5-6bc7893f0fe5`.
+- Repeated start/finish course visits now use course-mile continuity when their physical snaps are effectively tied, preventing visual overlap from fragmenting across ~100-mile visit jumps. Raw analytical segments remain direction-preserving.
+- Exact production verification passed: the street approach immediately before the `F/S` marker is red while the perpendicular off-course road remains blue. Production serves `index-C_aavgE1.js`; no new console warnings/errors appeared after deployment.
+- Validation: 110 tests pass; build passes; lint has 0 errors and 49 pre-existing warnings; `git diff --check` passes. Product deployment commit is `c362e72`; no side branches or additional worktrees remain.
 
 - Preserved GPX direction so an out-and-back training route contributes only the pass matching race direction; a one-pass race corridor can no longer fabricate later course miles from the return leg.
 - Added transient Strava `latlng` retrieval and race-GPX correlation. Saved activity mappings use exact activity timestamps for moving-time comparisons and do not persist the large GPS stream.
@@ -90,7 +92,7 @@
 
 ## Open
 
-- Last product deployment: Training GPS proximity-artifact filter (`4f7657f`).
+- Last product deployment: repeated start/finish visual-overlap continuity fix (`c362e72`).
 - Smoke-test Settings race history (Strava + GPX) and Pace ability card.
 - Design and implement the opt-in post-event feedback email flow.
 - Rotate Strava secret; verify RBAC with a second account; `/admin` + owner-transfer UI.
