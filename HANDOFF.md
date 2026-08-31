@@ -2,11 +2,13 @@
 
 **Date:** 2026-08-31
 **Branch:** `main`
-**Status:** Complete: corrected subsection Strava moving-time calculations and deployed a desktop sticky-map Route plan layout.
+**Status:** In progress: refine the desktop Training detail columns from annotated production feedback.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Latest deployment
+
+- Current task: make `Route plan` the first content in the desktop right column. Move the route title/name, description, distance/elevation, directions, and `Compare a completed Strava run` beneath the map in the left column; preserve the stacked mobile flow.
 
 - Projected Strava subsections now integrate moving time over their actual activity-distance bounds instead of linearly interpolated timestamps across a coarse course match. Timestamp-only saved activities retain the existing fallback.
 - Exact production verification on activity `19953468815`, training route `be2975d3-6e19-43ef-82db-01805a142857`: Section 1 remains `1 hour 11 mins` / `7 mins slower than Plan A`; Section 4 is corrected from `36 mins` / `4 mins slower` to `22 mins` / `9 mins faster`.

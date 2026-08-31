@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, Download, ExternalLink, MapPin, Mountain, Route as RouteIcon, Share2, Trash2 } from 'lucide-react'
 import type { Course, Json, Race, Waypoint } from '@/types/database'
 import { parseGpxWaypoints, sampleElevationProfile } from '@/lib/gpx-parser'
@@ -54,7 +54,19 @@ export function TrainingRouteDetail({
     trainingStartMi: number
     trainingEndMi: number
   } | null>(null)
+  const [desktopColumns, setDesktopColumns] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches
+  )
+  const [stravaControlsTarget, setStravaControlsTarget] = useState<HTMLDivElement | null>(null)
   const mapSectionRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const query = window.matchMedia('(min-width: 768px)')
+    const syncLayout = () => setDesktopColumns(query.matches)
+    syncLayout()
+    query.addEventListener('change', syncLayout)
+    return () => query.removeEventListener('change', syncLayout)
+  }, [])
 
   const trainingCoords = useMemo(() => extractCoordinates(route.geometry), [route.geometry])
   const courseCoords = useMemo(
@@ -221,9 +233,10 @@ export function TrainingRouteDetail({
       </div>
 
       <div className="md:grid md:grid-cols-[minmax(0,1fr)_minmax(21rem,0.85fr)] md:items-start md:gap-6">
+        <div className="min-w-0 md:h-full">
         <div
           ref={mapSectionRef}
-          className="space-y-2 md:sticky md:self-start"
+          className="space-y-2 md:sticky md:z-10 md:self-start md:bg-neutral-950"
           style={{ top: 'calc(var(--page-header-h, 0px) + 1rem)' }}
         >
           <label className="inline-flex items-center gap-2 text-sm text-neutral-300 cursor-pointer">
@@ -354,6 +367,12 @@ export function TrainingRouteDetail({
           </div>
         )}
 
+        </div>
+        <div ref={setStravaControlsTarget} />
+        </div>
+
+        <div className="min-w-0">
+
         <TrainingAnalysisPanel
           routes={[route]}
           planA={planA}
@@ -362,6 +381,8 @@ export function TrainingRouteDetail({
           clock24h={clock24h}
           aidStations={aidStations}
           hideRoutePicker
+          routePlanAtColumnTop
+          stravaControlsTarget={desktopColumns ? stravaControlsTarget : null}
           highlightedOverlap={highlightedOverlap}
           onHighlightOverlap={selectOverlap}
           savedActivityInputs={Array.isArray(route.strava_activity_inputs) ? route.strava_activity_inputs.filter((value): value is string => typeof value === 'string') : []}

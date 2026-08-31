@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { Activity, Link2, LoaderCircle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { STRAVA_RETURN_TO_STORAGE_KEY } from '@/features/auth/StravaCallback'
@@ -48,6 +49,8 @@ interface TrainingAnalysisPanelProps {
   clock24h: boolean
   aidStations?: Pick<Waypoint, 'name' | 'mile' | 'type'>[]
   hideRoutePicker?: boolean
+  routePlanAtColumnTop?: boolean
+  stravaControlsTarget?: HTMLElement | null
   highlightedOverlap?: { trainingStartMi: number; trainingEndMi: number } | null
   onHighlightOverlap?: (segment: { trainingStartMi: number; trainingEndMi: number }) => void
   savedActivityInputs?: string[]
@@ -64,6 +67,8 @@ export function TrainingAnalysisPanel({
   clock24h,
   aidStations = [],
   hideRoutePicker = false,
+  routePlanAtColumnTop = false,
+  stravaControlsTarget = null,
   highlightedOverlap = null,
   onHighlightOverlap,
   savedActivityInputs = [],
@@ -220,7 +225,12 @@ export function TrainingAnalysisPanel({
   if (routes.length === 0) return null
 
   return (
-    <section className="mt-10 border-t border-neutral-800 pt-8" aria-labelledby="training-plan-title">
+    <section
+      className={routePlanAtColumnTop
+        ? 'mt-10 border-t border-neutral-800 pt-8 md:mt-0 md:border-t-0 md:pt-0'
+        : 'mt-10 border-t border-neutral-800 pt-8'}
+      aria-labelledby="training-plan-title"
+    >
       <div className="mb-5">
         <h2 id="training-plan-title" className="text-xl font-semibold text-white">Route plan</h2>
         <p className="mt-1 text-sm text-neutral-400">Your route, its on-course sections, and Plan A targets in one place.</p>
@@ -285,6 +295,7 @@ export function TrainingAnalysisPanel({
         </div>
       ) : <p className="text-sm text-neutral-500">This route has no detected course overlap yet.</p>}
 
+      <OptionalPortal target={stravaControlsTarget}>
       <details className="mt-4 rounded-xl border border-neutral-800 bg-neutral-900/50" open={activities.length > 0}>
         <summary className="cursor-pointer px-4 py-3 font-medium text-white marker:text-orange-300">Compare a completed Strava run</summary>
         <div className="border-t border-neutral-800 p-4">
@@ -297,8 +308,19 @@ export function TrainingAnalysisPanel({
           {error && <div className="mt-4 rounded-lg border border-red-900/70 bg-red-950/30 p-3 text-sm text-red-200"><p>{error}</p>{error.toLowerCase().includes('connect strava') && <button type="button" onClick={() => void connectStrava()} disabled={connecting} className="mt-2 inline-flex items-center gap-2 text-orange-300 hover:text-orange-200 font-medium disabled:opacity-50"><Activity className="w-4 h-4" aria-hidden />{connecting ? 'Opening Strava…' : 'Connect Strava'}</button>}</div>}
         </div>
       </details>
+      </OptionalPortal>
     </section>
   )
+}
+
+function OptionalPortal({
+  target,
+  children,
+}: {
+  target: HTMLElement | null
+  children: ReactNode
+}) {
+  return target ? createPortal(children, target) : children
 }
 
 function SummaryMetric({
