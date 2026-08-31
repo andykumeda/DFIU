@@ -2,13 +2,16 @@
 
 **Date:** 2026-08-31
 **Branch:** `main`
-**Status:** In progress: correct subsection Strava moving-time calculations and keep the training map visible beside the Route plan on desktop.
+**Status:** Complete: corrected subsection Strava moving-time calculations and deployed a desktop sticky-map Route plan layout.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Latest deployment
 
-- Current task: activity `19953468815` on training route `be2975d3-6e19-43ef-82db-01805a142857` shows Section 4 as 36 minutes because its timestamps are linearly interpolated across a coarse course match. The actual Strava distance stream yields about 22:29. Add a regression, use distance-bounded moving time for projected slices, and make the desktop map sticky beside the route details without changing mobile layout.
+- Projected Strava subsections now integrate moving time over their actual activity-distance bounds instead of linearly interpolated timestamps across a coarse course match. Timestamp-only saved activities retain the existing fallback.
+- Exact production verification on activity `19953468815`, training route `be2975d3-6e19-43ef-82db-01805a142857`: Section 1 remains `1 hour 11 mins` / `7 mins slower than Plan A`; Section 4 is corrected from `36 mins` / `4 mins slower` to `22 mins` / `9 mins faster`.
+- At viewports 768 px and wider, the map and elevation profile remain sticky beside the route details. Section 4's selected row and yellow map highlight were visible together in the supplied desktop flow. At 390 px the page remains stacked; the map precedes Route plan at full content width.
+- Validation: 111 tests pass; build passes; lint has 0 errors and 49 pre-existing warnings; `git diff --check` passes. Production serves `index-DvLe0uDO.js`; the browser warning/error console is empty. Product deployment commit is `6b72490`; no side branches or additional worktrees remain.
 
 - Repeated start/finish course visits now use course-mile continuity when their physical snaps are effectively tied, preventing visual overlap from fragmenting across ~100-mile visit jumps. Raw analytical segments remain direction-preserving.
 - Exact production verification passed: the street approach immediately before the `F/S` marker is red while the perpendicular off-course road remains blue. Production serves `index-C_aavgE1.js`; no new console warnings/errors appeared after deployment.
