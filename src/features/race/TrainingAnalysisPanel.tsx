@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { createPortal } from 'react-dom'
+import { useEffect, useMemo, useState } from 'react'
 import { Activity, Link2, LoaderCircle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { STRAVA_RETURN_TO_STORAGE_KEY } from '@/features/auth/StravaCallback'
@@ -50,7 +49,6 @@ interface TrainingAnalysisPanelProps {
   aidStations?: Pick<Waypoint, 'name' | 'mile' | 'type'>[]
   hideRoutePicker?: boolean
   routePlanAtColumnTop?: boolean
-  stravaControlsTarget?: HTMLElement | null
   highlightedOverlap?: { trainingStartMi: number; trainingEndMi: number } | null
   onHighlightOverlap?: (segment: { trainingStartMi: number; trainingEndMi: number }) => void
   savedActivityInputs?: string[]
@@ -68,7 +66,6 @@ export function TrainingAnalysisPanel({
   aidStations = [],
   hideRoutePicker = false,
   routePlanAtColumnTop = false,
-  stravaControlsTarget = null,
   highlightedOverlap = null,
   onHighlightOverlap,
   savedActivityInputs = [],
@@ -244,6 +241,19 @@ export function TrainingAnalysisPanel({
             <SummaryMetric label="Plan A on-course time" value={summary.raceDurationLabel ?? 'Generate Plan A'} detail="Excludes aid-station stops at section starts" />
           </dl>
 
+          <details className="rounded-xl border border-neutral-700 bg-neutral-900/80 shadow-sm" open>
+            <summary className="cursor-pointer px-4 py-3 font-medium text-white marker:text-orange-300">Compare a completed Strava run</summary>
+            <div className="border-t border-neutral-800 p-4">
+              <div className={`grid grid-cols-1 ${hideRoutePicker ? 'lg:grid-cols-[minmax(0,1fr)_auto]' : 'lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)_auto]'} gap-3 items-end`}>
+                {!hideRoutePicker && <label className="block"><span className="block text-xs uppercase tracking-wide text-neutral-500 mb-1.5">Training route</span><select value={selectedRoute?.id ?? ''} onChange={event => { setRouteId(event.target.value); setActivities([]); setError(null) }} className="w-full bg-neutral-950 border border-neutral-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-orange-400">{routes.map(route => <option key={route.id} value={route.id}>{route.name}</option>)}</select></label>}
+                <label className="block"><span className="block text-xs uppercase tracking-wide text-neutral-500 mb-1.5">Strava run</span><div className="relative"><Link2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" aria-hidden /><textarea value={activityInput} onChange={event => setActivityInput(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) void analyzeActivity() }} rows={3} placeholder="Paste one Strava activity link or ID per line" className="w-full bg-neutral-950 border border-neutral-700 rounded-lg pl-9 pr-3 py-2.5 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-orange-400 resize-y" /></div></label>
+                <button type="button" onClick={() => void analyzeActivity()} disabled={loading || !summary?.segments.some(segment => segment.raceDurationMinutes != null)} className="inline-flex items-center justify-center gap-2 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-lg text-sm font-medium">{loading && <LoaderCircle className="w-4 h-4 animate-spin" aria-hidden />}Analyze runs</button>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-500"><p>{connectionStatus?.connected ? <>Connected as <span className="font-medium text-emerald-300">{connectionStatus.athleteName}</span> on Strava.</> : connectionStatus ? 'No Strava account connected.' : 'Checking Strava connection…'} Your account is connected only to your signed-in DFIU account.</p><button type="button" onClick={() => void connectStrava()} disabled={connecting} className="inline-flex items-center gap-1.5 text-orange-300 hover:text-orange-200 font-medium disabled:opacity-50"><Activity className="w-3.5 h-3.5" aria-hidden />{connecting ? 'Opening Strava…' : 'Connect / reconnect Strava'}</button></div>
+              {error && <div className="mt-4 rounded-lg border border-red-900/70 bg-red-950/30 p-3 text-sm text-red-200"><p>{error}</p>{error.toLowerCase().includes('connect strava') && <button type="button" onClick={() => void connectStrava()} disabled={connecting} className="mt-2 inline-flex items-center gap-2 text-orange-300 hover:text-orange-200 font-medium disabled:opacity-50"><Activity className="w-4 h-4" aria-hidden />{connecting ? 'Opening Strava…' : 'Connect Strava'}</button>}</div>}
+            </div>
+          </details>
+
           {activeActivity && (
             <div className="rounded-lg border border-blue-900/60 bg-blue-950/20 px-3 py-2 text-sm text-blue-100">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -253,22 +263,22 @@ export function TrainingAnalysisPanel({
             </div>
           )}
 
-          <div className="rounded-xl border border-neutral-800 bg-neutral-900/50 overflow-hidden">
+          <div className="rounded-xl border border-neutral-800 bg-neutral-900/50 p-3">
             <div className="border-b border-neutral-800 px-4 py-3">
               <h3 className="font-medium text-white">On-course sections</h3>
               <p className="mt-0.5 text-xs text-neutral-500">Select a section to highlight it on the map. Non-consecutive training miles stay separate.</p>
             </div>
-            <ul className="divide-y divide-neutral-800">
+            <ul className="mt-3 space-y-3">
               {summary.segments.map((segment, index) => {
                 const comparison = activityComparisons[index]
                 const selected = isSameTrainingOverlap(highlightedOverlap, segment)
                 return (
-                  <li key={`${segment.courseMilesLabel}-${segment.trainingMilesLabel}`}>
+                  <li key={`${segment.courseMilesLabel}-${segment.trainingMilesLabel}`} className="overflow-hidden rounded-lg border border-neutral-700 bg-neutral-950/70">
                     <button
                       type="button"
                       aria-pressed={selected}
                       onClick={() => onHighlightOverlap?.(segment)}
-                      className={`w-full px-4 py-3.5 text-left transition-colors ${selected ? 'bg-yellow-400/10' : 'hover:bg-neutral-800/60'}`}
+                      className={`w-full px-4 py-3.5 text-left transition-colors ${selected ? 'bg-yellow-400/15 ring-1 ring-inset ring-yellow-400/50' : 'hover:bg-neutral-800/60'}`}
                     >
                       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
                         <div>
@@ -295,32 +305,8 @@ export function TrainingAnalysisPanel({
         </div>
       ) : <p className="text-sm text-neutral-500">This route has no detected course overlap yet.</p>}
 
-      <OptionalPortal target={stravaControlsTarget}>
-      <details className="mt-4 rounded-xl border border-neutral-800 bg-neutral-900/50" open={activities.length > 0}>
-        <summary className="cursor-pointer px-4 py-3 font-medium text-white marker:text-orange-300">Compare a completed Strava run</summary>
-        <div className="border-t border-neutral-800 p-4">
-          <div className={`grid grid-cols-1 ${hideRoutePicker ? 'lg:grid-cols-[minmax(0,1fr)_auto]' : 'lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)_auto]'} gap-3 items-end`}>
-            {!hideRoutePicker && <label className="block"><span className="block text-xs uppercase tracking-wide text-neutral-500 mb-1.5">Training route</span><select value={selectedRoute?.id ?? ''} onChange={event => { setRouteId(event.target.value); setActivities([]); setError(null) }} className="w-full bg-neutral-950 border border-neutral-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-orange-400">{routes.map(route => <option key={route.id} value={route.id}>{route.name}</option>)}</select></label>}
-            <label className="block"><span className="block text-xs uppercase tracking-wide text-neutral-500 mb-1.5">Strava run</span><div className="relative"><Link2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" aria-hidden /><textarea value={activityInput} onChange={event => setActivityInput(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) void analyzeActivity() }} rows={3} placeholder="Paste one Strava activity link or ID per line" className="w-full bg-neutral-950 border border-neutral-700 rounded-lg pl-9 pr-3 py-2.5 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-orange-400 resize-y" /></div></label>
-            <button type="button" onClick={() => void analyzeActivity()} disabled={loading || !summary?.segments.some(segment => segment.raceDurationMinutes != null)} className="inline-flex items-center justify-center gap-2 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-lg text-sm font-medium">{loading && <LoaderCircle className="w-4 h-4 animate-spin" aria-hidden />}Analyze runs</button>
-          </div>
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-500"><p>{connectionStatus?.connected ? <>Connected as <span className="font-medium text-emerald-300">{connectionStatus.athleteName}</span> on Strava.</> : connectionStatus ? 'No Strava account connected.' : 'Checking Strava connection…'} Your account is connected only to your signed-in DFIU account.</p><button type="button" onClick={() => void connectStrava()} disabled={connecting} className="inline-flex items-center gap-1.5 text-orange-300 hover:text-orange-200 font-medium disabled:opacity-50"><Activity className="w-3.5 h-3.5" aria-hidden />{connecting ? 'Opening Strava…' : 'Connect / reconnect Strava'}</button></div>
-          {error && <div className="mt-4 rounded-lg border border-red-900/70 bg-red-950/30 p-3 text-sm text-red-200"><p>{error}</p>{error.toLowerCase().includes('connect strava') && <button type="button" onClick={() => void connectStrava()} disabled={connecting} className="mt-2 inline-flex items-center gap-2 text-orange-300 hover:text-orange-200 font-medium disabled:opacity-50"><Activity className="w-4 h-4" aria-hidden />{connecting ? 'Opening Strava…' : 'Connect Strava'}</button>}</div>}
-        </div>
-      </details>
-      </OptionalPortal>
     </section>
   )
-}
-
-function OptionalPortal({
-  target,
-  children,
-}: {
-  target: HTMLElement | null
-  children: ReactNode
-}) {
-  return target ? createPortal(children, target) : children
 }
 
 function SummaryMetric({

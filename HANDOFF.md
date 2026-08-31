@@ -2,7 +2,13 @@
 
 **Date:** 2026-08-31
 **Branch:** `main`
-**Status:** Complete: deployed the annotated desktop Training detail column order.
+**Status:** In progress: applying annotated Training detail hierarchy and section-order refinements.
+
+## Current task
+
+- Make the four On-course sections read as distinct cards/sections rather than one undifferentiated box.
+- Move the completed Strava comparison between Route plan and Encore on the desktop Training detail view, expanded by default.
+- Verify the affected route visually at desktop and mobile widths, then build, lint, test, deploy, and update this handoff.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
