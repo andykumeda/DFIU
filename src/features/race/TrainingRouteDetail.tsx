@@ -104,7 +104,9 @@ export function TrainingRouteDetail({
 
   const selectOverlap = (segment: { trainingStartMi: number; trainingEndMi: number }) => {
     setHighlightedOverlap(current => (isSameTrainingOverlap(current, segment) ? null : segment))
-    mapSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    if (!window.matchMedia('(min-width: 768px)').matches) {
+      mapSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
   }
 
   const handleExport = () => {
@@ -218,43 +220,48 @@ export function TrainingRouteDetail({
         </div>
       </div>
 
-      <div className="space-y-2">
-        <label className="inline-flex items-center gap-2 text-sm text-neutral-300 cursor-pointer">
-          <input type="checkbox" checked={showCourseRoute} onChange={event => setShowCourseRoute(event.target.checked)} className="accent-blue-500" />
-          Show race course
-        </label>
-        <div ref={mapSectionRef} className="rounded-xl overflow-hidden border border-neutral-800 bg-neutral-950">
-          <div className="h-[360px] md:h-[420px]">
-            <TrainingRouteDetailMap
-              coordinates={trainingCoords}
-              courseCoordinates={showCourseRoute && courseCoords.length >= 2 ? courseCoords : undefined}
-              waypoints={trainingWaypoints}
-              overlapSegments={route.overlapSegments}
-              aidStations={aidStations}
-              highlightedOverlap={highlightedOverlap}
-              highlightMile={hoveredTrainingMile ?? undefined}
-              onHoverMile={setHoveredTrainingMile}
-              showLegend
-              className="w-full h-full"
-            />
-          </div>
-          <div
-            className="h-32 md:h-40 border-t border-neutral-800 bg-neutral-900"
-            aria-label="Training route elevation profile"
-          >
-            <ElevationProfile
-              data={sampledElevationProfile}
-              totalDistance={trainingDistance}
-              onHover={setHoveredTrainingMile}
-              highlightDistance={hoveredTrainingMile ?? undefined}
-              showMileMarkers
-              waypoints={elevationWaypoints}
-            />
+      <div className="md:grid md:grid-cols-[minmax(0,1fr)_minmax(21rem,0.85fr)] md:items-start md:gap-6">
+        <div
+          ref={mapSectionRef}
+          className="space-y-2 md:sticky md:self-start"
+          style={{ top: 'calc(var(--page-header-h, 0px) + 1rem)' }}
+        >
+          <label className="inline-flex items-center gap-2 text-sm text-neutral-300 cursor-pointer">
+            <input type="checkbox" checked={showCourseRoute} onChange={event => setShowCourseRoute(event.target.checked)} className="accent-blue-500" />
+            Show race course
+          </label>
+          <div className="rounded-xl overflow-hidden border border-neutral-800 bg-neutral-950">
+            <div className="h-[360px] md:h-[min(42vh,420px)]">
+              <TrainingRouteDetailMap
+                coordinates={trainingCoords}
+                courseCoordinates={showCourseRoute && courseCoords.length >= 2 ? courseCoords : undefined}
+                waypoints={trainingWaypoints}
+                overlapSegments={route.overlapSegments}
+                aidStations={aidStations}
+                highlightedOverlap={highlightedOverlap}
+                highlightMile={hoveredTrainingMile ?? undefined}
+                onHoverMile={setHoveredTrainingMile}
+                showLegend
+                className="w-full h-full"
+              />
+            </div>
+            <div
+              className="h-32 border-t border-neutral-800 bg-neutral-900"
+              aria-label="Training route elevation profile"
+            >
+              <ElevationProfile
+                data={sampledElevationProfile}
+                totalDistance={trainingDistance}
+                onHover={setHoveredTrainingMile}
+                highlightDistance={hoveredTrainingMile ?? undefined}
+                showMileMarkers
+                waypoints={elevationWaypoints}
+              />
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="space-y-4 max-w-3xl">
+        <div className="mt-6 min-w-0 space-y-4 md:mt-0">
         {canEdit ? (
           <label className="block">
             <span className="text-xs uppercase tracking-wide text-neutral-500">Name</span>
@@ -363,6 +370,7 @@ export function TrainingRouteDetail({
           onSaveActivityResults={results => onUpdate(route.id, { strava_activity_results: results as unknown as Json })}
           courseCoordinates={courseCoords}
         />
+        </div>
       </div>
     </div>
   )

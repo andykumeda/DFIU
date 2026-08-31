@@ -253,6 +253,24 @@ describe('Strava GPS correlation', () => {
     expect(getActivitySliceMovingMinutes(slices[0], { elapsedSeconds, moving })).toBeGreaterThan(95)
     expect(getActivitySliceMovingMinutes(slices[0], { elapsedSeconds, moving })).toBeLessThan(101)
   })
+
+  it('uses activity distance bounds when pace varies within a coarse course match', () => {
+    const slice = {
+      courseStartMi: 85.4,
+      courseEndMi: 87.8,
+      trainingStartMi: 6,
+      trainingEndMi: 8,
+      elapsedStartSeconds: 100,
+      elapsedEndSeconds: 500,
+    }
+    const stream = {
+      distanceMeters: [0, 6 * 1609.344, 7 * 1609.344, 8 * 1609.344, 10 * 1609.344],
+      elapsedSeconds: [0, 100, 700, 1300, 2000],
+      moving: [true, true, true, true, true],
+    }
+
+    expect(getActivitySliceMovingMinutes(slice, stream)).toBeCloseTo(20)
+  })
 })
 
 describe('isSameTrainingOverlap', () => {

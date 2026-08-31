@@ -2,11 +2,13 @@
 
 **Date:** 2026-08-31
 **Branch:** `main`
-**Status:** Complete: corrected and deployed the missing final visual overlap on race `fca7696b-6093-49a7-be8a-ba3c0a480643`, training route `eeccaffc-1a9f-4648-a5e5-6bc7893f0fe5`.
+**Status:** In progress: correct subsection Strava moving-time calculations and keep the training map visible beside the Route plan on desktop.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
 ## Latest deployment
+
+- Current task: activity `19953468815` on training route `be2975d3-6e19-43ef-82db-01805a142857` shows Section 4 as 36 minutes because its timestamps are linearly interpolated across a coarse course match. The actual Strava distance stream yields about 22:29. Add a regression, use distance-bounded moving time for projected slices, and make the desktop map sticky beside the route details without changing mobile layout.
 
 - Repeated start/finish course visits now use course-mile continuity when their physical snaps are effectively tied, preventing visual overlap from fragmenting across ~100-mile visit jumps. Raw analytical segments remain direction-preserving.
 - Exact production verification passed: the street approach immediately before the `F/S` marker is red while the perpendicular off-course road remains blue. Production serves `index-C_aavgE1.js`; no new console warnings/errors appeared after deployment.

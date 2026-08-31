@@ -47,6 +47,9 @@ export interface ActivityDistanceTimeStream {
   latlng?: [number, number][]
 }
 
+type ActivityMovingTimeStream = Pick<ActivityDistanceTimeStream, 'elapsedSeconds' | 'moving'>
+  & Partial<Pick<ActivityDistanceTimeStream, 'distanceMeters'>>
+
 export interface ActivityCourseSlice extends OverlapSegment {
   elapsedStartSeconds?: number
   elapsedEndSeconds?: number
@@ -230,11 +233,44 @@ export function getActivityCourseSlices(
   })
 }
 
-/** Moving time bounded by the spatial slice's actual activity timestamps. */
+function getDistanceRangeMovingMinutes(
+  startMi: number,
+  endMi: number,
+  stream?: ActivityMovingTimeStream | null
+): number | null {
+  const distance = stream?.distanceMeters
+  const elapsed = stream?.elapsedSeconds
+  const moving = stream?.moving
+  if (!distance || !elapsed || !moving || distance.length !== elapsed.length || elapsed.length !== moving.length || distance.length < 2) return null
+
+  let movingSeconds = 0
+  for (let index = 1; index < distance.length; index += 1) {
+    const intervalStartMi = Number(distance[index - 1]) / 1609.344
+    const intervalEndMi = Number(distance[index]) / 1609.344
+    const intervalMiles = intervalEndMi - intervalStartMi
+    const intervalSeconds = Number(elapsed[index]) - Number(elapsed[index - 1])
+    if (!moving[index] || !(intervalSeconds > 0)) continue
+    if (intervalMiles === 0) {
+      if (intervalStartMi >= startMi && intervalStartMi <= endMi) movingSeconds += intervalSeconds
+      continue
+    }
+    if (!(intervalMiles > 0)) continue
+    const sharedMiles = Math.max(0, Math.min(endMi, intervalEndMi) - Math.max(startMi, intervalStartMi))
+    movingSeconds += intervalSeconds * (sharedMiles / intervalMiles)
+  }
+  return movingSeconds > 0 ? movingSeconds / 60 : null
+}
+
+/** Moving time bounded by the spatial slice's actual activity distance. */
 export function getActivitySliceMovingMinutes(
   slice: ActivityCourseSlice,
-  stream?: Pick<ActivityDistanceTimeStream, 'elapsedSeconds' | 'moving'> | null
+  stream?: ActivityMovingTimeStream | null
 ): number | null {
+  const startMi = Math.min(slice.trainingStartMi, slice.trainingEndMi)
+  const endMi = Math.max(slice.trainingStartMi, slice.trainingEndMi)
+  const distanceBoundedMinutes = getDistanceRangeMovingMinutes(startMi, endMi, stream)
+  if (distanceBoundedMinutes != null) return distanceBoundedMinutes
+
   if (typeof slice.elapsedStartSeconds !== 'number' || typeof slice.elapsedEndSeconds !== 'number') return null
   const elapsed = stream?.elapsedSeconds
   const moving = stream?.moving
@@ -347,27 +383,8 @@ export function getTrainingSegmentMovingMinutes(
   const endMi = Math.max(segment.trainingStartMi, segment.trainingEndMi)
   if (!(endMi > startMi)) return null
 
-  const distance = stream?.distanceMeters
-  const elapsed = stream?.elapsedSeconds
-  const moving = stream?.moving
-  if (distance && elapsed && moving && distance.length === elapsed.length && elapsed.length === moving.length && distance.length > 1) {
-    let movingSecondsInSegment = 0
-    for (let index = 1; index < distance.length; index += 1) {
-      const intervalStartMi = Number(distance[index - 1]) / 1609.344
-      const intervalEndMi = Number(distance[index]) / 1609.344
-      const intervalMiles = intervalEndMi - intervalStartMi
-      const intervalSeconds = Number(elapsed[index]) - Number(elapsed[index - 1])
-      if (!moving[index] || !(intervalSeconds > 0)) continue
-      if (intervalMiles === 0) {
-        if (intervalStartMi >= startMi && intervalStartMi <= endMi) movingSecondsInSegment += intervalSeconds
-        continue
-      }
-      if (!(intervalMiles > 0)) continue
-      const sharedMiles = Math.max(0, Math.min(endMi, intervalEndMi) - Math.max(startMi, intervalStartMi))
-      movingSecondsInSegment += intervalSeconds * (sharedMiles / intervalMiles)
-    }
-    return movingSecondsInSegment > 0 ? movingSecondsInSegment / 60 : null
-  }
+  const distanceBoundedMinutes = getDistanceRangeMovingMinutes(startMi, endMi, stream)
+  if (distanceBoundedMinutes != null) return distanceBoundedMinutes
 
   return getOverlappingMovingMinutes(movingSeconds, activityMiles, endMi - startMi)
 }
