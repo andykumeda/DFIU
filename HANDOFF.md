@@ -2,13 +2,14 @@
 
 **Date:** 2026-08-31
 **Branch:** `main`
-**Status:** In progress: applying annotated Training detail hierarchy and section-order refinements.
+**Status:** Complete: deployed the annotated Training detail hierarchy and section-order refinements.
 
 ## Current task
 
-- Make the four On-course sections read as distinct cards/sections rather than one undifferentiated box.
-- Move the completed Strava comparison between Route plan and Encore on the desktop Training detail view, expanded by default.
-- Verify the affected route visually at desktop and mobile widths, then build, lint, test, deploy, and update this handoff.
+- The four On-course sections now read as distinct bordered cards with spacing and a stronger selected state.
+- The completed Strava comparison now lives between the Route Plan summary and On-course sections, expanded by default at all widths.
+- Product deployment commit: `f5df5a3`; production emitted `index-Vphw-Nnc.js`.
+- Validation: 111 tests pass; build passes; lint has 0 errors and 49 pre-existing warnings; `git diff --check` passes. Deployment and push to `origin/main` completed. Automated isolated-browser verification was unavailable because this checkout has no Playwright runtime; no visual claim is made from that check.
 
 > **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
 
