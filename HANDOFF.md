@@ -1,8 +1,15 @@
 # Handoff Document
 
-**Date:** 2026-08-31
+**Date:** 2026-09-02
 **Branch:** `main`
-**Status:** Complete: deployed the annotated Training detail hierarchy and section-order refinements.
+**Status:** Complete: applied and verified the missing Supabase race-column grants that blocked new-race creation.
+
+## Latest support fix
+
+- Applied directly to the linked DFIU Supabase project: `GRANT SELECT (official_revision, merged_official_revision) ON TABLE public.races TO anon, authenticated`.
+- Verified through `information_schema.role_column_grants`: both columns have `SELECT` for both API roles.
+- No frontend deployment required; the existing migration remains the source-of-truth record for the grant.
+- The original error was the post-insert `RACE_SELECT` response failing on the missing column grants, not the GPX payload.
 
 ## Current task
 
