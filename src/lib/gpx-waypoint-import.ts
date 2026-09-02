@@ -18,6 +18,7 @@ export type ImportedWaypointRow = {
 export function buildImportedWaypointRows(
   result: Pick<GpxParseResult, 'waypoints' | 'coordinates' | 'stats'>,
   courseId: string,
+  includeEndpoints = true,
 ): ImportedWaypointRow[] {
   if (result.coordinates.length === 0) return []
 
@@ -74,16 +75,20 @@ export function buildImportedWaypointRows(
     addRow({ course_id: courseId, name, type, lat, lon, mile: Math.round(mile * 100) / 100, has_drop_bag: false, crew_allowed: false, pacer_allowed: false })
   })
 
-  if (!rows.some(row => row.type === 'start')) {
+  if (includeEndpoints && !rows.some(row => row.type === 'start')) {
     const first = result.coordinates[0]
     addRow({ course_id: courseId, name: 'Start', type: 'start', lat: first[1], lon: first[0], mile: 0, has_drop_bag: false, crew_allowed: false, pacer_allowed: false })
   }
-  if (!rows.some(row => row.type === 'finish')) {
+  if (includeEndpoints && !rows.some(row => row.type === 'finish')) {
     const last = result.coordinates[result.coordinates.length - 1]
     addRow({ course_id: courseId, name: 'Finish', type: 'finish', lat: last[1], lon: last[0], mile: Math.round(totalDist * 100) / 100, has_drop_bag: false, crew_allowed: false, pacer_allowed: false })
   }
 
-  return rows
+  const uniqueRows = rows.filter((row, index, allRows) => allRows.findIndex(candidate =>
+    candidate.type === row.type && candidate.name === row.name && candidate.mile === row.mile
+  ) === index)
+
+  return uniqueRows
     .sort((a, b) => a.mile - b.mile)
     .map((row, index) => ({ ...row, order_index: index + 1 }))
 }

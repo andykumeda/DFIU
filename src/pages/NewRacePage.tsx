@@ -91,7 +91,9 @@ export default function NewRacePage() {
 
         if (courseError) throw courseError
 
-        const waypointRows = buildImportedWaypointRows(gpxData, course.id)
+        // RaceDetail owns the endpoint backfill; excluding endpoints here avoids
+        // racing that effect while the newly inserted waypoints are loading.
+        const waypointRows = buildImportedWaypointRows(gpxData, course.id, false)
         if (waypointRows.length > 0) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const { error: waypointError } = await (supabase.from('waypoints') as any).insert(waypointRows)

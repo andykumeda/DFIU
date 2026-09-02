@@ -2,12 +2,19 @@
 
 **Date:** 2026-09-02
 **Branch:** `main`
-**Status:** In progress: persist GPX waypoints during new-race creation.
+**Status:** In progress: remove duplicate GPX waypoints from new-race imports.
 
 ## Current task
 
-- Fix new-race GPX creation so imported aid stations are inserted with the new course.
-- Add focused regression coverage, run required checks, deploy, commit, and push on `main`.
+- New-race creation now selects the inserted course ID, projects parsed GPX waypoints onto the route, and inserts them into `waypoints` with ordered defaults.
+- Focused regression coverage added in `src/lib/gpx-waypoint-import.test.ts`.
+- Validation: 112 tests pass; build passes; lint has 0 errors and 49 pre-existing warnings; `git diff --check` passes.
+- Deployed to `andy@web:/var/www/dfiu`; product commit: `023efde`.
+- `main` still needs its final handoff-only commit and push to `origin/main`.
+
+### Follow-up
+
+- The first live use exposed duplicate stations from repeated GPX waypoint records and duplicate Start/Finish rows from the new-import insert racing the existing endpoint backfill. Deduplicate equivalent station rows and let the existing fallback own endpoints.
 
 ### Prior completed work
 
