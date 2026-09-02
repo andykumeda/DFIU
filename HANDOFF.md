@@ -2,23 +2,20 @@
 
 **Date:** 2026-09-02
 **Branch:** `main`
-**Status:** In progress: tighten GPX waypoint deduplication after a live near-mile duplicate.
+**Status:** Complete: GPX waypoint imports and the reported private race are clean.
 
 ## Current task
 
 - New-race creation now selects the inserted course ID, projects parsed GPX waypoints onto the route, and inserts deduplicated station rows with ordered defaults. Endpoint ownership remains with the existing RaceDetail fallback.
-- Focused regression coverage added in `src/lib/gpx-waypoint-import.test.ts` for persistence, duplicate suppression, and endpoint ownership.
+- Near-identical same-name station rows within 0.1 course miles are deduplicated; focused regression coverage is in `src/lib/gpx-waypoint-import.test.ts`.
 - Validation: 114 tests pass; build passes; lint has 0 errors and 49 pre-existing warnings; `git diff --check` passes.
-- Deployed to `andy@web:/var/www/dfiu`; product commits: `023efde`, `ccd3e3c`.
+- Deployed to `andy@web:/var/www/dfiu`; product commit: `3139de3`.
+- Cleaned private race `482512d5-1b6e-4fb0-aac8-7402223b8356` by removing its two remaining duplicate Steam Trains rows; database and live UI verification passed.
 - `main` needs the final handoff-only commit and push to `origin/main`.
 
 ### Follow-up
 
-- Race `482512d5-1b6e-4fb0-aac8-7402223b8356` still showed duplicate Steam Trains rows because repeated source points projected to 22.19/22.21 and 31.14/31.16 miles. Use a small same-name station-mile tolerance, add regression coverage, clean those rows, deploy, and push.
-
-### Follow-up
-
-- Live screenshot confirmed the first implementation duplicated repeated GPX station records and Start/Finish. The follow-up deduplicates equivalent station rows and lets the existing fallback own endpoints; deployed and ready for a fresh new-race import.
+- Live screenshot confirmed the first implementation duplicated repeated GPX station records and Start/Finish. The follow-up deduplicates equivalent station rows and lets the existing fallback own endpoints; the reported race was cleaned and verified live.
 
 ### Prior completed work
 
