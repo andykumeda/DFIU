@@ -2,19 +2,19 @@
 
 **Date:** 2026-09-02
 **Branch:** `main`
-**Status:** In progress: remove duplicate GPX waypoints from new-race imports.
+**Status:** Complete: new-race GPX imports persist aid stations without duplicates.
 
 ## Current task
 
-- New-race creation now selects the inserted course ID, projects parsed GPX waypoints onto the route, and inserts them into `waypoints` with ordered defaults.
-- Focused regression coverage added in `src/lib/gpx-waypoint-import.test.ts`.
-- Validation: 112 tests pass; build passes; lint has 0 errors and 49 pre-existing warnings; `git diff --check` passes.
-- Deployed to `andy@web:/var/www/dfiu`; product commit: `023efde`.
-- `main` still needs its final handoff-only commit and push to `origin/main`.
+- New-race creation now selects the inserted course ID, projects parsed GPX waypoints onto the route, and inserts deduplicated station rows with ordered defaults. Endpoint ownership remains with the existing RaceDetail fallback.
+- Focused regression coverage added in `src/lib/gpx-waypoint-import.test.ts` for persistence, duplicate suppression, and endpoint ownership.
+- Validation: 114 tests pass; build passes; lint has 0 errors and 49 pre-existing warnings; `git diff --check` passes.
+- Deployed to `andy@web:/var/www/dfiu`; product commits: `023efde`, `ccd3e3c`.
+- `main` needs the final handoff-only commit and push to `origin/main`.
 
 ### Follow-up
 
-- The first live use exposed duplicate stations from repeated GPX waypoint records and duplicate Start/Finish rows from the new-import insert racing the existing endpoint backfill. Deduplicate equivalent station rows and let the existing fallback own endpoints.
+- Live screenshot confirmed the first implementation duplicated repeated GPX station records and Start/Finish. The follow-up deduplicates equivalent station rows and lets the existing fallback own endpoints; deployed and ready for a fresh new-race import.
 
 ### Prior completed work
 
