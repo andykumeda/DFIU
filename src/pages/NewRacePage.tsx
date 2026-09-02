@@ -6,6 +6,7 @@ import { GpxUploader } from '@/features/course/GpxUploader'
 import { ElevationProfile } from '@/features/course/ElevationProfile'
 import { CourseStats } from '@/features/course/CourseStats'
 import { GpxParseResult, sampleElevationProfile, getPointAtMile } from '@/lib/gpx-parser'
+import { buildImportedWaypointRows } from '@/lib/gpx-waypoint-import'
 import { SiteFooter } from '@/components/ui/SiteFooter'
 
 const CourseMap = lazy(() =>
@@ -83,9 +84,19 @@ export default function NewRacePage() {
           max_elevation_ft: gpxData.stats.maxElevationFt,
         }
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error: courseError } = await (supabase.from('courses') as any).insert(courseData)
+        const { data: course, error: courseError } = await (supabase.from('courses') as any)
+          .insert(courseData)
+          .select('id')
+          .single()
 
         if (courseError) throw courseError
+
+        const waypointRows = buildImportedWaypointRows(gpxData, course.id)
+        if (waypointRows.length > 0) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { error: waypointError } = await (supabase.from('waypoints') as any).insert(waypointRows)
+          if (waypointError) throw waypointError
+        }
       }
 
       navigate(`/race/${raceResult.id}`)

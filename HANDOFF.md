@@ -2,9 +2,14 @@
 
 **Date:** 2026-09-02
 **Branch:** `main`
-**Status:** Complete: ordinary accounts can create a new race with an uploaded GPX.
+**Status:** In progress: persist GPX waypoints during new-race creation.
 
 ## Current task
+
+- Fix new-race GPX creation so imported aid stations are inserted with the new course.
+- Add focused regression coverage, run required checks, deploy, commit, and push on `main`.
+
+### Prior completed work
 
 - Fixed the live `42501` for ordinary accounts by recognizing `races.user_id = auth.uid()` in both `user_can_view_race` and the `races_select` policy. The direct policy clause is required because `INSERT ... RETURNING` evaluates visibility before the helper can re-query the candidate row.
 - Applied `20260902200213_race_creator_view_fallback.sql` directly to the linked Supabase project.
