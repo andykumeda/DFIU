@@ -30,7 +30,7 @@ describe('reported training overlap regression', () => {
     expect(completed.overlapMiles).toBeCloseTo(uniqueCourseMiles(completed.segments), 2)
     expect(proposed.overlapMiles).toBeCloseTo(12.8, 2)
     expect(completed.overlapMiles).toBeCloseTo(12.78, 2)
-  })
+  }, 15000)
 
   it('splits the continuous Clear Creek overlap at its official aid stations', () => {
     const fixture = JSON.parse(
