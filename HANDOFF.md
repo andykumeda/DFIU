@@ -2,21 +2,21 @@
 
 **Date:** 2026-09-02
 **Branch:** `main`
-**Status:** In progress: fixing ordinary-account New Race RLS after reproducing the live `races` insert failure.
+**Status:** Complete: ordinary accounts can create a new race with an uploaded GPX.
 
 ## Current task
 
-- A transaction-rolled-back insert as the newest non-admin account reproduces `42501: new row violates row-level security policy for table "races"`.
-- Event cloning succeeds through the server-side `clone_race` function, while New Race uses a direct insert with `RETURNING`.
-- Root cause: `user_can_view_race` recognizes memberships/admin/public-share access but not the creator stored in `races.user_id`; the owner-membership trigger is not sufficient for the insert response's select check.
-- Planned fix: add the same `races.user_id = auth.uid()` fallback already present in `user_owns_race`, apply it to the linked project, and verify both race and GPX course inserts under an ordinary authenticated role.
+- Fixed the live `42501` for ordinary accounts by recognizing `races.user_id = auth.uid()` in both `user_can_view_race` and the `races_select` policy. The direct policy clause is required because `INSERT ... RETURNING` evaluates visibility before the helper can re-query the candidate row.
+- Applied `20260902200213_race_creator_view_fallback.sql` directly to the linked Supabase project.
+- Exact rollback verification passed as the newest ordinary account: the race insert returned `official_revision` / `merged_official_revision`, the owner-membership trigger completed, and a separate GPX-backed course insert succeeded. No probe rows were retained.
+- Validation: 111 tests pass; build passes; lint has 0 errors and 49 pre-existing warnings; `git diff --check` passes. Supabase security advisors reported existing project warnings, with no error attributable to this change.
+- Frontend deployment completed per repository workflow; emitted `index-CxwSlfCu.js`. Product/schema commit: `5a1c26a`; no side branches or additional worktrees remain.
 
 ## Latest support fix
 
 - Applied directly to the linked DFIU Supabase project: `GRANT SELECT (official_revision, merged_official_revision) ON TABLE public.races TO anon, authenticated`.
 - Verified through `information_schema.role_column_grants`: both columns have `SELECT` for both API roles.
-- No frontend deployment required; the existing migration remains the source-of-truth record for the grant.
-- The original error was the post-insert `RACE_SELECT` response failing on the missing column grants, not the GPX payload.
+- The grant exposed the subsequent ordinary-account RLS failure fixed above; the GPX payload was not the cause.
 
 ## Previous task
 
