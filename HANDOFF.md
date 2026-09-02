@@ -2,7 +2,14 @@
 
 **Date:** 2026-09-02
 **Branch:** `main`
-**Status:** Complete: applied and verified the missing Supabase race-column grants that blocked new-race creation.
+**Status:** In progress: fixing ordinary-account New Race RLS after reproducing the live `races` insert failure.
+
+## Current task
+
+- A transaction-rolled-back insert as the newest non-admin account reproduces `42501: new row violates row-level security policy for table "races"`.
+- Event cloning succeeds through the server-side `clone_race` function, while New Race uses a direct insert with `RETURNING`.
+- Root cause: `user_can_view_race` recognizes memberships/admin/public-share access but not the creator stored in `races.user_id`; the owner-membership trigger is not sufficient for the insert response's select check.
+- Planned fix: add the same `races.user_id = auth.uid()` fallback already present in `user_owns_race`, apply it to the linked project, and verify both race and GPX course inserts under an ordinary authenticated role.
 
 ## Latest support fix
 
@@ -11,7 +18,7 @@
 - No frontend deployment required; the existing migration remains the source-of-truth record for the grant.
 - The original error was the post-insert `RACE_SELECT` response failing on the missing column grants, not the GPX payload.
 
-## Current task
+## Previous task
 
 - The four On-course sections now read as distinct bordered cards with spacing and a stronger selected state.
 - The completed Strava comparison now lives between the Route Plan summary and On-course sections, expanded by default at all widths.
