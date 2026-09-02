@@ -85,7 +85,9 @@ export function buildImportedWaypointRows(
   }
 
   const uniqueRows = rows.filter((row, index, allRows) => allRows.findIndex(candidate =>
-    candidate.type === row.type && candidate.name === row.name && candidate.mile === row.mile
+    candidate.type === row.type &&
+    candidate.name === row.name &&
+    Math.abs(candidate.mile - row.mile) <= 0.1
   ) === index)
 
   return uniqueRows

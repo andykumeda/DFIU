@@ -28,7 +28,7 @@ describe('buildImportedWaypointRows', () => {
     const rows = buildImportedWaypointRows({
       waypoints: [
         { name: 'Sibley Aid', lat: 0, lon: 0.005 },
-        { name: 'Sibley Aid', lat: 0, lon: 0.00501 },
+        { name: 'Sibley Aid', lat: 0, lon: 0.0053 },
       ],
       coordinates: [[0, 0], [0.01, 0]],
       stats: {

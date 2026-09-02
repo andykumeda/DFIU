@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-02
 **Branch:** `main`
-**Status:** Complete: new-race GPX imports persist aid stations without duplicates.
+**Status:** In progress: tighten GPX waypoint deduplication after a live near-mile duplicate.
 
 ## Current task
 
@@ -11,6 +11,10 @@
 - Validation: 114 tests pass; build passes; lint has 0 errors and 49 pre-existing warnings; `git diff --check` passes.
 - Deployed to `andy@web:/var/www/dfiu`; product commits: `023efde`, `ccd3e3c`.
 - `main` needs the final handoff-only commit and push to `origin/main`.
+
+### Follow-up
+
+- Race `482512d5-1b6e-4fb0-aac8-7402223b8356` still showed duplicate Steam Trains rows because repeated source points projected to 22.19/22.21 and 31.14/31.16 miles. Use a small same-name station-mile tolerance, add regression coverage, clean those rows, deploy, and push.
 
 ### Follow-up
 
