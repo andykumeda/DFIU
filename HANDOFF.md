@@ -2,15 +2,16 @@
 
 **Date:** 2026-09-06
 **Branch:** `main`
-**Status:** Strava estimate correction verified locally; deployment in progress.
+**Status:** Complete: Strava estimate correction and 200+ mile history warning deployed.
 
 ## Current task
 
 - Reproduced the reported 35:44 estimate exactly from the saved history, public AC100 course, and runner settings.
 - Corrected asymmetric distance weighting, incompatible ascent normalization, default-pace bias, and unsupported high-confidence labeling. Model terrain-hybrid-v1.3 uses consistent km-effort normalization and a dispersion-aware planning band.
 - Checked both authorized accounts using temporary local data; no personal history fixtures or account data changes are included in this commit.
-- Validation: 121 tests pass, production build passes, lint has 0 errors / 49 existing warnings; diff check passes.
-- Follow-up: exclude 200+ mile history for targets under 200 miles; show used/excluded counts, preserve saved finishes. Exclusion deployed as beb355e. Follow-up in progress: explicit warning when all history is 200+ miles and no comparable finishes remain. No additional branches/worktrees.
+- Validation: 123 tests pass, production build passes, lint has 0 errors / 49 existing warnings; diff check passes.
+- Follow-up: exclude 200+ mile history for targets under 200 miles; show used/excluded counts, preserve saved finishes. Final deployment: 24b99fa (git describe after deploy), pushed to origin/main. Explicit warning added when all history is 200+ miles and no comparable finishes remain.
+- Live browser confirmed production footer 24b99fa; signed-out/demo checks only. Personalized estimates were reproduced locally from authorized saved inputs, not verified in a signed-in browser. No additional branches/worktrees.
 
 ## Previous completed task
 
