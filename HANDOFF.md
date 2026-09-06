@@ -2,12 +2,15 @@
 
 **Date:** 2026-09-05
 **Branch:** `main`
-**Status:** In progress: mobile Resources links still do not activate reliably.
+**Status:** Complete: mobile Resources links now navigate reliably.
 
 ## Current task
 
-- Previous URL normalization is deployed, but the live mobile report remains unresolved; current investigation is focused on `target="_blank"` behavior.
-- Verification pending: mobile-target regression, build, deployment, and final revision check.
+- Resource cards now use the current tab on mobile and a new tab on desktop; URL normalization remains in place for scheme-less values.
+- Regression coverage includes mobile target selection in `src/features/race/resources-shared.test.ts`.
+- Validation: 117 tests pass; build passes; lint has 0 errors and 49 pre-existing warnings; `git diff --check` passes.
+- Deployed to `andy@web:/var/www/dfiu`; production frontend serves `index-CT-qk8Uj.js`.
+- Product commit: `9f1ee21`; handoff update commit follows. No side branches or additional worktrees remain.
 
 - New-race creation now selects the inserted course ID, projects parsed GPX waypoints onto the route, and inserts deduplicated station rows with ordered defaults. Endpoint ownership remains with the existing RaceDetail fallback.
 - Near-identical same-name station rows within 0.1 course miles are deduplicated; focused regression coverage is in `src/lib/gpx-waypoint-import.test.ts`.
