@@ -2,12 +2,16 @@
 
 **Date:** 2026-09-05
 **Branch:** `main`
-**Status:** In progress: repeated Resources navigation is being hardened.
+**Status:** Complete: repeated Resources navigation and configured URLs verified.
 
 ## Current task
 
-- Live reproduction: the first CalTopo click opened correctly, while a second click from the original Resources page created a blank tab.
-- Remove forced new-tab behavior from resource cards; separately validate every configured resource URL and repeated visits before deployment.
+- Live reproduction confirmed the first CalTopo click succeeded but the second forced-new-tab click created a blank tab. Resource cards now omit `target` so repeated visits use normal current-tab navigation.
+- All nine configured external Resources destinations returned HTTP 200; the deployed live flow reached CalTopo successfully on both first and repeated visits.
+- Regression coverage is in `src/features/race/resources-shared.test.ts`.
+- Validation: 117 tests pass; build passes; lint has 0 errors and 49 pre-existing warnings; `git diff --check` passes.
+- Deployed to `andy@web:/var/www/dfiu`; production frontend serves `index-DCwi1vCi.js`.
+- Product commit: `ac53308`; handoff update commit follows. No side branches or additional worktrees remain.
 
 - New-race creation now selects the inserted course ID, projects parsed GPX waypoints onto the route, and inserts deduplicated station rows with ordered defaults. Endpoint ownership remains with the existing RaceDetail fallback.
 - Near-identical same-name station rows within 0.1 course miles are deduplicated; focused regression coverage is in `src/lib/gpx-waypoint-import.test.ts`.
