@@ -477,7 +477,7 @@ ${body}
                                 )}
                             </>}
                         </div>
-                        {isEditing ? <textarea value={link.content ?? ''} onChange={e => updateLink(link.id, { content: e.target.value })} placeholder="Resource details" className="w-full h-64 bg-neutral-950 border border-neutral-800 rounded-lg p-4 text-white font-mono text-sm resize-y" /> : <div id={`text-resource-${link.id}`}>{link.content ? <Markdown>{link.content}</Markdown> : <p className="text-neutral-600 italic">No details provided yet.</p>}</div>}
+                        {isEditing ? <textarea value={link.content ?? ''} onChange={e => updateLink(link.id, { content: e.target.value })} placeholder="Resource details" className="w-full h-64 bg-neutral-950 border border-neutral-800 rounded-lg p-4 text-white font-mono text-sm resize-y" /> : <div id={`text-resource-${link.id}`}>{link.content ? <Markdown openLinksInNewTab={false}>{link.content}</Markdown> : <p className="text-neutral-600 italic">No details provided yet.</p>}</div>}
                     </div>
                 )
             })}
@@ -517,7 +517,7 @@ ${body}
                         />
                     ) : (
                         lodgingInfo ? (
-                            <Markdown>{lodgingInfo}</Markdown>
+                            <Markdown openLinksInNewTab={false}>{lodgingInfo}</Markdown>
                         ) : (
                             <div className="text-neutral-600 italic">No recommendations provided yet.</div>
                         )
@@ -569,7 +569,7 @@ ${body}
                     ) : (
                         config.schedule_info ? (
                             <div ref={scheduleRef}>
-                                <Markdown>{config.schedule_info}</Markdown>
+                                <Markdown openLinksInNewTab={false}>{config.schedule_info}</Markdown>
                             </div>
                         ) : (
                             <div className="text-neutral-600 italic">No schedule provided yet.</div>

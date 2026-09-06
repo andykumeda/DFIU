@@ -2,12 +2,13 @@
 
 **Date:** 2026-09-05
 **Branch:** `main`
-**Status:** Complete: repeated Resources navigation and configured URLs verified.
+**Status:** In progress: mobile Resources verification found an embedded-link navigation defect.
 
 ## Current task
 
 - Live reproduction confirmed the first CalTopo click succeeded but the second forced-new-tab click created a blank tab. Resource cards now omit `target` so repeated visits use normal current-tab navigation.
 - All nine configured external Resources destinations returned HTTP 200; the deployed live flow reached CalTopo successfully on both first and repeated visits.
+- Mobile simulation at 390x844 found the embedded Strava `INCLINE` link in Runner Notes still uses `target="_blank"`; this can fail or appear inert on repeat mobile visits. Resource-card verification is being repeated after correcting that scoped behavior.
 - Regression coverage is in `src/features/race/resources-shared.test.ts`.
 - Validation: 117 tests pass; build passes; lint has 0 errors and 49 pre-existing warnings; `git diff --check` passes.
 - Deployed to `andy@web:/var/www/dfiu`; production frontend serves `index-DCwi1vCi.js`.

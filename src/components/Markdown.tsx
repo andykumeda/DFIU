@@ -4,11 +4,12 @@ import remarkGfm from 'remark-gfm'
 interface MarkdownProps {
     children: string
     className?: string
+    openLinksInNewTab?: boolean
 }
 
 // Tailwind-styled markdown renderer. The typography plugin isn't installed,
 // so each element is styled explicitly for the app's dark theme.
-export function Markdown({ children, className }: MarkdownProps) {
+export function Markdown({ children, className, openLinksInNewTab = true }: MarkdownProps) {
     return (
         <div className={`text-neutral-300 text-sm leading-relaxed space-y-3 ${className ?? ''}`}>
             <ReactMarkdown
@@ -27,8 +28,7 @@ export function Markdown({ children, className }: MarkdownProps) {
                     a: ({ href, children }) => (
                         <a
                             href={href}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                            {...(openLinksInNewTab ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
                             className="text-blue-400 hover:text-blue-300 underline underline-offset-2 break-words"
                         >
                             {children}

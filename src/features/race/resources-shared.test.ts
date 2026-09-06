@@ -21,5 +21,6 @@ describe('resource card navigation', () => {
         const source = readFileSync(new URL('./RaceResources.tsx', import.meta.url), 'utf8')
         expect(source).toContain('href={resourceUrl}')
         expect(source).not.toContain('target="_blank"')
+        expect(source).toContain('<Markdown openLinksInNewTab={false}>')
     })
 })
