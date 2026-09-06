@@ -734,9 +734,9 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                                 <div className="text-right text-sm text-violet-200">Faster–slower {formatDuration(prediction.p10TotalMinutes)}–{formatDuration(prediction.p90TotalMinutes)}<br /><span className="text-xs text-neutral-400">{prediction.confidence} confidence · {history.length} selected finish{history.length === 1 ? '' : 'es'}</span></div>
                             </div>
                             <p className="mt-2 text-xs text-neutral-400">
-                                This is a band around one simulated finish for this course, not 10th/50th/90th percentiles of race results. {history.length === 0
+                                This is a rough planning range, not a validated finish-time probability. Differences between past performances widen the range. {history.length === 0
                                     ? <>No race history is selected. The range uses a default 15:00/mi flat baseline — a conservative uncalibrated trail/ultra placeholder, not your measured ability. Add finishes in Settings to calibrate it. </>
-                                    : <>Includes {formatDuration(prediction.p50MovingMinutes)} moving and {formatDuration(prediction.p50StoppedMinutes)} expected stops. The goal plan remains a time you set. </>}
+                                    : <>Includes {formatDuration(prediction.p50MovingMinutes)} moving and {formatDuration(prediction.p50StoppedMinutes)} planned stops. The goal plan remains a time you set. </>}
                                 <Link to="/documentation/algorithms#ability-based-prediction" className="font-semibold text-violet-300 hover:text-violet-200">How this prediction is calculated</Link>
                             </p>
                             <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -759,7 +759,7 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                                     </button>
                                 )}
                             </div>
-                            {targetMin > 0 && (targetMin < prediction.p10TotalMinutes || targetMin > prediction.p90TotalMinutes) && <p className="mt-2 flex items-center gap-1 text-xs text-amber-300"><AlertTriangle className="h-3.5 w-3.5" /> The selected goal is outside this model’s current expected range.</p>}
+                            {targetMin > 0 && (targetMin < prediction.p10TotalMinutes || targetMin > prediction.p90TotalMinutes) && <p className="mt-2 flex items-center gap-1 text-xs text-amber-300"><AlertTriangle className="h-3.5 w-3.5" /> The selected goal is outside this model’s current planning range.</p>}
                         </div>}
 
                         {/* Splits Table */}

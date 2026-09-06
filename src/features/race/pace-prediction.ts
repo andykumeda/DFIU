@@ -1,7 +1,7 @@
 import type { Race, TerrainNode, Waypoint } from '@/types/database'
 import type { RunnerPacingProfile } from './runner-profile'
 
-export const PACE_MODEL_VERSION = 'terrain-hybrid-v1.1'
+export const PACE_MODEL_VERSION = 'terrain-hybrid-v1.2'
 
 export interface RunnerHistoryEntry {
   distanceMi: number
@@ -67,33 +67,39 @@ function supportsDelay(wp: PaceModelInput['waypoints'][number]) {
 }
 
 export function equivalentFlatPace(distanceMi: number, minutes: number, elevationGainFt = 0) {
-  const gainCost = 1 + Math.min(0.35, (elevationGainFt / distanceMi) / 10000)
-  return minutes / distanceMi / gainCost
+  // ITRA km-effort: 100 m of ascent adds 1 km of equivalent distance.
+  // In imperial units this is one effort mile per 528 ft of ascent.
+  const effortMi = distanceMi + Math.max(0, elevationGainFt) / 528
+  return minutes / effortMi
 }
 
-/** Shorter history than the target event counts less; equal-or-longer counts fully. */
+/** Favor comparable distances in both directions; multi-day races are not 100-mile equivalents. */
 export function historyDistanceSimilarity(historyMi: number, targetMi: number) {
-  if (!(historyMi > 0) || !(targetMi > 0)) return 0
-  return Math.min(1, Math.max(0.15, historyMi / targetMi))
+  if (!Number.isFinite(historyMi) || !Number.isFinite(targetMi) || !(historyMi > 0) || !(targetMi > 0)) return 0
+  return (Math.min(historyMi, targetMi) / Math.max(historyMi, targetMi)) ** 2
 }
 
 function historyBaseline(history: RunnerHistoryEntry[], fallback: number, now: Date, targetMi: number) {
-  let numerator = 0
-  let denominator = 0
+  const observations: { pace: number; weight: number }[] = []
   for (const item of history) {
     if (!Number.isFinite(item.distanceMi) || item.distanceMi <= 0 || !Number.isFinite(item.finishMinutes) || item.finishMinutes <= 0) continue
-    const equivalentPace = equivalentFlatPace(item.distanceMi, item.movingMinutes ?? item.finishMinutes, item.elevationGainFt ?? 0)
-    const ageDays = item.racedAt ? Math.max(0, (now.getTime() - new Date(item.racedAt).getTime()) / 86400000) : 365
-    const recency = Math.exp(-ageDays / 365)
-    const weight = recency * historyDistanceSimilarity(item.distanceMi, targetMi)
-    numerator += equivalentPace * weight
-    denominator += weight
+    const minutes = item.movingMinutes ?? item.finishMinutes
+    const gain = item.elevationGainFt ?? 0
+    if (!Number.isFinite(minutes) || minutes <= 0 || minutes > item.finishMinutes || !Number.isFinite(gain) || gain < 0) continue
+    const timestamp = item.racedAt ? new Date(item.racedAt).getTime() : now.getTime() - 365 * 86400000
+    if (!Number.isFinite(timestamp)) continue
+    const ageDays = Math.max(0, (now.getTime() - timestamp) / 86400000)
+    const weight = Math.exp(-ageDays / 365) * historyDistanceSimilarity(item.distanceMi, targetMi)
+    if (weight > 0) observations.push({ pace: equivalentFlatPace(item.distanceMi, minutes, gain), weight })
   }
-  if (denominator === 0) return { pace: fallback, evidence: 0 }
-  // History has a strong but bounded influence so a miscoded result cannot dominate.
-  const observed = numerator / denominator
-  const blend = Math.min(0.8, 0.35 + denominator * 0.2)
-  return { pace: fallback * (1 - blend) + observed * blend, evidence: denominator }
+  const evidence = observations.reduce((sum, item) => sum + item.weight, 0)
+  if (evidence === 0) return { pace: fallback, evidence: 0, spread: 0.18 }
+  const pace = observations.reduce((sum, item) => sum + item.pace * item.weight, 0) / evidence
+  const variance = observations.reduce((sum, item) => sum + item.weight * (item.pace - pace) ** 2, 0) / evidence
+  // Summary-only history cannot establish high confidence. Disagreement must
+  // widen the planning band, even when many finishes have been selected.
+  const spread = Math.max(evidence >= 0.5 ? 0.11 : 0.18, Math.sqrt(variance) / pace)
+  return { pace, evidence, spread }
 }
 
 function isNight(date: Date, race: Partial<Race>) {
@@ -108,6 +114,21 @@ export function predictPace(input: PaceModelInput): PacePrediction {
   const samples = input.courseProfile.filter((sample, index, all) => index === 0 || sample.distance > all[index - 1].distance)
   const fallback = Math.max(3, input.baselineFlatPace ?? 15)
   const calibration = historyBaseline(input.history ?? [], fallback, input.now ?? new Date(), input.totalDistance)
+  // Use the same ascent normalization on both sides of the calibration.
+  // Minetti still distributes effort between segments; it must not add a
+  // second, incompatible aggregate climbing penalty to history-based pace.
+  let gainFt = 0
+  let gradeDistance = 0
+  for (let i = 1; i < samples.length; i++) {
+    const distance = samples[i].distance - samples[i - 1].distance
+    const rise = samples[i].elevation - samples[i - 1].elevation
+    gainFt += Math.max(0, rise)
+    gradeDistance += distance * gradeFactor(rise / (distance * 5280))
+  }
+  const sampledDistance = samples.length > 1 ? samples[samples.length - 1].distance - samples[0].distance : 0
+  const gradeScale = calibration.evidence > 0 && gradeDistance > 0
+    ? (sampledDistance + gainFt / 528) / gradeDistance
+    : 1
   const start = input.race.start_datetime ? new Date(input.race.start_datetime) : undefined
   let elapsed = 0
   const factors: PaceFactorAttribution[] = []
@@ -116,7 +137,7 @@ export function predictPace(input: PaceModelInput): PacePrediction {
     const here = samples[i]
     const next = samples[i + 1]
     const distance = next.distance - here.distance
-    const gradient = ((next.elevation - here.elevation) * 0.3048) / (distance * 1609.34)
+    const gradient = (next.elevation - here.elevation) / (distance * 5280)
     const terrain = terrainAt(here.distance, input.terrainNodes)
     const terrainFactor = Math.max(0.85, (terrain?.difficulty ?? 100) / 100)
     let conditions = 1
@@ -135,7 +156,7 @@ export function predictPace(input: PaceModelInput): PacePrediction {
     if (profile?.technical === 'strong' && terrainFactor > 1.1) conditions -= 0.025
     if (profile?.altitude === 'weak' && here.elevation > 5000) conditions += 0.025
     if (profile?.altitude === 'strong' && here.elevation > 5000) conditions -= 0.02
-    const grade = gradeFactor(gradient)
+    const grade = gradeFactor(gradient) * gradeScale
     const total = grade * terrainFactor * conditions
     const segmentMinutes = calibration.pace * distance * total
     elapsed += segmentMinutes
@@ -147,11 +168,11 @@ export function predictPace(input: PaceModelInput): PacePrediction {
     return sum + (wp.delay ?? input.aidStationDefaultDelay ?? input.runnerProfile?.aidStationDefaultDelay ?? 2)
   }, 0)
   const total = elapsed + stopped
-  const relativeSpread = calibration.evidence >= 2 ? 0.07 : calibration.evidence > 0 ? 0.11 : 0.18
-  const confidence: PacePrediction['confidence'] = calibration.evidence >= 2 ? 'high' : calibration.evidence > 0 ? 'medium' : 'low'
+  const relativeSpread = calibration.spread
+  const confidence: PacePrediction['confidence'] = calibration.evidence >= 0.5 ? 'medium' : 'low'
   return {
     modelVersion: PACE_MODEL_VERSION,
-    p10TotalMinutes: total * (1 - relativeSpread),
+    p10TotalMinutes: Math.max(0, total * (1 - relativeSpread)),
     p50TotalMinutes: total,
     p90TotalMinutes: total * (1 + relativeSpread),
     p50MovingMinutes: elapsed,

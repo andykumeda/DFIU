@@ -1,10 +1,18 @@
 # Handoff Document
 
-**Date:** 2026-09-05
+**Date:** 2026-09-06
 **Branch:** `main`
-**Status:** Complete: all Resources links verified on mobile, including repeat visits.
+**Status:** Strava estimate correction verified locally; deployment in progress.
 
 ## Current task
+
+- Reproduced the reported 35:44 estimate exactly from the saved history, public AC100 course, and runner settings.
+- Corrected asymmetric distance weighting, incompatible ascent normalization, default-pace bias, and unsupported high-confidence labeling. Model terrain-hybrid-v1.2 uses consistent km-effort normalization and a dispersion-aware planning band.
+- Checked both authorized accounts using temporary local data; no personal history fixtures or account data changes are included in this commit.
+- Validation: 121 tests pass, production build passes, lint has 0 errors / 49 existing warnings; diff check passes.
+- Deployment and live public UI verification pending. No additional branches/worktrees.
+
+## Previous completed task
 
 - Live reproduction confirmed the first CalTopo click succeeded but the second forced-new-tab click created a blank tab. Resource cards now omit `target` so repeated visits use normal current-tab navigation.
 - All nine configured external Resources destinations returned HTTP 200; the deployed live flow reached CalTopo successfully on both first and repeated visits.

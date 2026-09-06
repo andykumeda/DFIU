@@ -54,62 +54,45 @@ The card shows one **estimated finish** (internally P50) and a **faster–slower
 - **Faster bound:** that same total scaled down by the uncertainty spread.
 - **Slower bound:** that same total scaled up by the spread.
 
-The spread is ±18% with no history, ±11% with some history, and ±7% when evidence is stronger (total weight ≥ 2). More selected finishes tighten the band; they do not turn it into a statistical quantile.
+The planning spread is at least ±18% with little comparable evidence, or ±11% with total weight ≥ 0.5. It widens to the weighted standard deviation of the historical equivalent paces (as a fraction of their mean) when that is larger. These are heuristic bands, not validated coverage probabilities. Summary-only race history is never labeled high confidence.
 
-### Step 1: Turn each past race into one equivalent flat pace
+### Step 1: Normalize distance and ascent consistently
 
-Each saved finish contributes distance, time (moving time when present, otherwise finish time), total elevation gain, and date. The model does **not** replay that past race’s elevation profile.
+Each saved finish contributes distance, moving time (or finish time when moving time is unavailable), total gain, and date. Invalid times, gains, and dates are excluded. Finish-only records may include stops; the model cannot infer which portions were stationary.
 
-```text
-equivalent pace = time / distance / gain cost
-gain cost = 1 + min(0.35, (gain_ft / distance_mi) / 10,000)
-```
-
-Extra gain makes the equivalent pace faster than raw minutes-per-mile (you were “better on the flat” than the clock suggests). Gain cost is capped at +35%.
-
-### Step 2: Weight that pace for this event
+We use the [ITRA km-effort convention](https://itra.run/FAQ/Organizers): 100 meters of ascent adds one kilometer of effort distance. This is a course-comparison heuristic, not ITRA's race-score algorithm or a physiological guarantee.
 
 ```text
-weight = recency × distance similarity
-recency = exp(−age_in_days / 365)
-similarity = min(1, max(0.15, past_miles / this_event_miles))
+effort_miles = distance_miles + gain_ft / 528
+equivalent pace = moving_minutes / effort_miles
 ```
 
-An undated finish is treated as one year old. For a 100-mile event:
+The target course uses the same effort-distance convention. Its grade curve distributes that effort across segments, normalized so its distance-weighted total equals the target effort miles. This prevents the historical and target climbing adjustments from using incompatible scales. Terrain and conditions remain additional planning assumptions; historical summaries do not identify those effects separately.
 
-| Past race | Similarity |
-| --- | ---: |
-| 50K (~31 mi) | ~0.31 |
-| 50 mi | 0.50 |
-| 100K (~62 mi) | ~0.62 |
-| 100 mi or longer | 1.00 |
-
-A 50K still informs the baseline; it cannot outweigh a similar-distance finish. The model then takes a weighted average of those equivalent paces.
-
-### Step 3: Blend with a default
-
-With no selected finishes, the predictor still runs. It uses a default **15:00 per mile** on flat runnable ground. That value is a conservative uncalibrated placeholder for trail/ultra planning — a round number in the all-day hiking/running band, not a statistic fitted from DFIU results or a road-race equivalent. It exists so the card can show a wide, explicitly low-confidence range instead of looking like a precise personal estimate.
-
-If a runner baseline is stored on the profile, that replaces 15; the Settings UI does not currently expose that field, so almost everyone starts at 15 until history is added.
+### Step 2: Weight comparable distances in both directions
 
 ```text
-blend = min(0.80, 0.35 + total_weight × 0.20)
-calibrated pace = default × (1 − blend) + observed × blend
+weight = exp(−age_in_days / 365) × similarity
+similarity = (min(past_miles, target_miles) / max(past_miles, target_miles))²
 ```
 
-No history stays at the default with low confidence and a wide faster–slower range (±18%). Some history mixes toward the observed pace (medium, ±11%). Stronger evidence (total weight ≥ 2) is high confidence (±7%). History can contribute at most 80%; 20% of the default always remains. That calibrated pace is the only number past races contribute.
+Undated finishes are treated as one year old. For a 100-mile target, 50 miles receives weight 0.25, 100 miles receives 1, and 250 miles receives 0.16 before recency. Both short races and multi-day races have less influence. This weights relevance; it does not claim to have learned an endurance/fatigue curve.
+
+### Step 3: Use observed history when available
+
+The baseline is the weighted mean of usable historical equivalent paces. The old mandatory 20% contribution from the arbitrary 15:00/mile default has been removed. Without usable history, the runner's baseline (default 15:00/mile) remains an explicitly uncalibrated fallback with low confidence. Sparse or distant history lowers confidence instead of pulling the estimate toward an arbitrary slower pace.
 
 ### Step 4: Apply that pace to this event’s course
 
 The predictor walks this race’s elevation samples in order:
 
 ```text
-segment time = calibrated_pace × segment_miles × grade × terrain × conditions
+segment time = calibrated_pace × segment_miles × normalized_grade × terrain × conditions
 ```
 
 **This event’s** elevation profile enters here:
 
-- **Grade** uses the Minetti energy-cost curve on consecutive GPX points (uphill costs more; moderate downhill helps; extreme downhill is bounded).
+- **Grade** uses the Minetti energy-cost curve on consecutive GPX points to distribute effort (uphill costs more; moderate downhill helps; extreme downhill is bounded). With history, its aggregate is normalized to the same ascent-based effort distance used for calibration; the uncalibrated fallback retains the original grade curve.
 - **Terrain** uses this course’s terrain nodes (`difficulty / 100`).
 - **Conditions** stack on that segment’s clock time after the scheduled start: night (~+8%, more on technical trail), altitude above 5,000 ft (small, capped), heat if forecast high is above 75°F during hot hours, and extra cost on steep technical descents.
 - In this predictor, the runner profile only tweaks **technical** and **altitude** (weak/strong). Climbing, descending, heat, and pacing-style sliders reshape Plan A’s distribution, not this baseline.
