@@ -739,6 +739,7 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                                     : <>Includes {formatDuration(prediction.p50MovingMinutes)} moving and {formatDuration(prediction.p50StoppedMinutes)} planned stops. The goal plan remains a time you set. </>}
                                 <Link to="/documentation/algorithms#ability-based-prediction" className="font-semibold text-violet-300 hover:text-violet-200">How this prediction is calculated</Link>
                             </p>
+                            {history.length > 0 && prediction.excludedLongRaceCount === history.length && <p className="mt-2 text-sm text-amber-300">Your selected history contains only 200+ mile races. There is no comparable history for this shorter race, so the estimate uses an uncalibrated fallback and may be inaccurate, especially for your first shorter ultra. Treat it as a rough placeholder; add a shorter race finish when available.</p>}
                             {prediction.excludedLongRaceCount > 0 && <p className="mt-2 text-xs text-violet-200">{prediction.excludedLongRaceCount} selected finish{prediction.excludedLongRaceCount === 1 ? '' : 'es'} of 200+ miles excluded for this shorter event. Saved history is unchanged.</p>}
                             <div className="mt-3 flex flex-wrap items-center gap-3">
                                 <Link to="/settings#race-history" className="text-xs font-semibold text-violet-300 hover:text-violet-200">

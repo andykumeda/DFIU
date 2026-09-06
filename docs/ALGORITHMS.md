@@ -76,7 +76,7 @@ weight = exp(−age_in_days / 365) × similarity
 similarity = (min(past_miles, target_miles) / max(past_miles, target_miles))²
 ```
 
-Undated finishes are treated as one year old. For a 100-mile target, 50 miles receives weight 0.25, 100 miles receives 1, and 150 miles receives about 0.44 before recency. For targets under 200 miles, finishes of 200 miles or longer are excluded entirely: their multi-day demands are not comparable. They remain saved and eligible for targets of 200+ miles. Other substantially shorter or longer races have less influence. This weights relevance; it does not claim to have learned an endurance/fatigue curve.
+Undated finishes are treated as one year old. For a 100-mile target, 50 miles receives weight 0.25, 100 miles receives 1, and 150 miles receives about 0.44 before recency. For targets under 200 miles, finishes of 200 miles or longer are excluded entirely: their multi-day demands are not comparable. They remain saved and eligible for targets of 200+ miles. If all selected finishes are 200+ miles, the card explicitly warns that no comparable history is available and the uncalibrated fallback may be inaccurate for a first shorter ultra. Other substantially shorter or longer races have less influence. This weights relevance; it does not claim to have learned an endurance/fatigue curve.
 
 ### Step 3: Use observed history when available
 

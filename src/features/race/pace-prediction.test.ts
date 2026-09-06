@@ -154,3 +154,17 @@ it('excludes 200+ mile finishes only for sub-200-mile predictions, without delet
   expect(historyDistanceSimilarity(200, 200)).toBe(1)
   expect(historyDistanceSimilarity(257, 250)).toBeGreaterThan(0.9)
 })
+
+
+it('uses a low-confidence fallback when all selected finishes are 200+ miles', () => {
+  const result = predictPace({
+    courseProfile: [{ distance: 0, elevation: 0 }, { distance: 100, elevation: 0 }],
+    totalDistance: 100, terrainNodes: [], waypoints: [], race: {},
+    history: [{ distanceMi: 200, finishMinutes: 4000 }, { distanceMi: 257, finishMinutes: 6000 }],
+  })
+  expect(result.usedHistoryCount).toBe(0)
+  expect(result.excludedLongRaceCount).toBe(2)
+  expect(result.confidence).toBe('low')
+  expect(result.calibratedFlatPace).toBe(15)
+  expect(result.p50MovingMinutes).toBe(1500)
+})
