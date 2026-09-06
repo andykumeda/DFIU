@@ -10,6 +10,7 @@ import {
 import {
     parseResourcesConfig,
     resourcesConfigToRacePatch,
+    normalizeResourceUrl,
     RESOURCE_ICON_MAP,
     type ResourceLinkEntry,
     type ResourcesConfig,
@@ -294,8 +295,9 @@ ${body}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {(isEditing ? config.links : visibleLinks).filter(link => link.kind !== 'text').map((link, index) => {
                     const Icon = RESOURCE_ICON_MAP[link.icon] ?? RESOURCE_ICON_MAP.link
-                    const hasContent = !!link.url || isEditing
-                    const cardClass = `${isEditing ? 'bg-neutral-900/50' : 'bg-neutral-900'} border border-neutral-800 rounded-xl p-4 transition-colors ${!link.enabled && isEditing ? 'opacity-60' : ''} ${!isEditing && link.url ? 'active:border-neutral-600' : ''}`
+                    const resourceUrl = normalizeResourceUrl(link.url)
+                    const hasContent = !!resourceUrl || isEditing
+                    const cardClass = `${isEditing ? 'bg-neutral-900/50' : 'bg-neutral-900'} border border-neutral-800 rounded-xl p-4 transition-colors ${!link.enabled && isEditing ? 'opacity-60' : ''} ${!isEditing && resourceUrl ? 'active:border-neutral-600' : ''}`
 
                     if (!isEditing && !link.enabled) return null
 
@@ -431,11 +433,11 @@ ${body}
                             </div>
                     )
 
-                    if (!isEditing && link.kind === 'link' && link.url) {
+                    if (!isEditing && link.kind === 'link' && resourceUrl) {
                         return (
                             <a
                                 key={link.id}
-                                href={link.url}
+                                href={resourceUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className={`block ${cardClass}`}

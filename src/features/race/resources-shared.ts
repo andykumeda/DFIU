@@ -43,6 +43,24 @@ export const RESOURCE_ICON_MAP: Record<ResourceIconId, LucideIcon> = {
     link: LinkIcon,
 }
 
+export function normalizeResourceUrl(value: string | null | undefined): string | null {
+    const trimmed = value?.trim()
+    if (!trimmed || /\s/.test(trimmed)) return null
+
+    const candidate = trimmed.startsWith('//')
+        ? `https:${trimmed}`
+        : /^[a-z][a-z\d+.-]*:/i.test(trimmed)
+            ? trimmed
+            : `https://${trimmed}`
+
+    try {
+        const url = new URL(candidate)
+        return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : null
+    } catch {
+        return null
+    }
+}
+
 const BUILTIN_RESOURCES: Array<{
     id: string
     label: string

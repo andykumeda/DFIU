@@ -2,9 +2,14 @@
 
 **Date:** 2026-09-02
 **Branch:** `main`
-**Status:** Complete: GPX waypoint imports and the reported private race are clean.
+**Status:** Complete: Resources-tab external links are clickable again.
 
 ## Current task
+
+- Resources links now normalize trimmed scheme-less URLs to HTTPS before rendering their external anchors; unsafe/invalid schemes remain non-clickable.
+- Regression coverage is in `src/features/race/resources-shared.test.ts`.
+- Validation: 116 tests pass; build passes; lint has 0 errors and 49 pre-existing warnings; `git diff --check` passes.
+- Deployment and final revision verification pending.
 
 - New-race creation now selects the inserted course ID, projects parsed GPX waypoints onto the route, and inserts deduplicated station rows with ordered defaults. Endpoint ownership remains with the existing RaceDetail fallback.
 - Near-identical same-name station rows within 0.1 course miles are deduplicated; focused regression coverage is in `src/lib/gpx-waypoint-import.test.ts`.
