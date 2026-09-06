@@ -7,10 +7,10 @@
 ## Current task
 
 - Reproduced the reported 35:44 estimate exactly from the saved history, public AC100 course, and runner settings.
-- Corrected asymmetric distance weighting, incompatible ascent normalization, default-pace bias, and unsupported high-confidence labeling. Model terrain-hybrid-v1.2 uses consistent km-effort normalization and a dispersion-aware planning band.
+- Corrected asymmetric distance weighting, incompatible ascent normalization, default-pace bias, and unsupported high-confidence labeling. Model terrain-hybrid-v1.3 uses consistent km-effort normalization and a dispersion-aware planning band.
 - Checked both authorized accounts using temporary local data; no personal history fixtures or account data changes are included in this commit.
 - Validation: 121 tests pass, production build passes, lint has 0 errors / 49 existing warnings; diff check passes.
-- Deployment and live public UI verification pending. No additional branches/worktrees.
+- Follow-up: exclude 200+ mile history for targets under 200 miles; show used/excluded counts, preserve saved finishes. Initial fix ee3e760 deployed; exclusion deployment and live public UI verification pending. No additional branches/worktrees.
 
 ## Previous completed task
 

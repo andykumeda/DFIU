@@ -115,14 +115,14 @@ describe('history calibration regressions', () => {
   })
 
   it('downweights both very short and multi-day races', () => {
-    expect(historyDistanceSimilarity(250, 100)).toBeCloseTo(0.16)
+    expect(historyDistanceSimilarity(150, 100)).toBeCloseTo((100 / 150) ** 2)
     expect(historyDistanceSimilarity(5, 100)).toBeCloseTo(0.0025)
     const base = { ...input, totalDistance: 100, courseProfile: [{ distance: 0, elevation: 0 }, { distance: 100, elevation: 0 }] }
     const result = predictPace({ ...base, history: [
       { distanceMi: 100, finishMinutes: 1000 },
-      { distanceMi: 250, finishMinutes: 5000 },
+      { distanceMi: 150, finishMinutes: 3000 },
     ] })
-    expect(result.calibratedFlatPace).toBeLessThan(12)
+    expect(result.calibratedFlatPace).toBeLessThan(14)
   })
 
   it('does not tighten disagreement into high confidence just by adding more finishes', () => {
@@ -141,4 +141,16 @@ describe('history calibration regressions', () => {
     expect(result.p50MovingMinutes).toBeCloseTo(50)
     expect(predictPace({ ...input, history: [{ ...valid, movingMinutes: -1 }] }).confidence).toBe('low')
   })
+})
+
+
+it('excludes 200+ mile finishes only for sub-200-mile predictions, without deleting history', () => {
+  const history = [{ distanceMi: 100, finishMinutes: 1000 }, { distanceMi: 257, finishMinutes: 5000 }]
+  const result = predictPace({ courseProfile: course, totalDistance: 100, terrainNodes: [], waypoints: [], race: {}, history })
+  expect(result.calibratedFlatPace).toBeCloseTo(10)
+  expect(result.excludedLongRaceCount).toBe(1)
+  expect(history).toHaveLength(2)
+  expect(historyDistanceSimilarity(200, 100)).toBe(0)
+  expect(historyDistanceSimilarity(200, 200)).toBe(1)
+  expect(historyDistanceSimilarity(257, 250)).toBeGreaterThan(0.9)
 })

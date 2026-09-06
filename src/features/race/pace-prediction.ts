@@ -1,7 +1,7 @@
 import type { Race, TerrainNode, Waypoint } from '@/types/database'
 import type { RunnerPacingProfile } from './runner-profile'
 
-export const PACE_MODEL_VERSION = 'terrain-hybrid-v1.2'
+export const PACE_MODEL_VERSION = 'terrain-hybrid-v1.3'
 
 export interface RunnerHistoryEntry {
   distanceMi: number
@@ -44,6 +44,8 @@ export interface PacePrediction {
   p50StoppedMinutes: number
   confidence: 'low' | 'medium' | 'high'
   calibratedFlatPace: number
+  usedHistoryCount: number
+  excludedLongRaceCount: number
   factorAttributions: PaceFactorAttribution[]
 }
 
@@ -76,6 +78,7 @@ export function equivalentFlatPace(distanceMi: number, minutes: number, elevatio
 /** Favor comparable distances in both directions; multi-day races are not 100-mile equivalents. */
 export function historyDistanceSimilarity(historyMi: number, targetMi: number) {
   if (!Number.isFinite(historyMi) || !Number.isFinite(targetMi) || !(historyMi > 0) || !(targetMi > 0)) return 0
+  if (historyMi >= 200 && targetMi < 200) return 0
   return (Math.min(historyMi, targetMi) / Math.max(historyMi, targetMi)) ** 2
 }
 
@@ -93,13 +96,13 @@ function historyBaseline(history: RunnerHistoryEntry[], fallback: number, now: D
     if (weight > 0) observations.push({ pace: equivalentFlatPace(item.distanceMi, minutes, gain), weight })
   }
   const evidence = observations.reduce((sum, item) => sum + item.weight, 0)
-  if (evidence === 0) return { pace: fallback, evidence: 0, spread: 0.18 }
+  if (evidence === 0) return { pace: fallback, evidence: 0, spread: 0.18, count: 0 }
   const pace = observations.reduce((sum, item) => sum + item.pace * item.weight, 0) / evidence
   const variance = observations.reduce((sum, item) => sum + item.weight * (item.pace - pace) ** 2, 0) / evidence
   // Summary-only history cannot establish high confidence. Disagreement must
   // widen the planning band, even when many finishes have been selected.
   const spread = Math.max(evidence >= 0.5 ? 0.11 : 0.18, Math.sqrt(variance) / pace)
-  return { pace, evidence, spread }
+  return { pace, evidence, spread, count: observations.length }
 }
 
 function isNight(date: Date, race: Partial<Race>) {
@@ -172,6 +175,8 @@ export function predictPace(input: PaceModelInput): PacePrediction {
   const confidence: PacePrediction['confidence'] = calibration.evidence >= 0.5 ? 'medium' : 'low'
   return {
     modelVersion: PACE_MODEL_VERSION,
+    usedHistoryCount: calibration.count,
+    excludedLongRaceCount: (input.history ?? []).filter(item => item.distanceMi >= 200 && input.totalDistance < 200).length,
     p10TotalMinutes: Math.max(0, total * (1 - relativeSpread)),
     p50TotalMinutes: total,
     p90TotalMinutes: total * (1 + relativeSpread),
