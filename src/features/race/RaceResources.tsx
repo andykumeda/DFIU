@@ -11,6 +11,7 @@ import {
     parseResourcesConfig,
     resourcesConfigToRacePatch,
     normalizeResourceUrl,
+    getResourceLinkTarget,
     RESOURCE_ICON_MAP,
     type ResourceLinkEntry,
     type ResourcesConfig,
@@ -59,6 +60,7 @@ export function RaceResources({ race, canEdit = false, onUpdate }: RaceResources
     const clock24h = !!profile?.clock_24h
     const [isEditing, setIsEditing] = useState(false)
     const [loading, setLoading] = useState(false)
+    const isMobileViewport = typeof window !== 'undefined' && !window.matchMedia('(min-width: 640px)').matches
 
     const [config, setConfig] = useState<ResourcesConfig>(() => parseResourcesConfig(race.resources_config, race))
     const [lodgingInfo, setLodgingInfo] = useState(race.lodging_info || '')
@@ -438,7 +440,7 @@ ${body}
                             <a
                                 key={link.id}
                                 href={resourceUrl}
-                                target="_blank"
+                                target={getResourceLinkTarget(isMobileViewport)}
                                 rel="noopener noreferrer"
                                 className={`block ${cardClass}`}
                             >

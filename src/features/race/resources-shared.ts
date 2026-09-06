@@ -61,6 +61,10 @@ export function normalizeResourceUrl(value: string | null | undefined): string |
     }
 }
 
+export function getResourceLinkTarget(isMobile: boolean): '_self' | '_blank' {
+    return isMobile ? '_self' : '_blank'
+}
+
 const BUILTIN_RESOURCES: Array<{
     id: string
     label: string

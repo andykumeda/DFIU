@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeResourceUrl } from './resources-shared'
+import { getResourceLinkTarget, normalizeResourceUrl } from './resources-shared'
 
 describe('normalizeResourceUrl', () => {
     it('makes scheme-less resource URLs usable as external links', () => {
@@ -12,5 +12,12 @@ describe('normalizeResourceUrl', () => {
         expect(normalizeResourceUrl('javascript:alert(1)')).toBeNull()
         expect(normalizeResourceUrl('not a URL')).toBeNull()
         expect(normalizeResourceUrl('')).toBeNull()
+    })
+})
+
+describe('getResourceLinkTarget', () => {
+    it('keeps mobile navigation in the current browsing context', () => {
+        expect(getResourceLinkTarget(true)).toBe('_self')
+        expect(getResourceLinkTarget(false)).toBe('_blank')
     })
 })
