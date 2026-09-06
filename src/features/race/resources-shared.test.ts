@@ -1,5 +1,6 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { getResourceLinkTarget, normalizeResourceUrl } from './resources-shared'
+import { normalizeResourceUrl } from './resources-shared'
 
 describe('normalizeResourceUrl', () => {
     it('makes scheme-less resource URLs usable as external links', () => {
@@ -15,9 +16,10 @@ describe('normalizeResourceUrl', () => {
     })
 })
 
-describe('getResourceLinkTarget', () => {
-    it('keeps mobile navigation in the current browsing context', () => {
-        expect(getResourceLinkTarget(true)).toBe('_self')
-        expect(getResourceLinkTarget(false)).toBe('_blank')
+describe('resource card navigation', () => {
+    it('does not force a new browsing context that can become blank on repeat visits', () => {
+        const source = readFileSync(new URL('./RaceResources.tsx', import.meta.url), 'utf8')
+        expect(source).toContain('href={resourceUrl}')
+        expect(source).not.toContain('target="_blank"')
     })
 })
