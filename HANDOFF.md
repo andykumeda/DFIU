@@ -1,6 +1,6 @@
 # Handoff Document
 
-**Date:** 2026-09-02
+**Date:** 2026-09-05
 **Branch:** `main`
 **Status:** Complete: Resources-tab external links are clickable again.
 
@@ -9,7 +9,8 @@
 - Resources links now normalize trimmed scheme-less URLs to HTTPS before rendering their external anchors; unsafe/invalid schemes remain non-clickable.
 - Regression coverage is in `src/features/race/resources-shared.test.ts`.
 - Validation: 116 tests pass; build passes; lint has 0 errors and 49 pre-existing warnings; `git diff --check` passes.
-- Deployment and final revision verification pending.
+- Deployed to `andy@web:/var/www/dfiu`; production frontend serves `index-CB6yqpAR.js`.
+- Product commit: `3d83bd4`; handoff update commit follows. No side branches or additional worktrees remain.
 
 - New-race creation now selects the inserted course ID, projects parsed GPX waypoints onto the route, and inserts deduplicated station rows with ordered defaults. Endpoint ownership remains with the existing RaceDetail fallback.
 - Near-identical same-name station rows within 0.1 course miles are deduplicated; focused regression coverage is in `src/lib/gpx-waypoint-import.test.ts`.
