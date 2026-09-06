@@ -2,17 +2,18 @@
 
 **Date:** 2026-09-05
 **Branch:** `main`
-**Status:** In progress: mobile Resources verification found an embedded-link navigation defect.
+**Status:** Complete: all Resources links verified on mobile, including repeat visits.
 
 ## Current task
 
 - Live reproduction confirmed the first CalTopo click succeeded but the second forced-new-tab click created a blank tab. Resource cards now omit `target` so repeated visits use normal current-tab navigation.
 - All nine configured external Resources destinations returned HTTP 200; the deployed live flow reached CalTopo successfully on both first and repeated visits.
-- Mobile simulation at 390x844 found the embedded Strava `INCLINE` link in Runner Notes still uses `target="_blank"`; this can fail or appear inert on repeat mobile visits. Resource-card verification is being repeated after correcting that scoped behavior.
+- Mobile simulation at 390x844 found the embedded Strava `INCLINE` link in Runner Notes still used `target="_blank"`; Resources Markdown now opts into same-tab navigation, matching the resource cards.
+- Fresh production verification at 390x844 reached all 10 configured external links (9 resource cards plus the embedded Strava club link) twice each; all rendered targets were same-tab and no link remained on the DFIU page after tapping.
 - Regression coverage is in `src/features/race/resources-shared.test.ts`.
 - Validation: 117 tests pass; build passes; lint has 0 errors and 49 pre-existing warnings; `git diff --check` passes.
-- Deployed to `andy@web:/var/www/dfiu`; production frontend serves `index-DCwi1vCi.js`.
-- Product commit: `ac53308`; handoff update commit follows. No side branches or additional worktrees remain.
+- Deployed to `andy@web:/var/www/dfiu`; production frontend serves `index-Cnjjp-D-.js`.
+- Product commit: `3a19c23`; no side branches or additional worktrees remain.
 
 - New-race creation now selects the inserted course ID, projects parsed GPX waypoints onto the route, and inserts deduplicated station rows with ordered defaults. Endpoint ownership remains with the existing RaceDetail fallback.
 - Near-identical same-name station rows within 0.1 course miles are deduplicated; focused regression coverage is in `src/lib/gpx-waypoint-import.test.ts`.
