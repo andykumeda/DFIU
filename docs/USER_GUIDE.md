@@ -18,7 +18,7 @@ Most people begin by opening a public event and choosing **Clone Race** to make 
 
 1. Choose **New Race** and enter the event date, start time, time zone, and weather details.
 2. Upload the race GPX on **Map & Aid Stations**.
-3. Add Start, Finish, aid stations, and any relevant crew, pacer, water, medical, or drop-bag details.
+3. Review imported GPX waypoints. DFIU projects them onto course miles, deduplicates equivalent entries, and adds Start/Finish when missing. Add or edit crew, pacer, water, medical, and drop-bag details as needed.
 4. Define terrain and create a Plan A goal time on **Pace Plan**.
 5. Share the event with your runner, crew, and pacers from **Members**.
 
@@ -52,9 +52,11 @@ For a confirmed out-and-back, DFIU detects a continuous reverse-direction pass o
 
 Plan A, B, and C are goal-time plans. Enter or edit a goal time and the plan recalculates automatically. Plan C also shows the race’s overall cutoff in hours next to the safety buffer, then the resulting finish (cutoff minus buffer). The plan includes moving time and aid-station stops, then shows predicted arrival time, segment pace, elapsed pace, and cutoff margin for each relevant course location.
 
+**Plan A labels include the configured total goal in parentheses**, for example **Plan A (29:00)**. The time is hours and minutes for the whole race, including planned stops; it is not the duration of a training section. Changing the goal in **Pace Plan** updates these labels and section targets automatically. An unavailable goal reads **Plan A (not set)**.
+
 Use **Settings** to set your runner profile and default aid-station delay. The profile adapts the plan for your climbing, descending, technical-terrain, night, temperature, altitude, and pacing-style strengths. It is a planning aid, not a guarantee.
 
-Below the profile, **Race history** can pull tagged Strava races or import a GPX from a watch or race file. **Find races** only returns Strava Run, Trail Run, and Virtual Run activities you marked as a **Race** in Strava, with a start date in the last three years (1,095 days). It does not search activity names. An untagged race, or a race older than that window, will not appear until you mark it as Race on Strava (if it is recent enough) or import a GPX. If you have a very large Strava history, the search also stops after about 1,600 activities in that window. Choose which finishes to include; those calibrate an independent **estimated finish** and a **faster–slower range** on **Pace Plan**. That range is a band around one simulated finish, not percentiles of a results field. They do not change Plan A unless you choose **Use estimate as Plan A**. A 50K, 50-mile, or 100K result still counts, but less than a similar-distance finish when you are planning a 100. Short road races stay unchecked by default in the Strava list.
+Below the profile, **Race history** can pull tagged Strava races or import a GPX from a watch or race file. **Find races** only returns Strava Run, Trail Run, and Virtual Run activities you marked as a **Race** in Strava, with a start date in the last three years (1,095 days). It does not search activity names. An untagged race, or a race older than that window, will not appear until you mark it as Race on Strava (if it is recent enough) or import a GPX. If you have a very large Strava history, the search also stops after about 1,600 activities in that window. Choose which finishes to include; those calibrate an independent **estimated finish** and a **faster–slower range** on **Pace Plan**. That range is a band around one simulated finish, not percentiles of a results field. They do not change Plan A unless you choose **Use estimate as Plan A**. A 50K, 50-mile, or 100K result still counts, but less than a similar-distance finish when you are planning a 100. For targets under 200 miles, finishes of 200 miles or longer are excluded from calibration but remain saved; the estimate shows used and excluded counts. If none are comparable, it warns that it is using an uncalibrated fallback. Short road races stay unchecked by default in the Strava list.
 
 The Pace Plan page also shows that ability-based range after you calculate. With no selected finishes it still appears, labeled as a low-confidence default (15:00 per mile on flat, not your measured ability). Add Strava or GPX finishes in Settings to calibrate it. The card links to Settings and to the [ability-based prediction](/documentation/algorithms#ability-based-prediction) algorithm notes.
 
@@ -72,16 +74,17 @@ In **Training**, import a GPX or use **Create Route** to draw one. Drawing uses 
 
 Open a training route to:
 
-- See its course-overlap ranges and Plan A time for each overlapping race segment.
+- See one **Route plan** summary and selectable **On-course sections**, split at official aid stations and Start/Finish. Selecting a section highlights its matching route stretch; select it again to clear.
+- Read the whole-race goal in **Plan A (29:00)** separately from the section time beneath it. Tiny isolated matches under 0.25 miles are omitted. A continuous final approach remains one aid-station-to-Finish section even when the race reuses its opening road.
 - Export the training route as a GPX file. Imported routes preserve their original GPX; manually created routes export their saved track.
 - Connect Strava and enter one or more activity links or IDs, one per line.
-- Compare each matched training section independently with Plan A.
+- Choose **Analyze runs** to compare each matched training section independently with the configured Plan A goal. Comparison controls start expanded between the summary and section cards.
 
-DFIU uses Strava **moving time**, not elapsed time. When Strava GPS and timing streams are available, it correlates the activity trace directly with the race GPX and uses only the matching directional pass. This means an out-and-back activity can contribute only its outbound half when the race runs that corridor once, even if the activity and saved training route start at different places. Otherwise DFIU uses a clearly limited distance-weighted moving-time estimate. Results and activity entries are saved with the training route and remain available in later sessions.
+DFIU uses Strava **moving time**, not elapsed time. When Strava GPS and timing streams are available, it correlates the activity trace directly with the race GPX and uses only the matching directional pass. This means an out-and-back activity can contribute only its outbound half when the race runs that corridor once, even if the activity and saved training route start at different places. Otherwise DFIU uses a clearly limited distance-weighted moving-time estimate. Results and activity entries are saved with the training route and remain available in later sessions. **Against matched Plan A (29:00)** compares only the race miles actually covered by that activity, which can be shorter than the full section. If course geometry or matching changes, choose **Analyze runs** again to refresh saved activity mappings; changing only the goal recalculates the comparison automatically.
 
 ## Resources
 
-Resources can be links or full-width text boxes. Link titles open directly in a new tab. Text boxes support Markdown headings, lists, links, tables, and emphasis. Each custom resource can be reordered, enabled/hidden, assigned an icon, and optionally made printable. The Print button appears in the upper-right of the rendered text resource, like Schedule of Events.
+Resources can be links or full-width text boxes. Link titles and links inside resource text open in the current tab; use your browser’s Back action to return. Text boxes support Markdown headings, lists, links, tables, and emphasis. Each custom resource can be reordered, enabled/hidden, assigned an icon, and optionally made printable. The Print button appears in the upper-right of the rendered text resource, like Schedule of Events.
 
 Lodging & Dining and Schedule of Events are built-in Markdown sections. The resource icon menu includes lodging/bed and calendar choices in addition to the standard icons.
 

@@ -32,16 +32,16 @@ Terrain has two write paths: range painting and sidebar segment editing. Preserv
 
 ### Training analysis
 
-Persisted overlap is derived data. Recompute it from current geometries after a course or training-route change; do not trust stale saved ranges. Analysis must compare each overlap pair separately and use Strava moving time, not elapsed time.
+Persisted overlap is derived data. Recompute it from current geometries after a course or training-route change; do not trust stale saved ranges. The load path uses `computeTrainingMapOverlap(..., { mergeAdjacent: false })` to preserve raw direction and avoid the heavier creation-time matcher. Both map and analysis disambiguate near-identical distant course visits with continuity. `buildTrainingPlanSummary` merges continuous fragments, selects unique directional passes, projects official aid/Start/Finish boundaries, and omits sections shorter than 0.25 miles. Compare Strava moving time over matched activity-distance intervals, not elapsed time. Saved activity GPS is transient: old compact mappings require **Analyze runs** again after geometry/matcher changes.
 
 ### Pace plans
 
-Plan A/B/C are target-time distributions. Any change to factor math should update `docs/ALGORITHMS.md`, tests in `src/features/race/*.test.ts`, and any saved model version/snapshot behavior.
+Plan A/B/C are target-time distributions. Use `formatPlanALabel` from `plan-label.ts` with `computePlanMinutes(...).a` (or the passed `planAGoalMinutes`) for event-specific labels. Never use a section duration or check-in-adjusted projection as the displayed goal. The race-scoped `dfiu:pace-plans:${raceId}` event synchronizes independent hook instances immediately; Supabase realtime handles remote changes. Any change to factor math should update `docs/ALGORITHMS.md`, tests in `src/features/race/*.test.ts`, and any saved model version/snapshot behavior.
 
 ## Local development
 
 1. Copy `.env.example` to `.env.local` and set Supabase and Mapbox client values.
-2. Run `npm install` and `npm run dev`.
+2. Use Node.js 22 (the CI version), run `npm ci`, then `npm run dev`.
 3. Run `npm test`, `npm run lint`, and `npm run build` before a feature commit.
 
 Never expose Strava or Visual Crossing secrets in client variables. They belong in Supabase Edge Function secrets.
@@ -54,6 +54,8 @@ The app uses Supabase RLS and RPCs for race access, membership, and selected pro
 - `strava-activity` — authenticated activity lookup, connection status, and tagged-race listing.
 - `weather` — authenticated weather fetch using the server-side Visual Crossing key.
 - `invite-race-member` — authenticated, permission-checked invite workflow.
+- `signup` — pre-session, access-code-gated email/password signup.
+- `share-preview` — public link-preview response. The production Nginx path also uses `server/og-server.mjs`; see Deployment Guide.
 
 The hosted migration history currently diverges from this checkout. Do not run a blind `supabase db push`. Apply a reviewed scoped migration to the linked project, verify the production schema/data affected, and record it in `HANDOFF.md`.
 

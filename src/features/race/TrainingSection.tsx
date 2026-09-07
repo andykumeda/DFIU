@@ -1,3 +1,4 @@
+import { formatPlanALabel } from './plan-label'
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ExternalLink, Mountain, PencilLine, Route as RouteIcon, Upload } from 'lucide-react'
@@ -18,7 +19,7 @@ import { TrainingRouteSvgPreview } from './TrainingRouteDetailMap'
 import { calculatePacePlan, isPaceChartWaypoint, type PacePlanResult } from './pace-utils'
 import { usePacePlans, computePlanMinutes } from './usePacePlans'
 import type { RunnerPacingProfile } from './runner-profile'
-import { buildTrainingPlanSummary, formatDurationWords } from './training-analysis'
+import { buildTrainingPlanSummary } from './training-analysis'
 import { resetPageScroll } from './training-scroll'
 
 const TrainingRouteCreatorMap = lazy(() =>
@@ -382,7 +383,7 @@ function TrainingRouteCard({
     hasFinish &&
     isPointToPointRoute(route.start_lat, route.start_lon, route.finish_lat, route.finish_lon)
   const planSummary = buildTrainingPlanSummary(route.overlapSegments, planA, race, clock24h, aidStations)
-  const planGoalLabel = planAGoalMinutes > 0 ? ` (${formatDurationWords(planAGoalMinutes)} goal)` : ''
+  const planALabel = formatPlanALabel(planAGoalMinutes)
   const overlapElevFt = courseOverlapElevationGainFt(courseElevationSamples, route.overlapSegments)
 
   return (
@@ -422,11 +423,11 @@ function TrainingRouteCard({
             })}
           </p>
           {planSummary && (
-            <section className="pt-3 mt-3 border-t border-neutral-800 space-y-2" aria-label="Plan A segment">
-              <h4 className="text-sm font-medium text-emerald-300">Plan A{planGoalLabel}</h4>
+            <section className="pt-3 mt-3 border-t border-neutral-800 space-y-2" aria-label={`${planALabel} segment`}>
+              <h4 className="text-sm font-medium text-emerald-300">{planALabel}</h4>
               <dl className="space-y-1.5 text-xs leading-5">
                 <div className="flex justify-between gap-3 text-neutral-400"><dt>Race Segment Miles</dt><dd className="text-right text-neutral-200">{planSummary.raceMilesTotal.toFixed(1)} mi</dd></div>
-                <div className="flex justify-between gap-3 text-neutral-400"><dt>Race Segment Time</dt><dd className="text-right text-neutral-200">{planSummary.raceDurationLabel ?? 'Generate Plan A'}</dd></div>
+                <div className="flex justify-between gap-3 text-neutral-400"><dt>Race Segment Time</dt><dd className="text-right text-neutral-200">{planSummary.raceDurationLabel ?? `Generate ${planALabel}`}</dd></div>
                 <div className="flex justify-between gap-3 text-neutral-400"><dt>Training Miles</dt><dd className="text-right text-neutral-200">{planSummary.trainingMilesTotal.toFixed(1)} mi</dd></div>
               </dl>
             </section>

@@ -125,25 +125,19 @@ Map terrain rendering resolves a terrain endpoint with both location and intende
 
 ## Training-route overlap
 
-Training overlap is geometric, not name-based. DFIU:
+Training overlap is geometric, not name-based. The interactive load path and activity mapper sample the training trace about every 0.05 miles, then use a spatial grid to find course segments within 0.035 miles (about 56 m). Brief GPS gaps up to 0.06 miles can be bridged. Candidate streaks must pass a trail-following check so nearby crossings, radial approaches, and parallel branches do not become useful overlap.
 
-1. Samples the training route about every 0.05 mi.
-2. Snaps each sample to the race course within 0.12 mi (about 200 m), preferring course-mile continuity so start/finish colocation does not flip visits.
-3. Bridges brief gaps up to about 0.4 mi for dropouts and switchbacks.
-4. Detects clear out-and-back turnarounds:
-   - If the race revisits the same trail later (disconnected visits), the return leg maps onto that later pass — separate segments and times of day (e.g. Shortcut to Newcomb).
-   - If the race itself is a continuous out-and-back, course miles keep advancing through the turnaround as one span (e.g. Shortcut to Hillyer).
-   - If the race uses the corridor only once, outbound and return remain separate directional passes; the race-direction pass is used for Plan A and repeated race miles are excluded.
-5. Merges nearby course-mile candidate hits within 1.25 mi, then rejects streaks whose training distance does not plausibly follow the race trail.
-6. Filters the special false match that can occur when a course Start and Finish share coordinates.
+When two snaps are within 0.002 miles of each other, continuity can disambiguate distant course visits (more than 2.5 course miles apart). This keeps the final approach on the final course miles when Start and Finish share a corridor. Raw analytical ranges retain nearest-point progression for ordinary samples and preserve genuine direction reversals. The heavier creation/recompute matcher additionally discovers candidates within 0.12 miles, bridges up to 0.4 miles, and reconciles accepted coverage with the fast matcher.
 
-The total overlap is unique course-mile coverage across the accepted race-mile segments only. Nearby candidate hits that fail the trail-following check are excluded from both the segments and the total; repeated passes over the same accepted race miles count once.
+The total overlap is unique coverage of accepted course-mile ranges, not the sum of proximity hits. Training out-and-back passes stay directional; the summary prefers the race-direction pass for repeated race miles.
 
-Map coloring snaps training GPX to the race line within about 0.035 mi and paints orange on the training line only where those samples sit on the race. Purple is the race; blue is training-only. An off-course canyon dip or fire-road approach stays blue.
+For presentation, continuous fragments merge only when they continue in the same direction, are within 0.4 training miles, and within 0.75 course miles. Official aid stations and Start/Finish define named sections, with a 0.15-mile endpoint tolerance. Boundaries project onto training miles by interpolation. Isolated sections shorter than 0.25 miles are omitted from the Route plan and comparisons.
+
+Map coloring paints overlap on the training line: purple is the race, blue is training-only, orange is overlap, and yellow is the selected section. Off-course canyon dips and fire-road approaches remain blue. The analytical section list, Plan A targets, and selection share the same projected boundaries.
 
 ## Strava training analysis
 
-For every detected overlap pair, DFIU calculates the Plan A time for only that race-mile span. It compares that span with the corresponding training-mile span independently; it does not create one misleading total for a whole training run with disconnected overlap sections.
+For every displayed section, DFIU calculates the Plan A time for only that race-mile span, excluding the departing aid station’s stop. Event labels show the configured whole-race goal, for example **Plan A (29:00)**; the section duration is shown separately. It compares that span with the corresponding training-mile span independently; it does not create one misleading total for a whole training run with disconnected overlap sections.
 
 Strava moving time is used exclusively. With GPS and distance/time/moving streams, DFIU first correlates the activity trace to the race GPX, then apportions moving seconds to the spatially matched race interval. This handles an activity whose start, finish, or turnaround differs from the saved training route, and counts moving samples even when Strava repeats a rounded distance value. The large GPS stream is used transiently; only compact race/activity segment mappings are saved. Without streams, DFIU falls back to a distance-weighted share of total moving time. Approach miles, breaks, and elapsed time are excluded from the comparison as far as the available data permits.
 

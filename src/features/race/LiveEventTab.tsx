@@ -1,3 +1,4 @@
+import { formatPlanALabel } from './plan-label'
 import { useEffect, useMemo, useState } from 'react'
 import {
     CheckCircle2,
@@ -562,7 +563,7 @@ export function LiveEventTab({
                     </div>
 
                     <div className='grid grid-cols-3 gap-2 text-sm md:min-w-[24rem]'>
-                        <StatusTile label='Plan A' value={planAMinutes > 0 ? formatHM(planAMinutes) : '--'} />
+                        <StatusTile label={formatPlanALabel(planAMinutes)} value={planAMinutes > 0 ? formatHM(planAMinutes) : '--'} />
                         <StatusTile
                             label='Runner'
                             value={statusDeltaMin == null ? 'No actual' : statusDeltaMin > 0 ? `+${statusDeltaMin}m` : `${statusDeltaMin}m`}

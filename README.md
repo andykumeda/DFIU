@@ -21,7 +21,7 @@ DFIU helps you centralize your course, pace plan, logistics, and crew info in on
 
 -   **Frontend:** React 19 + Vite 6
 -   **Routing:** React Router v7
--   **State Management:** TanStack Query v5
+-   **State Management:** React hooks and Supabase realtime; TanStack Query v5 provider
 -   **Styling:** Tailwind CSS v4
 -   **Backend / Auth:** Supabase
 -   **Maps:** Mapbox GL JS v3
@@ -38,7 +38,7 @@ DFIU helps you centralize your course, pace plan, logistics, and crew info in on
 -   **Race Overview:** Event details, weather forecasts, course records, cutoffs, qualifiers, and direct links to registration.
 -   **Mile Markers:** Toggle mile markers along the route (auto-scaled by distance).
 -   **Terrain Segments:** Colored five-level terrain overlays, map/profile range selection, sidebar editing, selection highlighting, and reviewed reverse-direction out-and-back pairing.
--   **Pace Plans:** Automatically recalculated Plan A/B/C goal-time plans with grade, terrain, time-of-day, weather, runner-profile, and aid-station-delay factors; optional independent P10/P50/P90 prediction from a baseline and history.
+-   **Pace Plans:** Automatically recalculated Plan A/B/C goal-time plans with grade, terrain, time-of-day, weather, runner-profile, and aid-station-delay factors; optional independent estimated finish and planning band from a baseline and selected history.
 -   **Training & Strava:** GPX import or snapped manual route creation, direction-aware course-overlap detection, GPS-correlated multi-activity Strava analysis, and moving-time comparisons for each individual overlapping section.
 -   **Resources:** Reorderable links and Markdown text resources with icon choices and optional print-ready rendering.
 -   **Crew View:** Mobile-first `/race/:id/crew` view with predicted runner location, next crew aid station, Google Maps destination links, drop bag details, and runner arrival check-ins.
@@ -81,27 +81,27 @@ segment pace = base pace × grade × terrain × conditions × runner profile
 
 Because it solves backward from your goal time, the chart answers *"what pace plan gets
 me to my goal on this course?"* rather than predicting a finish time from your ability.
-The optional P10/P50/P90 predictor is separate and never replaces Plan A/B/C. See the
+The optional estimated finish and faster–slower planning band are separate and never replace Plan A/B/C automatically. Event labels show the configured total goal, such as **Plan A (29:00)**. See the
 [Algorithm Reference](docs/ALGORITHMS.md) for exact behavior, assumptions, and limits.
 
 ## Getting Started
 
 ### Prerequisites
 
--   Node.js (v18+)
+-   Node.js 22 (matches CI)
 -   NPM
 
 ### Installation
 
 1.  Clone the repository:
     ```bash
-    git clone <repository_url>
+    git clone https://github.com/andykumeda/DFIU.git
     cd DFIU
     ```
 
 2.  Install dependencies:
     ```bash
-    npm install
+    npm ci
     ```
 
 3.  Configure environment variables:
@@ -136,7 +136,7 @@ See [`DEPLOYMENT.md`](DEPLOYMENT.md). Short version:
 npm run deploy
 ```
 
-Also apply reviewed Supabase migrations and deploy changed Edge Functions (`strava-auth`, `strava-activity`, `weather`, `invite-race-member`) when they change. See the migration safeguard in [`DEPLOYMENT.md`](DEPLOYMENT.md).
+Also apply reviewed Supabase migrations and deploy changed Edge Functions (`strava-auth`, `strava-activity`, `weather`, `invite-race-member`, `signup`, `share-preview`) when they change. See the migration safeguard in [`DEPLOYMENT.md`](DEPLOYMENT.md).
 
 ## Directory Structure
 
@@ -146,7 +146,7 @@ Also apply reviewed Supabase migrations and deploy changed Edge Functions (`stra
 -   `src/features/settings/` - User settings and integrations.
 -   `src/pages/` - Application route pages (Dashboard, Login, Race Detail, etc.).
 -   `src/lib/` - Shared utilities (Supabase client, geo-utils, GPX parser, weather client, race-select).
--   `supabase/functions/` - Edge Functions (`strava-auth`, `strava-activity`, `weather`, `invite-race-member`).
+-   `supabase/functions/` - Edge Functions (`strava-auth`, `strava-activity`, `weather`, `invite-race-member`, `signup`, `share-preview`).
 -   `src/components/ui/` - Shared UI components.
 
 ## Current Open Work

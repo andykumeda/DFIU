@@ -1,3 +1,4 @@
+import { formatPlanALabel } from './plan-label'
 import { useEffect, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { MapPin, Plus, Trash2, RefreshCw, X } from 'lucide-react'
@@ -226,7 +227,7 @@ export function WeatherLocations({ race, course, waypoints, terrainNodes, runner
                                 .filter(arrival => aidStations.some(station => station.name === loc.waypoint_name && station.id === arrival.waypointId))
                                 .map(arrival => formatStoredClockTime(arrival.timeOfDay, clock24h))
                                 .filter(Boolean)
-                            return visitTimes.length > 0 ? <div className="mt-1 text-xs text-neutral-500">Plan A arrival: {visitTimes.join(' · ')}</div> : null
+                            return visitTimes.length > 0 ? <div className="mt-1 text-xs text-neutral-500">{formatPlanALabel(planAMinutes)} arrival: {visitTimes.join(' · ')}</div> : null
                         })()}
                     </div>
                 ))}

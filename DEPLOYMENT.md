@@ -72,6 +72,7 @@ supabase functions deploy strava-auth --no-verify-jwt   # OAuth start/callback a
 supabase functions deploy strava-activity                # JWT required
 supabase functions deploy weather                        # JWT required
 supabase functions deploy invite-race-member             # JWT required
+supabase functions deploy signup --no-verify-jwt         # Access-code-gated signup (pre-session)
 supabase functions deploy share-preview --no-verify-jwt  # Link-preview OG HTML/images (no JWT)
 ```
 
@@ -91,12 +92,12 @@ GitHub Actions workflow `.github/workflows/ci.yml` runs `npm ci`, lint, vitest, 
 
 Share / vanity event URLs are proxied to a local Node injector that rewrites
 `og:title` / `og:description` into the built SPA `index.html`. Crawlers and
-browsers get the same document (no User-Agent sniffing, no JS redirect).
+browsers receive the SPA document without a JavaScript redirect. Facebook/Instagram crawlers receive the alternate square preview image; other visitors use the default preview image.
 
 - Server: [`server/og-server.mjs`](server/og-server.mjs) (systemd: `dfiu-og`, port `3457`)
 - Nginx template: [`scripts/nginx-dfiu.app.conf`](scripts/nginx-dfiu.app.conf)
 - Env: copy [`server/.env.example`](server/.env.example) → `/var/www/dfiu-og/.env` on the host
-- Static preview image: `/og-default.png`
+- Preview images: `/og-default.png` (default) and `/og-ig.png` (Facebook/Instagram)
 
 `npm run deploy` syncs `server/` and restarts `dfiu-og`.
 

@@ -1,165 +1,33 @@
-# Handoff Document
+# DFIU Handoff
 
-**Date:** 2026-09-06
+**Date:** 2026-09-07
 **Branch:** `main`
-**Status:** Complete: Chantry to Finish training sections corrected and deployed.
+**Status:** In progress: configured Plan A labels, stale-code cleanup, and documentation refresh.
 
-- Analytical matching now resolves ambiguous distant course visits using continuity while preserving nearest-point progression and genuine direction reversals. Start/Finish waypoints now name section endpoints.
-- Deployed product commit and `git describe`: `9f96133`. Production route `02794846-3a75-4287-9964-8e7dfe125c97` now shows four sections, ending in Millard Canyon → Finish, race mi 97.0–101.3 / training mi 18.1–22.5.
-- Refreshed its saved Strava comparison through the signed-in UI; final section shows 42 mins moving / 22 mins faster than matched Plan A and persists after reload. Desktop screenshot confirms the continuous yellow highlight reaches Finish; no browser warnings/errors.
-- Validation: 124 tests pass, build/deploy pass, lint has 0 errors / 49 existing warnings, diff check passes. Updated older fixture expectations only after verifying that recovered overlap removes false visit gaps while keeping actual off-course excursions excluded.
-- No additional branches or worktrees; product commit pushed to origin/main.
+## Current work
 
-## Current task
+- Event-specific Plan A references use `formatPlanALabel` with the configured goal, such as `Plan A (29:00)`. Training deltas distinguish the whole-race goal from the section target; labels follow Pace Plan changes.
+- Removed the permanently disabled duplicate history-entry form from Pace Calculator; Settings remains the history editor. Removed the unused `cn` helper and its sole dependencies `clsx` / `tailwind-merge`.
+- Patched transitive development dependencies `@humanfs/node` and `nanoid`; npm audit reports zero vulnerabilities after the compatible updates.
+- Updated user, algorithm, developer, deployment, README, and history-planning documentation. Replaced this accumulated session diary with a current status board; previous evidence remains in git history.
+- Audit found all app modules reachable and retained generated database types, historical migrations, compatibility paths, and regression fixtures. No new branch or worktree.
+- Validation: 126 tests pass, TypeScript passes, lint has 0 errors / 49 pre-existing warnings, shell/OG-server syntax checks pass. Release and live label-change verification pending.
 
-- Reproduced the reported 35:44 estimate exactly from the saved history, public AC100 course, and runner settings.
-- Corrected asymmetric distance weighting, incompatible ascent normalization, default-pace bias, and unsupported high-confidence labeling. Model terrain-hybrid-v1.3 uses consistent km-effort normalization and a dispersion-aware planning band.
-- Checked both authorized accounts using temporary local data; no personal history fixtures or account data changes are included in this commit.
-- Validation: 123 tests pass, production build passes, lint has 0 errors / 49 existing warnings; diff check passes.
-- Follow-up: exclude 200+ mile history for targets under 200 miles; show used/excluded counts, preserve saved finishes. Final deployment: 24b99fa (git describe after deploy), pushed to origin/main. Explicit warning added when all history is 200+ miles and no comparable finishes remain.
-- Live browser confirmed production footer 24b99fa; signed-out/demo checks only. Personalized estimates were reproduced locally from authorized saved inputs, not verified in a signed-in browser. No additional branches/worktrees.
+## Latest deployed product
 
-## Previous completed task
+- `9f96133`: final course visits stay continuous in analytical overlap; Start/Finish now name section endpoints.
+- Route `02794846-3a75-4287-9964-8e7dfe125c97` has four sections, ending Millard Canyon → Finish (race mi 97.0–101.3 / training mi 18.1–22.5).
+- Saved Strava comparison refreshed in the signed-in UI: 42 mins moving / 22 mins faster than matched Plan A. Reload, desktop/mobile display, and highlight through Finish verified.
 
-- Live reproduction confirmed the first CalTopo click succeeded but the second forced-new-tab click created a blank tab. Resource cards now omit `target` so repeated visits use normal current-tab navigation.
-- All nine configured external Resources destinations returned HTTP 200; the deployed live flow reached CalTopo successfully on both first and repeated visits.
-- Mobile simulation at 390x844 found the embedded Strava `INCLINE` link in Runner Notes still used `target="_blank"`; Resources Markdown now opts into same-tab navigation, matching the resource cards.
-- Fresh production verification at 390x844 reached all 10 configured external links (9 resource cards plus the embedded Strava club link) twice each; all rendered targets were same-tab and no link remained on the DFIU page after tapping.
-- Regression coverage is in `src/features/race/resources-shared.test.ts`.
-- Validation: 117 tests pass; build passes; lint has 0 errors and 49 pre-existing warnings; `git diff --check` passes.
-- Deployed to `andy@web:/var/www/dfiu`; production frontend serves `index-Cnjjp-D-.js`.
-- Product commit: `3a19c23`; no side branches or additional worktrees remain.
+## Open work and verification gates
 
-- New-race creation now selects the inserted course ID, projects parsed GPX waypoints onto the route, and inserts deduplicated station rows with ordered defaults. Endpoint ownership remains with the existing RaceDetail fallback.
-- Near-identical same-name station rows within 0.1 course miles are deduplicated; focused regression coverage is in `src/lib/gpx-waypoint-import.test.ts`.
-- Validation: 114 tests pass; build passes; lint has 0 errors and 49 pre-existing warnings; `git diff --check` passes.
-- Deployed to `andy@web:/var/www/dfiu`; product commit: `3139de3`.
-- Cleaned private race `482512d5-1b6e-4fb0-aac8-7402223b8356` by removing its two remaining duplicate Steam Trains rows; database and live UI verification passed.
-- `main` needs the final handoff-only commit and push to `origin/main`.
+- Confirm Strava secret rotation and current Edge Function secret configuration. Do not print secrets or perform a blind migration push; hosted migration history diverges from the checkout.
+- Verify RBAC/invites end to end with a second account; add admin and owner-transfer UI if prioritized. See `docs/handoff/next-phase-roles-permissions.md`.
+- Continue Settings race-history import and ability-estimate field validation; see `docs/handoff/next-phase-history-based-pacing.md`.
+- Crew offline/PWA, driving ETA, and parking metadata remain product decisions; see `docs/handoff/next-phase-crew-mode-directions.md`.
+- Finish or retire the Pacer View placeholder and decide on the opt-in post-event feedback email flow.
+- Reconcile remaining deploy-hardening ideas only when needed; the current script retains older hashed assets, normalizes permissions, and restarts the OG service.
 
-### Follow-up
+## Working rules
 
-- Live screenshot confirmed the first implementation duplicated repeated GPX station records and Start/Finish. The follow-up deduplicates equivalent station rows and lets the existing fallback own endpoints; the reported race was cleaned and verified live.
-
-### Prior completed work
-
-- Fixed the live `42501` for ordinary accounts by recognizing `races.user_id = auth.uid()` in both `user_can_view_race` and the `races_select` policy. The direct policy clause is required because `INSERT ... RETURNING` evaluates visibility before the helper can re-query the candidate row.
-- Applied `20260902200213_race_creator_view_fallback.sql` directly to the linked Supabase project.
-- Exact rollback verification passed as the newest ordinary account: the race insert returned `official_revision` / `merged_official_revision`, the owner-membership trigger completed, and a separate GPX-backed course insert succeeded. No probe rows were retained.
-- Validation: 111 tests pass; build passes; lint has 0 errors and 49 pre-existing warnings; `git diff --check` passes. Supabase security advisors reported existing project warnings, with no error attributable to this change.
-- Frontend deployment completed per repository workflow; emitted `index-CxwSlfCu.js`. Product/schema commit: `5a1c26a`; no side branches or additional worktrees remain.
-
-## Latest support fix
-
-- Applied directly to the linked DFIU Supabase project: `GRANT SELECT (official_revision, merged_official_revision) ON TABLE public.races TO anon, authenticated`.
-- Verified through `information_schema.role_column_grants`: both columns have `SELECT` for both API roles.
-- The grant exposed the subsequent ordinary-account RLS failure fixed above; the GPX payload was not the cause.
-
-## Previous task
-
-- The four On-course sections now read as distinct bordered cards with spacing and a stronger selected state.
-- The completed Strava comparison now lives between the Route Plan summary and On-course sections, expanded by default at all widths.
-- Product deployment commit: `f5df5a3`; production emitted `index-Vphw-Nnc.js`.
-- Validation: 111 tests pass; build passes; lint has 0 errors and 49 pre-existing warnings; `git diff --check` passes. Deployment and push to `origin/main` completed. Automated isolated-browser verification was unavailable because this checkout has no Playwright runtime; no visual claim is made from that check.
-
-> **All agents:** read `AGENTS.md` ("Mandatory Agent Workflow") before making any change.
-
-## Latest deployment
-
-- `Route plan` now begins at the top of the desktop right column. The route title/name, description, distance/elevation, directions, and `Compare a completed Strava run` render beneath the map in the left column without duplicating Training Analysis state.
-- Exact production verification passed on training route `be2975d3-6e19-43ef-82db-01805a142857`: the top desktop viewport shows map left / Route plan right, the lower viewport shows Strava controls left / Section 4 right while the map remains sticky, and the 390 px order remains map → route details → Route plan → Strava.
-- Validation: 111 tests pass; build passes; lint has 0 errors and 49 pre-existing warnings; `git diff --check` passes. Production serves `index-B0fyzod9.js`; the browser warning/error console is empty. Product deployment commit is `4d46d80`; no side branches or additional worktrees remain.
-
-- Projected Strava subsections now integrate moving time over their actual activity-distance bounds instead of linearly interpolated timestamps across a coarse course match. Timestamp-only saved activities retain the existing fallback.
-- Exact production verification on activity `19953468815`, training route `be2975d3-6e19-43ef-82db-01805a142857`: Section 1 remains `1 hour 11 mins` / `7 mins slower than Plan A`; Section 4 is corrected from `36 mins` / `4 mins slower` to `22 mins` / `9 mins faster`.
-- At viewports 768 px and wider, the map and elevation profile remain sticky beside the route details. Section 4's selected row and yellow map highlight were visible together in the supplied desktop flow. At 390 px the page remains stacked; the map precedes Route plan at full content width.
-- Validation: 111 tests pass; build passes; lint has 0 errors and 49 pre-existing warnings; `git diff --check` passes. Production serves `index-DvLe0uDO.js`; the browser warning/error console is empty. Product deployment commit is `6b72490`; no side branches or additional worktrees remain.
-
-- Repeated start/finish course visits now use course-mile continuity when their physical snaps are effectively tied, preventing visual overlap from fragmenting across ~100-mile visit jumps. Raw analytical segments remain direction-preserving.
-- Exact production verification passed: the street approach immediately before the `F/S` marker is red while the perpendicular off-course road remains blue. Production serves `index-C_aavgE1.js`; no new console warnings/errors appeared after deployment.
-- Validation: 110 tests pass; build passes; lint has 0 errors and 49 pre-existing warnings; `git diff --check` passes. Product deployment commit is `c362e72`; no side branches or additional worktrees remain.
-
-- Preserved GPX direction so an out-and-back training route contributes only the pass matching race direction; a one-pass race corridor can no longer fabricate later course miles from the return leg.
-- Added transient Strava `latlng` retrieval and race-GPX correlation. Saved activity mappings use exact activity timestamps for moving-time comparisons and do not persist the large GPS stream.
-- Exact GPX verification: training overlap is race mi `0.07–10.31` outbound plus `10.31–0.07` return, with `10.24` unique race miles; Strava's race-direction pass maps to race mi `0.70–10.32` and activity mi approximately `0.04–10.01`.
-- Production frontend and `strava-activity` Edge Function deployed from `e039e91`. Public HTML serves `index-Dqqa0wnw.js`. The exact route renders `10.2 mi`, one section, race mi `0.1–10.3`, training mi `0.0–10.4`, and Plan A `2 hours 49 mins`.
-- Validation: 109 tests pass; build passes; lint has 0 errors and 49 pre-existing warnings; `git diff --check` passes. No side branches or additional worktrees remain.
-
-## Current production snapshot
-
-- Proximity-artifact fix committed as `4f7657f` and deployed. The reported Loma Alta Loop now displays five meaningful sections, without the `Redbox → Redbox` ~0.2-mile artifact.
-
-- Aid-station segmentation feature committed as `bc88736` and deployed. The supplied Clear Creek route shows four sections: Clear Creek → Josephine Peak → Redbox → Newcomb Saddle 1 → Shortcut Saddle 1.
-
-- Initial training overlap display stabilization committed as `e523821` and deployed.
-- Training route `06a3df4b-95fb-47b5-b410-526654db6c9e` shows four course-overlap rows and four Training Analysis sections across race mi `11.3–42.6`, training mi `0.0–31.3`.
-- Reference route `06a3df4b-95fb-47b5-b410-526654db6c9e` visibly shows Start, Finish, and both Water waypoints from its imported GPX.
-- Waypoint GPX is fetched only for the selected route, so route-list loading does not download every large source file.
-- Training route `394b45d7-d2ca-451f-97c7-62bdf6451373` now derives statistics from the raw accepted map sections, including the route's opening overlap section.
-- Frontend: Pace Plan C shows race cutoff hours plus safety buffer.
-- OG: `dfiu-og` serves `og-default.png` (left) by default; Facebook/Instagram UAs get `og-ig.png` (centered).
-- Backend: `runner_history.strava_activity_id` applied; `strava-activity` `list-races` deployed.
-
-## Just finished
-
-- Created a global Codex `AGENTS.md` for reusable engineering guidance; removed the duplicated generic section from this repository’s local `AGENTS.md`.
-- Configured GitHub Issues, default triage labels, and single-context domain-doc rules in `docs/agents/`; added the harness-neutral `## Agent skills` block to `AGENTS.md`.
-
-- Restored the prior 0.25-mile presentation threshold at the shared Route Plan summary layer: isolated GPX/course proximity blips are excluded from displayed sections, Plan A totals, and Strava comparisons.
-- Added a regression that reproduces a 0.2-mile fragment around Redbox and verifies it cannot create a same-station section.
-- Exact live verification passed on `training=6a62fba8-e15e-4321-a692-76ac5de1b8c9`: five sections remain, the Redbox row is gone, and the Plan A on-course total updates accordingly.
-- Validation: 104 tests pass; build passes; lint has 0 errors and 49 pre-existing warnings; `git diff --check` passes.
-
-- Replaced the duplicate Course Overlap and Training Analysis card stacks with a Route Plan: compact training/on-course/Plan A summary, then one selectable section list tied to the map.
-- Inline Strava moving time and Plan A delta now appear on those same rows. Multiple analyzed runs remain available through a compact selector; the import controls stay collapsed until needed.
-- Validation: 103 tests pass; build passes; lint has 0 errors and 49 pre-existing warnings; `git diff --check` passes. The supplied live route visibly renders its four sections once, with its saved Strava comparison inline.
-
-- Corrected the two-minute aid-stop discrepancy: Training’s Plan A time for an aid-to-aid section now starts at the first aid station’s planned departure and ends at the next arrival, exactly as Pace Plan’s Time to Next does.
-- Added a regression for Josephine Peak → Redbox’s two-minute starting stop; it verifies the displayed duration is 2:20 rather than the raw 2:22 arrival-to-arrival interval.
-- Validation: 103 tests pass; build passes; lint has 0 errors and 49 pre-existing warnings; `git diff --check` passes. Production deployment completed successfully; public signed-out view uses its default 29-hour plan and cannot show the saved 33-hour plan.
-
-- Added a shared aid-station section projector that splits cleaned continuous overlaps at official `aid_station` course miles and interpolates the corresponding training-mile boundaries.
-- Applied the sections consistently to the interactive map, overlap list, Plan A timing, and per-section Strava moving-time comparisons; total overlap mileage remains unchanged.
-- Exact production browser verification passed for the supplied URL: four named sections are visible, selecting Josephine Peak → Redbox highlights that section, and the warning/error console is empty.
-- Validation: 102 tests pass; build passes; lint has 0 errors and 49 pre-existing warnings; `git diff --check` passes. No side branches or additional worktrees remain.
-
-- Fixed the route-selection race: raw matcher fragments are synchronously normalized for the map's first paint, and deferred overlap results are accepted only when they belong to the current training/course coordinate pair.
-- Extended the full Clear Creek production-geometry regression to prove the initial display projection equals the final one-section map calculation.
-- Exact browser flow verified from Training previews into the second Clear Creek route: navigation and hard refresh both show `Course mi 11.3–42.6 (training 0.0–31.3)`, with one continuous orange section and a clean console.
-- Validation: 101 tests pass; build passes; lint has 0 errors and 49 pre-existing warnings; `git diff --check` passes.
-
-- Added shared training-mile hover state: map hover moves the elevation-profile highlight, while profile hover places the matching marker and mileage label on the map.
-- Added route-mile-to-coordinate coverage and retained the same synchronization in the SVG map fallback for externally controlled highlights.
-- Validation: 101 tests pass; build passes; lint has 0 errors and 49 pre-existing warnings; `git diff --check` passes. Live pointer checks passed in both directions at 320, 768, 1024, and 1440 px with an empty browser error/warning console.
-
-- Added the course-style elevation profile beneath training detail maps, including mile and imported GPX waypoint markers.
-- Start, Finish, and Water now render as green `S`, red `F`, and blue `W` map badges; the SVG fallback also gives Finish a distinct square shape.
-- Elevation samples remain out of the lightweight list query and load only with the selected route detail, alongside its raw GPX.
-- Validation: 100 tests pass; build passes; lint has 0 errors and 49 pre-existing warnings; `git diff --check` passes. Production browser checks passed at 320, 768, 1024, and 1440 px with an empty error/warning console.
-
-- Added a full production-geometry regression for the seven-fragment/one-continuous-section failure, plus focused continuity, GPX parsing, data projection, and waypoint-feature tests.
-- Production browser verification confirmed the single overlap section, four reference-route waypoint markers, and a clean console.
-- Validation: 98 tests pass; build passes; lint has 0 errors and 49 pre-existing warnings; `git diff --check` passes.
-
-## Previously finished
-
-- Fixed overlap totals that included rejected nearby candidate hits. The reported Strawberry Peak route now calculates `8.54 mi`; its completed Strava activity independently calculates `10.99 mi` from the full-resolution traces.
-- Added a compact real-geometry regression covering the race course, proposed training route, and completed Strava activity.
-- Training map hover shows `Race: Mile XX.X | Training: Mile YY.Y` along the route.
-
-## Previously finished
-
-- Preserved raw accepted map sections for statistics while retaining merged ranges only for visual display.
-- Confirmed Plan A goal edits recompute the pace plan and all derived Training/Strava comparisons; persisted activity data is intentionally unchanged.
-- Fixed the remaining mismatch where the map showed three accepted sections but the summary retained only two continuity-assigned sections.
-- Route loading now recomputes overlap sections from current route/course geometry, so existing persisted rows cannot keep stale statistics after algorithm changes.
-- Performance fix: route loading uses the grid-based map matcher (~57 ms on the reported route) instead of the full continuity matcher (~2.6 s per route).
-- The Pace Plan editor and Training section currently have separate `usePacePlans` instances; the editor's local Plan A change can wait for realtime propagation before Training recalculates.
-- Added a same-page custom event so separate hook instances receive Plan A edits immediately; Supabase realtime remains the cross-tab/user path.
-
-## Open
-
-- Last product deployment: repeated start/finish visual-overlap continuity fix (`c362e72`).
-- Smoke-test Settings race history (Strava + GPX) and Pace ability card.
-- Design and implement the opt-in post-event feedback email flow.
-- Rotate Strava secret; verify RBAC with a second account; `/admin` + owner-transfer UI.
+Read `AGENTS.md` before editing. Commit coherent changes after a successful build, deploy, record the deployed hash, and push `main`. Keep this board concise; long history belongs in git. Current user and algorithm pages are generated from `docs/USER_GUIDE.md` and `docs/ALGORITHMS.md`.

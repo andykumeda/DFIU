@@ -1,3 +1,4 @@
+import { formatPlanALabel } from './plan-label'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, MapPin, Navigation2, Clock, CheckCircle2, AlertCircle } from 'lucide-react'
@@ -320,14 +321,14 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
                 ? 'text-emerald-300'
                 : 'text-emerald-300'
     const statusLabel = statusDeltaMin == null
-        ? planAMinutes > 0 ? 'No check-in yet' : 'Plan A unavailable'
+        ? planAMinutes > 0 ? 'No check-in yet' : `${formatPlanALabel(planAMinutes)} unavailable`
         : statusDeltaMin > 0
-            ? `${statusDeltaMin} min above Plan A`
+            ? `${statusDeltaMin} min above ${formatPlanALabel(planAMinutes)}`
             : statusDeltaMin < 0
-                ? `${Math.abs(statusDeltaMin)} min below Plan A`
-                : 'On Plan A'
+                ? `${Math.abs(statusDeltaMin)} min below ${formatPlanALabel(planAMinutes)}`
+                : `On ${formatPlanALabel(planAMinutes)}`
     const statusDetail = statusDeltaMin == null
-        ? planAMinutes > 0 ? 'Using Plan A projection' : 'Set Plan A in Pace Plan'
+        ? planAMinutes > 0 ? `Using ${formatPlanALabel(planAMinutes)} projection` : `Set ${formatPlanALabel(planAMinutes)} in Pace Plan`
         : `${statusDeltaMin > 0 ? 'behind' : statusDeltaMin < 0 ? 'ahead' : 'matched'} at ${lastCheckinWp?.name ?? 'last check-in'}`
     const projectedDeltaMin = pacePlan && planAMinutes > 0
         ? Math.round(pacePlan.totalTime - planAMinutes)
@@ -383,14 +384,14 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
                 {/* Plan A + status strip */}
                 <section className='bg-neutral-900 rounded-lg p-3'>
                     <div className='flex items-center justify-between mb-2'>
-                        <div className='text-xs text-neutral-400 uppercase tracking-wide'>Plan A status</div>
+                        <div className='text-xs text-neutral-400 uppercase tracking-wide'>{formatPlanALabel(planAMinutes)} status</div>
                         <div className='text-xs text-neutral-400'>
                             {race.start_datetime ? `Elapsed ${formatHM(elapsedMin)}` : 'Not started'}
                         </div>
                     </div>
                     <div className='grid grid-cols-2 gap-2'>
                         <div className='rounded bg-emerald-950/40 border border-emerald-800/60 px-3 py-2'>
-                            <div className='text-xs text-emerald-100/80'>Plan A</div>
+                            <div className='text-xs text-emerald-100/80'>{formatPlanALabel(planAMinutes)}</div>
                             <div className='text-base font-semibold text-emerald-100'>{planAMinutes > 0 ? formatHM(planAMinutes) : '—'}</div>
                         </div>
                         <div className='rounded bg-neutral-800 px-3 py-2'>

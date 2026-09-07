@@ -1,3 +1,4 @@
+import { formatPlanALabel } from './plan-label'
 import type { Race } from '@/types/database'
 import {
   computeTrainingMapOverlap,
@@ -391,22 +392,24 @@ export function getTrainingSegmentMovingMinutes(
 
 export function getTrainingAnalysisDelta(
   trainingElapsedMinutes: number,
-  planGoalMinutes: number
+  planGoalMinutes: number,
+  planAGoalMinutes: number
 ): TrainingAnalysisDelta {
+  const planALabel = formatPlanALabel(planAGoalMinutes)
   const deltaMinutes = Math.round(trainingElapsedMinutes - planGoalMinutes)
   if (Math.abs(deltaMinutes) < 1) {
-    return { deltaMinutes: 0, label: 'On Plan A time', tone: 'even' }
+    return { deltaMinutes: 0, label: `On ${planALabel} time`, tone: 'even' }
   }
   if (deltaMinutes < 0) {
     return {
       deltaMinutes,
-      label: `${formatDurationWords(Math.abs(deltaMinutes))} faster than Plan A`,
+      label: `${formatDurationWords(Math.abs(deltaMinutes))} faster than ${planALabel}`,
       tone: 'faster',
     }
   }
   return {
     deltaMinutes,
-    label: `${formatDurationWords(deltaMinutes)} slower than Plan A`,
+    label: `${formatDurationWords(deltaMinutes)} slower than ${planALabel}`,
     tone: 'slower',
   }
 }

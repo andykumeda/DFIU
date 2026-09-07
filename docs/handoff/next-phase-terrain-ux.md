@@ -12,7 +12,7 @@
 - Sidebar type changes, range edits, and deletes propagate to detected reverse passes.
 - Terrain sidebar supports inline mile editing and manual range add.
 - Terrain type drives pace calculation through existing `terrain_nodes` data.
-- Terrain visibility is intentionally gated by `canEdit`, not `canView`; view-only members do not see terrain overlays.
+- Race Detail loads terrain for the active course and passes it to the map/profile. Terrain editing callbacks and controls are permission-gated; do not confuse editing permission with map visibility.
 
 ## Current Tunables
 
@@ -25,7 +25,7 @@
 
 - Tune `TOL_M` if field testing finds false-positive or false-negative reverse-pass pairing.
 - Consider exposing an advanced difficulty override UX if users need custom difficulty beyond type defaults.
-- Revisit visibility if product wants view-only members to see terrain but not edit it.
+- Verify terrain access with the second-account RBAC matrix before changing permissions.
 
 ## Key Files
 

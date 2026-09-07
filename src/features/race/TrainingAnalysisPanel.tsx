@@ -1,3 +1,4 @@
+import { formatPlanALabel } from './plan-label'
 import { useEffect, useMemo, useState } from 'react'
 import { Activity, Link2, LoaderCircle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -61,6 +62,7 @@ interface TrainingAnalysisPanelProps {
 export function TrainingAnalysisPanel({
   routes,
   planA,
+  planAGoalMinutes,
   race,
   clock24h,
   aidStations = [],
@@ -74,6 +76,7 @@ export function TrainingAnalysisPanel({
   onSaveActivityResults,
   courseCoordinates,
 }: TrainingAnalysisPanelProps) {
+  const planALabel = formatPlanALabel(planAGoalMinutes)
   const savedActivityInputValue = savedActivityInputs.join('\n')
   const savedActivityResultsValue = JSON.stringify(savedActivityResults)
   const [routeId, setRouteId] = useState(routes[0]?.id ?? '')
@@ -140,18 +143,18 @@ export function TrainingAnalysisPanel({
         .reduce((total, value) => total + value, 0)
       return {
         movingMinutes,
-        delta: getTrainingAnalysisDelta(movingMinutes, planMinutes),
+        delta: getTrainingAnalysisDelta(movingMinutes, planMinutes, planAGoalMinutes),
         spatiallyMatched: Boolean(activeActivity.courseSegments?.length),
       }
     })
-  }, [activeActivity, clock24h, planA, race, summary])
+  }, [activeActivity, clock24h, planA, planAGoalMinutes, race, summary])
   const analyzeActivity = async () => {
     if (!activityInput.trim()) {
       setError('Paste a Strava activity link or enter its numeric activity ID.')
       return
     }
     if (!summary?.segments.some(segment => segment.raceDurationMinutes != null)) {
-      setError('Set a valid Plan A goal before comparing a training activity.')
+      setError(`Set a valid ${planALabel} goal before comparing a training activity.`)
       return
     }
 
@@ -230,7 +233,7 @@ export function TrainingAnalysisPanel({
     >
       <div className="mb-5">
         <h2 id="training-plan-title" className="text-xl font-semibold text-white">Route plan</h2>
-        <p className="mt-1 text-sm text-neutral-400">Your route, its on-course sections, and Plan A targets in one place.</p>
+        <p className="mt-1 text-sm text-neutral-400">Your route, its on-course sections, and {planALabel} targets in one place.</p>
       </div>
 
       {summary ? (
@@ -238,7 +241,7 @@ export function TrainingAnalysisPanel({
           <dl className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
             <SummaryMetric label="Training route" value={`${selectedRoute?.distance_miles?.toFixed(1) ?? '—'} mi`} detail={selectedRoute?.elevation_gain_ft != null ? `+${Math.round(selectedRoute.elevation_gain_ft).toLocaleString()} ft` : undefined} />
             <SummaryMetric label="On the race course" value={`${summary.raceMilesTotal.toFixed(1)} mi`} detail={`${summary.segments.length} ${summary.segments.length === 1 ? 'section' : 'sections'}`} />
-            <SummaryMetric label="Plan A on-course time" value={summary.raceDurationLabel ?? 'Generate Plan A'} detail="Excludes aid-station stops at section starts" />
+            <SummaryMetric label={`${planALabel} on-course time`} value={summary.raceDurationLabel ?? `Generate ${planALabel}`} detail="Excludes aid-station stops at section starts" />
           </dl>
 
           <details className="rounded-xl border border-neutral-700 bg-neutral-900/80 shadow-sm" open>
@@ -286,14 +289,14 @@ export function TrainingAnalysisPanel({
                           <p className="mt-0.5 text-xs text-neutral-500">Race mi {segment.courseMilesLabel} · Training mi {segment.trainingMilesLabel}</p>
                         </div>
                         <div className="text-left sm:text-right">
-                          <p className="text-xs uppercase tracking-wide text-neutral-500">Plan A</p>
+                          <p className="text-xs uppercase tracking-wide text-neutral-500">{planALabel}</p>
                           <p className="font-medium text-emerald-300">{segment.raceDurationLabel ?? '—'}</p>
                         </div>
                       </div>
                       {comparison && (
                         <div className="mt-3 grid grid-cols-2 gap-3 border-t border-neutral-800 pt-3 text-sm sm:max-w-md sm:ml-auto">
                           <div><p className="text-xs text-neutral-500">Your moving time</p><p className="font-medium text-white">{formatDurationWords(comparison.movingMinutes)}</p></div>
-                          <div><p className="text-xs text-neutral-500">{comparison.spatiallyMatched ? 'Against matched Plan A' : 'Against Plan A'}</p><p className={comparison.delta.tone === 'faster' ? 'font-medium text-emerald-300' : comparison.delta.tone === 'slower' ? 'font-medium text-orange-300' : 'font-medium text-neutral-200'}>{comparison.delta.label}</p></div>
+                          <div><p className="text-xs text-neutral-500">{comparison.spatiallyMatched ? `Against matched ${planALabel}` : `Against ${planALabel}`}</p><p className={comparison.delta.tone === 'faster' ? 'font-medium text-emerald-300' : comparison.delta.tone === 'slower' ? 'font-medium text-orange-300' : 'font-medium text-neutral-200'}>{comparison.delta.label}</p></div>
                         </div>
                       )}
                     </button>

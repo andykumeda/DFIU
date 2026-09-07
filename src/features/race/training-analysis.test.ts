@@ -200,10 +200,15 @@ describe('buildTrainingPlanSummary', () => {
 
 describe('getTrainingAnalysisDelta', () => {
   it('reports elapsed training time relative to the Plan A segment goal', () => {
-    const delta = getTrainingAnalysisDelta(240, 200)
+    const delta = getTrainingAnalysisDelta(240, 200, 1740)
 
     expect(delta.deltaMinutes).toBe(40)
-    expect(delta.label).toBe('40 mins slower than Plan A')
+    expect(delta.label).toBe('40 mins slower than Plan A (29:00)')
+    const changedGoal = getTrainingAnalysisDelta(240, 200, 1800)
+    expect(changedGoal.deltaMinutes).toBe(delta.deltaMinutes)
+    expect(changedGoal.label).toBe('40 mins slower than Plan A (30:00)')
+    expect(getTrainingAnalysisDelta(200, 200, 1800).label).toBe('On Plan A (30:00) time')
+    expect(getTrainingAnalysisDelta(180, 200, 1800).label).toBe('20 mins faster than Plan A (30:00)')
     expect(delta.tone).toBe('slower')
   })
 })
