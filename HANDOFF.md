@@ -2,10 +2,13 @@
 
 **Date:** 2026-09-06
 **Branch:** `main`
-**Status:** In progress: correct Chantry to Finish training sections and Finish labeling.
+**Status:** Complete: Chantry to Finish training sections corrected and deployed.
 
-- Reproduced the final approach incorrectly snapping from course mile 99.8 to opening miles 1.4–0.1, producing separate Sections 5 and 1.
-- Preserve course-visit continuity for raw analytical matching, recognize Start/Finish section endpoints, and verify direction regressions plus the reported production route before closeout.
+- Analytical matching now resolves ambiguous distant course visits using continuity while preserving nearest-point progression and genuine direction reversals. Start/Finish waypoints now name section endpoints.
+- Deployed product commit and `git describe`: `9f96133`. Production route `02794846-3a75-4287-9964-8e7dfe125c97` now shows four sections, ending in Millard Canyon → Finish, race mi 97.0–101.3 / training mi 18.1–22.5.
+- Refreshed its saved Strava comparison through the signed-in UI; final section shows 42 mins moving / 22 mins faster than matched Plan A and persists after reload. Desktop screenshot confirms the continuous yellow highlight reaches Finish; no browser warnings/errors.
+- Validation: 124 tests pass, build/deploy pass, lint has 0 errors / 49 existing warnings, diff check passes. Updated older fixture expectations only after verifying that recovered overlap removes false visit gaps while keeping actual off-course excursions excluded.
+- No additional branches or worktrees; product commit pushed to origin/main.
 
 ## Current task
 
