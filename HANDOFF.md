@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-07
 **Branch:** `main`
-**Status:** In progress: configured Plan A labels, stale-code cleanup, and documentation refresh.
+**Status:** Complete: Plan A goal labels and cleanup shipped as `ae14486`.
 
 ## Current work
 
@@ -11,9 +11,15 @@
 - Patched transitive development dependencies `@humanfs/node` and `nanoid`; npm audit reports zero vulnerabilities after the compatible updates.
 - Updated user, algorithm, developer, deployment, README, and history-planning documentation. Replaced this accumulated session diary with a current status board; previous evidence remains in git history.
 - Audit found all app modules reachable and retained generated database types, historical migrations, compatibility paths, and regression fixtures. No new branch or worktree.
-- Validation: 126 tests pass, TypeScript passes, lint has 0 errors / 49 pre-existing warnings, shell/OG-server syntax checks pass. Release and live label-change verification pending.
+- Validation: 126 tests pass, TypeScript/build/deploy pass, lint has 0 errors / 49 pre-existing warnings, shell/OG-server syntax and relative documentation links pass.
+- Live verified at 1280×900 and 390×844: every Training Plan A reference includes the goal; no mobile horizontal overflow. Changing 29:00 → 29:30 updates labels, targets, and deltas without reload; restored 29:00 and verified persistence. Crew/Live labels and the published user guide also verified; browser warning/error log empty.
+- CI run `34105276946` passed for exact product SHA `ae144867997d8afe927dca690c4ab9262fb61280`. Product commit pushed; no side branches or worktrees.
 
 ## Latest deployed product
+
+- `ae14486` (`git describe` after deploy): configured Plan A labels and cleanup. Production entry asset: `index-CtwJAhxs.js`. No backend schema/function changes.
+
+## Previous product fix
 
 - `9f96133`: final course visits stay continuous in analytical overlap; Start/Finish now name section endpoints.
 - Route `02794846-3a75-4287-9964-8e7dfe125c97` has four sections, ending Millard Canyon → Finish (race mi 97.0–101.3 / training mi 18.1–22.5).
