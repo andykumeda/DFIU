@@ -13,7 +13,10 @@ const ENDPOINT_MATCH_MI = 0.15
 
 function officialAidStations(waypoints: OfficialAidStation[]): OfficialAidStation[] {
   return waypoints
-    .filter(waypoint => waypoint.type === 'aid_station' && Number.isFinite(waypoint.mile))
+    .filter(waypoint =>
+      (waypoint.type === 'aid_station' || waypoint.type === 'start' || waypoint.type === 'finish') &&
+      Number.isFinite(waypoint.mile)
+    )
     .sort((a, b) => a.mile - b.mile)
 }
 

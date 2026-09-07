@@ -37,6 +37,30 @@ function makePlan(
 }
 
 describe('buildTrainingPlanSummary', () => {
+  it('names course endpoints and keeps Millard Canyon to Finish as one section', () => {
+    const summary = buildTrainingPlanSummary(
+      [{ courseStartMi: 96.97, courseEndMi: 101.3, trainingStartMi: 18.1, trainingEndMi: 22.47 }],
+      makePlan([{ mile: 96.97, arrivalTime: 100 }, { mile: 101.36, arrivalTime: 180 }]),
+      { start_datetime: null, timezone: null },
+      false,
+      [
+        { name: 'Millard Canyon', mile: 96.97, type: 'aid_station' },
+        { name: 'Road junction', mile: 99.8, type: 'landmark' },
+        { name: 'Finish', mile: 101.36, type: 'finish' },
+      ]
+    )
+    expect(summary?.segments).toHaveLength(1)
+    expect(summary?.segments[0].sectionLabel).toBe('Millard Canyon → Finish')
+    expect(summary?.segments[0].trainingEndMi).toBe(22.47)
+
+    const opening = buildTrainingPlanSummary(
+      [{ courseStartMi: 0.04, courseEndMi: 5, trainingStartMi: 0, trainingEndMi: 4.96 }],
+      null, { start_datetime: null, timezone: null }, false,
+      [{ name: 'Start', mile: 0, type: 'start' }, { name: 'First aid', mile: 5, type: 'aid_station' }]
+    )
+    expect(opening?.segments[0].sectionLabel).toBe('Start → First aid')
+  })
+
   it('splits a continuous overlap into official aid-to-aid sections', () => {
     const summary = buildTrainingPlanSummary(
       [{ courseStartMi: 11.3, courseEndMi: 42.6, trainingStartMi: 0, trainingEndMi: 31.3 }],

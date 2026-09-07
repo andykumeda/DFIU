@@ -2,7 +2,10 @@
 
 **Date:** 2026-09-06
 **Branch:** `main`
-**Status:** Complete: Strava estimate correction and 200+ mile history warning deployed.
+**Status:** In progress: correct Chantry to Finish training sections and Finish labeling.
+
+- Reproduced the final approach incorrectly snapping from course mile 99.8 to opening miles 1.4–0.1, producing separate Sections 5 and 1.
+- Preserve course-visit continuity for raw analytical matching, recognize Start/Finish section endpoints, and verify direction regressions plus the reported production route before closeout.
 
 ## Current task
 

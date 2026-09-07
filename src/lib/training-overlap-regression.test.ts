@@ -25,11 +25,15 @@ describe('reported training overlap regression', () => {
     const proposed = computeTrainingOverlap(fixture.proposed, fixture.course)
     const completed = computeTrainingOverlap(fixture.completed, fixture.course)
     expect(proposed.segments).toHaveLength(4)
-    expect(completed.segments).toHaveLength(4)
+    expect(completed.segments).toHaveLength(3)
     expect(proposed.overlapMiles).toBeCloseTo(uniqueCourseMiles(proposed.segments), 2)
     expect(completed.overlapMiles).toBeCloseTo(uniqueCourseMiles(completed.segments), 2)
-    expect(proposed.overlapMiles).toBeCloseTo(12.8, 2)
-    expect(completed.overlapMiles).toBeCloseTo(12.78, 2)
+    // Continuity removes false course-visit gaps while retaining the genuine
+    // off-course excursion between training miles ~12 and ~16.
+    expect(proposed.overlapMiles).toBeCloseTo(13.02, 2)
+    expect(completed.overlapMiles).toBeCloseTo(12.96, 2)
+    expect(proposed.segments.every(segment => segment.trainingEndMi < 12.5 || segment.trainingStartMi > 16)).toBe(true)
+    expect(completed.segments.every(segment => segment.trainingEndMi < 12.7 || segment.trainingStartMi > 16)).toBe(true)
   }, 15000)
 
   it('splits the continuous Clear Creek overlap at its official aid stations', () => {
@@ -61,7 +65,8 @@ describe('reported training overlap regression', () => {
       ]
     )
 
-    expect(rawSegments).toHaveLength(7)
+    // Shared-course visits no longer fragment the continuous canyon stretch.
+    expect(rawSegments).toHaveLength(2)
     expect(initialMapSegments).toEqual(mapSegments)
     expect(mapSegments).toHaveLength(1)
     expect(continuousSummary?.segments).toHaveLength(1)
@@ -86,6 +91,9 @@ describe('reported training overlap regression', () => {
     ) as ContinuousFixture
 
     const segments = computeTrainingMapOverlap(fixture.training, fixture.course)
+    const analytical = computeTrainingMapOverlap(fixture.training, fixture.course, { mergeAdjacent: false })
+
+    expect(analytical).toEqual(segments)
 
     expect(segments).toHaveLength(1)
     expect(segments[0].trainingStartMi).toBeLessThan(0.1)

@@ -266,7 +266,6 @@ export function computeTrainingMapOverlap(
 
   const bufferMi = options?.bufferMi ?? MAP_OVERLAP_BUFFER_MI
   const gapBridgeMi = options?.gapBridgeMi ?? MAP_OVERLAP_GAP_BRIDGE_MI
-  const preserveVisitContinuity = options?.mergeAdjacent !== false
   const { coords, miles } = downsampleByDistance(trainingCoords, OVERLAP_SAMPLE_STEP_MI)
   const GRID_DEG = 0.001
   const grid = new Map<string, number[]>()
@@ -328,9 +327,13 @@ export function computeTrainingMapOverlap(
       }
     }
     if (bestDist === Infinity) return null
-    if (hinted && hinted.distance <= bestDist + COURSE_VISIT_DISTANCE_TIE_MI) return hinted
     const along = getDistance(courseCoords[bestIndex][1], courseCoords[bestIndex][0], bestLat, bestLon)
-    return { distance: bestDist, courseMi: courseCum[bestIndex] + along }
+    const courseMi = courseCum[bestIndex] + along
+    if (
+      hinted && hinted.distance <= bestDist + COURSE_VISIT_DISTANCE_TIE_MI &&
+      (options?.mergeAdjacent !== false || Math.abs(courseMi - hinted.courseMi) > COURSE_JUMP_SPLIT_MI)
+    ) return hinted
+    return { distance: bestDist, courseMi }
   }
 
   const ranges: TrainingMapOverlapSegment[] = []
@@ -387,7 +390,9 @@ export function computeTrainingMapOverlap(
     const predictedCourseMi = lastCourseMi == null
       ? null
       : lastCourseMi + (courseVelocity ?? 0) * trainingDelta
-    const nearest = nearestOnCourse(lat, lon, preserveVisitContinuity ? predictedCourseMi : null)
+    // Visit disambiguation is part of matching, including raw analytical ranges.
+    // mergeAdjacent only controls presentation merging, not which course visit wins.
+    const nearest = nearestOnCourse(lat, lon, predictedCourseMi)
     if (nearest != null && nearest.distance <= bufferMi) {
       streak.push({ trainingMi, courseMi: nearest.courseMi, lat, lon })
       if (lastCourseMi != null && lastTrainingMi != null) {
