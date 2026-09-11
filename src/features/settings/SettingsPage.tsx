@@ -325,7 +325,9 @@ export default function SettingsPage() {
                         onChange={runner_profile => setFormData(prev => ({ ...prev, runner_profile }))}
                     />
 
-                    <StravaRaceHistoryPanel />
+                    <div className="hidden" aria-hidden="true">
+                        <StravaRaceHistoryPanel />
+                    </div>
 
                     <div className="flex justify-end">
                         <button

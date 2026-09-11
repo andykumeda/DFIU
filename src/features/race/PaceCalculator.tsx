@@ -37,7 +37,9 @@ interface PaceCalculatorProps {
 type StrategyMode = 'planA' | 'planB' | 'planC'
 
 /** Independent estimated-finish range, calibrated from selected race history. */
-const SHOW_ABILITY_BASED_PREDICTION = true
+// Keep the prediction data path active for compatibility and future re-enablement,
+// but do not expose this unvalidated estimate in the current UI.
+const SHOW_ABILITY_BASED_PREDICTION = false
 
 const strategyColors: Record<StrategyMode, {
     active: string
@@ -652,6 +654,64 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                     </div>
                 </div>
 
+                <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6 print:hidden">
+                    <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                        <Columns3 className="w-5 h-5 text-blue-500" /> Print Columns
+                    </h2>
+                    <div className="space-y-2">
+                        {plans.paceChartColumns.order.map((colId) => {
+                            const def = PACE_CHART_COLUMNS.find(c => c.id === colId)
+                            if (!def) return null
+                            const hidden = plans.paceChartColumns.hidden.includes(colId)
+                            const defaultLabel = getPaceChartColumnLabel({ ...plans.paceChartColumns, labels: {} }, colId, isKm)
+                            const customLabel = plans.paceChartColumns.labels?.[colId] ?? ''
+                            return (
+                                <div
+                                    key={colId}
+                                    data-pace-column-id={colId}
+                                    onPointerEnter={() => handleColumnPointerEnter(colId)}
+                                    onMouseEnter={() => handleColumnPointerEnter(colId)}
+                                    onDragEnter={(event) => handleColumnDragEnter(event, colId)}
+                                    onDragOver={handleColumnDragOver}
+                                    onDrop={clearColumnDrag}
+                                    className={`flex items-center gap-2 rounded-lg border px-3 py-2 transition-colors ${hidden ? 'border-neutral-800/50 opacity-60' : 'border-neutral-800'} ${draggedColumnId === colId ? 'bg-neutral-800/70' : 'bg-neutral-950/40'}`}
+                                >
+                                    <button
+                                        type="button"
+                                        draggable
+                                        onDragStart={(event) => handleColumnDragStart(event, colId)}
+                                        onDragEnd={clearColumnDrag}
+                                        onPointerDown={() => startColumnDrag(colId)}
+                                        onMouseDown={() => startColumnDrag(colId)}
+                                        className="cursor-grab active:cursor-grabbing text-neutral-500 hover:text-white"
+                                        aria-label={`Move ${defaultLabel} column`}
+                                    >
+                                        <GripVertical className="w-4 h-4" />
+                                    </button>
+                                    <label className="min-w-0 flex-1">
+                                        <span className="sr-only">Column heading for {defaultLabel}</span>
+                                        <input
+                                            type="text"
+                                            value={customLabel}
+                                            onChange={(event) => updateColumnLabel(colId, event.target.value)}
+                                            placeholder={defaultLabel}
+                                            className="w-full rounded-md border border-neutral-800 bg-neutral-900 px-2 py-1.5 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                        />
+                                    </label>
+                                    <button
+                                        type="button"
+                                        onClick={() => toggleColumnVisibility(colId)}
+                                        className="text-neutral-500 hover:text-white"
+                                        aria-label={`${hidden ? 'Show' : 'Hide'} ${defaultLabel} column`}
+                                    >
+                                        {hidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                    </button>
+                                </div>
+                            )
+                        })}
+                    </div>
+                </div>
+
 
             </div>
 
@@ -802,63 +862,6 @@ export function PaceCalculator({ race, course, waypoints, terrainNodes, clock24h
                             </div>
                         </div>
 
-                        <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6 print:hidden">
-                            <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                                <Columns3 className="w-5 h-5 text-blue-500" /> Print Columns
-                            </h2>
-                            <div className="space-y-2">
-                                {plans.paceChartColumns.order.map((colId) => {
-                                    const def = PACE_CHART_COLUMNS.find(c => c.id === colId)
-                                    if (!def) return null
-                                    const hidden = plans.paceChartColumns.hidden.includes(colId)
-                                    const defaultLabel = getPaceChartColumnLabel({ ...plans.paceChartColumns, labels: {} }, colId, isKm)
-                                    const customLabel = plans.paceChartColumns.labels?.[colId] ?? ''
-                                    return (
-                                        <div
-                                            key={colId}
-                                            data-pace-column-id={colId}
-                                            onPointerEnter={() => handleColumnPointerEnter(colId)}
-                                            onMouseEnter={() => handleColumnPointerEnter(colId)}
-                                            onDragEnter={(event) => handleColumnDragEnter(event, colId)}
-                                            onDragOver={handleColumnDragOver}
-                                            onDrop={clearColumnDrag}
-                                            className={`flex items-center gap-2 rounded-lg border px-3 py-2 transition-colors ${hidden ? 'border-neutral-800/50 opacity-60' : 'border-neutral-800'} ${draggedColumnId === colId ? 'bg-neutral-800/70' : 'bg-neutral-950/40'}`}
-                                        >
-                                            <button
-                                                type="button"
-                                                draggable
-                                                onDragStart={(event) => handleColumnDragStart(event, colId)}
-                                                onDragEnd={clearColumnDrag}
-                                                onPointerDown={() => startColumnDrag(colId)}
-                                                onMouseDown={() => startColumnDrag(colId)}
-                                                className="cursor-grab active:cursor-grabbing text-neutral-500 hover:text-white"
-                                                aria-label={`Move ${defaultLabel} column`}
-                                            >
-                                                <GripVertical className="w-4 h-4" />
-                                            </button>
-                                            <label className="min-w-0 flex-1">
-                                                <span className="sr-only">Column heading for {defaultLabel}</span>
-                                                <input
-                                                    type="text"
-                                                    value={customLabel}
-                                                    onChange={(event) => updateColumnLabel(colId, event.target.value)}
-                                                    placeholder={defaultLabel}
-                                                    className="w-full rounded-md border border-neutral-800 bg-neutral-900 px-2 py-1.5 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                                />
-                                            </label>
-                                            <button
-                                                type="button"
-                                                onClick={() => toggleColumnVisibility(colId)}
-                                                className="text-neutral-500 hover:text-white"
-                                                aria-label={`${hidden ? 'Show' : 'Hide'} ${defaultLabel} column`}
-                                            >
-                                                {hidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                            </button>
-                                        </div>
-                                    )
-                                })}
-                            </div>
-                        </div>
                     </>
                 ) : calcError ? (
                     <div className="h-full flex flex-col items-center justify-center border-2 border-dashed border-red-900/60 bg-red-950/20 rounded-xl p-12">

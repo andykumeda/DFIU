@@ -2,9 +2,11 @@
 
 **Date:** 2026-09-07
 **Branch:** `main`
-**Status:** Complete: Plan A goal labels and cleanup shipped as `ae14486`.
+**Status:** In progress: rearrange desktop Pace layout and hide estimated-finish/Strava-history UI while preserving existing wiring.
 
 ## Current work
+
+- Requested change: place Print Columns below Goal Setting in the desktop plan layout, and hide the estimated-finish card plus Strava race-time history UI without removing their data/calculation paths.
 
 - Event-specific Plan A references use `formatPlanALabel` with the configured goal, such as `Plan A (29:00)`. Training deltas distinguish the whole-race goal from the section target; labels follow Pace Plan changes.
 - Removed the permanently disabled duplicate history-entry form from Pace Calculator; Settings remains the history editor. Removed the unused `cn` helper and its sole dependencies `clsx` / `tailwind-merge`.
