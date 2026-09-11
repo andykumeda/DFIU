@@ -1,12 +1,12 @@
 # DFIU Handoff
 
-**Date:** 2026-09-07
+**Date:** 2026-09-11
 **Branch:** `main`
-**Status:** In progress: rearrange desktop Pace layout and hide estimated-finish/Strava-history UI while preserving existing wiring.
+**Status:** Complete: Pace layout and estimate visibility update shipped as `04c1b18`.
 
 ## Current work
 
-- Requested change: place Print Columns below Goal Setting in the desktop plan layout, and hide the estimated-finish card plus Strava race-time history UI without removing their data/calculation paths.
+- Moved Print Columns below Goal Setting in the Pace Plan left column; hid the estimated-finish card and Strava race-history times while preserving their existing data/calculation wiring.
 
 - Event-specific Plan A references use `formatPlanALabel` with the configured goal, such as `Plan A (29:00)`. Training deltas distinguish the whole-race goal from the section target; labels follow Pace Plan changes.
 - Removed the permanently disabled duplicate history-entry form from Pace Calculator; Settings remains the history editor. Removed the unused `cn` helper and its sole dependencies `clsx` / `tailwind-merge`.
@@ -18,6 +18,8 @@
 - CI run `34105276946` passed for exact product SHA `ae144867997d8afe927dca690c4ab9262fb61280`. Product commit pushed; no side branches or worktrees.
 
 ## Latest deployed product
+
+- `04c1b18` (`git describe` after deploy): Print Columns reordered; unreliable estimated-finish and Strava race-history UI hidden. Build, tests, lint, deploy, commit, and push completed. The repository deploy script reports `http://web`; browser verification of the updated production surface was unavailable because that hostname redirected to an unrelated under-construction site and the open `dfiu.app` tab retained the prior cached bundle.
 
 - `ae14486` (`git describe` after deploy): configured Plan A labels and cleanup. Production entry asset: `index-CtwJAhxs.js`. No backend schema/function changes.
 
