@@ -84,6 +84,37 @@ The hosted migration history has diverged from this checkout. Do **not** run a b
 `supabase db push`. Apply a reviewed, scoped migration directly to the linked production
 project, verify the affected schema/query, and record the action in `HANDOFF.md`.
 
+### Auth email delivery
+
+DFIU's hosted Supabase project sends Auth invitations and other transactional
+messages through the Postfix service on the `web` host. This does not use or
+migrate to either self-hosted Supabase stack on that server.
+
+- SMTP endpoint: `dfiu.app:587`, mandatory STARTTLS
+- SMTP identity: `supabase@dfiu.app`; the password is stored only at
+  `/etc/postfix/dfiu-smtp/password` on `web` (root-readable)
+- Sender: `DFIU <no-reply@dfiu.app>`
+- Supabase Auth project email limit: 30 messages/hour
+- DKIM selector: `smtp202609`
+- Postfix configuration backups: `/etc/postfix/*.bak-dfiu-*`
+- Let's Encrypt deploy hook: `/etc/letsencrypt/renewal-hooks/deploy/reload-postfix`
+
+Cloudflare DNS contains SPF at `dfiu.app`, DKIM at
+`smtp202609._domainkey.dfiu.app`, and DMARC at `_dmarc.dfiu.app`. The initial
+DMARC policy is monitoring-only (`p=none`) until real delivery has been observed.
+
+Useful non-secret checks:
+
+```bash
+ssh web 'sudo systemctl is-active postfix opendkim'
+ssh web 'sudo opendkim-testkey -d dfiu.app -s smtp202609 -vvv'
+openssl s_client -starttls smtp -connect dfiu.app:587 -servername dfiu.app </dev/null
+```
+
+Do not print the SMTP password or commit it to this repository. After changing
+the SMTP credential, update both `/etc/sasldb2` on `web` and the hosted Supabase
+Authentication SMTP setting.
+
 ### 3. CI
 
 GitHub Actions workflow `.github/workflows/ci.yml` runs `npm ci`, lint, vitest, and build on pushes/PRs to `main`.

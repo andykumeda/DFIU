@@ -1,10 +1,14 @@
 # DFIU Handoff
 
-**Date:** 2026-09-11
+**Date:** 2026-09-16
 **Branch:** `main`
-**Status:** Complete: Pace layout and estimate visibility update shipped as `04c1b18`.
+**Status:** Complete: authenticated SMTP for DFIU's hosted Supabase Auth project is live on the web host.
 
 ## Current work
+
+- SMTP setup: Postfix on `web` now provides mandatory-STARTTLS authenticated submission on `dfiu.app:587`; unauthenticated relay attempts are rejected. DFIU remains on its hosted Supabase project, configured as `DFIU <no-reply@dfiu.app>` with a 30-email/hour limit. The unrelated self-hosted Supabase stacks on `web` were not changed.
+- Cloudflare DNS now publishes SPF, DKIM selector `smtp202609`, and monitoring-only DMARC. Public DNS, certificate validation, SMTP authentication, relay rejection, DKIM key matching, and local signed-message delivery passed. Postfix and OpenDKIM are active; certificate renewal reloads Postfix automatically.
+- No application build or frontend deploy was needed. The deployed product remains `c9c4fb0`; this batch changes server infrastructure, hosted Supabase Auth configuration, Cloudflare DNS, and deployment documentation only.
 
 - Moved Print Columns below Goal Setting in the Pace Plan left column; hid the estimated-finish card and Strava race-history times while preserving their existing data/calculation wiring.
 
