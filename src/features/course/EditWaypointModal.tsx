@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Waypoint } from '@/types/database'
 import styles from '../race/EditRaceModal.module.css' // Reuse consistent styles
+import { formatWaypointCutoffFields, isValidHtmlTimeValue } from './waypoint-cutoff-fields'
 
 interface EditWaypointModalProps {
     waypoint?: Partial<Waypoint> // If undefined, it's a new waypoint
@@ -59,33 +60,9 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, raceDate, timeZone
             let cTime = ''
 
             // 1. Try to parse existing cutoff
-            if (waypoint?.cutoff_time && timeZone) {
-                try {
-                    const date = new Date(waypoint.cutoff_time)
-                    if (!isNaN(date.getTime())) {
-                        const parts = new Intl.DateTimeFormat('en-CA', {
-                            year: 'numeric',
-                            month: '2-digit',
-                            day: '2-digit',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            hour12: false,
-                            timeZone: timeZone
-                        }).formatToParts(date)
-
-                        const y = parts.find(p => p.type === 'year')?.value
-                        const m = parts.find(p => p.type === 'month')?.value
-                        const d = parts.find(p => p.type === 'day')?.value
-                        const h = parts.find(p => p.type === 'hour')?.value
-                        const min = parts.find(p => p.type === 'minute')?.value
-
-                        if (y && m && d) cDate = `${y}-${m}-${d}`
-                        if (h && min) cTime = `${h}:${min}`
-                    }
-                } catch (e) {
-                    console.warn('Error parsing cutoff', e)
-                }
-            }
+            const cutoffFields = formatWaypointCutoffFields(waypoint?.cutoff_time, timeZone)
+            cDate = cutoffFields.date
+            cTime = cutoffFields.time
 
             // 2. If no cutoff time (or parse failed), set default DATE to race date
             if (!cDate && raceDate) {
@@ -116,9 +93,25 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, raceDate, timeZone
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
 
+        if (!formData.name.trim()) {
+            alert('Please enter a waypoint name')
+            return
+        }
+
         const parsedMile = typeof formData.mile === 'string' ? parseFloat(formData.mile) : formData.mile
-        if (isNaN(parsedMile)) {
+        if (!Number.isFinite(parsedMile) || parsedMile < 0) {
             alert('Please enter a valid mile marker')
+            return
+        }
+
+        const parsedDelay = typeof formData.delay === 'string' ? Number(formData.delay) : formData.delay
+        if (!Number.isFinite(parsedDelay) || parsedDelay < 0 || !Number.isInteger(parsedDelay)) {
+            alert('Please enter a valid whole-number stop duration')
+            return
+        }
+
+        if (formData.cutoffTime && !isValidHtmlTimeValue(formData.cutoffTime)) {
+            alert('Please enter a valid cutoff time')
             return
         }
 
@@ -136,13 +129,24 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, raceDate, timeZone
                 try {
                     const { fromZonedTime } = await import('date-fns-tz')
                     const utcDate = fromZonedTime(localIso, timeZone)
+                    if (Number.isNaN(utcDate.getTime())) throw new Error('Invalid cutoff date or time')
                     finalCutoffTime = utcDate.toISOString()
                 } catch (e) {
                     console.error("Timezone conversion failed", e)
-                    finalCutoffTime = new Date(localIso).toISOString()
+                    const localDate = new Date(localIso)
+                    if (Number.isNaN(localDate.getTime())) {
+                        alert('Please enter a valid cutoff date and time')
+                        return
+                    }
+                    finalCutoffTime = localDate.toISOString()
                 }
             } else {
-                finalCutoffTime = new Date(localIso).toISOString()
+                const localDate = new Date(localIso)
+                if (Number.isNaN(localDate.getTime())) {
+                    alert('Please enter a valid cutoff date and time')
+                    return
+                }
+                finalCutoffTime = localDate.toISOString()
             }
         }
 
@@ -154,7 +158,7 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, raceDate, timeZone
             mile: roundedMile,
             cutoff_time: finalCutoffTime,
             drop_bag_notes: showsDropBagNotes(formData.type, formData.has_drop_bag) ? formData.drop_bag_notes : null,
-            delay: Number(formData.delay) || 0
+            delay: parsedDelay
         })
     }
 
@@ -165,7 +169,7 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, raceDate, timeZone
                     <h2>{waypoint?.id ? 'Edit Waypoint' : 'Add Waypoint'}</h2>
                     <button onClick={onClose} className={styles.closeBtn}>×</button>
                 </div>
-                <form onSubmit={handleSubmit} className={styles.form}>
+                <form onSubmit={handleSubmit} className={styles.form} noValidate>
                     <div className={styles.field}>
                         <label>Name</label>
                         <input

@@ -2,9 +2,11 @@
 
 **Date:** 2026-09-16
 **Branch:** `main`
-**Status:** Complete: authenticated SMTP for DFIU's hosted Supabase Auth project is live on the web host.
+**Status:** Complete: Safari waypoint editing no longer fails with a native `Invalid value` blocker.
 
 ## Current work
+
+- Waypoint editor: Safari-style midnight hour `24` is normalized to valid HTML time hour `00`, and the form now uses explicit app validation instead of browser-native constraint validation. This prevents Safari's generic `Invalid value` blocker and keeps Mileage/Cutoff visible and editable. The focused regression, all 130 tests, build, deploy, and production demo save passed; lint remains at 0 errors / 49 existing warnings. Production bundle: `index-Bml5l6HI.js`.
 
 - SMTP setup: Postfix on `web` now provides mandatory-STARTTLS authenticated submission on `dfiu.app:587`; unauthenticated relay attempts are rejected. DFIU remains on its hosted Supabase project, configured as `DFIU <no-reply@dfiu.app>` with a 30-email/hour limit. The unrelated self-hosted Supabase stacks on `web` were not changed.
 - Cloudflare DNS now publishes SPF, DKIM selector `smtp202609`, and monitoring-only DMARC. Public DNS, certificate validation, SMTP authentication, relay rejection, DKIM key matching, and local signed-message delivery passed. Postfix and OpenDKIM are active; certificate renewal reloads Postfix automatically.
@@ -22,6 +24,8 @@
 - CI run `34105276946` passed for exact product SHA `ae144867997d8afe927dca690c4ab9262fb61280`. Product commit pushed; no side branches or worktrees.
 
 ## Latest deployed product
+
+- `293c442-dirty` (`git describe` immediately after deploy): waypoint cutoff normalization and browser-independent form validation. Live production demo verified Mileage/Cutoff values and successful Save dismissal after a fresh bundle reload. This temporary dirty build is byte-equivalent to the pending product commit and will be redeployed from its exact SHA during closeout.
 
 - `04c1b18` (`git describe` after deploy): Print Columns reordered; unreliable estimated-finish and Strava race-history UI hidden. Build, tests, lint, deploy, commit, and push completed. The repository deploy script reports `http://web`; browser verification of the updated production surface was unavailable because that hostname redirected to an unrelated under-construction site and the open `dfiu.app` tab retained the prior cached bundle.
 
