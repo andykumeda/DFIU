@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Waypoint } from '@/types/database'
 import styles from '../race/EditRaceModal.module.css' // Reuse consistent styles
-import { formatWaypointCutoffFields, isValidHtmlTimeValue } from './waypoint-cutoff-fields'
+import { formatWaypointCutoffFields, normalizeWaypointCutoffInput } from './waypoint-cutoff-fields'
 
 interface EditWaypointModalProps {
     waypoint?: Partial<Waypoint> // If undefined, it's a new waypoint
@@ -14,7 +14,7 @@ interface EditWaypointModalProps {
     raceDate?: string | null // NEW: For default cutoff date
     timeZone?: string // NEW: For formatting cutoff time
     onClose: () => void
-    onSave: (data: Partial<Waypoint>) => void
+    onSave: (data: Partial<Waypoint>) => void | Promise<void>
     onDelete?: (id: string) => void
 }
 
@@ -53,6 +53,7 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, raceDate, timeZone
         mile: (mile ?? waypoint?.mile ?? 0).toFixed(2),
         delay: waypoint?.delay ?? (waypoint?.type === 'aid_station' || (!waypoint && true) ? 2 : 0)
     })
+    const [isSaving, setIsSaving] = useState(false)
 
     useEffect(() => {
         if (waypoint || raceDate) { // Run if waypoint OR raceDate changes (init)
@@ -110,8 +111,11 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, raceDate, timeZone
             return
         }
 
-        if (formData.cutoffTime && !isValidHtmlTimeValue(formData.cutoffTime)) {
-            alert('Please enter a valid cutoff time')
+        const normalizedCutoffTime = formData.cutoffTime
+            ? normalizeWaypointCutoffInput(formData.cutoffTime)
+            : ''
+        if (normalizedCutoffTime === null) {
+            alert('Please enter the cutoff time as HH:MM using 24-hour time')
             return
         }
 
@@ -119,10 +123,10 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, raceDate, timeZone
 
         // Combine Date + Time
         let finalCutoffTime = null
-        if (formData.cutoffTime) {
+        if (normalizedCutoffTime) {
             // Must have a date. If empty, fallback to race date or today.
             const datePart = formData.cutoffDate || raceDate?.split('T')[0] || new Date().toISOString().split('T')[0]
-            const timePart = formData.cutoffTime
+            const timePart = normalizedCutoffTime
             const localIso = `${datePart}T${timePart}` // No seconds? 
 
             if (timeZone) {
@@ -150,16 +154,21 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, raceDate, timeZone
             }
         }
 
-        onSave({
-            ...waypoint,
-            ...formData,
-            lat: lat ?? waypoint?.lat,
-            lon: lon ?? waypoint?.lon,
-            mile: roundedMile,
-            cutoff_time: finalCutoffTime,
-            drop_bag_notes: showsDropBagNotes(formData.type, formData.has_drop_bag) ? formData.drop_bag_notes : null,
-            delay: parsedDelay
-        })
+        setIsSaving(true)
+        try {
+            await onSave({
+                ...waypoint,
+                ...formData,
+                lat: lat ?? waypoint?.lat,
+                lon: lon ?? waypoint?.lon,
+                mile: roundedMile,
+                cutoff_time: finalCutoffTime,
+                drop_bag_notes: showsDropBagNotes(formData.type, formData.has_drop_bag) ? formData.drop_bag_notes : null,
+                delay: parsedDelay
+            })
+        } finally {
+            setIsSaving(false)
+        }
     }
 
     return (
@@ -228,9 +237,13 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, raceDate, timeZone
                                     style={{ flex: 1.5 }}
                                 />
                                 <input
-                                    type="time"
+                                    type="text"
                                     value={formData.cutoffTime}
                                     onChange={e => setFormData({ ...formData, cutoffTime: e.target.value })}
+                                    placeholder="HH:MM"
+                                    aria-label="Cutoff time in 24-hour format"
+                                    autoComplete="off"
+                                    maxLength={5}
                                     style={{ flex: 1 }}
                                 />
                             </div>
@@ -342,7 +355,9 @@ export function EditWaypointModal({ waypoint, lat, lon, mile, raceDate, timeZone
                         ) : <div></div>}
                         <div style={{ display: 'flex', gap: '1rem' }}>
                             <button type="button" onClick={onClose} className={styles.cancelBtn}>Cancel</button>
-                            <button type="submit" className={styles.saveBtn}>Save</button>
+                            <button type="submit" className={styles.saveBtn} disabled={isSaving}>
+                                {isSaving ? 'Saving…' : 'Save'}
+                            </button>
                         </div>
                     </div>
                 </form>

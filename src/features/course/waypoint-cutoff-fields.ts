@@ -5,6 +5,14 @@ export interface WaypointCutoffFields {
 
 export const isValidHtmlTimeValue = (value: string) => /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value)
 
+export function normalizeWaypointCutoffInput(value: string): string | null {
+    const match = value.trim().match(/^(\d{1,2}):([0-5]\d)$/)
+    if (!match) return null
+
+    const normalized = `${match[1].padStart(2, '0')}:${match[2]}`
+    return isValidHtmlTimeValue(normalized) ? normalized : null
+}
+
 export function formatWaypointCutoffFields(
     cutoffTime: string | null | undefined,
     timeZone: string | undefined,

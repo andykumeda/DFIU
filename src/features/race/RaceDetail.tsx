@@ -759,8 +759,21 @@ export function RaceDetail({ raceId }: { raceId: string }) {
         }
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error } = await (supabase.from('waypoints') as any).update(patch).eq('id', data.id)
+        const { data: savedWaypoint, error } = await (supabase.from('waypoints') as any)
+          .update(patch)
+          .eq('id', data.id)
+          .select('id, cutoff_time')
+          .single()
         if (error) throw error
+
+        const expectedCutoff = patch.cutoff_time
+        const savedCutoff = savedWaypoint?.cutoff_time ?? null
+        const cutoffWasSaved = expectedCutoff === null
+          ? savedCutoff === null
+          : savedCutoff !== null && new Date(savedCutoff).getTime() === new Date(expectedCutoff).getTime()
+        if (!cutoffWasSaved) {
+          throw new Error('The cutoff time was not saved. Please try again.')
+        }
       } else {
         const maxOrder = Math.max(...waypoints.map(w => w.order_index), 0)
         const { lat, lon } = resolveLatLon(data.mile, data.lat, data.lon)
@@ -813,7 +826,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
         if (error) throw error
       }
       setEditingWaypoint(null)
-      queryClient.invalidateQueries({ queryKey: ['waypoints', course?.id] })
+      await queryClient.invalidateQueries({ queryKey: ['waypoints', course?.id] })
     } catch (err: any) {
       console.error('Error saving waypoint:', err)
       alert(`Failed to save waypoint: ${err.message || 'Unknown error'}`)

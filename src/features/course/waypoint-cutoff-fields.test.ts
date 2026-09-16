@@ -1,9 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { formatWaypointCutoffFields, isValidHtmlTimeValue } from './waypoint-cutoff-fields'
+import { formatWaypointCutoffFields, isValidHtmlTimeValue, normalizeWaypointCutoffInput } from './waypoint-cutoff-fields'
 
 const part = (type: Intl.DateTimeFormatPartTypes, value: string): Intl.DateTimeFormatPart => ({ type, value })
 
 describe('formatWaypointCutoffFields', () => {
+    it('normalizes browser-independent cutoff entry', () => {
+        expect(normalizeWaypointCutoffInput('7:05')).toBe('07:05')
+        expect(normalizeWaypointCutoffInput(' 23:59 ')).toBe('23:59')
+        expect(normalizeWaypointCutoffInput('24:00')).toBeNull()
+        expect(normalizeWaypointCutoffInput('12:75')).toBeNull()
+    })
+
     it('accepts only values supported by an HTML time input', () => {
         expect(isValidHtmlTimeValue('00:00')).toBe(true)
         expect(isValidHtmlTimeValue('23:59')).toBe(true)
