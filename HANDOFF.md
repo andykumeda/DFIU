@@ -2,9 +2,11 @@
 
 **Date:** 2026-09-16
 **Branch:** `main`
-**Status:** Complete: Safari waypoint editing no longer fails with a native `Invalid value` blocker.
+**Status:** Complete: Safari waypoint cutoff entry no longer depends on the native time control, and saves are verified from the returned database row.
 
 ## Current work
+
+- Waypoint cutoff follow-up: replaced Safari's native time control with browser-independent `HH:MM` entry, added normalization and regression coverage, and made edits verify Supabase's returned `cutoff_time` before reporting success. All 132 tests and the build pass; lint remains at 0 errors / 49 existing warnings. Production demo save changed Redbox to 14:26 and retained it after a full reload; footer hash `6bb4cc3`. Miki's exact Safari/account retry remains the final affected-user confirmation.
 
 - Waypoint editor: Safari-style midnight hour `24` is normalized to valid HTML time hour `00`, and the form now uses explicit app validation instead of browser-native constraint validation. This prevents Safari's generic `Invalid value` blocker and keeps Mileage/Cutoff visible and editable. The focused regression, all 130 tests, build, deploy, and production demo save passed; lint remains at 0 errors / 49 existing warnings. Production bundle: `index-CFduwF4s.js`.
 
@@ -24,6 +26,8 @@
 - CI run `34105276946` passed for exact product SHA `ae144867997d8afe927dca690c4ab9262fb61280`. Product commit pushed; no side branches or worktrees.
 
 ## Latest deployed product
+
+- `6bb4cc3` (`git describe` after deploy): browser-independent waypoint cutoff entry plus returned-row persistence verification. Production bundle: `index-nV30iY4V.js`; save/reopen/reload passed in the live demo.
 
 - `2bd133c` (`git describe` after deploy): waypoint cutoff normalization and browser-independent form validation. Live production demo verified Mileage/Cutoff values and successful Save dismissal; a fresh reload displayed footer hash `2bd133c`.
 
