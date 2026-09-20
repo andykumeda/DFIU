@@ -2,11 +2,11 @@
 
 **Date:** 2026-09-20
 **Branch:** `main`
-**Status:** In progress on `main`: replace the easy-to-miss event-title pencil with an explicit Race Settings control, clarify the current Event Plan view, and synchronize user and repository documentation.
+**Status:** Verified and deployed on `main`: the race header exposes a labeled Race Settings control, Event Plan visibly identifies the current planning workspace, and documentation maintenance is part of the release workflow.
 
 ## Current work
 
-- **In progress — race settings discovery** (owner: current agent, `main`): expose a labeled Race Settings button in the responsive race header, remove the tiny title pencil, mark Event Plan as the current view, and document both controls. Acceptance: editable users can find Race Settings at desktop and mobile widths; the button opens Edit Race; the header does not overflow; user and developer documentation state the current behavior and documentation-maintenance rule.
+- **Deployed — race settings discovery** (owner: current agent, `main`): replaced the tiny event-title pencil with a labeled Race Settings button and marked Event Plan as the current planning workspace. Production desktop and 390×844 checks confirm the control opens Edit Race and the responsive header keeps Event Plan, Runner GPS, and Race Settings visible without page overflow. Browser error log is empty. User guide, README, developer checklist, and agent instructions now require affected user and repository documentation to ship with every product change. Product hash `0cfecd2`.
 
 - **Deployed — event setup placement** (owner: current agent, `main`): removed the large Race Support card from Overview, added the same four modes to Edit Race, and added a Registration button label beside Registration URL. Registration labels and support choices save and survive reload; blank labels fall back to Register Now. Edit Race merges the label into the existing resources JSON so unrelated and forward-compatible resource fields survive event edits.
 - **Verified**: 140 tests pass; build and deploy pass; lint has 0 errors / 49 existing warnings; critical-file hooks pass. Production desktop and 390×844 checks confirm the Overview hierarchy, compact responsive Edit Race layout, configurable UltraSignup label, conditional Crew tab, Solo removal of Crew/Pacer tabs and crew-only bags, persistence after reload, and an empty browser error log. The AC100 plan was restored to Solo and Register Now after the temporary test.
@@ -45,6 +45,8 @@
 - CI run `34105276946` passed for exact product SHA `ae144867997d8afe927dca690c4ab9262fb61280`. Product commit pushed; no side branches or worktrees.
 
 ## Latest deployed product
+
+- `0cfecd2`: labeled Race Settings header control, selected Event Plan state, responsive desktop/mobile placement, and synchronized user/repository documentation. Production button-to-modal behavior and 390×844 layout verified.
 
 - `2ec0c54`: final resource-preserving Edit Race save path. Product UI commit `666dbe7` moves Race Support into Edit Race and adds the configurable registration label. Production footer verified at `2ec0c54`; the AC100 row confirms `support_mode = solo` and `registration_label = Register Now` after testing.
 
