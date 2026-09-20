@@ -11,10 +11,11 @@ type OfficialUpdateBannerProps = {
 
 export function OfficialUpdateBanner({ sections, loading, busy, onApply }: OfficialUpdateBannerProps) {
   const [open, setOpen] = useState(false)
-  const [selected, setSelected] = useState<Set<OfficialUpdateSectionId>>(new Set())
+  const [selected, setSelected] = useState<Set<OfficialUpdateSectionId> | null>(null)
+  const selectedIds = selected ?? new Set(sections.map(section => section.id))
 
   const toggle = (id: OfficialUpdateSectionId) => setSelected(current => {
-    const next = new Set(current)
+    const next = new Set(current ?? sections.map(section => section.id))
     if (next.has(id)) next.delete(id)
     else next.add(id)
     return next
@@ -28,7 +29,7 @@ export function OfficialUpdateBanner({ sections, loading, busy, onApply }: Offic
           <span className='font-semibold'>Official event updates are available.</span>{' '}
           <span className='text-amber-100/80'>Review each changed area and choose what to apply.</span>
         </div>
-        <button type='button' disabled={busy || loading} onClick={() => { setSelected(new Set(sections.map(section => section.id))); setOpen(true) }} className='shrink-0 inline-flex items-center gap-1 rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-semibold text-neutral-950 hover:bg-amber-400 disabled:opacity-50'>
+        <button type='button' disabled={busy} aria-busy={loading} onClick={() => { setSelected(null); setOpen(true) }} className='shrink-0 inline-flex items-center gap-1 rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-semibold text-neutral-950 hover:bg-amber-400 disabled:opacity-50'>
           Review changes <ChevronRight className='w-4 h-4' />
         </button>
       </div>
@@ -48,7 +49,7 @@ export function OfficialUpdateBanner({ sections, loading, busy, onApply }: Offic
             {loading && <p className='text-sm text-neutral-400'>Comparing your plan with the official event…</p>}
             {!loading && sections.length === 0 && <p className='rounded-lg border border-neutral-800 bg-neutral-950/40 p-4 text-sm text-neutral-300'>No visible differences remain. You can mark this official revision as reviewed.</p>}
             {sections.map(section => {
-              const checked = selected.has(section.id)
+              const checked = selectedIds.has(section.id)
               return <button key={section.id} type='button' onClick={() => toggle(section.id)} className={`w-full rounded-xl border p-4 text-left transition-colors ${checked ? 'border-amber-600/70 bg-amber-950/25' : 'border-neutral-800 bg-neutral-950/30'}`}>
                 <span className='flex items-start gap-3'>
                   <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border ${checked ? 'border-amber-500 bg-amber-500 text-neutral-950' : 'border-neutral-600'}`}>{checked && <Check className='h-4 w-4' />}</span>
@@ -64,9 +65,9 @@ export function OfficialUpdateBanner({ sections, loading, busy, onApply }: Offic
             })}
           </div>
           <div className='flex flex-col-reverse gap-2 border-t border-neutral-800 bg-neutral-900/95 p-4 sm:flex-row sm:justify-end'>
-            <button type='button' disabled={busy} onClick={() => finish([])} className='rounded-lg border border-neutral-700 px-4 py-2.5 text-sm font-medium text-neutral-200 hover:bg-neutral-800 disabled:opacity-50'>Keep all current</button>
-            <button type='button' disabled={busy || loading} onClick={() => finish([...selected])} className='rounded-lg bg-amber-500 px-5 py-2.5 text-sm font-bold text-neutral-950 hover:bg-amber-400 disabled:opacity-50'>
-              {selected.size ? `Apply ${selected.size} selected` : 'Finish review'}
+            <button type='button' disabled={busy || loading} onClick={() => finish([])} className='rounded-lg border border-neutral-700 px-4 py-2.5 text-sm font-medium text-neutral-200 hover:bg-neutral-800 disabled:opacity-50'>Keep all current</button>
+            <button type='button' disabled={busy || loading} onClick={() => finish([...selectedIds])} className='rounded-lg bg-amber-500 px-5 py-2.5 text-sm font-bold text-neutral-950 hover:bg-amber-400 disabled:opacity-50'>
+              {selectedIds.size ? `Apply ${selectedIds.size} selected` : 'Finish review'}
             </button>
           </div>
         </div>

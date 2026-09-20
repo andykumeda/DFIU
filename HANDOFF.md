@@ -2,9 +2,11 @@
 
 **Date:** 2026-09-20
 **Branch:** `main`
-**Status:** Deployed and verified on `main`: official training-route changes now reach every personal clone as a selective review with concrete current-to-official replacement details.
+**Status:** In progress on `main`: keep Review changes immediately interactive while the official comparison loads, then verify and redeploy.
 
 ## Current work
+
+- **In progress — review-button loading state** (owner: current agent, `main`): the update banner appears before its detailed comparison query finishes, but the button is disabled during that interval. Acceptance: the button opens the review immediately, the dialog shows its comparison-loading state, arriving sections are selected by default, apply remains unavailable until comparison completes, desktop/mobile production behavior is verified, and user/repository docs remain current.
 
 - **Deployed — training-route official updates and detailed diffs** (owner: current agent, `main`): official routes now carry source identity, bump the official revision when admin-managed route content changes, and appear as an independently selectable **Training routes** review area. Existing AC100 clone routes were safely linked; source revision `3` is pending for all four older clones, including Melissa's clone (`merged 2`). Accepting the area adds/refreshes official route content while preserving personal-only routes and each runner's Strava inputs/results; a removed official route becomes personal instead of being deleted. Every review area now shows concrete `Current → Official` values or explicit add/remove actions, including distinct Blank and Not set states. Hosted authorization and before/after Strava hashes verify preservation. All 141 tests passed, the focused diff test and production build passed again after the final display adjustment, and lint remains 0 errors / 49 existing warnings. Production desktop and 390×844 checks show Resources and Training routes, visible mobile actions, no horizontal overflow, and no browser warnings/errors. Revision `3` remains pending for runner choice. User, developer, and README documentation are current. Product hash `8fe7d22`.
 
