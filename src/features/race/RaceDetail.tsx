@@ -196,12 +196,12 @@ function RoleSwitcher({ raceId, views }: { raceId: string; views: Array<'full' |
 
   const hrefFor = (view: string) => view === 'full' ? `/race/${raceId}` : `/race/${raceId}/${view}`
   return (
-    <div className='flex items-center gap-1 rounded-lg border border-neutral-800 bg-neutral-900 p-1 max-w-[48vw] overflow-x-auto'>
+    <div className='flex items-center gap-1 rounded-lg border border-neutral-800 bg-neutral-900 p-1 max-w-full overflow-x-auto'>
       {uniqueViews.map(view => (
         <Link
-          key={view === 'full' ? 'Event Plan' : view === 'runner' ? 'Runner GPS' : view}
+          key={view}
           to={hrefFor(view)}
-          className='px-2 py-1 rounded text-xs font-medium text-neutral-300 hover:bg-neutral-800 hover:text-white capitalize'
+          className='shrink-0 whitespace-nowrap px-2 py-1 rounded text-xs font-medium text-neutral-300 hover:bg-neutral-800 hover:text-white capitalize'
         >
           {view === 'full' ? 'Event Plan' : view === 'runner' ? 'Runner GPS' : view}
         </Link>
@@ -315,6 +315,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     availableRoleViews,
   } = usePermission(raceId, race?.race_director_user_id)
   const support = getRaceSupport(race)
+  const roleViews = race?.is_official ? ['full' as const] : availableRoleViews.filter(view => (view !== 'crew' || support.crew) && (view !== 'pacer' || support.pacer))
   const visibleTab = (activeTab === 'crew' && !support.crew) || (activeTab === 'pacer' && !support.pacer) ? 'overview' : activeTab
   const canDeleteRace = !isDemoMode && (hasOwnerMembership || isAdmin || (!!user && race?.user_id === user.id))
   const showOfficialUpdateBanner = !isDemoMode && !!user && !!race?.official_source_race_id && canEdit
@@ -1626,9 +1627,9 @@ export function RaceDetail({ raceId }: { raceId: string }) {
               </div>
             </div>
 
-            <div className="hidden sm:flex flex-col gap-1">
+            <div className="hidden sm:flex flex-col gap-1 min-w-0">
               <div className='flex items-center gap-2'>
-                <h1 className='text-xl font-bold text-white'>{race.name}</h1>
+                <h1 className='text-xl font-bold text-white truncate'>{race.name}</h1>
                 {race.is_official && <CheckCircle2 className='w-5 h-5 text-blue-400' aria-label='Official event' />}
                 {showOwnerChrome && (
                   <button
@@ -1657,8 +1658,8 @@ export function RaceDetail({ raceId }: { raceId: string }) {
             </div>
 
           </div>
-          <div className='flex items-center gap-2 sm:gap-4'>
-            <RoleSwitcher raceId={raceId} views={race.is_official ? ['full'] : availableRoleViews.filter(view => (view !== 'crew' || support.crew) && (view !== 'pacer' || support.pacer))} />
+          <div className='flex items-center gap-2 sm:gap-4 shrink-0'>
+            <div className='hidden lg:block'><RoleSwitcher raceId={raceId} views={roleViews} /></div>
             {canManageTeam && (
               <button
                 onClick={() => setActiveTab('members')}
@@ -1728,6 +1729,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
             )}
           </div>
         </div>
+        {roleViews.length > 1 && <div className='lg:hidden px-3 pb-2 flex'><RoleSwitcher raceId={raceId} views={roleViews} /></div>}
       </header>
 
       {isDemoMode && (

@@ -206,7 +206,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
 
             <div className="flex-1 space-y-6 min-w-0 w-full print:hidden">
 
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
                     <h2 className="text-2xl font-bold text-white flex items-center gap-2">
                         <Backpack className="w-6 h-6 text-orange-500 print:hidden" />
                         <span className="print:hidden">Drop Bag Planner</span>
