@@ -8,6 +8,8 @@ import { RACE_SELECT } from '@/lib/race-select'
 import { buildShareLink, createShareToken } from './share-link'
 import { useDemoMode } from '@/features/demo/DemoModeContext'
 import { useDemoRacePersist } from '@/features/demo/useDemoRacePersist'
+import { parseResourcesConfig } from './resources-shared'
+import { SUPPORT_OPTIONS } from './race-support'
 import styles from './EditRaceModal.module.css' // We will create this or use inline/global for now if need be, but best to module
 
 interface EditRaceModalProps {
@@ -24,6 +26,7 @@ export function EditRaceModal({ race, onClose, onUpdate, onDelete }: EditRaceMod
     const [isDeleting, setIsDeleting] = useState(false)
     const [shareToken, setShareToken] = useState(race.public_share_token || '')
     const [copiedShareLink, setCopiedShareLink] = useState(false)
+    const savedResourcesConfig = parseResourcesConfig(race.resources_config, race)
     const [formData, setFormData] = useState({
         name: race.name,
         location: race.location || '',
@@ -37,6 +40,8 @@ export function EditRaceModal({ race, onClose, onUpdate, onDelete }: EditRaceMod
         is_public: race.is_public || false,
         public_share_enabled: race.public_share_enabled || false,
         registration_url: race.registration_url || '',
+        registration_label: savedResourcesConfig.registration_label,
+        support_mode: race.support_mode || 'both',
         avg_temp_high: race.avg_temp_high || '',
         avg_temp_low: race.avg_temp_low || '',
         precip_chance: race.precip_chance || '',
@@ -91,6 +96,10 @@ export function EditRaceModal({ race, onClose, onUpdate, onDelete }: EditRaceMod
         setIsLoading(true)
 
         try {
+            const nextResourcesConfig = {
+                ...savedResourcesConfig,
+                registration_label: formData.registration_label.trim() || 'Register Now',
+            }
             const racePatch = {
                 name: formData.name,
                 location: formData.location || null,
@@ -99,6 +108,8 @@ export function EditRaceModal({ race, onClose, onUpdate, onDelete }: EditRaceMod
                 is_public: isDemoMode ? false : formData.is_public,
                 public_share_enabled: isDemoMode ? false : formData.public_share_enabled,
                 registration_url: formData.registration_url || null,
+                resources_config: nextResourcesConfig as unknown as Race['resources_config'],
+                support_mode: formData.support_mode,
                 avg_temp_high: formData.avg_temp_high || null,
                 avg_temp_low: formData.avg_temp_low || null,
                 precip_chance: formData.precip_chance || null,
@@ -241,7 +252,42 @@ export function EditRaceModal({ race, onClose, onUpdate, onDelete }: EditRaceMod
                                 placeholder="https://..."
                             />
                         </div>
+                        <div className={styles.field}>
+                            <label>Registration Button Label</label>
+                            <input
+                                type="text"
+                                value={formData.registration_label}
+                                onChange={e => setFormData({ ...formData, registration_label: e.target.value })}
+                                placeholder="Register Now"
+                                maxLength={40}
+                            />
+                            <p className={styles.helpText}>Examples: Register on RunSignup, Enter Lottery, Join Waitlist</p>
+                        </div>
                     </div>
+
+                    <div className={styles.sectionHeader}>Support Plan</div>
+                    <fieldset className={styles.supportOptions}>
+                        <legend className={styles.srOnly}>Who will support the runner at this event?</legend>
+                        {SUPPORT_OPTIONS.map(option => (
+                            <label
+                                key={option.value}
+                                className={`${styles.supportOption} ${formData.support_mode === option.value ? styles.supportOptionSelected : ''}`}
+                            >
+                                <input
+                                    type="radio"
+                                    name="support_mode"
+                                    value={option.value}
+                                    checked={formData.support_mode === option.value}
+                                    onChange={() => setFormData({ ...formData, support_mode: option.value })}
+                                />
+                                <span>
+                                    <strong>{option.label}</strong>
+                                    <small>{option.description}</small>
+                                </span>
+                            </label>
+                        ))}
+                    </fieldset>
+                    <p className={styles.helpText}>Controls the Crew and Pacer tabs and whether crew-only bags appear. Existing notes and assignments are kept.</p>
 
                     <div className={styles.sectionHeader}>Race Stats</div>
                     <div className={styles.row}>

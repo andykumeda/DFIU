@@ -60,11 +60,13 @@ Below the profile, **Race history** can pull tagged Strava races or import a GPX
 
 The Pace Plan page also shows that ability-based range after you calculate. With no selected finishes it still appears, labeled as a low-confidence default (15:00 per mile on flat, not your measured ability). Add Strava or GPX finishes in Settings to calibrate it. The card links to Settings and to the [ability-based prediction](/documentation/algorithms#ability-based-prediction) algorithm notes.
 
-## Overview, Race Support, Crew, Pacer, and Live
+## Overview, Crew, Pacer, and Live
 
 **Overview** shows the event summary, selected aid-station weather temperatures, and Plan A arrival times. If the course visits an aid station multiple times, every predicted arrival is shown.
 
-On your personal plan, **Race Support** sits below the event details on **Overview**. Choose **Solo**, **Crew only**, **Pacer only**, or **Crew and pacer**. The choice saves automatically for this plan and controls the Crew/Pacer tabs and crew-only bags. Existing plans default to Crew and pacer; turning support off preserves team assignments, notes, and packed items. This preference does not change the event's crew/pacer access rules or anyone's permissions. Members and sharing remain available.
+Use **Edit Race** from the pencil beside the event name to configure **Support Plan** as **Solo**, **Crew only**, **Pacer only**, or **Crew and pacer**. Saving controls the Crew/Pacer tabs and crew-only bags. Existing plans default to Crew and pacer; turning support off preserves team assignments, notes, and packed items. This preference does not change the event's crew/pacer access rules or anyone's permissions. Members and sharing remain available.
+
+The same **Links** section lets an editor customize the registration button label for providers or flows such as **Register on RunSignup**, **Enter Lottery**, or **Join Waitlist**. A blank label displays **Register Now**.
 
 The header's **Event Plan** opens the complete planner; **Runner GPS** opens the runner location-sharing screen. These are views, independent of the Race Support choice.
 

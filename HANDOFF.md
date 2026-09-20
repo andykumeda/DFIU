@@ -2,9 +2,11 @@
 
 **Date:** 2026-09-20
 **Branch:** `main`
-**Status:** Race Support and drop-bag visibility deployed and live verified at `10f3f6b`. Main is pushed; no other worktrees or unmerged branches from this task. Invitation-provider migration remains deferred.
+**Status:** In progress on `main`: move Race Support from Overview into Edit Race and make the registration button label configurable. Preserve the existing support behavior and store the label in the cloned/synced event resource configuration. Verify save/reload and desktop/mobile production behavior before closeout.
 
 ## Current work
+
+- **In progress — event setup placement**: remove the large Race Support card from Overview, add the same four modes to Edit Race, and add a Registration button label beside Registration URL. Acceptance: Overview regains its earlier information hierarchy; both values persist after Save Changes/reload; support still controls tabs and crew-only bags; blank labels render as Register Now; desktop/mobile live checks pass. Owner: current agent on `main`.
 
 - **Deployed — Race Support** (owner: current agent, `main`): Overview now saves Solo / Crew only / Pacer only / Crew and pacer per personal plan. Crew/Pacer tabs and header role links follow the selection. Pacer shows pickup points; legacy Pacer URLs redirect to the support-aware tab. Disabled Crew direct links show a return-to-plan message. Event Plan / Runner GPS labels remain readable on mobile.
 - **Deployed — Drop Bags**: crew-only bags are omitted without crew from cards, All Bags/print data, and next-bag coverage. Start/Finish locations and saved contents remain; redundant Start Gear, Finish Gear, and Official Drop Bag badges are removed from cards/modals. Crew bags retain identification. Toolbar wraps on mobile.

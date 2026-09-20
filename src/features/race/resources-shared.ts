@@ -23,6 +23,7 @@ export interface ResourceLinkEntry {
 
 export interface ResourcesConfig {
     links: ResourceLinkEntry[]
+    registration_label: string
     lodging_label: string
     lodging_enabled: boolean
     schedule_label: string
@@ -89,6 +90,7 @@ export function buildDefaultResourcesConfig(race: Race): ResourcesConfig {
             enabled: true,
             hasDate: !!def.dateKey,
         })),
+        registration_label: 'Register Now',
         lodging_label: 'Lodging & Dining Recommendations',
         lodging_enabled: true,
         schedule_label: 'Schedule of Events',
@@ -133,6 +135,9 @@ export function parseResourcesConfig(raw: unknown, race: Race): ResourcesConfig 
 
     return {
         links: parsedLinks,
+        registration_label: typeof config.registration_label === 'string' && config.registration_label.trim()
+            ? config.registration_label.trim()
+            : defaults.registration_label,
         lodging_label: typeof config.lodging_label === 'string' && config.lodging_label.trim()
             ? config.lodging_label.trim()
             : defaults.lodging_label,

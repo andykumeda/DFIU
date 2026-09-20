@@ -34,8 +34,8 @@ import { PaceCalculator } from '@/features/race/PaceCalculator'
 import { parseRunnerProfile } from '@/features/race/runner-profile'
 import { RaceResources } from '@/features/race/RaceResources'
 import { WeatherLocations } from '@/features/race/WeatherLocations'
-import { RaceSupportCard } from './RaceSupportCard'
 import { getRaceSupport } from './race-support'
+import { parseResourcesConfig } from './resources-shared'
 import { DropBagsSection } from '@/features/race/DropBagsSection'
 import { TrainingSection } from '@/features/race/TrainingSection'
 import { trainingRouteListSearch } from '@/features/race/training-navigation'
@@ -315,6 +315,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     availableRoleViews,
   } = usePermission(raceId, race?.race_director_user_id)
   const support = getRaceSupport(race)
+  const registrationLabel = race ? parseResourcesConfig(race.resources_config, race).registration_label : 'Register Now'
   const roleViews = race?.is_official ? ['full' as const] : availableRoleViews.filter(view => (view !== 'crew' || support.crew) && (view !== 'pacer' || support.pacer))
   const visibleTab = (activeTab === 'crew' && !support.crew) || (activeTab === 'pacer' && !support.pacer) ? 'overview' : activeTab
   const canDeleteRace = !isDemoMode && (hasOwnerMembership || isAdmin || (!!user && race?.user_id === user.id))
@@ -2416,14 +2417,11 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                 )}
                 {race?.registration_url && (
                   <a href={race.registration_url} target="_blank" rel="noopener noreferrer" className="bg-orange-600 hover:bg-orange-500 text-white px-6 py-2.5 rounded-lg font-semibold transition-all shadow-lg shadow-orange-900/20 flex items-center gap-2">
-                    Register Now <ArrowUpRight className="w-4 h-4" />
+                    {registrationLabel} <ArrowUpRight className="w-4 h-4" />
                   </a>
                 )}
               </div>
             </div>
-
-
-            {(!race.is_official || isDemoMode) && <RaceSupportCard race={race} canEdit={canEditRaceSettings && !isShareView} />}
 
             {/* Weather & Conditions */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
