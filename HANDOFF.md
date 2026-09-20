@@ -1,10 +1,12 @@
 # DFIU Handoff
 
-**Date:** 2026-09-16
+**Date:** 2026-09-19
 **Branch:** `main`
-**Status:** Complete: Safari waypoint cutoff entry no longer depends on the native time control, and saves are verified from the returned database row.
+**Status:** Complete: signup errors now expose actionable server messages, and Settings supports changing or setting an account password.
 
 ## Current work
+
+- Signup error clarity and password management: the signup form now reads JSON error bodies from Supabase `FunctionsHttpError`, translates duplicate-email failures into a Sign in/reset-password instruction, and falls back to a useful generic message. Settings now provides New password, Confirm new password, and Change Password controls using the authenticated Supabase session. Deployed and live Settings UI verified; actual password submission remains user-controlled.
 
 - Waypoint cutoff follow-up: replaced Safari's native time control with browser-independent `HH:MM` entry, added normalization and regression coverage, and made edits verify Supabase's returned `cutoff_time` before reporting success. All 132 tests and the build pass; lint remains at 0 errors / 49 existing warnings. Production demo save changed Redbox to 14:26 and retained it after a full reload; footer hash `6bb4cc3`. Miki's exact Safari/account retry remains the final affected-user confirmation.
 
@@ -26,6 +28,8 @@
 - CI run `34105276946` passed for exact product SHA `ae144867997d8afe927dca690c4ab9262fb61280`. Product commit pushed; no side branches or worktrees.
 
 ## Latest deployed product
+
+- `a7c3cb0` (`git describe` before this batch): signup error extraction and Settings password controls deployed in the current release. Live Settings reload visibly shows the password section and controls. 132 tests pass, build passes, lint remains at 0 errors / 49 existing warnings. Password mutation was not submitted through browser automation because it changes account credentials.
 
 - `6bb4cc3` (`git describe` after deploy): browser-independent waypoint cutoff entry plus returned-row persistence verification. Production bundle: `index-nV30iY4V.js`; save/reopen/reload passed in the live demo.
 

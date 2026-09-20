@@ -26,7 +26,10 @@ export default function SettingsPage() {
     const { user, refreshProfile } = useAuth()
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
+    const [passwordSaving, setPasswordSaving] = useState(false)
     const [isUploading, setIsUploading] = useState(false)
+    const [newPassword, setNewPassword] = useState('')
+    const [confirmNewPassword, setConfirmNewPassword] = useState('')
     const [formData, setFormData] = useState<UserProfile>({
         id: '',
         email: '',
@@ -186,6 +189,35 @@ export default function SettingsPage() {
         }
     }
 
+    async function handlePasswordChange() {
+        if (!newPassword || !confirmNewPassword) {
+            toast.error('Enter and confirm your new password')
+            return
+        }
+        if (newPassword.length < 6) {
+            toast.error('Password must be at least 6 characters')
+            return
+        }
+        if (newPassword !== confirmNewPassword) {
+            toast.error('Passwords do not match')
+            return
+        }
+
+        setPasswordSaving(true)
+        try {
+            const { error } = await supabase.auth.updateUser({ password: newPassword })
+            if (error) throw error
+            setNewPassword('')
+            setConfirmNewPassword('')
+            toast.success('Password changed')
+        } catch (error) {
+            console.error('Error changing password:', error)
+            toast.error(`Failed to change password: ${(error as Error).message || 'Unknown error'}`)
+        } finally {
+            setPasswordSaving(false)
+        }
+    }
+
     if (loading) {
         return <div className="p-8 text-center text-neutral-400">Loading settings...</div>
     }
@@ -268,6 +300,50 @@ export default function SettingsPage() {
                     </section>
 
                     <SupportDfiU />
+
+                    {/* Password Section */}
+                    <section className="bg-neutral-900 rounded-xl p-6 border border-neutral-800">
+                        <h2 className="text-lg font-semibold mb-2 text-orange-500">Password</h2>
+                        <p className="text-sm text-neutral-500 mb-4">
+                            Set a password for this account or replace the current one.
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label htmlFor="new-password" className="block text-sm font-medium text-neutral-400 mb-1">New password</label>
+                                <input
+                                    id="new-password"
+                                    type="password"
+                                    value={newPassword}
+                                    onChange={e => setNewPassword(e.target.value)}
+                                    autoComplete="new-password"
+                                    minLength={6}
+                                    className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-orange-500 outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="confirm-new-password" className="block text-sm font-medium text-neutral-400 mb-1">Confirm new password</label>
+                                <input
+                                    id="confirm-new-password"
+                                    type="password"
+                                    value={confirmNewPassword}
+                                    onChange={e => setConfirmNewPassword(e.target.value)}
+                                    autoComplete="new-password"
+                                    minLength={6}
+                                    className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-orange-500 outline-none"
+                                />
+                            </div>
+                        </div>
+                        <div className="flex justify-end mt-4">
+                            <button
+                                type="button"
+                                onClick={handlePasswordChange}
+                                disabled={passwordSaving}
+                                className="bg-neutral-800 hover:bg-neutral-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors disabled:opacity-50"
+                            >
+                                {passwordSaving ? 'Changing...' : 'Change Password'}
+                            </button>
+                        </div>
+                    </section>
 
                     {/* Preferences Section */}
                     <section className="bg-neutral-900 rounded-xl p-6 border border-neutral-800">

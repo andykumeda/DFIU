@@ -6,6 +6,30 @@ import { STRAVA_RETURN_TO_STORAGE_KEY } from '@/features/auth/StravaCallback'
 
 const POST_SIGNUP_PATH = '/settings#runner-profile'
 
+async function getSignupErrorMessage(error: unknown): Promise<string> {
+  if (error && typeof error === 'object' && 'context' in error) {
+    const context = (error as { context?: unknown }).context
+    if (context instanceof Response) {
+      try {
+        const body = await context.clone().json() as { error?: unknown }
+        if (typeof body.error === 'string' && body.error.trim()) {
+          if (/already registered|already exists|user already/i.test(body.error)) {
+            return 'An account with this email already exists. Use Sign in instead, or reset its password.'
+          }
+          return body.error
+        }
+      } catch {
+        // Keep the client error below when the function response is not JSON.
+      }
+    }
+  }
+
+  if (error instanceof Error && error.message !== 'Edge Function returned a non-2xx status code') {
+    return error.message
+  }
+  return 'Unable to create the account. Please try again.'
+}
+
 export function SignupForm({ accessCode }: { accessCode: string }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -65,7 +89,7 @@ export function SignupForm({ accessCode }: { accessCode: string }) {
     })
 
     if (error) {
-      setError(error.message)
+      setError(await getSignupErrorMessage(error))
       setLoading(false)
     } else {
       if (data?.session) {
