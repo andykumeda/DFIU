@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { RACE_SELECT } from '@/lib/race-select'
@@ -12,7 +13,7 @@ export function useOfficialUpdateReview(
   enabled: boolean,
   sourceRevision?: number | null,
 ) {
-  return useQuery({
+  const sourceQuery = useQuery({
     queryKey: ['official-update-review', race?.id, sourceRevision],
     enabled: enabled && !!race?.official_source_race_id,
     queryFn: async () => {
@@ -33,10 +34,16 @@ export function useOfficialUpdateReview(
         sourceWaypoints = (waypointResult.data ?? []) as Waypoint[]
         sourceTerrain = (terrainResult.data ?? []) as TerrainNode[]
       }
-      return buildOfficialUpdateSections(
-        { race: race!, course: course ?? null, waypoints, terrain },
-        { race: sourceRace as unknown as Race, course: sourceCourse as Course | null, waypoints: sourceWaypoints, terrain: sourceTerrain },
-      )
+      return { race: sourceRace as unknown as Race, course: sourceCourse as Course | null, waypoints: sourceWaypoints, terrain: sourceTerrain }
     },
   })
+
+  const sections = useMemo(() => sourceQuery.data && race
+    ? buildOfficialUpdateSections(
+      { race, course: course ?? null, waypoints, terrain },
+      sourceQuery.data,
+    )
+    : [], [sourceQuery.data, race, course, waypoints, terrain])
+
+  return { ...sourceQuery, data: sections }
 }
