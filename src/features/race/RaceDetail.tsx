@@ -34,6 +34,8 @@ import { PaceCalculator } from '@/features/race/PaceCalculator'
 import { parseRunnerProfile } from '@/features/race/runner-profile'
 import { RaceResources } from '@/features/race/RaceResources'
 import { WeatherLocations } from '@/features/race/WeatherLocations'
+import { RaceSupportCard } from './RaceSupportCard'
+import { getRaceSupport } from './race-support'
 import { DropBagsSection } from '@/features/race/DropBagsSection'
 import { TrainingSection } from '@/features/race/TrainingSection'
 import { trainingRouteListSearch } from '@/features/race/training-navigation'
@@ -48,7 +50,7 @@ const LiveEventTab = lazy(() =>
     import('@/features/race/LiveEventTab').then(m => ({ default: m.LiveEventTab }))
 )
 
-type Tab = 'live' | 'overview' | 'map' | 'plan' | 'training' | 'drop_bags' | 'resources' | 'crew' | 'members'
+type Tab = 'live' | 'overview' | 'map' | 'plan' | 'training' | 'drop_bags' | 'resources' | 'crew' | 'pacer' | 'members'
 type ExistingRaceClone = Pick<Race, 'id' | 'name' | 'created_at'>
 
 function normalizeRaceName(name: string) {
@@ -197,11 +199,11 @@ function RoleSwitcher({ raceId, views }: { raceId: string; views: Array<'full' |
     <div className='flex items-center gap-1 rounded-lg border border-neutral-800 bg-neutral-900 p-1 max-w-[48vw] overflow-x-auto'>
       {uniqueViews.map(view => (
         <Link
-          key={view}
+          key={view === 'full' ? 'Event Plan' : view === 'runner' ? 'Runner GPS' : view}
           to={hrefFor(view)}
           className='px-2 py-1 rounded text-xs font-medium text-neutral-300 hover:bg-neutral-800 hover:text-white capitalize'
         >
-          {view}
+          {view === 'full' ? 'Event Plan' : view === 'runner' ? 'Runner GPS' : view}
         </Link>
       ))}
     </div>
@@ -216,7 +218,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   const { isDemoMode, overlay, overlayReady, overlayTooLarge } = useDemoMode()
   const { saveWaypoints, saveTerrain } = useDemoRacePersist(raceId)
   const [activeTab, setActiveTab] = useState<Tab>(() =>
-    new URLSearchParams(location.search).has('training') ? 'training' : 'overview'
+    new URLSearchParams(location.search).has('training') ? 'training' : new URLSearchParams(location.search).get('tab') === 'pacer' ? 'pacer' : 'overview'
   )
   const [trainingResetToken, setTrainingResetToken] = useState(0)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -259,6 +261,8 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   useEffect(() => {
     if (new URLSearchParams(location.search).has('training')) {
       setActiveTab('training')
+    } else if (new URLSearchParams(location.search).get('tab') === 'pacer') {
+      setActiveTab('pacer')
     }
   }, [location.search])
 
@@ -310,6 +314,8 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     canManageTeam,
     availableRoleViews,
   } = usePermission(raceId, race?.race_director_user_id)
+  const support = getRaceSupport(race)
+  const visibleTab = (activeTab === 'crew' && !support.crew) || (activeTab === 'pacer' && !support.pacer) ? 'overview' : activeTab
   const canDeleteRace = !isDemoMode && (hasOwnerMembership || isAdmin || (!!user && race?.user_id === user.id))
   const showOfficialUpdateBanner = !isDemoMode && !!user && !!race?.official_source_race_id && canEdit
   const { data: cloneUpdateStatus } = useCloneUpdateStatus(raceId, showOfficialUpdateBanner)
@@ -1538,7 +1544,8 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     { id: 'training', label: 'Training' },
     { id: 'drop_bags', label: 'Drop Bags' },
     { id: 'resources', label: 'Resources' },
-    { id: 'crew', label: 'Crew' },
+    ...(support.crew ? [{ id: 'crew' as Tab, label: 'Crew' }] : []),
+    ...(support.pacer ? [{ id: 'pacer' as Tab, label: 'Pacer' }] : []),
     { id: 'live', label: 'Live' },
     ...(canManageTeam ? [{ id: 'members' as Tab, label: 'Members' }] : []),
   ]
@@ -1651,7 +1658,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
           </div>
           <div className='flex items-center gap-2 sm:gap-4'>
-            <RoleSwitcher raceId={raceId} views={race.is_official ? ['full'] : availableRoleViews} />
+            <RoleSwitcher raceId={raceId} views={race.is_official ? ['full'] : availableRoleViews.filter(view => (view !== 'crew' || support.crew) && (view !== 'pacer' || support.pacer))} />
             {canManageTeam && (
               <button
                 onClick={() => setActiveTab('members')}
@@ -1833,7 +1840,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
             <div className='pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-neutral-900 to-transparent' />
             <div role='tablist' className='flex gap-2 overflow-x-auto whitespace-nowrap py-2 pr-8 touch-pan-x overscroll-x-contain [-webkit-overflow-scrolling:touch] [scrollbar-color:#525252_transparent] [scrollbar-width:thin]'>
               {tabs.map(tab => {
-                const isActive = activeTab === tab.id
+                const isActive = visibleTab === tab.id
                 return (
                   <button
                     key={tab.id}
@@ -1843,12 +1850,12 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                     onClick={() => {
                       if (
                         tab.id === 'training' &&
-                        activeTab === 'training' &&
+                        visibleTab === 'training' &&
                         new URLSearchParams(location.search).has('training')
                       ) {
                         navigate({ search: trainingRouteListSearch(location.search) }, { replace: true })
                       }
-                      if (tab.id === 'training' && activeTab === 'training') {
+                      if (tab.id === 'training' && visibleTab === 'training') {
                         setTrainingResetToken(token => token + 1)
                       }
                       setActiveTab(tab.id)
@@ -1866,7 +1873,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
       {/* Content */}
       <main className='flex-1 relative z-0 min-h-0'>
-        {activeTab === 'live' && (
+        {visibleTab === 'live' && (
           <div className="animate-in fade-in duration-500">
             <Suspense fallback={<div className='p-6 text-white text-center'>Loading live view...</div>}>
               <LiveEventTab
@@ -1886,7 +1893,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
           </div>
         )}
 
-        {activeTab === 'map' && (
+        {visibleTab === 'map' && (
           <div className='flex flex-col md:flex-row relative md:absolute md:inset-0 md:h-[calc(100vh-130px)]'>
             {coordinates.length > 0 ? (
               <div className="contents">
@@ -2267,7 +2274,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
           </div>
         )}
 
-        {activeTab === 'plan' && (
+        {visibleTab === 'plan' && (
           <div className="animate-in fade-in duration-500">
             {course ? (
               <PaceCalculator
@@ -2288,7 +2295,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
           </div>
         )}
 
-        <div className={activeTab === 'training' ? '' : 'hidden'}>
+        <div className={visibleTab === 'training' ? '' : 'hidden'}>
           <TrainingSection
             race={race}
             course={course || null}
@@ -2298,11 +2305,11 @@ export function RaceDetail({ raceId }: { raceId: string }) {
             runnerProfile={userRunnerProfile}
             resetToken={trainingResetToken}
             showDisabledActions={isShareView && !isOwner}
-            isActive={activeTab === 'training'}
+            isActive={visibleTab === 'training'}
           />
         </div>
 
-        {activeTab === 'drop_bags' && (
+        {visibleTab === 'drop_bags' && (
           <div className="animate-in fade-in duration-500">
             <DropBagsSection
               race={race}
@@ -2316,7 +2323,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
           </div>
         )}
 
-        {activeTab === 'resources' && (
+        {visibleTab === 'resources' && (
           <div className="animate-in fade-in duration-500">
             <RaceResources
               race={race}
@@ -2326,7 +2333,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
           </div>
         )}
 
-        {activeTab === 'crew' && (
+        {visibleTab === 'crew' && (
           <div className="animate-in fade-in duration-500 max-w-5xl mx-auto">
             <Suspense fallback={<div className='p-6 text-white text-center'>Loading crew view…</div>}>
               <CrewView raceId={raceId} embedded />
@@ -2334,13 +2341,29 @@ export function RaceDetail({ raceId }: { raceId: string }) {
           </div>
         )}
 
-        {activeTab === 'members' && canManageTeam && (
+        {visibleTab === 'pacer' && (
+          <section className='race-tab-page max-w-5xl mx-auto p-4 md:p-8 space-y-4'>
+            <h2 className='text-2xl font-bold'>Pacer</h2>
+            <p className='text-neutral-400'>Pacer pickup points on this course. Check event rules before arranging a pickup.</p>
+            {waypoints.filter(wp => wp.pacer_allowed).sort((a, b) => a.mile - b.mile).map(wp => (
+              <div key={wp.id} className='rounded-lg border border-neutral-800 bg-neutral-900 p-4'>
+                <h3 className='font-semibold'>{wp.name}</h3>
+                <p className='text-sm text-neutral-400'>Mile {wp.mile.toFixed(1)}</p>
+                {wp.notes && <p className='mt-2 text-sm text-neutral-300 whitespace-pre-wrap'>{wp.notes}</p>}
+              </div>
+            ))}
+            {!waypoints.some(wp => wp.pacer_allowed) && <p className='text-neutral-400'>No pacer pickup points configured. Check Map &amp; Aid Stations for course access details.</p>}
+            {canManageTeam && <button className='rounded-lg bg-neutral-800 px-4 py-2 text-white' onClick={() => setActiveTab('members')}>Manage team members</button>}
+          </section>
+        )}
+
+        {visibleTab === 'members' && canManageTeam && (
           <div className="animate-in fade-in duration-500">
             <RaceMembersSection raceId={raceId} canInvite={canManageTeam} canManage={canManageTeam} />
           </div>
         )}
 
-        {activeTab === 'overview' && (
+        {visibleTab === 'overview' && (
           <div className="race-tab-page space-y-8 animate-in fade-in duration-500 max-w-5xl mx-auto p-4 md:p-8">
             {/* Hero / Header Info */}
             <div className="bg-neutral-900/50 rounded-2xl p-8 border border-neutral-800 relative overflow-hidden">
@@ -2397,6 +2420,8 @@ export function RaceDetail({ raceId }: { raceId: string }) {
               </div>
             </div>
 
+
+            {(!race.is_official || isDemoMode) && <RaceSupportCard race={race} canEdit={canEditRaceSettings && !isShareView} />}
 
             {/* Weather & Conditions */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

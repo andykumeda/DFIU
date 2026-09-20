@@ -53,7 +53,7 @@ export function RunnerView({ raceId }: RunnerViewProps) {
             <ArrowLeft className='w-5 h-5' />
           </Link>
           <div className='min-w-0 flex-1'>
-            <div className='text-xs text-neutral-400 truncate'>Runner View</div>
+            <div className='text-xs text-neutral-400 truncate'>Runner GPS</div>
             <div className='text-sm font-semibold truncate'>{race.name}</div>
           </div>
         </div>

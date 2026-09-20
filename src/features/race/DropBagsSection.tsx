@@ -17,6 +17,7 @@ import {
     hasSavedBagPlan,
     parseDropBagTemplate,
 } from './drop-bag-shared'
+import { getRaceSupport, isVisibleBag } from './race-support'
 import SunCalc from 'suncalc'
 
 interface DropBagsSectionProps {
@@ -69,11 +70,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
 
     const sortedWaypoints = [...waypoints].sort(compareCourseOrder)
     const bagWaypoints = sortedWaypoints
-        .filter(wp => {
-            const kind = getBagKind(wp)
-            if (!kind) return false
-            return kind !== 'crew' || canWriteDropBags || hasSavedBagPlan(wp)
-        })
+        .filter(wp => isVisibleBag(wp, getRaceSupport(race).crew, canWriteDropBags))
     const aidStationWaypoints = sortedWaypoints.filter(isAidStationWaypoint)
 
     const { plans } = usePacePlans(race.id)
@@ -199,7 +196,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
             <div className="flex flex-col items-center justify-center p-12 text-center text-neutral-500 border-2 border-dashed border-neutral-800 rounded-xl my-6">
                 <Backpack className="w-12 h-12 mb-4 opacity-20" />
                 <h3 className="text-xl font-medium text-white mb-2">No bag points configured</h3>
-                <p>Go to the map tab and edit aid stations to enable drop bags or crew access.</p>
+                <p>Go to the map tab and edit aid stations to enable drop bags.</p>
             </div>
         )
     }
@@ -212,8 +209,8 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-2xl font-bold text-white flex items-center gap-2">
                         <Backpack className="w-6 h-6 text-orange-500 print:hidden" />
-                        <span className="print:hidden">Start, Drop & Crew Bag Planner</span>
-                        <span className="hidden print:inline-block">Start, Drop & Crew Bags - {race.name}</span>
+                        <span className="print:hidden">Drop Bag Planner</span>
+                        <span className="hidden print:inline-block">Drop Bags - {race.name}</span>
                     </h2>
                     <div className="flex items-center gap-2">
                         <DropBagTemplateEditor race={race} canEdit={canEditRaceSettings} />
@@ -263,7 +260,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                                 onClick={() => setSelectedWaypoint(wp)}
                             >
                                 <div className="min-w-0 space-y-2">
-                                    <div className="flex flex-wrap items-center gap-2">
+                                    {isCrewBag && <div className="flex flex-wrap items-center gap-2">
                                         <span className={`text-[10px] font-bold uppercase tracking-[0.16em] border rounded-full px-2 py-0.5 ${labelClass}`}>
                                             {getBagKindLabel(kind)}
                                         </span>
@@ -272,7 +269,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                                                 Available
                                             </span>
                                         )}
-                                    </div>
+                                    </div>}
 
                                     <div className="min-w-0">
                                         <h3 className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-lg font-bold text-white group-hover:text-orange-400 transition-colors">
@@ -356,7 +353,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                         {isSidePanelOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                     </button>
 
-                    <h3 className="hidden print:block text-xl font-bold text-neutral-800 mb-4 border-b border-neutral-300 pb-2">Start, Drop & Crew Bag Contents</h3>
+                    <h3 className="hidden print:block text-xl font-bold text-neutral-800 mb-4 border-b border-neutral-300 pb-2">Drop Bag Contents</h3>
 
                     <div className={`drop-bags-print-list ${isSidePanelOpen ? 'block' : 'hidden'} print:block p-4 space-y-6 max-h-[calc(100vh-150px)] overflow-y-auto print:max-h-none print:overflow-visible`}>
                         {bagWaypoints.map(wp => {

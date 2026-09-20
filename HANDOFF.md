@@ -6,6 +6,9 @@
 
 ## Current work
 
+- In progress: per-plan Race Support (Solo / Crew only / Pacer only / Crew and pacer), conditional navigation and crew bags, clearer view labels, and removal of redundant bag-kind badges. Shared contract: persisted races.support_mode; preserve bag/team data when disabled. Verify all four modes, save/reload, tests, build, lint, and production desktop/mobile before closeout. Owner: current agent on main.
+
+
 - Invitation delivery UX: DFIU persists team access before attempting Supabase Auth email delivery. Members messaging now emphasizes the saved-access result, avoids exposing raw transport errors, and tells managers to check spam or use resend. Live provider migration remains deferred until a provider and credentials are selected; no WeROCK secrets were reused and no test email was sent.
 
 - Password recovery: the login page now provides “Forgot password?”, sends Supabase Auth reset emails with a recovery redirect, and distinguishes recovery links from invitation links on `/auth/set-password`. Live login and reset-form states verified without submitting credentials.

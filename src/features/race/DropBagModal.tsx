@@ -196,9 +196,9 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], i
                         </h2>
                         <div className="flex items-center gap-3 text-sm text-neutral-400">
                             <span>Mile {waypoint.mile.toFixed(1)}</span>
-                            <span className={`px-2 py-0.5 rounded border text-xs ${isCrewBag ? 'bg-emerald-950/50 border-emerald-800 text-emerald-200' : 'bg-orange-950/40 border-orange-900/60 text-orange-200'}`}>
+                            {isCrewBag && <span className={`px-2 py-0.5 rounded border text-xs ${isCrewBag ? 'bg-emerald-950/50 border-emerald-800 text-emerald-200' : 'bg-orange-950/40 border-orange-900/60 text-orange-200'}`}>
                                 {getBagKindLabel(bagKind)}
-                            </span>
+                            </span>}
                             {arrivalTime && (
                                 <span className="flex items-center gap-1 bg-neutral-950 px-2 py-0.5 rounded border border-neutral-800">
                                     <Clock className="w-3.5 h-3.5" />

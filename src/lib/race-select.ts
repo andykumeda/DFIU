@@ -42,6 +42,7 @@ export const RACE_SELECT = [
   'weather_locations',
   'resources_config',
   'drop_bag_template',
+  'support_mode',
   'is_public',
   'is_official',
   'official_at',

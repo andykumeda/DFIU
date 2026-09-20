@@ -1,3 +1,4 @@
+import { getRaceSupport } from './race-support'
 import { formatPlanALabel } from './plan-label'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -117,7 +118,9 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
             { enableHighAccuracy: true, timeout: 10_000, maximumAge: 30_000 }
         )
     }
-    useEffect(() => { requestLocation() }, [])
+    useEffect(() => {
+        if (race && getRaceSupport(race).crew) requestLocation()
+    }, [race])
 
     const planAMinutes = useMemo(() => {
         const m = computePlanMinutes(plans, race?.overall_cutoff)
@@ -298,6 +301,13 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
             </div>
         )
     }
+
+    if (!getRaceSupport(race).crew) return (
+        <div className='p-6 text-center text-neutral-300'>
+            <p>Crew support is turned off for this plan.</p>
+            <Link className='mt-3 inline-block text-orange-400' to={`/race/${raceId}`}>Return to Event Plan</Link>
+        </div>
+    )
 
     const lastCheckin = checkins.length > 0 ? checkins[checkins.length - 1] : null
     const lastCheckinWp = lastCheckin ? waypoints.find(w => w.id === lastCheckin.waypoint_id) : null

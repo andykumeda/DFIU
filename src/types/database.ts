@@ -469,6 +469,7 @@ export type Database = {
           course_type: string | null
           created_at: string | null
           distance_miles: number | null
+          support_mode: 'solo' | 'crew' | 'pacer' | 'both'
           drop_bag_template: Json | null
           entrants_url: string | null
           id: string
@@ -521,6 +522,7 @@ export type Database = {
           course_type?: string | null
           created_at?: string | null
           distance_miles?: number | null
+          support_mode?: 'solo' | 'crew' | 'pacer' | 'both'
           drop_bag_template?: Json | null
           entrants_url?: string | null
           id?: string
@@ -573,6 +575,7 @@ export type Database = {
           course_type?: string | null
           created_at?: string | null
           distance_miles?: number | null
+          support_mode?: 'solo' | 'crew' | 'pacer' | 'both'
           drop_bag_template?: Json | null
           entrants_url?: string | null
           id?: string
