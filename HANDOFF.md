@@ -2,9 +2,11 @@
 
 **Date:** 2026-09-19
 **Branch:** `main`
-**Status:** Complete: login now provides a password-reset request flow, and reset links reuse the password-setting route with recovery-specific wording.
+**Status:** Complete for invitation UX: team access is clearly preserved when email delivery is delayed or filtered, with resend guidance. A higher-reputation SMTP-provider migration remains an external configuration decision.
 
 ## Current work
+
+- Invitation delivery UX: DFIU persists team access before attempting Supabase Auth email delivery. Members messaging now emphasizes the saved-access result, avoids exposing raw transport errors, and tells managers to check spam or use resend. Live provider migration remains deferred until a provider and credentials are selected; no WeROCK secrets were reused and no test email was sent.
 
 - Password recovery: the login page now provides “Forgot password?”, sends Supabase Auth reset emails with a recovery redirect, and distinguishes recovery links from invitation links on `/auth/set-password`. Live login and reset-form states verified without submitting credentials.
 
@@ -30,6 +32,8 @@
 - CI run `34105276946` passed for exact product SHA `ae144867997d8afe927dca690c4ab9262fb61280`. Product commit pushed; no side branches or worktrees.
 
 ## Latest deployed product
+
+- Current release: invitation result messaging and pending-access guidance deployed. 132 tests pass, build passes, lint remains at 0 errors / 49 existing warnings. The app still uses the existing DFIU Auth SMTP relay; moving invitations to a higher-reputation provider remains the next deliverability step.
 
 - Current release: login password recovery is deployed. Live `/login` visibly shows “Forgot password?” and the reset form with “Send reset link”. 132 tests pass, build passes, lint remains at 0 errors / 49 existing warnings. No email or password was submitted during browser verification.
 

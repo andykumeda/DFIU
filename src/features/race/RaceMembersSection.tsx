@@ -183,32 +183,32 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
     onSuccess: async (data) => {
       const status = data?.status as string | undefined
       if (status === 'added_existing_user') {
-        setInviteStatus('User already had an account — added directly.')
+        setInviteStatus('Access saved. This person already has a DFIU account; they can sign in now.')
         await queryClient.invalidateQueries({ queryKey: ['race_members', raceId] })
       } else if (status === 'added_existing_user_email_sent') {
-        setInviteStatus('User already had an account — added directly and sent a sign-in link.')
+        setInviteStatus('Access saved and a sign-in email was sent. Ask them to check spam if it does not arrive.')
         await queryClient.invalidateQueries({ queryKey: ['race_members', raceId] })
       } else if (status === 'updated_existing_user') {
-        setInviteStatus('Existing member updated.')
+        setInviteStatus('Member access updated.')
         await queryClient.invalidateQueries({ queryKey: ['race_members', raceId] })
       } else if (status === 'updated_existing_user_email_sent') {
-        setInviteStatus('Existing member updated and sent a sign-in link.')
+        setInviteStatus('Member access updated and a sign-in email was sent. Ask them to check spam if it does not arrive.')
         await queryClient.invalidateQueries({ queryKey: ['race_members', raceId] })
       } else if (status === 'already_member') {
         setInviteStatus('Already a member of this race.')
       } else if (status === 'existing_user_email_failed') {
-        setInviteStatus(`Member access was saved, but the sign-in link failed: ${data.message}`)
+        setInviteStatus('Access was saved, but the sign-in email could not be sent. The member can sign in directly; try again later if needed.')
         await queryClient.invalidateQueries({ queryKey: ['race_members', raceId] })
       } else if (status === 'invite_email_failed') {
-        setInviteStatus(`Pending invite saved, but email failed: ${data.message}`)
+        setInviteStatus('Pending access was saved, but the invitation email could not be sent. Check spam or use Resend later.')
       } else if (status === 'resend_email_failed') {
-        setInviteStatus(`Pending invite still saved, but resend failed: ${data.message}`)
+        setInviteStatus('Pending access is still saved, but the resend failed. Check the address and try again later.')
       } else if (status === 'pending_saved') {
         setInviteStatus('Pending access saved. No email sent; ask them to sign up with this exact email address.')
       } else if (status === 'resent') {
-        setInviteStatus('Invite email resent.')
+        setInviteStatus('Invitation email resent. Ask them to check spam if it does not arrive.')
       } else {
-        setInviteStatus('Invite email sent.')
+        setInviteStatus('Access saved and invitation email sent. Ask them to check spam if it does not arrive.')
       }
       await queryClient.invalidateQueries({ queryKey: ['race_pending_invites', raceId] })
       await refreshMemberships?.()
@@ -592,6 +592,9 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
           <div className='flex items-center gap-2 text-white font-semibold'>
             <UserPlus className='w-4 h-4' /> Add or invite member
           </div>
+          <p className='text-xs text-neutral-500'>
+            Access is saved before email delivery is attempted. If the invitation is filtered or delayed, the pending invite remains available for resend.
+          </p>
 
           <form onSubmit={handleSearch} className='flex gap-2'>
             <input
@@ -756,7 +759,7 @@ function InviteCard({
   return (
     <div className='border border-neutral-700 rounded p-3 bg-neutral-950 space-y-3'>
       <div className='text-sm text-neutral-300'>
-        No DFIU account for <span className='text-white font-medium'>{email}</span>. Save pending access now without sending email; they can create an account with this exact address and join automatically.
+        No DFIU account for <span className='text-white font-medium'>{email}</span>. Access can be saved before the person creates an account, and they will join automatically when they sign up with this exact address.
       </div>
       <RolePermFields
         roles={roles} setRoles={setRoles}
