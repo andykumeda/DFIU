@@ -63,10 +63,11 @@ The hosted migration history currently diverges from this checkout. Do not run a
 
 1. Read `AGENTS.md`; work on `main` unless a user explicitly requests a branch.
 2. Update `HANDOFF.md` before work begins.
-3. Run tests, lint, and production build for code changes.
-4. Commit a coherent conventional-commit batch.
-5. Run `npm run deploy` after a successful production build.
-6. Update `HANDOFF.md` with the deployed feature hash, verification, and remaining work.
-7. Commit the handoff and push `origin/main`.
+3. Update affected user documentation and repository documentation in the same change. If no documentation needs to change, record that decision in `HANDOFF.md`.
+4. Run tests, lint, and production build for code changes.
+5. Commit a coherent conventional-commit batch.
+6. Run `npm run deploy` after a successful production build.
+7. Update `HANDOFF.md` with the deployed feature hash, verification, and remaining work.
+8. Commit the handoff and push `origin/main`.
 
 See [Deployment Guide](../DEPLOYMENT.md), [Algorithm Reference](ALGORITHMS.md), and [User Guide](USER_GUIDE.md).

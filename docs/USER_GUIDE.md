@@ -64,11 +64,11 @@ The Pace Plan page also shows that ability-based range after you calculate. With
 
 **Overview** shows the event summary, selected aid-station weather temperatures, and Plan A arrival times. If the course visits an aid station multiple times, every predicted arrival is shown.
 
-Use **Edit Race** from the pencil beside the event name to configure **Support Plan** as **Solo**, **Crew only**, **Pacer only**, or **Crew and pacer**. Saving controls the Crew/Pacer tabs and crew-only bags. Existing plans default to Crew and pacer; turning support off preserves team assignments, notes, and packed items. This preference does not change the event's crew/pacer access rules or anyone's permissions. Members and sharing remain available.
+Use **Race Settings** in the race header to open **Edit Race** and configure **Support Plan** as **Solo**, **Crew only**, **Pacer only**, or **Crew and pacer**. Saving controls the Crew/Pacer tabs and crew-only bags. Existing plans default to Crew and pacer; turning support off preserves team assignments, notes, and packed items. This preference does not change the event's crew/pacer access rules or anyone's permissions. Members and sharing remain available.
 
 The same **Links** section lets an editor customize the registration button label for providers or flows such as **Register on RunSignup**, **Enter Lottery**, or **Join Waitlist**. A blank label displays **Register Now**.
 
-The header's **Event Plan** opens the complete planner; **Runner GPS** opens the runner location-sharing screen. These are views, independent of the Race Support choice.
+The header's **Event Plan** opens the complete planning workspace and appears selected while you are in it; selecting it again does not change the page. **Runner GPS** opens the runner location-sharing screen. These are views, independent of the Race Support choice.
 
 **Pacer** lists course waypoints marked for pacer pickup, with their mileage and notes. Existing Pacer View links open this tab. Team assignments remain under **Members**.
 

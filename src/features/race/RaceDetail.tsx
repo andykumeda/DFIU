@@ -3,7 +3,7 @@ import { useAuth } from '@/features/auth/AuthContext'
 import { usePermission } from '@/features/auth/usePermission'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Calendar, MapPin, Globe, ArrowUpRight, CloudSun, Trophy, RefreshCw, Settings, Download, Save, CheckCircle2, Trash2, Share2, Users, Footprints, Backpack, ChevronDown } from 'lucide-react'
+import { Calendar, MapPin, Globe, ArrowUpRight, CloudSun, Trophy, RefreshCw, Settings, Settings2, Download, Save, CheckCircle2, Trash2, Share2, Users, Footprints, Backpack, ChevronDown } from 'lucide-react'
 
 import { supabase } from '@/lib/supabase'
 import { RACE_SELECT } from '@/lib/race-select'
@@ -201,7 +201,11 @@ function RoleSwitcher({ raceId, views }: { raceId: string; views: Array<'full' |
         <Link
           key={view}
           to={hrefFor(view)}
-          className='shrink-0 whitespace-nowrap px-2 py-1 rounded text-xs font-medium text-neutral-300 hover:bg-neutral-800 hover:text-white capitalize'
+          aria-current={view === 'full' ? 'page' : undefined}
+          className={`shrink-0 whitespace-nowrap px-2 py-1 rounded text-xs font-medium capitalize ${view === 'full'
+            ? 'bg-neutral-800 text-white'
+            : 'text-neutral-300 hover:bg-neutral-800 hover:text-white'
+            }`}
         >
           {view === 'full' ? 'Event Plan' : view === 'runner' ? 'Runner GPS' : view}
         </Link>
@@ -1602,16 +1606,6 @@ export function RaceDetail({ raceId }: { raceId: string }) {
               <div className='flex items-center gap-1.5 min-w-0'>
                 <h1 className='text-base font-bold text-white truncate'>{race.name}</h1>
                 {race.is_official && <CheckCircle2 className='w-4 h-4 text-blue-400 shrink-0' aria-label='Official event' />}
-                {showOwnerChrome && (
-                  <button
-                    onClick={() => { if (isOwner) setShowEditModal(true) }}
-                    disabled={!isOwner}
-                    className='text-neutral-400 hover:text-white text-sm shrink-0 disabled:opacity-40 disabled:hover:text-neutral-400 disabled:cursor-not-allowed'
-                    title={isOwner ? 'Edit event' : 'View only'}
-                  >
-                    ✎
-                  </button>
-                )}
               </div>
               <div className="flex items-center gap-2 text-[11px] text-neutral-400">
                 {race.start_datetime && (
@@ -1632,16 +1626,6 @@ export function RaceDetail({ raceId }: { raceId: string }) {
               <div className='flex items-center gap-2'>
                 <h1 className='text-xl font-bold text-white truncate'>{race.name}</h1>
                 {race.is_official && <CheckCircle2 className='w-5 h-5 text-blue-400' aria-label='Official event' />}
-                {showOwnerChrome && (
-                  <button
-                    onClick={() => { if (isOwner) setShowEditModal(true) }}
-                    disabled={!isOwner}
-                    className='text-neutral-400 hover:text-white disabled:opacity-40 disabled:hover:text-neutral-400 disabled:cursor-not-allowed'
-                    title={isOwner ? 'Edit event' : 'View only'}
-                  >
-                    ✎
-                  </button>
-                )}
               </div>
               <div className="flex items-center gap-3 text-sm">
                 {race.start_datetime && (
@@ -1660,7 +1644,17 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
           </div>
           <div className='flex items-center gap-2 sm:gap-4 shrink-0'>
-            <div className='hidden lg:block'><RoleSwitcher raceId={raceId} views={roleViews} /></div>
+            <div className='hidden xl:block'><RoleSwitcher raceId={raceId} views={roleViews} /></div>
+            {isOwner && (
+              <button
+                type='button'
+                onClick={() => setShowEditModal(true)}
+                className='hidden xl:inline-flex items-center gap-2 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-sm font-medium text-neutral-100 transition-colors hover:border-orange-600 hover:bg-neutral-800'
+              >
+                <Settings2 className='w-4 h-4 text-orange-500' />
+                Race Settings
+              </button>
+            )}
             {canManageTeam && (
               <button
                 onClick={() => setActiveTab('members')}
@@ -1730,7 +1724,21 @@ export function RaceDetail({ raceId }: { raceId: string }) {
             )}
           </div>
         </div>
-        {roleViews.length > 1 && <div className='lg:hidden px-3 pb-2 flex'><RoleSwitcher raceId={raceId} views={roleViews} /></div>}
+        {(roleViews.length > 1 || isOwner) && (
+          <div className='xl:hidden px-3 pb-2 flex items-center gap-2 overflow-x-auto'>
+            {roleViews.length > 1 && <RoleSwitcher raceId={raceId} views={roleViews} />}
+            {isOwner && (
+              <button
+                type='button'
+                onClick={() => setShowEditModal(true)}
+                className='inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-neutral-700 bg-neutral-900 px-2.5 py-1.5 text-xs font-medium text-neutral-100 transition-colors hover:border-orange-600 hover:bg-neutral-800'
+              >
+                <Settings2 className='w-3.5 h-3.5 text-orange-500' />
+                Race Settings
+              </button>
+            )}
+          </div>
+        )}
       </header>
 
       {isDemoMode && (

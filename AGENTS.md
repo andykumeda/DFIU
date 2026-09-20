@@ -46,6 +46,9 @@ Failure to follow these rules is how work gets lost. Do all of them.
 - `docs/handoff/` is for current planning notes only; dated session history
   belongs in git history, not active docs.
 - Keep `HANDOFF.md` as a concise status board. Do not append long session diaries.
+- Treat documentation as part of every product change. Update affected user-facing
+  guides and repository/developer documentation in the same batch. If a change
+  requires no documentation update, record that decision in `HANDOFF.md`.
 
 ## Project Status
 

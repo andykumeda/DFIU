@@ -17,6 +17,8 @@ DFIU helps you centralize your course, pace plan, logistics, and crew info in on
 - [Deployment Guide](DEPLOYMENT.md) — production release process.
 - [Agent/developer handoff](HANDOFF.md) — current production state and active operational work.
 
+User-facing behavior and repository documentation are part of every product change. Update the affected guides in the same batch, and record the release state and verification in `HANDOFF.md`.
+
 ## Tech Stack
 
 -   **Frontend:** React 19 + Vite 6
