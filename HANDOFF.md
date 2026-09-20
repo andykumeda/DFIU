@@ -1,12 +1,17 @@
 # DFIU Handoff
 
-**Date:** 2026-09-19
+**Date:** 2026-09-20
 **Branch:** `main`
-**Status:** Complete for invitation UX: team access is clearly preserved when email delivery is delayed or filtered, with resend guidance. A higher-reputation SMTP-provider migration remains an external configuration decision.
+**Status:** Race Support and drop-bag visibility deployed and live verified at `10f3f6b`. Main is pushed; no other worktrees or unmerged branches from this task. Invitation-provider migration remains deferred.
 
 ## Current work
 
-- In progress: per-plan Race Support (Solo / Crew only / Pacer only / Crew and pacer), conditional navigation and crew bags, clearer view labels, and removal of redundant bag-kind badges. Shared contract: persisted races.support_mode; preserve bag/team data when disabled. Verify all four modes, save/reload, tests, build, lint, and production desktop/mobile before closeout. Owner: current agent on main.
+- **Deployed — Race Support** (owner: current agent, `main`): Overview now saves Solo / Crew only / Pacer only / Crew and pacer per personal plan. Crew/Pacer tabs and header role links follow the selection. Pacer shows pickup points; legacy Pacer URLs redirect to the support-aware tab. Disabled Crew direct links show a return-to-plan message. Event Plan / Runner GPS labels remain readable on mobile.
+- **Deployed — Drop Bags**: crew-only bags are omitted without crew from cards, All Bags/print data, and next-bag coverage. Start/Finish locations and saved contents remain; redundant Start Gear, Finish Gear, and Official Drop Bag badges are removed from cards/modals. Crew bags retain identification. Toolbar wraps on mobile.
+- **Verified**: all 138 tests pass; build and deploy pass; lint 0 errors / 49 existing warnings; critical-file hooks pass. Chrome production checks at 1280×900 and 390×844 confirm layout and no horizontal overflow. All four modes save and survive reload; Solo/Pacer only omit Clear Creek's crew-only bag and Crew restores it. Pacer pickup list and disabled direct links verified. Browser warning/error log empty. Actual print dialog/output was not exercised; the shared filtered list feeds printing.
+- **Verified preservation**: AC100 plan `5c9ccb94-3211-4e8c-b653-31978052ef51` restored to `both`; database confirms unchanged bag-data checksum and member count after testing. No bag contents or memberships edited.
+- **Schema/release**: targeted `race_support_mode` migration applied to hosted DFIU only. `races.support_mode` is constrained to four values, defaults to `both`, uses existing RLS, and has explicit column-level SELECT grants without exposing share tokens. No broad migration push. Product commits `7e0b12e`, `10f3f6b`; deployed `git describe`: `10f3f6b`. User guide updated. No remaining acceptance blocker.
+- Existing external audit notices remain outside this change: Supabase advisors flag existing SECURITY DEFINER functions, Strava connection RLS without policies, and leaked-password protection; this migration adds no table/function/policy. Deployment dependency audit reports 2 moderate / 1 high notices without dependency changes.
 
 
 - Invitation delivery UX: DFIU persists team access before attempting Supabase Auth email delivery. Members messaging now emphasizes the saved-access result, avoids exposing raw transport errors, and tells managers to check spam or use resend. Live provider migration remains deferred until a provider and credentials are selected; no WeROCK secrets were reused and no test email was sent.
@@ -35,6 +40,8 @@
 - CI run `34105276946` passed for exact product SHA `ae144867997d8afe927dca690c4ab9262fb61280`. Product commit pushed; no side branches or worktrees.
 
 ## Latest deployed product
+
+- `10f3f6b`: Race Support and conditional crew bags, Pacer pickup tab, simplified bag badges, and responsive header/toolbar. Production footer verified in Chrome; schema and UI checks above.
 
 - Current release: invitation result messaging and pending-access guidance deployed. 132 tests pass, build passes, lint remains at 0 errors / 49 existing warnings. The app still uses the existing DFIU Auth SMTP relay; moving invitations to a higher-reputation provider remains the next deliverability step.
 
