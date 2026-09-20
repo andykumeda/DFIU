@@ -18,6 +18,7 @@ import {
     parseDropBagTemplate,
 } from './drop-bag-shared'
 import { getRaceSupport, isVisibleBag } from './race-support'
+import { formatPlanALabel } from './plan-label'
 import SunCalc from 'suncalc'
 
 interface DropBagsSectionProps {
@@ -55,7 +56,7 @@ const formatDuration = (minutes: number) => {
 }
 
 export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24h = false, runnerProfile, onGoToPacePlan }: DropBagsSectionProps) {
-    const { canEditRaceSettings } = usePermission(race.id, race.race_director_user_id)
+    const { canEditRaceSettings } = usePermission(race.id, race.race_director_user_id, race.is_official)
     const canWriteDropBags = canEditRaceSettings
     const [selectedWaypoint, setSelectedWaypoint] = useState<Waypoint | null>(null)
     const [isSidePanelOpen, setIsSidePanelOpen] = useState(true)
@@ -207,11 +208,18 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
             <div className="flex-1 space-y-6 min-w-0 w-full print:hidden">
 
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-                    <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                        <Backpack className="w-6 h-6 text-orange-500 print:hidden" />
-                        <span className="print:hidden">Drop Bag Planner</span>
-                        <span className="hidden print:inline-block">Drop Bags - {race.name}</span>
-                    </h2>
+                    <div>
+                        <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                            <Backpack className="w-6 h-6 text-orange-500 print:hidden" />
+                            <span className="print:hidden">Drop Bag Planner</span>
+                            <span className="hidden print:inline-block">Drop Bags - {race.name}</span>
+                        </h2>
+                        {plans.hasCalculated && planAMinutes > 0 && (
+                            <p className="mt-1 text-sm text-neutral-400 print:text-neutral-700">
+                                Arrival times use {formatPlanALabel(planAMinutes)}
+                            </p>
+                        )}
+                    </div>
                     <div className="flex items-center gap-2">
                         <DropBagTemplateEditor race={race} canEdit={canEditRaceSettings} />
                         <button
@@ -285,6 +293,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                                             {arrival ? (
                                                 <span className="inline-flex items-center gap-1">
                                                     <Clock className="w-3.5 h-3.5" />
+                                                    <span className="text-neutral-500">Arrival</span>
                                                     <span className="font-mono text-neutral-300">{arrival.timeOfDay}</span>
                                                     {arrivalIsNight
                                                         ? <Moon className="w-3.5 h-3.5 text-blue-300" />
@@ -353,7 +362,9 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                         {isSidePanelOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                     </button>
 
-                    <h3 className="hidden print:block text-xl font-bold text-neutral-800 mb-4 border-b border-neutral-300 pb-2">Drop Bag Contents</h3>
+                    <h3 className="hidden print:block text-xl font-bold text-neutral-800 mb-4 border-b border-neutral-300 pb-2">
+                        Drop Bag Contents{plans.hasCalculated && planAMinutes > 0 ? ` · ${formatPlanALabel(planAMinutes)}` : ''}
+                    </h3>
 
                     <div className={`drop-bags-print-list ${isSidePanelOpen ? 'block' : 'hidden'} print:block p-4 space-y-6 max-h-[calc(100vh-150px)] overflow-y-auto print:max-h-none print:overflow-visible`}>
                         {bagWaypoints.map(wp => {
@@ -384,7 +395,10 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                                             </span>
                                         </button>
                                         <div className="flex shrink-0 items-center gap-2">
-                                            <span className="text-neutral-500 print:text-neutral-600 font-mono text-xs">Mile {wp.mile.toFixed(1)}</span>
+                                            <span className="text-neutral-500 print:text-neutral-600 text-xs">
+                                                <span className="font-mono">Mile {wp.mile.toFixed(1)}</span>
+                                                {getWaypointArrival(wp) && <span className="ml-2">Arrival <span className="font-mono">{getWaypointArrival(wp)!.timeOfDay}</span></span>}
+                                            </span>
                                             <button
                                                 type="button"
                                                 onClick={() => setSelectedWaypoint(wp)}

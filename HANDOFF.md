@@ -2,9 +2,11 @@
 
 **Date:** 2026-09-20
 **Branch:** `main`
-**Status:** Verified and deployed on `main`: the race header exposes a labeled Race Settings control, Event Plan visibly identifies the current planning workspace, and documentation maintenance is part of the release workflow.
+**Status:** In progress on `main`: official-event writes are now site-admin-only in hosted RLS and the AC100 source is repaired as official; final tests and live visual verification remain for the related Pacer, Drop Bag, and official-update UI changes.
 
 ## Current work
+
+- **In progress — official-source boundary and race-day UI follow-up** (owner: current agent, `main`): hosted RLS now makes official race, course, waypoint/drop-bag, terrain, planning, membership, live, check-in, and GPS mutations site-admin-only while personal clone owners retain edits. AC100 source `fca7696b…` is correctly official again. The same batch restores Pacer dark-mode text, portals the Drop Bag editor above sticky chrome, labels Plan A arrival times, and replaces the ambiguous “merge” wording with explicit official/local outcomes. Remaining acceptance: full tests/lint, final deploy/hash, and production desktop/mobile checks.
 
 - **Deployed — race settings discovery** (owner: current agent, `main`): replaced the tiny event-title pencil with a labeled Race Settings button and marked Event Plan as the current planning workspace. Production desktop and 390×844 checks confirm the control opens Edit Race and the responsive header keeps Event Plan, Runner GPS, and Race Settings visible without page overflow. Browser error log is empty. User guide, README, developer checklist, and agent instructions now require affected user and repository documentation to ship with every product change. Product hash `0cfecd2`.
 

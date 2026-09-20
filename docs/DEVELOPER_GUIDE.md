@@ -19,6 +19,7 @@ DFIU is a React 19/Vite single-page app backed by Supabase. The race detail scre
 - A **terrain node** is a boundary: its type/difficulty applies from `mile` until the next node.
 - A **training route** belongs to a race and persists its geometry plus derived race-overlap segments and Strava-analysis inputs/results.
 - **Race memberships** govern owner/crew/pacer role and view/edit access. Runner history is private to its owning user.
+- An **official race** is a global source. `site_admins` is the sole mutation authority for official race, course, waypoint/drop-bag, terrain, pace, training, membership, live, check-in, and location data. Everyone else edits a personal clone.
 
 ## Important implementation rules
 
@@ -49,6 +50,8 @@ Never expose Strava or Visual Crossing secrets in client variables. They belong 
 ## Database and Edge Functions
 
 The app uses Supabase RLS and RPCs for race access, membership, and selected protected operations. Schema changes are kept in `supabase/migrations/`; current Edge Functions are:
+
+Official-source protection belongs in database helpers and policies, with UI gating only as a clarity layer. Any new write table or SECURITY DEFINER RPC that accepts a race ID must preserve the invariant that `races.is_official = true` is writable only by `user_is_site_admin()`. Do not use an email address in authorization logic; the canonical admin identity is the `site_admins` row. Personal clones retain owner/editor behavior.
 
 - `strava-auth` — OAuth start/callback; gateway JWT verification is disabled because a user may not have a DFIU session yet. OAuth state provides CSRF protection.
 - `strava-activity` — authenticated activity lookup, connection status, and tagged-race listing.

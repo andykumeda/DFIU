@@ -4,7 +4,7 @@ DFIU brings a race course, pace plan, logistics, crew coordination, training rou
 
 ## Start here
 
-Most people begin by opening a public event and choosing **Clone Race** to make a personal planning copy. You can also create a new event from **New Race** when you are starting without an existing public course.
+Most people begin by opening a public event and choosing **Clone Race** to make a personal planning copy. Official event pages are shared, read-only sources for everyone except the site administrator. Clone the event before changing pace goals, training, course details, Resources, crew, or drop bags. You can also create a new event from **New Race** when you are starting without an existing public course.
 
 ### Clone an existing event
 
@@ -22,7 +22,9 @@ Most people begin by opening a public event and choosing **Clone Race** to make 
 4. Define terrain and create a Plan A goal time on **Pace Plan**.
 5. Share the event with your runner, crew, and pacers from **Members**.
 
-Race owners can edit the event. Other people see only the sections allowed by their membership or share link.
+Race owners can edit their personal events. Only the site administrator can edit an official event source; membership on an official event never grants global edit access. Other people see only the sections allowed by their membership or share link.
+
+When an official source changes, a personal plan may offer two explicit choices. **Use official version** replaces local event details, Resources, course and aid-station data, terrain, and the drop-bag template. It keeps the personal plan name, pace goals, training routes, check-ins, and bag contents when the corresponding station still exists. **Keep my current plan** leaves the local plan as it is and marks that official revision as handled.
 
 ## Map & Aid Stations
 
@@ -78,7 +80,7 @@ The header's **Event Plan** opens the complete planning workspace and appears se
 
 ## Drop Bags
 
-**Drop Bag Planner** includes Start and Finish gear, designated drop-bag stations, and crew-only bags when Race Support includes crew. Solo and Pacer only hide crew-only bags from cards, All Bags, printing, and next-bag coverage. Designated drop bags remain available even if the station also allows crew. Start and Finish locations remain; redundant Start Gear, Finish Gear, and Official Drop Bag badges are omitted. Crew bags retain their identifying badge.
+**Drop Bag Planner** includes Start and Finish gear, designated drop-bag stations, and crew-only bags when Race Support includes crew. Solo and Pacer only hide crew-only bags from cards, All Bags, printing, and next-bag coverage. Designated drop bags remain available even if the station also allows crew. Start and Finish locations remain; redundant Start Gear, Finish Gear, and Official Drop Bag badges are omitted. Crew bags retain their identifying badge. When Plan A is calculated, the page identifies the active goal and labels each displayed time as an **Arrival**; the print list carries the same Plan A context.
 
 ## Training routes and Strava analysis
 

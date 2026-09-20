@@ -317,7 +317,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     canLogCheckins,
     canManageTeam,
     availableRoleViews,
-  } = usePermission(raceId, race?.race_director_user_id)
+  } = usePermission(raceId, race?.race_director_user_id, race?.is_official)
   const support = getRaceSupport(race)
   const registrationLabel = race ? parseResourcesConfig(race.resources_config, race).registration_label : 'Register Now'
   const roleViews = race?.is_official ? ['full' as const] : availableRoleViews.filter(view => (view !== 'crew' || support.crew) && (view !== 'pacer' || support.pacer))
@@ -1745,6 +1745,14 @@ export function RaceDetail({ raceId }: { raceId: string }) {
         <DemoModeBanner sourceRaceId={raceId} tooLarge={overlayTooLarge} />
       )}
 
+      {race.is_official && !isAdmin && (
+        <div className='print:hidden border-b border-blue-900/60 bg-blue-950/30'>
+          <div className='max-w-7xl mx-auto px-3 sm:px-4 py-2 text-sm text-blue-100'>
+            Official event — this page is read-only. Clone the event to make your own pace, training, crew, and drop-bag plan.
+          </div>
+        </div>
+      )}
+
       {isShareView && !isOwner && (
         <div className='print:hidden border-b border-neutral-700 bg-neutral-900/80'>
           <div className='max-w-7xl mx-auto px-3 sm:px-4 py-2'>
@@ -1758,7 +1766,11 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       {cloneUpdateStatus?.has_updates && showOfficialUpdateBanner && (
         <OfficialUpdateBanner
           busy={officialUpdateBusy}
-          onMerge={async () => {
+          onUseOfficial={async () => {
+            const confirmed = window.confirm(
+              'Use the latest official version? This replaces local event details, Resources, course and aid-station data, terrain, and the drop-bag template. Your plan name, pace goals, training routes, check-ins, and bag contents are kept when their station still exists.'
+            )
+            if (!confirmed) return
             setOfficialUpdateBusy(true)
             try {
               await mergeOfficialUpdate()
@@ -1768,18 +1780,18 @@ export function RaceDetail({ raceId }: { raceId: string }) {
               }
             } catch (err) {
               console.error(err)
-              alert(`Failed to merge updates: ${getErrorMessage(err)}`)
+              alert(`Failed to use the official version: ${getErrorMessage(err)}`)
             } finally {
               setOfficialUpdateBusy(false)
             }
           }}
-          onDismiss={async () => {
+          onKeepCurrent={async () => {
             setOfficialUpdateBusy(true)
             try {
               await dismissOfficialUpdate()
             } catch (err) {
               console.error(err)
-              alert(`Failed to dismiss update: ${getErrorMessage(err)}`)
+              alert(`Failed to keep the current plan: ${getErrorMessage(err)}`)
             } finally {
               setOfficialUpdateBusy(false)
             }
@@ -2353,7 +2365,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
         )}
 
         {visibleTab === 'pacer' && (
-          <section className='race-tab-page max-w-5xl mx-auto p-4 md:p-8 space-y-4'>
+          <section className='race-tab-page max-w-5xl mx-auto p-4 md:p-8 space-y-4 text-neutral-100'>
             <h2 className='text-2xl font-bold'>Pacer</h2>
             <p className='text-neutral-400'>Pacer pickup points on this course. Check event rules before arranging a pickup.</p>
             {waypoints.filter(wp => wp.pacer_allowed).sort((a, b) => a.mile - b.mile).map(wp => (

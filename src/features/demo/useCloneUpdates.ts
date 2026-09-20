@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/features/auth/AuthContext'
 import { usePermission } from '@/features/auth/usePermission'
+import { recomputeTrainingOverlapsForRace } from '@/features/race/useTrainingRoutes'
 
 export type CloneUpdateStatus = {
   has_updates: boolean
@@ -42,9 +43,18 @@ export function useOfficialUpdateActions(raceId: string) {
       p_clone_race_id: raceId,
     })
     if (error) throw error
+    const { data: refreshedCourse, error: courseError } = await supabase
+      .from('courses')
+      .select('geometry')
+      .eq('race_id', raceId)
+      .maybeSingle()
+    if (courseError) throw courseError
+    if (refreshedCourse?.geometry) {
+      await recomputeTrainingOverlapsForRace(raceId, refreshedCourse.geometry)
+    }
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['race', raceId] }),
-      queryClient.invalidateQueries({ queryKey: ['courses'] }),
+      queryClient.invalidateQueries({ queryKey: ['course', raceId] }),
       queryClient.invalidateQueries({ queryKey: ['waypoints'] }),
       queryClient.invalidateQueries({ queryKey: ['clone-update-status', raceId] }),
     ])

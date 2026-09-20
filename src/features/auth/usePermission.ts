@@ -49,7 +49,11 @@ const demoPermission: Permission = {
 // layer (RLS); this hook only governs UI gating, so unknown raceId returns
 // no-perm for non-admins.
 // Demo mode (try-before-signup) grants planning edit affordances without team/live writes.
-export function usePermission(raceId: string | undefined, raceDirectorUserId?: string | null): Permission {
+export function usePermission(
+  raceId: string | undefined,
+  raceDirectorUserId?: string | null,
+  isOfficial = false,
+): Permission {
   const { user, isSiteAdmin, memberships } = useAuth()
   const { isDemoMode } = useDemoMode()
 
@@ -73,6 +77,16 @@ export function usePermission(raceId: string | undefined, raceDirectorUserId?: s
       isCrew: false,
       canManageTeam: true,
       canLogCheckins: true,
+      availableRoleViews: ['full'],
+    }
+  }
+
+  // Official event sources are global, shared records. Only site admins may
+  // mutate them; everyone else must clone the event to make a personal plan.
+  if (isOfficial) {
+    return {
+      ...emptyPermission,
+      canView: true,
       availableRoleViews: ['full'],
     }
   }

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { Race, Waypoint, type Json } from '@/types/database'
 import { X, Save, Plus, Trash2, Clock, Sun, Moon, Info, CheckCircle2, Circle } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
@@ -183,7 +184,7 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], i
         return acc
     }, {} as Record<string, DropBagItem[]>)
 
-    return (
+    return createPortal(
         <div className="fixed inset-0 z-[200] overflow-y-auto bg-black/80 backdrop-blur-sm">
             <div className="flex min-h-full items-center justify-center p-4">
                 <div className="bg-neutral-900 w-full max-w-2xl rounded-2xl border border-neutral-800 shadow-2xl flex flex-col max-h-[calc(100dvh-2rem)] animate-in zoom-in-95 duration-200">
@@ -202,8 +203,8 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], i
                             {arrivalTime && (
                                 <span className="flex items-center gap-1 bg-neutral-950 px-2 py-0.5 rounded border border-neutral-800">
                                     <Clock className="w-3.5 h-3.5" />
+                                    <span className="text-neutral-500">Arrival</span>
                                     <span className="font-mono text-neutral-200">{arrivalTime.timeOfDay}</span>
-                                    <span className="text-neutral-500">Estimated arrival time</span>
                                     {isNight ? <Moon className="w-3 h-3 text-blue-300 ml-1" /> : <Sun className="w-3 h-3 text-yellow-500 ml-1" />}
                                 </span>
                             )}
@@ -214,7 +215,7 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], i
                     </button>
                 </div>
 
-                <div className="p-6 overflow-y-auto space-y-8 flex-1">
+                <div className="p-6 overflow-y-auto overflow-x-hidden space-y-8 flex-1">
 
                     {coverageRows.length > 0 && (
                         <div className="bg-neutral-950/50 border border-neutral-800 rounded-xl p-4 space-y-3">
@@ -244,7 +245,7 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], i
                                                     {row.plans.map(plan => (
                                                         <span key={plan.label} className="flex flex-wrap items-baseline gap-x-1.5">
                                                             <span className={`font-mono font-semibold ${plan.colorClass}`}>{plan.timeOfDay ?? '—'}</span>
-                                                            <span className="text-neutral-500">Estimated arrival time</span>
+                                                            <span className="text-neutral-500">Arrival</span>
                                                             {plan.duration && <span className="text-neutral-500"> · in {plan.duration}</span>}
                                                         </span>
                                                     ))}
@@ -453,6 +454,7 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], i
 
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body,
     )
 }
