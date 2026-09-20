@@ -2,11 +2,11 @@
 
 **Date:** 2026-09-20
 **Branch:** `main`
-**Status:** In progress on `main`: add a selective official-update review with changed-area diffs and per-area acceptance while preserving runner-owned planning data.
+**Status:** Deployed and verified on `main`: official updates are reviewed as a current-versus-official diff and accepted selectively by area; runner-owned planning data remains local.
 
 ## Current work
 
-- **In progress — selective official updates** (owner: current agent, `main`): replace the all-or-nothing official update with a review dialog that flags changed event details, Resources, course, aid stations, terrain, and drop-bag template data; show current-versus-official summaries; apply only checked areas; preserve personal pace, training, check-ins, and bag contents. Acceptance: scoped RPC authorization and revision handling verified, desktop/mobile review flow verified, user/developer docs updated, build/test/lint/deploy complete.
+- **Deployed — selective official updates** (owner: current agent, `main`): clone owners review changed Event details, Resources, Drop-bag template, Course, Aid stations & access, and Terrain areas, then apply only checked areas or keep everything current. The hosted `sync_selected_official_updates` RPC accepts only those sections, requires authenticated clone edit access, and preserves personal pace, training, check-ins, support choice, members, bag contents/names/notes, and station delays. All 141 tests and production builds pass; lint is 0 errors / 49 existing warnings. Live desktop and 390×844 checks show the AC100 revision's one actual Resources difference, working selection counts, visible mobile actions, no horizontal overflow, footer `fbafcd8`, and no browser warnings/errors. The pending AC100 update remains unhandled (`merged 1`, source `2`) for the runner to decide. User, developer, and README documentation are current.
 
 - **Deployed — official-source boundary and race-day UI follow-up** (owner: current agent, `main`): hosted RLS makes official race, course, waypoint/drop-bag, terrain, planning, membership, live, check-in, and GPS mutations site-admin-only while personal clone owners retain edits. AC100 source `fca7696b…` is correctly official again. The same batch restores Pacer dark-mode text, portals the Drop Bag editor above sticky chrome, labels Plan A arrival times, and replaces the ambiguous “merge” wording with explicit official/local outcomes. Hosted permission checks prove the regular account is denied all official mutation helpers and still owns/edits its clone; the admin account retains official access. All 140 tests and build pass; lint is 0 errors / 49 existing warnings. Production desktop and 390×844 checks show readable Pacer text, Plan A/Arrival labels, an unclipped modal without horizontal overflow, footer `b083789`, and no browser warnings/errors. Supabase advisors show the existing SECURITY DEFINER, Strava policy, password-protection, index, and policy-planning notices; this migration introduced no missing RLS policy.
 
@@ -49,6 +49,8 @@
 - CI run `34105276946` passed for exact product SHA `ae144867997d8afe927dca690c4ab9262fb61280`. Product commit pushed; no side branches or worktrees.
 
 ## Latest deployed product
+
+- `fbafcd8`: selective official-update review and accurate live recomputation from the loaded clone. Scoped hosted migration applied; production desktop/mobile review verified without accepting or dismissing the pending AC100 update.
 
 - `0cfecd2`: labeled Race Settings header control, selected Event Plan state, responsive desktop/mobile placement, and synchronized user/repository documentation. Production button-to-modal behavior and 390×844 layout verified.
 
