@@ -96,8 +96,13 @@ export function EditRaceModal({ race, onClose, onUpdate, onDelete }: EditRaceMod
         setIsLoading(true)
 
         try {
+            const existingResourcesConfig = race.resources_config
+                && typeof race.resources_config === 'object'
+                && !Array.isArray(race.resources_config)
+                ? race.resources_config
+                : savedResourcesConfig
             const nextResourcesConfig = {
-                ...savedResourcesConfig,
+                ...existingResourcesConfig,
                 registration_label: formData.registration_label.trim() || 'Register Now',
             }
             const racePatch = {
