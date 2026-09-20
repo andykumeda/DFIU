@@ -46,7 +46,7 @@ User-facing behavior and repository documentation are part of every product chan
 -   **Crew View:** Mobile-first `/race/:id/crew` view with predicted runner location, next crew aid station, Google Maps destination links, drop bag details, and runner arrival check-ins.
 -   **Live Event:** Live tab with optional livestream + Race Result embeds, runner location map, and followed-runner ETAs.
 -   **Roles & Invites:** Race owners/runners can manage crew/pacer memberships, grant view/edit permissions, add existing users, save no-email pending access for new users, optionally send invite emails, and create private read-only share links for exact-link access.
--   **Official source protection and review:** Official event pages are globally shared and database-enforced as site-admin-only for every mutation. Personal clones flag later official changes, show a current-versus-official diff by area, and let runners selectively accept event, resource, drop-bag-template, course, aid-station, and terrain updates while retaining personal planning data.
+-   **Official source protection and review:** Official event pages are globally shared and database-enforced as site-admin-only for every mutation. Personal clones flag later official changes, show concrete current-to-official replacements by area, and let runners selectively accept event, resource, drop-bag-template, course, aid-station, terrain, and official training-route updates while retaining personal planning and Strava data.
 -   **Weather Integration:** Race-location weather via the `weather` Supabase Edge Function (Visual Crossing key stays server-side).
 -   **Settings:** User preferences, runner profile, and Strava OAuth.
 

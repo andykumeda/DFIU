@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { RACE_SELECT } from '@/lib/race-select'
-import type { Course, Race, TerrainNode, Waypoint } from '@/types/database'
+import type { Course, Race, TerrainNode, TrainingRoute, Waypoint } from '@/types/database'
 import { buildOfficialUpdateSections } from './official-update-diff'
 
 export function useOfficialUpdateReview(
@@ -22,6 +22,12 @@ export function useOfficialUpdateReview(
       if (raceError) throw raceError
       const { data: sourceCourse, error: courseError } = await supabase.from('courses').select('*').eq('race_id', sourceId).maybeSingle()
       if (courseError) throw courseError
+      const [sourceTrainingResult, currentTrainingResult] = await Promise.all([
+        supabase.from('training_routes').select('*').eq('race_id', sourceId).order('sort_order'),
+        supabase.from('training_routes').select('*').eq('race_id', race!.id).order('sort_order'),
+      ])
+      if (sourceTrainingResult.error) throw sourceTrainingResult.error
+      if (currentTrainingResult.error) throw currentTrainingResult.error
       let sourceWaypoints: Waypoint[] = []
       let sourceTerrain: TerrainNode[] = []
       if (sourceCourse) {
@@ -34,14 +40,23 @@ export function useOfficialUpdateReview(
         sourceWaypoints = (waypointResult.data ?? []) as Waypoint[]
         sourceTerrain = (terrainResult.data ?? []) as TerrainNode[]
       }
-      return { race: sourceRace as unknown as Race, course: sourceCourse as Course | null, waypoints: sourceWaypoints, terrain: sourceTerrain }
+      return {
+        official: {
+          race: sourceRace as unknown as Race,
+          course: sourceCourse as Course | null,
+          waypoints: sourceWaypoints,
+          terrain: sourceTerrain,
+          trainingRoutes: (sourceTrainingResult.data ?? []) as TrainingRoute[],
+        },
+        currentTrainingRoutes: (currentTrainingResult.data ?? []) as TrainingRoute[],
+      }
     },
   })
 
   const sections = useMemo(() => sourceQuery.data && race
     ? buildOfficialUpdateSections(
-      { race, course: course ?? null, waypoints, terrain },
-      sourceQuery.data,
+      { race, course: course ?? null, waypoints, terrain, trainingRoutes: sourceQuery.data.currentTrainingRoutes },
+      sourceQuery.data.official,
     )
     : [], [sourceQuery.data, race, course, waypoints, terrain])
 

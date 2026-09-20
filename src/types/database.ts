@@ -271,6 +271,7 @@ export type Database = {
           created_at: string
           updated_at: string
           created_by: string | null
+          official_source_training_route_id: string | null
         }
         Insert: {
           id?: string
@@ -295,6 +296,7 @@ export type Database = {
           created_at?: string
           updated_at?: string
           created_by?: string | null
+          official_source_training_route_id?: string | null
         }
         Update: {
           id?: string
@@ -319,6 +321,7 @@ export type Database = {
           created_at?: string
           updated_at?: string
           created_by?: string | null
+          official_source_training_route_id?: string | null
         }
         Relationships: [
           {

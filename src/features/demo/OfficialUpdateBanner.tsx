@@ -40,7 +40,7 @@ export function OfficialUpdateBanner({ sections, loading, busy, onApply }: Offic
           <div className='flex items-start justify-between gap-4 border-b border-neutral-800 p-5'>
             <div>
               <h2 className='text-xl font-bold text-white'>Review official updates</h2>
-              <p className='mt-1 text-sm text-neutral-400'>Checked areas will use the official version. Unchecked areas keep your current plan.</p>
+              <p className='mt-1 text-sm text-neutral-400'>Each line shows Current → Official. Applying a checked area replaces only the listed official-managed values; unchecked areas keep your current plan.</p>
             </div>
             <button type='button' onClick={() => setOpen(false)} className='rounded-lg bg-neutral-800 p-2 text-neutral-400 hover:text-white' aria-label='Close update review'><X className='w-5 h-5' /></button>
           </div>

@@ -2,9 +2,11 @@
 
 **Date:** 2026-09-20
 **Branch:** `main`
-**Status:** Deployed and verified on `main`: official updates are reviewed as a current-versus-official diff and accepted selectively by area; runner-owned planning data remains local.
+**Status:** In progress on `main`: extend selective official updates to linked training routes and make every review area show the current value beside the official replacement.
 
 ## Current work
+
+- **In progress — training-route official updates and detailed diffs** (owner: current agent, `main`): add official-source identity/revision tracking for training routes, expose Training routes as an independently selectable update area, preserve personal Strava analysis and personal-only routes, and replace generic change labels with concrete current-to-official replacement details. Acceptance: existing route links safely backfilled, the newly changed official AC100 route becomes pending for every older clone including Melissa's, scoped RPC authorization/preservation verified, desktop/mobile review verified, docs/build/test/lint/deploy complete.
 
 - **Deployed — selective official updates** (owner: current agent, `main`): clone owners review changed Event details, Resources, Drop-bag template, Course, Aid stations & access, and Terrain areas, then apply only checked areas or keep everything current. The hosted `sync_selected_official_updates` RPC accepts only those sections, requires authenticated clone edit access, and preserves personal pace, training, check-ins, support choice, members, bag contents/names/notes, and station delays. All 141 tests and production builds pass; lint is 0 errors / 49 existing warnings. Live desktop and 390×844 checks show the AC100 revision's one actual Resources difference, working selection counts, visible mobile actions, no horizontal overflow, footer `fbafcd8`, and no browser warnings/errors. The pending AC100 update remains unhandled (`merged 1`, source `2`) for the runner to decide. User, developer, and README documentation are current.
 
