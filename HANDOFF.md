@@ -2,9 +2,11 @@
 
 **Date:** 2026-09-20
 **Branch:** `main`
-**Status:** Deployed and verified on `main`: official-event writes are site-admin-only in hosted RLS; AC100 is correctly classified as official; Pacer contrast, Drop Bag Plan A/arrival labels, modal layering, and official-update choices are live.
+**Status:** In progress on `main`: add a selective official-update review with changed-area diffs and per-area acceptance while preserving runner-owned planning data.
 
 ## Current work
+
+- **In progress — selective official updates** (owner: current agent, `main`): replace the all-or-nothing official update with a review dialog that flags changed event details, Resources, course, aid stations, terrain, and drop-bag template data; show current-versus-official summaries; apply only checked areas; preserve personal pace, training, check-ins, and bag contents. Acceptance: scoped RPC authorization and revision handling verified, desktop/mobile review flow verified, user/developer docs updated, build/test/lint/deploy complete.
 
 - **Deployed — official-source boundary and race-day UI follow-up** (owner: current agent, `main`): hosted RLS makes official race, course, waypoint/drop-bag, terrain, planning, membership, live, check-in, and GPS mutations site-admin-only while personal clone owners retain edits. AC100 source `fca7696b…` is correctly official again. The same batch restores Pacer dark-mode text, portals the Drop Bag editor above sticky chrome, labels Plan A arrival times, and replaces the ambiguous “merge” wording with explicit official/local outcomes. Hosted permission checks prove the regular account is denied all official mutation helpers and still owns/edits its clone; the admin account retains official access. All 140 tests and build pass; lint is 0 errors / 49 existing warnings. Production desktop and 390×844 checks show readable Pacer text, Plan A/Arrival labels, an unclipped modal without horizontal overflow, footer `b083789`, and no browser warnings/errors. Supabase advisors show the existing SECURITY DEFINER, Strava policy, password-protection, index, and policy-planning notices; this migration introduced no missing RLS policy.
 

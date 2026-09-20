@@ -963,6 +963,7 @@ export type Database = {
       }
       sync_official_race_to_clones: { Args: { p_source_race_id: string }; Returns: number }
       sync_official_race_to_clone: { Args: { p_clone_race_id: string }; Returns: boolean }
+      sync_selected_official_updates: { Args: { p_clone_race_id: string; p_sections?: string[] }; Returns: boolean }
       get_clone_update_status: { Args: { p_race_id: string }; Returns: Json }
       dismiss_clone_official_update: { Args: { p_race_id: string }; Returns: boolean }
       bump_official_revision: { Args: { p_source_race_id: string }; Returns: number }

@@ -53,6 +53,10 @@ The app uses Supabase RLS and RPCs for race access, membership, and selected pro
 
 Official-source protection belongs in database helpers and policies, with UI gating only as a clarity layer. Any new write table or SECURITY DEFINER RPC that accepts a race ID must preserve the invariant that `races.is_official = true` is writable only by `user_is_site_admin()`. Do not use an email address in authorization logic; the canonical admin identity is the `site_admins` row. Personal clones retain owner/editor behavior.
 
+Official changes are opt-in for clones. `buildOfficialUpdateSections` compares the clone's current values with the latest source and exposes six independently selectable sections: `event`, `resources`, `drop_bag_template`, `course`, `waypoints`, and `terrain`. `sync_selected_official_updates` validates clone edit access, accepts only those identifiers, applies only the requested areas, and then advances `merged_official_revision` so declined areas are not repeatedly offered for the same source revision. A later source revision produces a fresh comparison against the clone's then-current state.
+
+Waypoint synchronization owns official station structure and access fields. It must preserve runner-owned `drop_bag_items`, `drop_bag_name`, `drop_bag_notes`, and `delay` on existing linked waypoints. Pace plans, training routes, check-ins, support mode, members, and the clone title are outside every official-update section. Keep the diff field lists aligned with the columns each section writes so the review never applies an undisclosed field.
+
 - `strava-auth` — OAuth start/callback; gateway JWT verification is disabled because a user may not have a DFIU session yet. OAuth state provides CSRF protection.
 - `strava-activity` — authenticated activity lookup, connection status, and tagged-race listing.
 - `weather` — authenticated weather fetch using the server-side Visual Crossing key.

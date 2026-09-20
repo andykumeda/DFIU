@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/features/auth/AuthContext'
 import { usePermission } from '@/features/auth/usePermission'
 import { recomputeTrainingOverlapsForRace } from '@/features/race/useTrainingRoutes'
+import type { OfficialUpdateSectionId } from './official-update-diff'
 
 export type CloneUpdateStatus = {
   has_updates: boolean
@@ -37,10 +38,11 @@ export function useOfficialUpdateActions(raceId: string) {
   const { user } = useAuth()
   const { canEdit } = usePermission(raceId)
 
-  const merge = async () => {
+  const applySelected = async (sections: OfficialUpdateSectionId[]) => {
     if (!user || !canEdit) throw new Error('Not authorized')
-    const { error } = await supabase.rpc('sync_official_race_to_clone', {
+    const { error } = await supabase.rpc('sync_selected_official_updates', {
       p_clone_race_id: raceId,
+      p_sections: sections,
     })
     if (error) throw error
     const { data: refreshedCourse, error: courseError } = await supabase
@@ -49,7 +51,7 @@ export function useOfficialUpdateActions(raceId: string) {
       .eq('race_id', raceId)
       .maybeSingle()
     if (courseError) throw courseError
-    if (refreshedCourse?.geometry) {
+    if (sections.includes('course') && refreshedCourse?.geometry) {
       await recomputeTrainingOverlapsForRace(raceId, refreshedCourse.geometry)
     }
     await Promise.all([
@@ -57,17 +59,8 @@ export function useOfficialUpdateActions(raceId: string) {
       queryClient.invalidateQueries({ queryKey: ['course', raceId] }),
       queryClient.invalidateQueries({ queryKey: ['waypoints'] }),
       queryClient.invalidateQueries({ queryKey: ['clone-update-status', raceId] }),
+      queryClient.invalidateQueries({ queryKey: ['official-update-review', raceId] }),
     ])
   }
-
-  const dismiss = async () => {
-    if (!user || !canEdit) throw new Error('Not authorized')
-    const { error } = await supabase.rpc('dismiss_clone_official_update', {
-      p_race_id: raceId,
-    })
-    if (error) throw error
-    await queryClient.invalidateQueries({ queryKey: ['clone-update-status', raceId] })
-  }
-
-  return { merge, dismiss }
+  return { applySelected }
 }

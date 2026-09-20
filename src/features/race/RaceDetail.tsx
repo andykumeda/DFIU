@@ -19,6 +19,7 @@ import { useDemoRacePersist } from '@/features/demo/useDemoRacePersist'
 import { DemoModeBanner } from '@/features/demo/DemoModeBanner'
 import { OfficialUpdateBanner } from '@/features/demo/OfficialUpdateBanner'
 import { useCloneUpdateStatus, useOfficialUpdateActions } from '@/features/demo/useCloneUpdates'
+import { useOfficialUpdateReview } from '@/features/demo/useOfficialUpdateReview'
 
 const CourseMap = lazy(() =>
     import('@/features/course/CourseMap').then(m => ({ default: m.CourseMap }))
@@ -325,7 +326,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   const canDeleteRace = !isDemoMode && (hasOwnerMembership || isAdmin || (!!user && race?.user_id === user.id))
   const showOfficialUpdateBanner = !isDemoMode && !!user && !!race?.official_source_race_id && canEdit
   const { data: cloneUpdateStatus } = useCloneUpdateStatus(raceId, showOfficialUpdateBanner)
-  const { merge: mergeOfficialUpdate, dismiss: dismissOfficialUpdate } = useOfficialUpdateActions(raceId)
+  const { applySelected: applyOfficialUpdates } = useOfficialUpdateActions(raceId)
 
   useEffect(() => {
     if (!raceLoading && raceLoadFailed) {
@@ -432,6 +433,14 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       return data as Waypoint[]
     }
   })
+  const { data: officialUpdateSections = [], isLoading: officialUpdateReviewLoading } = useOfficialUpdateReview(
+    race,
+    course,
+    waypoints,
+    terrainNodes,
+    !!cloneUpdateStatus?.has_updates && showOfficialUpdateBanner,
+    cloneUpdateStatus?.source_revision,
+  )
 
   // Backfill Start/Finish waypoints for courses that don't have them. Older
   // races uploaded before the GPX-import auto-insert fallback existed, or
@@ -1766,32 +1775,19 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       {cloneUpdateStatus?.has_updates && showOfficialUpdateBanner && (
         <OfficialUpdateBanner
           busy={officialUpdateBusy}
-          onUseOfficial={async () => {
-            const confirmed = window.confirm(
-              'Use the latest official version? This replaces local event details, Resources, course and aid-station data, terrain, and the drop-bag template. Your plan name, pace goals, training routes, check-ins, and bag contents are kept when their station still exists.'
-            )
-            if (!confirmed) return
+          loading={officialUpdateReviewLoading}
+          sections={officialUpdateSections}
+          onApply={async (sections) => {
             setOfficialUpdateBusy(true)
             try {
-              await mergeOfficialUpdate()
+              await applyOfficialUpdates(sections)
               if (course?.id) {
                 const { data } = await supabase.from('terrain_nodes').select('*').eq('course_id', course.id).order('mile')
                 if (data) setTerrainNodes(data)
               }
             } catch (err) {
               console.error(err)
-              alert(`Failed to use the official version: ${getErrorMessage(err)}`)
-            } finally {
-              setOfficialUpdateBusy(false)
-            }
-          }}
-          onKeepCurrent={async () => {
-            setOfficialUpdateBusy(true)
-            try {
-              await dismissOfficialUpdate()
-            } catch (err) {
-              console.error(err)
-              alert(`Failed to keep the current plan: ${getErrorMessage(err)}`)
+              alert(`Failed to apply official updates: ${getErrorMessage(err)}`)
             } finally {
               setOfficialUpdateBusy(false)
             }

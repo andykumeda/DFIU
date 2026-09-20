@@ -24,7 +24,9 @@ Most people begin by opening a public event and choosing **Clone Race** to make 
 
 Race owners can edit their personal events. Only the site administrator can edit an official event source; membership on an official event never grants global edit access. Other people see only the sections allowed by their membership or share link.
 
-When an official source changes, a personal plan may offer two explicit choices. **Use official version** replaces local event details, Resources, course and aid-station data, terrain, and the drop-bag template. It keeps the personal plan name, pace goals, training routes, check-ins, and bag contents when the corresponding station still exists. **Keep my current plan** leaves the local plan as it is and marks that official revision as handled.
+When an official source changes, the personal plan shows **Review changes**. The review compares the current plan with the latest official event and groups differences into Event details, Resources, Drop-bag template, Course, Aid stations & access, and Terrain. Check only the areas you want, then choose **Apply selected**. Unchecked areas keep the current plan values. **Keep all current** declines every area in that revision. Completing either choice marks that official revision as reviewed; a later official revision starts a new review.
+
+Official updates never replace the personal plan name, pace goals, training routes, check-ins, or support choice. Accepting Aid stations & access preserves packed/checked items, custom items, bag names, bag notes, and planned delay at stations that still exist. A station removed from the official course is removed when that area is accepted, so review the listed station additions, removals, and updates before applying it.
 
 ## Map & Aid Stations
 
