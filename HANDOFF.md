@@ -2,11 +2,12 @@
 
 **Date:** 2026-09-20
 **Branch:** `main`
-**Status:** In progress on `main`: move Race Support from Overview into Edit Race and make the registration button label configurable. Preserve the existing support behavior and store the label in the cloned/synced event resource configuration. Verify save/reload and desktop/mobile production behavior before closeout.
+**Status:** Verified and deployed on `main`: Race Support now lives in Edit Race, the registration button label is configurable, and event edits preserve existing resource metadata.
 
 ## Current work
 
-- **In progress — event setup placement**: remove the large Race Support card from Overview, add the same four modes to Edit Race, and add a Registration button label beside Registration URL. Acceptance: Overview regains its earlier information hierarchy; both values persist after Save Changes/reload; support still controls tabs and crew-only bags; blank labels render as Register Now; desktop/mobile live checks pass. Owner: current agent on `main`.
+- **Deployed — event setup placement** (owner: current agent, `main`): removed the large Race Support card from Overview, added the same four modes to Edit Race, and added a Registration button label beside Registration URL. Registration labels and support choices save and survive reload; blank labels fall back to Register Now. Edit Race merges the label into the existing resources JSON so unrelated and forward-compatible resource fields survive event edits.
+- **Verified**: 140 tests pass; build and deploy pass; lint has 0 errors / 49 existing warnings; critical-file hooks pass. Production desktop and 390×844 checks confirm the Overview hierarchy, compact responsive Edit Race layout, configurable UltraSignup label, conditional Crew tab, Solo removal of Crew/Pacer tabs and crew-only bags, persistence after reload, and an empty browser error log. The AC100 plan was restored to Solo and Register Now after the temporary test.
 
 - **Deployed — Race Support** (owner: current agent, `main`): Overview now saves Solo / Crew only / Pacer only / Crew and pacer per personal plan. Crew/Pacer tabs and header role links follow the selection. Pacer shows pickup points; legacy Pacer URLs redirect to the support-aware tab. Disabled Crew direct links show a return-to-plan message. Event Plan / Runner GPS labels remain readable on mobile.
 - **Deployed — Drop Bags**: crew-only bags are omitted without crew from cards, All Bags/print data, and next-bag coverage. Start/Finish locations and saved contents remain; redundant Start Gear, Finish Gear, and Official Drop Bag badges are removed from cards/modals. Crew bags retain identification. Toolbar wraps on mobile.
@@ -42,6 +43,8 @@
 - CI run `34105276946` passed for exact product SHA `ae144867997d8afe927dca690c4ab9262fb61280`. Product commit pushed; no side branches or worktrees.
 
 ## Latest deployed product
+
+- `2ec0c54`: final resource-preserving Edit Race save path. Product UI commit `666dbe7` moves Race Support into Edit Race and adds the configurable registration label. Production footer verified at `2ec0c54`; the AC100 row confirms `support_mode = solo` and `registration_label = Register Now` after testing.
 
 - `10f3f6b`: Race Support and conditional crew bags, Pacer pickup tab, simplified bag badges, and responsive header/toolbar. Production footer verified in Chrome; schema and UI checks above.
 
