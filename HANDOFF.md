@@ -2,9 +2,11 @@
 
 **Date:** 2026-09-19
 **Branch:** `main`
-**Status:** Complete: signup errors now expose actionable server messages, and Settings supports changing or setting an account password.
+**Status:** Complete: login now provides a password-reset request flow, and reset links reuse the password-setting route with recovery-specific wording.
 
 ## Current work
+
+- Password recovery: the login page now provides “Forgot password?”, sends Supabase Auth reset emails with a recovery redirect, and distinguishes recovery links from invitation links on `/auth/set-password`. Live login and reset-form states verified without submitting credentials.
 
 - Signup error clarity and password management: the signup form now reads JSON error bodies from Supabase `FunctionsHttpError`, translates duplicate-email failures into a Sign in/reset-password instruction, and falls back to a useful generic message. Settings now provides New password, Confirm new password, and Change Password controls using the authenticated Supabase session. Deployed and live Settings UI verified; actual password submission remains user-controlled.
 
@@ -28,6 +30,8 @@
 - CI run `34105276946` passed for exact product SHA `ae144867997d8afe927dca690c4ab9262fb61280`. Product commit pushed; no side branches or worktrees.
 
 ## Latest deployed product
+
+- Current release: login password recovery is deployed. Live `/login` visibly shows “Forgot password?” and the reset form with “Send reset link”. 132 tests pass, build passes, lint remains at 0 errors / 49 existing warnings. No email or password was submitted during browser verification.
 
 - `a7c3cb0` (`git describe` before this batch): signup error extraction and Settings password controls deployed in the current release. Live Settings reload visibly shows the password section and controls. 132 tests pass, build passes, lint remains at 0 errors / 49 existing warnings. Password mutation was not submitted through browser automation because it changes account credentials.
 

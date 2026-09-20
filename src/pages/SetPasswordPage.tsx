@@ -11,6 +11,7 @@ export default function SetPasswordPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { user, loading, refreshMemberships } = useAuth()
+  const isRecovery = searchParams.get('mode') === 'recovery'
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -56,7 +57,7 @@ export default function SetPasswordPage() {
   if (loading) {
     return (
       <div className='min-h-screen bg-neutral-950 text-white flex items-center justify-center'>
-        <div className='text-xl font-bold'>Checking invite...</div>
+        <div className='text-xl font-bold'>{isRecovery ? 'Checking reset link...' : 'Checking invite...'}</div>
       </div>
     )
   }
@@ -65,9 +66,11 @@ export default function SetPasswordPage() {
     return (
       <div className='min-h-screen bg-neutral-950 text-white flex items-center justify-center p-4'>
         <div className='w-full max-w-md bg-neutral-900 border border-neutral-800 p-8 rounded-xl'>
-          <h1 className='text-2xl font-bold mb-2'>Invite link invalid or expired</h1>
+          <h1 className='text-2xl font-bold mb-2'>{isRecovery ? 'Reset link invalid or expired' : 'Invite link invalid or expired'}</h1>
           <p className='text-neutral-400 mb-6'>
-            The link may have expired or already been used. Ask the person who invited you to send another.
+            {isRecovery
+              ? 'The password reset link may have expired or already been used. Request a new one from the sign-in page.'
+              : 'The link may have expired or already been used. Ask the person who invited you to send another.'}
           </p>
           <button
             onClick={() => navigate('/login')}
@@ -84,9 +87,11 @@ export default function SetPasswordPage() {
     <div className='min-h-screen bg-neutral-950 flex flex-col'>
       <div className='flex-1 flex items-center justify-center p-4'>
         <form onSubmit={handleSubmit} className='bg-neutral-900 border border-neutral-800 p-8 rounded-xl w-full max-w-md'>
-        <h1 className='text-2xl font-bold text-white mb-2'>Set your password</h1>
-        <p className='text-neutral-400 mb-6'>
-          Welcome to DFIU. Pick a password so you can sign back in later.
+          <h1 className='text-2xl font-bold text-white mb-2'>{isRecovery ? 'Choose a new password' : 'Set your password'}</h1>
+          <p className='text-neutral-400 mb-6'>
+          {isRecovery
+            ? 'Choose a new password for your DFIU account.'
+            : 'Welcome to DFIU. Pick a password so you can sign back in later.'}
         </p>
 
         {error && (
