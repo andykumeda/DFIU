@@ -24,7 +24,8 @@ const previewJson = (value: unknown) => {
   return serialized.length > 140 ? `${serialized.slice(0, 137)}… (${serialized.length} characters)` : serialized
 }
 const display = (value: unknown) => {
-  if (value === null || value === undefined || value === '') return 'Not set'
+  if (value === null || value === undefined) return 'Not set'
+  if (value === '') return 'Blank'
   if (typeof value === 'boolean') return value ? 'Yes' : 'No'
   if (typeof value === 'string') return value.length > 100 ? `“${value.slice(0, 97).trim()}…” (${value.length} characters)` : value
   if (Array.isArray(value) || typeof value === 'object') return previewJson(value)
