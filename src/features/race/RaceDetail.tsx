@@ -237,6 +237,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
 
   // Terrain State
   const [terrainNodes, setTerrainNodes] = useState<TerrainNode[]>([])
+  const [terrainLoadedCourseId, setTerrainLoadedCourseId] = useState<string | null>(null)
 
   const [hoveredMile, setHoveredMile] = useState<number | null>(null)
   const [hoveredWaypointId, setHoveredWaypointId] = useState<string | null>(null)
@@ -387,7 +388,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   // Runner pacing profile is per-user (follows the runner across events).
   const userRunnerProfile = parseRunnerProfile(profile?.runner_profile)
 
-  const { data: course } = useQuery({
+  const { data: course, isSuccess: courseLoaded } = useQuery({
     queryKey: ['course', raceId],
     queryFn: async () => {
       const { data, error } = await supabase.from('courses').select('*').eq('race_id', raceId).single()
@@ -422,7 +423,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     queryFn: async () => fetchCurrentWeather(race!.location!)
   })
 
-  const { data: waypoints = [], isLoading: waypointsLoading } = useQuery({
+  const { data: waypoints = [], isLoading: waypointsLoading, isSuccess: waypointsLoaded } = useQuery({
     queryKey: ['waypoints', course?.id],
     enabled: !!course?.id,
     queryFn: async () => {
@@ -435,12 +436,12 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       return data as Waypoint[]
     }
   })
-  const { data: officialUpdateSections = [], isLoading: officialUpdateReviewLoading } = useOfficialUpdateReview(
+  const { data: officialUpdateSections = [], isLoading: officialUpdateReviewLoading, isSuccess: officialUpdateReviewReady } = useOfficialUpdateReview(
     race,
     course,
     waypoints,
     terrainNodes,
-    !!cloneUpdateStatus?.has_updates && showOfficialUpdateBanner,
+    !!cloneUpdateStatus?.has_updates && showOfficialUpdateBanner && courseLoaded && (!course || (waypointsLoaded && terrainLoadedCourseId === course.id)),
     cloneUpdateStatus?.source_revision,
   )
 
@@ -491,14 +492,17 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   useEffect(() => {
     if (!course?.id) return
     if (isDemoMode && overlay?.terrainNodes) return
+    let cancelled = false
     const fetchTerrain = async () => {
       const { data } = await supabase.from('terrain_nodes').select('*').eq('course_id', course.id).order('mile')
-      if (data) {
+      if (!cancelled && data) {
         setTerrainNodes(data)
+        setTerrainLoadedCourseId(course.id)
         if (isDemoMode) setTerrainPersistReady(true)
       }
     }
     fetchTerrain()
+    return () => { cancelled = true }
   }, [course?.id, isDemoMode, overlay?.terrainNodes])
 
   // Merge redundant adjacent same-type terrain nodes in the DB so the course
@@ -1771,7 +1775,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
         </div>
       )}
 
-      {cloneUpdateStatus?.has_updates && showOfficialUpdateBanner && (
+      {cloneUpdateStatus?.has_updates && showOfficialUpdateBanner && officialUpdateReviewReady && courseLoaded && (!course || (waypointsLoaded && terrainLoadedCourseId === course.id)) && (
         <OfficialUpdateBanner
           busy={officialUpdateBusy}
           loading={officialUpdateReviewLoading}

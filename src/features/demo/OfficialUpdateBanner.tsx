@@ -22,6 +22,9 @@ export function OfficialUpdateBanner({ sections, loading, busy, onApply }: Offic
   })
   const finish = (ids: OfficialUpdateSectionId[]) => { onApply(ids); setOpen(false) }
 
+  // A revision change alone is not a user-visible update.
+  if (loading || sections.length === 0) return null
+
   return <>
     <div className='print:hidden border-b border-amber-800/60 bg-amber-950/40'>
       <div className='max-w-7xl mx-auto px-3 sm:px-4 py-2.5 flex items-center gap-3'>
@@ -47,7 +50,6 @@ export function OfficialUpdateBanner({ sections, loading, busy, onApply }: Offic
           </div>
           <div className='max-h-[65dvh] space-y-3 overflow-y-auto overflow-x-hidden p-4 sm:p-5'>
             {loading && <p className='text-sm text-neutral-400'>Comparing your plan with the official event…</p>}
-            {!loading && sections.length === 0 && <p className='rounded-lg border border-neutral-800 bg-neutral-950/40 p-4 text-sm text-neutral-300'>No visible differences remain. You can mark this official revision as reviewed.</p>}
             {sections.map(section => {
               const checked = selectedIds.has(section.id)
               return <button key={section.id} type='button' onClick={() => toggle(section.id)} className={`w-full rounded-xl border p-4 text-left transition-colors ${checked ? 'border-amber-600/70 bg-amber-950/25' : 'border-neutral-800 bg-neutral-950/30'}`}>
