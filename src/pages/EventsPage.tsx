@@ -1,3 +1,4 @@
+import dfiuLogo from '@/assets/dfiu-logo.png'
 import { Link } from 'react-router-dom'
 import { RaceList } from '@/features/race/RaceList'
 import { useAuth } from '@/features/auth/AuthContext'
@@ -14,7 +15,7 @@ export default function EventsPage() {
             to='/events'
             className='flex items-center gap-2 sm:gap-3 hover:opacity-80 transition-opacity min-w-0'
           >
-            <img src='/logo.png?v=20260920' alt="DFIU — DON'T F* IT UP!" className='h-16 sm:h-24 w-auto object-contain drop-shadow-lg shrink-0' />
+            <img src={dfiuLogo} alt="DFIU — DON'T F* IT UP!" className='h-16 sm:h-24 w-auto object-contain drop-shadow-lg shrink-0' />
 
           </Link>
           <div className='flex items-center gap-2'>

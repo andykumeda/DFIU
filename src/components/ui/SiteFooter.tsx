@@ -1,3 +1,4 @@
+import dfiuLogo from '@/assets/dfiu-logo.png'
 import { Link } from 'react-router-dom'
 
 const donationUrl = import.meta.env.VITE_DFIU_DONATION_URL?.trim() || ''
@@ -7,7 +8,7 @@ export function SiteFooter() {
     <footer className='print:hidden border-t border-neutral-800 bg-neutral-950/80'>
       <div className='max-w-7xl mx-auto px-4 sm:px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-sm'>
         <Link to='/events' className='shrink-0 hover:opacity-80 transition-opacity' aria-label='DFIU home'>
-          <img src='/logo.png?v=20260920' alt="DFIU — DON'T F* IT UP!" className='h-16 w-auto object-contain' />
+          <img src={dfiuLogo} alt="DFIU — DON'T F* IT UP!" className='h-16 w-auto object-contain' />
         </Link>
         <nav aria-label='Site information' className='flex items-center gap-4'>
           {donationUrl ? (

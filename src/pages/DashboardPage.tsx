@@ -1,3 +1,4 @@
+import dfiuLogo from '@/assets/dfiu-logo.png'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/features/auth/AuthContext'
 import { supabase } from '@/lib/supabase'
@@ -24,7 +25,7 @@ export default function DashboardPage() {
             to="/events"
             className="flex items-center gap-2 sm:gap-3 hover:opacity-80 transition-opacity cursor-pointer relative z-[999] group min-w-0"
           >
-            <img src="/logo.png?v=20260920" alt="DFIU — DON'T F* IT UP!" className="h-16 sm:h-24 w-auto object-contain drop-shadow-lg relative z-10 shrink-0" />
+            <img src={dfiuLogo} alt="DFIU — DON'T F* IT UP!" className="h-16 sm:h-24 w-auto object-contain drop-shadow-lg relative z-10 shrink-0" />
 
           </Link>
           <div className='flex items-center gap-2 sm:gap-4'>

@@ -1,3 +1,4 @@
+import dfiuLogo from '@/assets/dfiu-logo.png'
 import { LogIn, UserPlus } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/features/auth/AuthContext'
@@ -18,7 +19,7 @@ export function PublicPageLayout({ eyebrow, title, intro, children }: PublicPage
       <header className='border-b border-neutral-800 bg-neutral-950/80 backdrop-blur-sm sticky top-0 z-10'>
         <div className='max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4'>
           <Link to='/' className='flex items-center gap-2 shrink-0' aria-label='DFIU home'>
-            <img src='/logo.png?v=20260920' alt='DFIU' className='h-14 sm:h-20 w-auto object-contain' />
+            <img src={dfiuLogo} alt='DFIU' className='h-14 sm:h-20 w-auto object-contain' />
           </Link>
 
           <nav aria-label='Information' className='flex items-center gap-1 sm:gap-2 text-sm'>
