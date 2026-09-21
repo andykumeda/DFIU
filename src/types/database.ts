@@ -502,6 +502,7 @@ export type Database = {
           racebook_url: string | null
           registration_url: string | null
           resources_config: Json | null
+          notes_config: Json | null
           start_datetime: string | null
           sunrise_time: string | null
           sunset_time: string | null
@@ -555,6 +556,7 @@ export type Database = {
           racebook_url?: string | null
           registration_url?: string | null
           resources_config?: Json | null
+          notes_config?: Json | null
           start_datetime?: string | null
           sunrise_time?: string | null
           sunset_time?: string | null
@@ -608,6 +610,7 @@ export type Database = {
           racebook_url?: string | null
           registration_url?: string | null
           resources_config?: Json | null
+          notes_config?: Json | null
           start_datetime?: string | null
           sunrise_time?: string | null
           sunset_time?: string | null

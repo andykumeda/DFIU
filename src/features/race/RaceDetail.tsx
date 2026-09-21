@@ -36,6 +36,7 @@ import { TerrainTypeValue, TERRAIN_TYPES, getTerrainColor, getTerrainDefaultDiff
 import { PaceCalculator } from '@/features/race/PaceCalculator'
 import { parseRunnerProfile } from '@/features/race/runner-profile'
 import { RaceResources } from '@/features/race/RaceResources'
+import { RaceNotes } from '@/features/race/RaceNotes'
 import { WeatherLocations } from '@/features/race/WeatherLocations'
 import { getRaceSupport } from './race-support'
 import { parseResourcesConfig } from './resources-shared'
@@ -53,7 +54,7 @@ const LiveEventTab = lazy(() =>
     import('@/features/race/LiveEventTab').then(m => ({ default: m.LiveEventTab }))
 )
 
-type Tab = 'live' | 'overview' | 'map' | 'plan' | 'training' | 'drop_bags' | 'resources' | 'crew' | 'pacer' | 'members'
+type Tab = 'live' | 'overview' | 'map' | 'plan' | 'training' | 'drop_bags' | 'notes' | 'resources' | 'crew' | 'pacer' | 'members'
 type ExistingRaceClone = Pick<Race, 'id' | 'name' | 'created_at'>
 
 function normalizeRaceName(name: string) {
@@ -318,6 +319,8 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     isAdmin,
     isOwner: hasOwnerMembership,
     isRunner,
+    isCrew,
+    isPacer,
     canLogCheckins,
     canManageTeam,
     availableRoleViews,
@@ -1564,6 +1567,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     { id: 'plan', label: 'Pace Plan' },
     { id: 'training', label: 'Training' },
     { id: 'drop_bags', label: 'Drop Bags' },
+    { id: 'notes', label: 'Notes' },
     { id: 'resources', label: 'Resources' },
     ...(support.crew ? [{ id: 'crew' as Tab, label: 'Crew' }] : []),
     ...(support.pacer ? [{ id: 'pacer' as Tab, label: 'Pacer' }] : []),
@@ -2342,6 +2346,22 @@ export function RaceDetail({ raceId }: { raceId: string }) {
               clock24h={clock24h}
               runnerProfile={userRunnerProfile}
               onGoToPacePlan={() => setActiveTab('plan')}
+            />
+          </div>
+        )}
+
+        {visibleTab === 'notes' && (
+          <div className="animate-in fade-in duration-500">
+            <RaceNotes
+              race={race}
+              canEdit={canEditRaceSettings}
+              roles={{
+                canEdit: canEditRaceSettings,
+                isRunner,
+                isCrew,
+                isPacer,
+              }}
+              onUpdate={() => queryClient.invalidateQueries({ queryKey: ['race', raceId] })}
             />
           </div>
         )}
