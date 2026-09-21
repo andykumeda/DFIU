@@ -6,7 +6,9 @@ export function SiteFooter() {
   return (
     <footer className='print:hidden border-t border-neutral-800 bg-neutral-950/80'>
       <div className='max-w-7xl mx-auto px-4 sm:px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-sm'>
-        <span className='text-neutral-500'>DFIU · Don&apos;t F* It Up!</span>
+        <Link to='/events' className='shrink-0 hover:opacity-80 transition-opacity' aria-label='DFIU home'>
+          <img src='/logo.png?v=20260920' alt="DFIU — DON'T F* IT UP!" className='h-16 w-auto object-contain' />
+        </Link>
         <nav aria-label='Site information' className='flex items-center gap-4'>
           {donationUrl ? (
             <a href={donationUrl} target='_blank' rel='noreferrer' className='text-orange-400 hover:text-orange-300 transition-colors'>Support DFIU</a>

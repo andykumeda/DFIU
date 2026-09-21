@@ -82,3 +82,7 @@ See [Deployment Guide](../DEPLOYMENT.md), [Algorithm Reference](ALGORITHMS.md), 
 ### Drop-bag print sheets
 
 `DropBagCoverage` renders course-ordered coverage consistently on cards, in the editor, and on the individual sheet. `DropBagsSection` combines aid and bag destinations by waypoint ID (not name or mileage). Onward rows omit cutoffs; current-station card cutoffs are red. On-screen arrival values and durations are green, while the printable sheet stays black. Card notes are hidden without changing saved data. `DropBagPrintPage` portals a print preview to the body, using current editor state without a database write. Its scoped print rules hide all other body children, independently of the existing all-bags list. `formatBagCutoff` supports legacy local clocks and timestamp cutoffs in the race timezone.
+
+### Brand asset
+
+`public/logo.png` is the transparent angular mountain/white DFIU/orange DON'T F* IT UP! lockup adapted from the supplied artwork. Headers and the shared footer display the full image without an adjacent duplicate wordmark. `public/favicon.png` is the compact square browser icon; `og-default.png` is the landscape sharing image and `og-ig.png` is the square Facebook/Instagram variant. Both `index.html` and `server/og-server.mjs` use matching image dimensions and the new revision. Logo, favicon and social image URLs carry an asset revision query to avoid stale cached artwork; bump it when replacing this public asset. The source screenshot remains outside the repository.

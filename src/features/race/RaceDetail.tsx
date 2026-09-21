@@ -1603,12 +1603,9 @@ export function RaceDetail({ raceId }: { raceId: string }) {
       <header ref={setHeaderEl} className='print:hidden border-b border-neutral-800 bg-neutral-950 sticky top-0 z-[100]'>
         <div className='max-w-7xl mx-auto px-3 sm:px-4 py-1.5 sm:py-2 flex justify-between items-center gap-2'>
           <div className='flex items-center gap-1 sm:gap-8 min-w-0 flex-1'>
-            <Link to='/events' className='flex items-center hover:opacity-80 transition-opacity cursor-pointer pointer-events-auto relative z-[999] -space-x-3 shrink-0'>
-              <img src="/logo.png" alt="DFIU Logo" className="h-10 sm:h-14 w-auto object-contain drop-shadow-md relative z-10" />
-              <div className="hidden sm:flex flex-col justify-center items-start">
-                <span className="font-black italic tracking-tighter text-4xl uppercase bg-gradient-to-br from-orange-400 to-orange-600 bg-clip-text text-transparent pr-1 relative z-0 leading-[0.8]">DFIU</span>
-                <span className="text-neutral-400 text-[9px] font-bold tracking-[0.15em] uppercase opacity-70 -ml-0.5">Don't F* It Up!</span>
-              </div>
+            <Link to='/events' className='flex items-center hover:opacity-80 transition-opacity cursor-pointer pointer-events-auto relative z-[999] shrink-0'>
+              <img src="/logo.png?v=20260920" alt="DFIU — DON'T F* IT UP!" className="h-12 sm:h-20 w-auto object-contain drop-shadow-md relative z-10" />
+
             </Link>
 
             <div className="flex sm:hidden flex-col min-w-0 flex-1 leading-tight">
@@ -2387,7 +2384,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
             {/* Hero / Header Info */}
             <div className="bg-neutral-900/50 rounded-2xl p-8 border border-neutral-800 relative overflow-hidden">
               <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
-                <img src="/logo.png" className="w-64 h-64 object-contain" alt="Background Logo" />
+                <img src="/logo.png?v=20260920" className="w-64 h-64 object-contain" alt="Background Logo" />
               </div>
               <div className="relative z-10">
                 <h1 className="text-4xl md:text-5xl font-black italic tracking-tighter text-white mb-4 uppercase">

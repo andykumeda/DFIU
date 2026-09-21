@@ -14,15 +14,8 @@ export default function EventsPage() {
             to='/events'
             className='flex items-center gap-2 sm:gap-3 hover:opacity-80 transition-opacity min-w-0'
           >
-            <img src='/logo.png' alt='DFIU Logo' className='h-10 sm:h-16 w-auto object-contain drop-shadow-lg shrink-0' />
-            <div className='hidden sm:flex flex-col justify-center items-start'>
-              <span className='text-4xl font-black italic tracking-tighter uppercase bg-gradient-to-br from-orange-400 to-orange-600 bg-clip-text text-transparent drop-shadow-sm pr-2 leading-[0.8]'>
-                DFIU
-              </span>
-              <span className='text-neutral-500 text-[10px] font-bold tracking-[0.18em] uppercase opacity-70 -ml-0.5'>
-                Public Events
-              </span>
-            </div>
+            <img src='/logo.png?v=20260920' alt="DFIU — DON'T F* IT UP!" className='h-16 sm:h-24 w-auto object-contain drop-shadow-lg shrink-0' />
+
           </Link>
           <div className='flex items-center gap-2'>
             {user ? (

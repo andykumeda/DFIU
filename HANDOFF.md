@@ -6,6 +6,9 @@
 
 ## Current work
 
+- **In progress — supplied logo replacement** (owner: current agent, `main`): use supplied angular mountain/DFIU artwork with orange DON'T F* IT UP! tagline and transparent background. Replace header logo/favicon/social images, add shared footer logo, and remove duplicate adjacent wordmarks. Verify build/lint/deploy plus desktop/mobile live headers. Update branding documentation; preserve original screenshot outside repository.
+
+
 - **Deployed — bag card presentation corrections** (owner: current agent, `main`, product `cdeacc0`): onward arrivals/durations are green in cards and editor; current-station card cutoffs are red. Removed onward cutoffs and card notes, preserving saved values and editor/print notes. Destinations sharing a waypoint ID appear once under Next Aid and Drop Bag (or Next Aid and Crew Bag); editor and print preview use the same rows. User/developer guides updated. Verified: 144 tests pass, lint 0 errors / 49 existing warnings, build/deploy pass. Production in-app browser at 1048×1145 and 390×844 confirms colors, no onward cutoffs/card notes, separate Redbox destinations, combined Shortcut Saddle 1 → Chilao 1 and Start → Clear Creek destinations, and no mobile overflow. Combined print preview verified; native print/PDF pagination remains unverified from the original release. A transient 502 during deployment service restart cleared after completion; final browser warning/error log is empty. No saved bag data changed; only main worktree exists.
 
 

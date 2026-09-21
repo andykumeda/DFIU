@@ -24,13 +24,8 @@ export default function DashboardPage() {
             to="/events"
             className="flex items-center gap-2 sm:gap-3 hover:opacity-80 transition-opacity cursor-pointer relative z-[999] group min-w-0"
           >
-            <img src="/logo.png" alt="DFIU Logo" className="h-10 sm:h-24 w-auto object-contain drop-shadow-lg relative z-10 shrink-0" />
-            <div className="hidden sm:flex flex-col justify-center items-start relative z-0">
-              <span className='text-7xl font-black italic tracking-tighter uppercase bg-gradient-to-br from-orange-400 to-orange-600 bg-clip-text text-transparent drop-shadow-sm pr-2 leading-[0.8]'>
-                DFIU
-              </span>
-              <span className="text-neutral-500 text-xs font-bold tracking-[0.2em] uppercase opacity-60 -ml-1">Don't F* It Up!</span>
-            </div>
+            <img src="/logo.png?v=20260920" alt="DFIU — DON'T F* IT UP!" className="h-16 sm:h-24 w-auto object-contain drop-shadow-lg relative z-10 shrink-0" />
+
           </Link>
           <div className='flex items-center gap-2 sm:gap-4'>
             <div className="flex items-center gap-3">
