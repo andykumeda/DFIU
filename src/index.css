@@ -207,3 +207,24 @@ body,
     padding: 0 !important;
   }
 }
+
+@media print {
+  body:has(.single-bag-print-overlay) > :not(.single-bag-print-overlay) {
+    display: none !important;
+  }
+  .single-bag-print-overlay {
+    position: static !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+  .single-bag-print-overlay .print\:hidden { display: none !important; }
+  .single-bag-print-page {
+    width: 100%;
+    max-width: none;
+    min-height: 0;
+    padding: 0.3in;
+    color: black !important;
+  }
+  .single-bag-print-page li, .single-bag-print-page section { break-inside: avoid; }
+}

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { Race, Waypoint, type Json } from '@/types/database'
-import { X, Save, Plus, Trash2, Clock, Sun, Moon, Info, CheckCircle2, Circle } from 'lucide-react'
+import { X, Save, Plus, Trash2, Clock, Sun, Moon, Info, CheckCircle2, Circle, Printer } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useDemoRacePersist } from '@/features/demo/useDemoRacePersist'
@@ -16,6 +16,7 @@ import {
     parseDropBagTemplate,
 } from './drop-bag-shared'
 import { DropBagNotes } from './DropBagNotes'
+import { DropBagPrintPage } from './DropBagPrintPage'
 import { DropBagSummary } from './DropBagSummary'
 
 interface DropBagModalProps {
@@ -24,6 +25,7 @@ interface DropBagModalProps {
     arrivalTime?: { arrivalTime: number, timeOfDay: string }
     coverageRows?: DropBagCoverageRow[]
     isNight: boolean
+    cutoff?: string | null
     canEdit?: boolean
     /** Show only what's packed in the bag (no editor/template), like Crew View.
      *  Used everywhere except the dedicated Drop Bag section. */
@@ -34,6 +36,7 @@ interface DropBagModalProps {
 export interface DropBagCoverageRow {
     label: string
     labelClass: string
+    cutoff?: string | null
     targetName: string | null
     targetMile: number | null
     milesUntil: number | null
@@ -45,7 +48,8 @@ export interface DropBagCoverageRow {
     }>
 }
 
-export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], isNight, canEdit = true, contentsOnly = false, onClose }: DropBagModalProps) {
+export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], cutoff, isNight, canEdit = true, contentsOnly = false, onClose }: DropBagModalProps) {
+    const [printPreview, setPrintPreview] = useState(false)
     const queryClient = useQueryClient()
     const { isDemoMode, saveWaypoints } = useDemoRacePersist(race.id)
     const [items, setItems] = useState<DropBagItem[]>([])
@@ -184,6 +188,8 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], i
         return acc
     }, {} as Record<string, DropBagItem[]>)
 
+    if (printPreview) return <DropBagPrintPage waypoint={waypoint} raceName={race.name} bagName={bagName} notes={bagNotes} items={items} arrival={arrivalTime?.timeOfDay} cutoff={cutoff} coverageRows={coverageRows} onClose={() => setPrintPreview(false)} />
+
     return createPortal(
         <div className="fixed inset-0 z-[200] overflow-y-auto bg-black/80 backdrop-blur-sm">
             <div className="flex min-h-full items-center justify-center p-4">
@@ -195,8 +201,8 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], i
                             {bagName || (isStartBag ? `Start: ${waypoint.name}` : isFinishBag ? `Finish: ${waypoint.name}` : `${bagNoun}: ${waypoint.name}`)}
                             {!canEdit && <span className="text-xs font-normal text-neutral-500">(view only)</span>}
                         </h2>
-                        <div className="flex items-center gap-3 text-sm text-neutral-400">
-                            <span>Mile {waypoint.mile.toFixed(1)}</span>
+                        <div className="flex flex-wrap items-center gap-3 text-sm text-neutral-400">
+                            <span className="font-mono text-neutral-200">Mile {waypoint.mile.toFixed(1)}</span>
                             {isCrewBag && <span className={`px-2 py-0.5 rounded border text-xs ${isCrewBag ? 'bg-emerald-950/50 border-emerald-800 text-emerald-200' : 'bg-orange-950/40 border-orange-900/60 text-orange-200'}`}>
                                 {getBagKindLabel(bagKind)}
                             </span>}
@@ -429,7 +435,10 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], i
 
                 </div>
 
-                <div className="p-6 border-t border-neutral-800 flex justify-end gap-3 shrink-0 bg-neutral-900/80 rounded-b-2xl">
+                <div className="p-6 border-t border-neutral-800 flex flex-wrap justify-end gap-3 shrink-0 bg-neutral-900/80 rounded-b-2xl">
+                    <button onClick={() => setPrintPreview(true)} className="mr-auto flex items-center gap-2 rounded-lg bg-neutral-800 px-4 py-2.5 font-medium text-white">
+                        <Printer className="h-4 w-4" /> Print Bag
+                    </button>
                     <button
                         onClick={onClose}
                         className="px-6 py-2.5 rounded-lg font-medium text-neutral-400 hover:text-white transition-colors"

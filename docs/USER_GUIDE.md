@@ -84,6 +84,10 @@ The header's **Event Plan** opens the complete planning workspace and appears se
 
 **Drop Bag Planner** includes Start and Finish gear, designated drop-bag stations, and crew-only bags when Race Support includes crew. Solo and Pacer only hide crew-only bags from cards, All Bags, printing, and next-bag coverage. Designated drop bags remain available even if the station also allows crew. Start and Finish locations remain; redundant Start Gear, Finish Gear, and Official Drop Bag badges are omitted. Crew bags retain their identifying badge. When Plan A is calculated, the page identifies the active goal and labels each displayed time as an **Arrival**; the print list carries the same Plan A context.
 
+Bag cards show **Next aid** and **Next drop bag** (or **Next crew**), including distance, available Plan A arrivals, and applicable cutoff times. Mileage uses the same contrast as arrival times.
+
+Open a bag and choose **Print Bag** for an individual printable sheet. The bag name and station are largest, followed by a bullet list of packed items with quantities; notes and next-aid/next-bag details appear below. The preview includes current edits; printing does not save them. Choose **Back** to return to editing, then **Save Drop Bag** to persist changes. **Print List** remains the overview of all bags.
+
 ## Training routes and Strava analysis
 
 In **Training**, import a GPX or use **Create Route** to draw one. Drawing uses Mapbox walking directions between clicks, and can display the race course and aid stations as references. The course overlay can be toggled on every training route. Imported and created routes retain detected course-overlap segments.

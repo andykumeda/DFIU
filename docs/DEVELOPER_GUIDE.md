@@ -78,3 +78,7 @@ The hosted migration history currently diverges from this checkout. Do not run a
 8. Commit the handoff and push `origin/main`.
 
 See [Deployment Guide](../DEPLOYMENT.md), [Algorithm Reference](ALGORITHMS.md), and [User Guide](USER_GUIDE.md).
+
+### Drop-bag print sheets
+
+`DropBagCoverage` renders the existing course-ordered coverage rows on cards and the individual sheet. `DropBagPrintPage` portals a print preview to the body, using current editor state without a database write. Its scoped print rules hide all other body children, independently of the existing all-bags list. `formatBagCutoff` supports legacy local clocks and timestamp cutoffs in the race timezone.

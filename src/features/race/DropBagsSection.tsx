@@ -4,6 +4,8 @@ import { calculatePacePlan } from './pace-utils'
 import { usePacePlans, computePlanMinutes } from './usePacePlans'
 import { Backpack, Clock, Sun, Moon, Info, Printer, List, ChevronDown, ChevronUp, Target, Pencil } from 'lucide-react'
 import { DropBagModal, type DropBagCoverageRow } from './DropBagModal'
+import { DropBagCoverage } from './DropBagCoverage'
+import { formatBagCutoff } from './drop-bag-cutoff'
 import { DropBagNotes } from './DropBagNotes'
 import { DropBagTemplateEditor } from './DropBagTemplateEditor'
 import { usePermission } from '@/features/auth/usePermission'
@@ -161,13 +163,14 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
     const getBagResourceLabel = (target: Waypoint | null) =>
         target && getBagKind(target) === 'crew'
             ? 'Next crew'
-            : 'Next bag'
+            : 'Next drop bag'
 
     const buildCoverageRow = (current: Waypoint, label: string, target: Waypoint | null, labelClass: string): DropBagCoverageRow => {
         const currentPlanA = getPlanArrival(planA, current)
         return {
             label,
             labelClass,
+            cutoff: target ? formatBagCutoff(target.cutoff_time, race.timezone, clock24h) : null,
             targetName: target?.name ?? null,
             targetMile: target?.mile ?? null,
             milesUntil: target ? Math.max(0, target.mile - current.mile) : null,
@@ -289,7 +292,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                                             )}
                                         </h3>
                                         <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-neutral-500">
-                                            <span className="font-mono">Mile {wp.mile.toFixed(1)}</span>
+                                            <span className="font-mono text-neutral-300">Mile {wp.mile.toFixed(1)}</span>
                                             {arrival ? (
                                                 <span className="inline-flex items-center gap-1">
                                                     <Clock className="w-3.5 h-3.5" />
@@ -304,6 +307,11 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                                             ) : null}
                                             {isCrewBag && <span className="text-emerald-400">Crew access</span>}
                                         </div>
+                                    </div>
+
+                                    {wp.cutoff_time && <p className="text-sm text-amber-300">Cutoff <span className="font-mono font-semibold">{formatBagCutoff(wp.cutoff_time, race.timezone, clock24h)}</span></p>}
+                                    <div className="border-t border-neutral-800 pt-3">
+                                        <DropBagCoverage rows={getCoverageRows(wp)} />
                                     </div>
 
                                     {!plans.hasCalculated && (
@@ -337,7 +345,8 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                         race={race}
                         canEdit={canWriteDropBags}
                         arrivalTime={planA?.waypointArrivals.find(a => a.waypointId === selectedWaypoint.id)}
-                        coverageRows={plans.hasCalculated ? getCoverageRows(selectedWaypoint) : []}
+                        coverageRows={getCoverageRows(selectedWaypoint)}
+                        cutoff={formatBagCutoff(selectedWaypoint.cutoff_time, race.timezone, clock24h)}
                         isNight={
                             planA?.waypointArrivals.find(a => a.waypointId === selectedWaypoint.id)
                                 ? isNight(planA.waypointArrivals.find(a => a.waypointId === selectedWaypoint.id)!.arrivalTime, selectedWaypoint.lat, selectedWaypoint.lon)
@@ -396,7 +405,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                                         </button>
                                         <div className="flex shrink-0 items-center gap-2">
                                             <span className="text-neutral-500 print:text-neutral-600 text-xs">
-                                                <span className="font-mono">Mile {wp.mile.toFixed(1)}</span>
+                                                <span className="font-mono text-neutral-300">Mile {wp.mile.toFixed(1)}</span>
                                                 {getWaypointArrival(wp) && <span className="ml-2">Arrival <span className="font-mono">{getWaypointArrival(wp)!.timeOfDay}</span></span>}
                                             </span>
                                             <button
