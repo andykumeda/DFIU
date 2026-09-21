@@ -6,7 +6,7 @@
 
 ## Current work
 
-- **Deployed — Notes tab** (`main`): Notes tab between Drop Bags and Resources with Todo 1 month / 1 week / night before checklists and Personal / Crew / Pacer Markdown notes. Per-item visibility (all / crew / pacer / runner); editors see all; others filtered by membership role. Per-section print via popup HTML. Stored in `races.notes_config` jsonb; clone copies it; official sync does not overwrite; not an official-update review area. Hosted DFIU migration applied. Verified 166 tests, lint 0 errors, build/deploy. User and developer guides updated.
+- **Deployed — Notes tab** (`main`, product `b07bcfc`): Notes tab between Drop Bags and Resources with Todo 1 month / 1 week / night before checklists and Personal / Crew / Pacer Markdown notes. Per-item visibility (all / crew / pacer / runner); editors see all; others filtered by membership role. Per-section print via popup HTML. Stored in `races.notes_config` jsonb; clone copies it; official sync does not overwrite; not an official-update review area. Hosted DFIU migration applied. Verified 166 tests, lint 0 errors, build/deploy. User and developer guides updated. Post-deploy git describe `b07bcfc`; main pushed.
 
 - **Deployed — official-update per-change review** (`main`, product `923ccc9`): Blank/`null` empty values no longer appear as diffs. Review modal shows Current | Official side-by-side with full text, and each change has its own checkbox (event/resources apply field-level; course/waypoints/terrain/routes still apply as a set). AK's Plan remains merged `5` / source `14` — no accept/dismiss during this batch. Verified 169 tests, build/deploy, pushed. User/developer guides updated.
 
