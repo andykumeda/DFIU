@@ -2,11 +2,11 @@
 
 **Date:** 2026-09-20
 **Branch:** `main`
-**Status:** Deployed on `main`: cleaner bag cards and accurate saved-weather labeling/source links. Product `978e560`; terrain consolidation is a recommendation only.
+**Status:** Deployed on `main`: three trail classifications, existing assignment remap with pacing preserved, direct weather-location links. Product `037c7d0`.
 
 ## Current work
 
-- **In progress — terrain consolidation and location weather links**: root owns three-level classification, saved assignment remap preserving difficulty and mileage, regression/build/deploy checks. Weather-link agent owns direct public location links. Mapping: dirt/smooth dirt to Non-technical; low/medium (and legacy track values) to Somewhat technical; high to Very technical; Paved/Other retained. Verify hosted row counts and preservation, live map/editor and location link; commit/push main.
+- **Deployed — terrain consolidation and location weather links** (root terrain/migration/integration; location_weather_link agent direct links; product `037c7d0`, main): Non-technical replaces Smooth dirt; Somewhat technical combines low/medium and legacy track assignments; Very technical replaces high; Paved/Other retained. Hosted DFIU migration `consolidate_trail_classifications` remapped 48 of 246 boundaries; before/after hash of every non-type field identical (`05cb497803d2cfbb5406d8ebfafb0b8a`), preserving all IDs, mileages, coordinates and pacing adjustments. Sidebar grouping and compaction now require matching difficulty; bound-only edits retain saved difficulty. Three trail defaults remain +4/+18/+30 percent for new assignments. No auth/policy/schema changes; existing official-revision trigger remains active. Security advisors retain existing Strava/no-policy and SECURITY DEFINER notices. Source link opens Visual Crossing at race location; course samples link saved coordinates, date selected on provider site. Verified unsigned-in location loading, 158 tests, lint 0 errors/49 existing warnings, build/deploy; live desktop/mobile terrain list/legend and editor choices, saved custom rates, weather href. No browser data edits during verification. User/developer/algorithm docs updated. Post-deploy git describe `037c7d0`; main pushed, no other worktrees.
 
 - **Deployed — card cleanup and weather provenance** (root card cleanup/integration; weather_provenance agent weather UI/docs; `main`, product `978e560`): card lighting messages removed while editor/print advice remains; in label matches neutral Arrival and numeric duration stays green. Overview and other locations identify saved race-start-date daily weather, not arrival-hour conditions; Visual Crossing source/explorer links and forecast-versus-historical-estimate explanation added. Saved values lack fetch/type provenance, so existing numbers cannot be confirmed as current forecasts. Existing UTC-date selection limitation documented in developer guide; no API/schema/data mutations. Verified: 152 tests, build/deploy pass, lint 0 errors / 49 existing warnings; production desktop/mobile source links, labels, clean cards and retained Chilao 1 editor advice verified. Browser logs contain earlier map feature-state filter errors from before this deployment, no new release errors observed. Terrain review: smooth dirt/low/medium/high defaults +4/+10/+18/+30 percent. Recommend three trail labels (Non-technical, Somewhat technical, Very technical), Paved separate; category mapping and saved multipliers unchanged pending decision. Post-deploy git describe `978e560`; committed/pushed main, no other worktrees.
 
@@ -69,6 +69,8 @@
 - CI run `34105276946` passed for exact product SHA `ae144867997d8afe927dca690c4ab9262fb61280`. Product commit pushed; no side branches or worktrees.
 
 ## Latest deployed product
+
+- `037c7d0`: terrain consolidation with hosted assignment migration and direct location weather links; production desktop/mobile verified.
 
 - `978e560`: card lighting message removal, neutral in label and weather provenance/source links; desktop/mobile production verification above.
 
