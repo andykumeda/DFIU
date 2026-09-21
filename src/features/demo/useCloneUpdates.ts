@@ -3,7 +3,13 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/features/auth/AuthContext'
 import { usePermission } from '@/features/auth/usePermission'
 import { recomputeTrainingOverlapsForRace } from '@/features/race/useTrainingRoutes'
-import type { OfficialUpdateSectionId } from './official-update-diff'
+import {
+  applyResourcesConfigOps,
+  partitionOfficialUpdateSelection,
+  type OfficialUpdateSection,
+  type OfficialUpdateSectionId,
+} from './official-update-diff'
+import type { Json, Race } from '@/types/database'
 
 export type CloneUpdateStatus = {
   has_updates: boolean
@@ -38,11 +44,29 @@ export function useOfficialUpdateActions(raceId: string) {
   const { user } = useAuth()
   const { canEdit } = usePermission(raceId)
 
-  const applySelected = async (sections: OfficialUpdateSectionId[]) => {
+  const applySelected = async (changeIds: string[], sections: OfficialUpdateSection[], currentRace: Race) => {
     if (!user || !canEdit) throw new Error('Not authorized')
+    const { raceFields, resourceOps, rpcSections, resourcesFullReplace } = partitionOfficialUpdateSelection(sections, changeIds)
+
+    const patch: Record<string, unknown> = { ...raceFields }
+    if (resourcesFullReplace) {
+      // Full resources replace goes through the RPC section sync.
+    } else if (resourceOps.length) {
+      patch.resources_config = applyResourcesConfigOps(currentRace.resources_config, resourceOps) as Json
+    }
+
+    if (Object.keys(patch).length) {
+      const { error: patchError } = await supabase.from('races').update(patch).eq('id', raceId)
+      if (patchError) throw patchError
+    }
+
+    const sectionsForRpc: OfficialUpdateSectionId[] = resourcesFullReplace
+      ? rpcSections
+      : rpcSections.filter((section: OfficialUpdateSectionId) => section !== 'resources')
+
     const { error } = await supabase.rpc('sync_selected_official_updates', {
       p_clone_race_id: raceId,
-      p_sections: sections,
+      p_sections: sectionsForRpc,
     })
     if (error) throw error
     const { data: refreshedCourse, error: courseError } = await supabase
@@ -51,7 +75,7 @@ export function useOfficialUpdateActions(raceId: string) {
       .eq('race_id', raceId)
       .maybeSingle()
     if (courseError) throw courseError
-    if (sections.includes('course') && refreshedCourse?.geometry) {
+    if (sectionsForRpc.includes('course') && refreshedCourse?.geometry) {
       await recomputeTrainingOverlapsForRace(raceId, refreshedCourse.geometry)
     }
     await Promise.all([

@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import type { Course, Race, TerrainNode, TrainingRoute, Waypoint } from '@/types/database'
-import { buildOfficialUpdateSections } from './official-update-diff'
+import {
+  applyResourcesConfigOps,
+  buildOfficialUpdateSections,
+  normalizeComparable,
+  partitionOfficialUpdateSelection,
+  same,
+} from './official-update-diff'
 
 describe('official update review', () => {
   it('separates official changes into selectable areas and ignores personal bag contents', () => {
@@ -21,11 +27,58 @@ describe('official update review', () => {
     )
 
     expect(sections.map(section => section.id)).toEqual(['event', 'resources', 'drop_bag_template', 'course', 'waypoints', 'terrain', 'training_routes'])
-    expect(sections.find(section => section.id === 'waypoints')?.changes).toContain('New Aid — Name: Old Aid → New Aid')
-    expect(sections.find(section => section.id === 'resources')?.changes).toContain('Map — embed url: Blank → Not set')
-    expect(sections.find(section => section.id === 'course')?.changes).toContain('Course geometry: LineString with 1 coordinate point → LineString with 2 coordinate points')
-    expect(sections.find(section => section.id === 'training_routes')?.changes).toContain('New route — Name: Old route → New route')
+    expect(sections.find(section => section.id === 'waypoints')?.changes.map(change => change.label)).toContain('New Aid — Name')
+    expect(sections.find(section => section.id === 'resources')?.changes.map(change => change.label)).toContain('Add resource: Guide')
+    expect(sections.find(section => section.id === 'resources')?.changes.some(change => /embed/i.test(change.label))).toBe(false)
+    expect(sections.find(section => section.id === 'course')?.changes.find(change => change.id === 'course.geometry')?.official).toContain('2 coordinate points')
+    expect(sections.find(section => section.id === 'training_routes')?.changes.map(change => change.label)).toContain('New route — Name')
     expect(sections.find(section => section.id === 'training_routes')?.description).toContain('Strava inputs/results remain')
-    expect(sections.flatMap(section => section.changes).join(' ')).not.toContain('Personal')
+    expect(sections.flatMap(section => section.changes).map(change => `${change.label}\n${change.current}\n${change.official}`).join('\n')).not.toContain('Personal')
+  })
+
+  it('treats blank string and null as equivalent empty values', () => {
+    expect(same('', null)).toBe(true)
+    expect(same({ embed_url: '' }, { embed_url: null })).toBe(true)
+    expect(normalizeComparable({ a: '', b: 1 })).toEqual({ b: 1 })
+  })
+
+  it('keeps full text for side-by-side comparison and supports per-change resource apply', () => {
+    const longCurrent = `# Friday, October 2\n${'x'.repeat(200)}`
+    const longOfficial = `# Saturday, August 22\n${'y'.repeat(200)}`
+    const race = {
+      id: 'clone',
+      resources_config: {
+        schedule_info: longCurrent,
+        links: [{ id: 'notes', label: 'Runner Notes', content: 'short', embed_url: '' }],
+      },
+    } as unknown as Race
+    const officialRace = {
+      ...race,
+      id: 'source',
+      resources_config: {
+        schedule_info: longOfficial,
+        links: [{ id: 'notes', label: 'Runner Notes', content: 'longer official notes', embed_url: null }],
+      },
+    } as unknown as Race
+
+    const sections = buildOfficialUpdateSections(
+      { race, course: null, waypoints: [], terrain: [], trainingRoutes: [] },
+      { race: officialRace, course: null, waypoints: [], terrain: [], trainingRoutes: [] },
+    )
+    const resources = sections.find(section => section.id === 'resources')
+    expect(resources?.changes).toHaveLength(2)
+    const schedule = resources?.changes.find(change => change.id === 'resources.config.schedule_info')
+    const notes = resources?.changes.find(change => change.id === 'resources.link.notes.content')
+    expect(schedule?.current).toBe(longCurrent)
+    expect(schedule?.official).toBe(longOfficial)
+    expect(notes?.current).toBe('short')
+    expect(notes?.official).toBe('longer official notes')
+
+    const onlyNotes = partitionOfficialUpdateSelection(sections, [notes!.id])
+    expect(onlyNotes.resourceOps).toHaveLength(1)
+    expect(onlyNotes.rpcSections).toEqual([])
+    const merged = applyResourcesConfigOps(race.resources_config, onlyNotes.resourceOps)
+    expect(merged.schedule_info).toBe(longCurrent)
+    expect((merged.links as Array<{ content?: string }>)[0].content).toBe('longer official notes')
   })
 })

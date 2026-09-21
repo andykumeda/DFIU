@@ -1780,10 +1780,11 @@ export function RaceDetail({ raceId }: { raceId: string }) {
           busy={officialUpdateBusy}
           loading={officialUpdateReviewLoading}
           sections={officialUpdateSections}
-          onApply={async (sections) => {
+          onApply={async (changeIds) => {
+            if (!race) return
             setOfficialUpdateBusy(true)
             try {
-              await applyOfficialUpdates(sections)
+              await applyOfficialUpdates(changeIds, officialUpdateSections, race)
               if (course?.id) {
                 const { data } = await supabase.from('terrain_nodes').select('*').eq('course_id', course.id).order('mile')
                 if (data) setTerrainNodes(data)

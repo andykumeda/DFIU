@@ -4,7 +4,18 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { OfficialUpdateBanner } from './OfficialUpdateBanner'
 import type { OfficialUpdateSection } from './official-update-diff'
 
-const sections: OfficialUpdateSection[] = [{ id: 'terrain', title: 'Terrain', description: 'Changed terrain', changes: ['Difficulty: 110 → 118'] }]
+const sections: OfficialUpdateSection[] = [{
+  id: 'terrain',
+  title: 'Terrain',
+  description: 'Changed terrain',
+  changes: [{
+    id: 'terrain.difficulty',
+    label: 'Difficulty',
+    current: '110',
+    official: '118',
+    apply: { kind: 'section', section: 'terrain' },
+  }],
+}]
 
 describe('official update notification', () => {
   it('does not advertise an identical-content revision', () => {
@@ -14,6 +25,11 @@ describe('official update notification', () => {
     expect(renderToStaticMarkup(createElement(OfficialUpdateBanner, { sections, loading: true, onApply: () => {} }))).toBe('')
   })
   it('still offers review for actual differences', () => {
-    expect(renderToStaticMarkup(createElement(OfficialUpdateBanner, { sections, onApply: () => {} }))).toContain('Review changes')
+    const html = renderToStaticMarkup(createElement(OfficialUpdateBanner, { sections, onApply: () => {} }))
+    expect(html).toContain('Review changes')
+  })
+  it('carries current and official values for side-by-side review', () => {
+    expect(sections[0].changes[0].current).toBe('110')
+    expect(sections[0].changes[0].official).toBe('118')
   })
 })

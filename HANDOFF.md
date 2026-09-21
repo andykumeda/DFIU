@@ -1,10 +1,14 @@
 # DFIU Handoff
 
-**Date:** 2026-09-20
+**Date:** 2026-09-21
 **Branch:** `main`
-**Status:** Deployed on `main`: official-update notifications now appear only for actual compared differences. Product `11aa781`.
+**Status:** Deployed on `main`: official-update per-change review with side-by-side diffs. Notes tab WIP remains uncommitted.
 
 ## Current work
+
+- **Deployed — official-update per-change review** (`main`): Blank/`null` empty values no longer appear as diffs. Review modal shows Current | Official side-by-side with full text, and each change has its own checkbox (event/resources apply field-level; course/waypoints/terrain/routes still apply as a set). AK's Plan remains merged `5` / source `14` — no accept/dismiss during this batch. Verified 169 tests, build, deploy. User/developer guides updated. Notes-tab WIP left uncommitted on the tree.
+
+- **In progress — Notes tab** (`main`): add `races.notes_config` jsonb, Notes tab UI (Todo 1 month / 1 week / night before + Personal / Crew / Pacer notes), per-item visibility (all/crew/pacer/runner), per-section print. Personal planning data: copy on clone, not overwritten by official sync. Uncommitted files present; not part of the official-update batch.
 
 - **Deployed — suppress revision-only official-update notifications** (`main`, product `11aa781`): the revision banner previously appeared even when the comparison was empty after both official and clone terrain had been remapped. Notifications now require a successful comparison with actual sections; local course/waypoint/terrain loads must finish first. Added fetch cancellation for stale terrain results. No revision acceptance/dismissal or DB mutation performed for this fix. Verified 161 tests (including empty/loading/real-change notification regressions), lint 0 errors/49 existing warnings, build/deploy, and production reload of affected AC100 plan with no empty Review changes banner. User guide updated. Post-deploy git describe `11aa781`; main pushed, no other worktrees.
 
