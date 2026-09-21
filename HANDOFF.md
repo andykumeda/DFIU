@@ -2,11 +2,11 @@
 
 **Date:** 2026-09-20
 **Branch:** `main`
-**Status:** Deployed on `main`: new logo/slogan across headers and footer, favicon and social images; fingerprinted logo fixes stale browser artwork.
+**Status:** Deployed on `main`: onward-leg lighting recommendations with a 60-minute delay allowance; unclipped responsive template editor. Product `e5f243a`.
 
 ## Current work
 
-- **In progress — lighting coverage and template clipping**: root owns lighting recommendation across each bag-to-next-bag leg (sunset threshold; explicit 60-minute late allowance), preserving saved packed items and synchronizing cards/editor/print. Independent template_clipping agent owns only DropBagTemplateEditor portal/responsive fix. Acceptance: earlier bag recommends lighting before a leg crossing sunset, delayed/daytime and overnight cases tested, template header/footer visible above sticky tabs on desktop/mobile. Verification: focused regressions, full tests, lint, build/deploy, production UI. Shared integration/release and documentation owned by root; branch main.
+- **Deployed — lighting coverage and template clipping** (root integration; template_clipping agent scoped to template editor; `main`, product `e5f243a`, template commit `3c6967e`): lighting checks each leg to the next available bag against sunset/sunrise, including an explicit 60-minute late allowance. Cards, bag editor and print details explain pickup; packed condition items survive pace changes. Template editor portals above sticky navigation and fits mobile. User/developer guides updated. Verified: 152 tests, TypeScript, lint (0 errors / 49 existing warnings), build and deployment pass. Live production confirms Chilao 1 at 17:28 recommends headlamp and backup before Chilao 2 at 19:46, with both checklist items present; daytime Redbox has no lighting warning. Template title and footer remain visible at desktop and 390×844, including scrolling to the bottom. Browser warning/error log empty. No bag or template data saved during checks. Native printed output remains unverified. Post-deploy git describe: `e5f243a`; main pushed, no other worktrees or unmerged work.
 
 
 - **Deployed — supplied logo replacement** (owner: current agent, `main`, product `56e286d`; initial asset batch `1f28ac6`): replaced artwork with angular mountain, white DFIU and orange DON'T F* IT UP! slogan. Race, Events, Dashboard and public-page headers use the complete lockup; shared footer links the same logo to Events. Removed duplicate old wordmarks. New square favicon and landscape/square social images are published; index and OG server declare their actual dimensions and revised URLs. Reproduced stale old artwork under the public logo URL and fixed it with Vite's fingerprinted `/assets/dfiu-logo-3_Hpn48j.png`; retained public logo copy for older clients. Verified live Events header/footer and race header at 1048×1145 and 390×844, correct 1590×989 source artwork, no horizontal overflow or browser warning/errors. All four public image SHA-256 values match local files; public official-event Twitter/Facebook metadata selects landscape 1730×909 and square 1254×1254 images respectively. 144 tests, lint (0 errors / 49 existing warnings), build/deploy and OG-server syntax check pass. Developer branding docs updated; user-guide changes unnecessary because no workflow changed. No other branches/worktrees or saved race-data changes.
@@ -65,6 +65,8 @@
 - CI run `34105276946` passed for exact product SHA `ae144867997d8afe927dca690c4ab9262fb61280`. Product commit pushed; no side branches or worktrees.
 
 ## Latest deployed product
+
+- `e5f243a`: onward-leg lighting and packed-item preservation, including template clipping fix `3c6967e`; live verification above.
 
 - `56e286d`: fingerprinted new logo, following branding asset release `1f28ac6`; live desktop/mobile headers/footer and public favicon/social bytes verified.
 
