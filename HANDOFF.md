@@ -6,6 +6,9 @@
 
 ## Current work
 
+- **In progress — lighting coverage and template clipping**: root owns lighting recommendation across each bag-to-next-bag leg (sunset threshold; explicit 60-minute late allowance), preserving saved packed items and synchronizing cards/editor/print. Independent template_clipping agent owns only DropBagTemplateEditor portal/responsive fix. Acceptance: earlier bag recommends lighting before a leg crossing sunset, delayed/daytime and overnight cases tested, template header/footer visible above sticky tabs on desktop/mobile. Verification: focused regressions, full tests, lint, build/deploy, production UI. Shared integration/release and documentation owned by root; branch main.
+
+
 - **Deployed — supplied logo replacement** (owner: current agent, `main`, product `56e286d`; initial asset batch `1f28ac6`): replaced artwork with angular mountain, white DFIU and orange DON'T F* IT UP! slogan. Race, Events, Dashboard and public-page headers use the complete lockup; shared footer links the same logo to Events. Removed duplicate old wordmarks. New square favicon and landscape/square social images are published; index and OG server declare their actual dimensions and revised URLs. Reproduced stale old artwork under the public logo URL and fixed it with Vite's fingerprinted `/assets/dfiu-logo-3_Hpn48j.png`; retained public logo copy for older clients. Verified live Events header/footer and race header at 1048×1145 and 390×844, correct 1590×989 source artwork, no horizontal overflow or browser warning/errors. All four public image SHA-256 values match local files; public official-event Twitter/Facebook metadata selects landscape 1730×909 and square 1254×1254 images respectively. 144 tests, lint (0 errors / 49 existing warnings), build/deploy and OG-server syntax check pass. Developer branding docs updated; user-guide changes unnecessary because no workflow changed. No other branches/worktrees or saved race-data changes.
 
 

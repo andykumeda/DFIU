@@ -5,9 +5,9 @@ import type { DropBagItem } from './drop-bag-shared'
 import type { DropBagCoverageRow } from './DropBagModal'
 import { DropBagCoverage } from './DropBagCoverage'
 
-export function DropBagPrintPage({ waypoint, raceName, bagName, notes, items, arrival, cutoff, coverageRows, onClose }: {
+export function DropBagPrintPage({ waypoint, raceName, bagName, notes, items, arrival, cutoff, lightingMessage, coverageRows, onClose }: {
     waypoint: Waypoint; raceName: string; bagName: string; notes: string; items: DropBagItem[];
-    arrival?: string; cutoff?: string | null; coverageRows: DropBagCoverageRow[]; onClose: () => void
+    arrival?: string; cutoff?: string | null; lightingMessage?: string; coverageRows: DropBagCoverageRow[]; onClose: () => void
 }) {
     const packed = items.filter(item => item.checked)
     return createPortal(<div className="single-bag-print-overlay fixed inset-0 z-[210] overflow-y-auto bg-black/80 p-3 sm:p-8" role="dialog" aria-modal="true" aria-label="Printable drop bag">
@@ -37,6 +37,7 @@ export function DropBagPrintPage({ waypoint, raceName, bagName, notes, items, ar
                     <h2 className="text-sm font-bold uppercase tracking-wide">{label}</h2>
                     <p className="mt-1 whitespace-pre-wrap break-words">{text}</p>
                 </section>)}
+                {lightingMessage && <section><h2 className="text-sm font-bold uppercase tracking-wide">Lighting</h2><p className="mt-1">{lightingMessage}</p></section>}
                 <DropBagCoverage rows={coverageRows} print />
             </div>
         </article>

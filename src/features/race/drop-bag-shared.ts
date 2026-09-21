@@ -233,7 +233,7 @@ export function getDropBagTemplateForKind(
 // Reconciles the race-level template into a bag's existing items so template
 // edits (adds, renames, removals) show up without wiping a runner's progress.
 // Standard template categories are driven by the template; smart "conditions"
-// items are regenerated from current weather/night; "custom" items are kept.
+// items are regenerated from current conditions; packed smart gear and custom items are kept.
 // Checked state and quantities are preserved for any item that still exists.
 export function mergeTemplateIntoItems(
     existing: DropBagItem[],
@@ -295,7 +295,7 @@ export function mergeTemplateIntoItems(
     for (const item of existing) {
         const key = itemKey(item)
         if (usedKeys.has(key) || usedIds.has(item.id)) continue
-        if (item.category === 'custom') {
+        if (item.category === 'custom' || (item.category === 'conditions' && item.checked)) {
             result.push(item)
             usedKeys.add(key)
             usedIds.add(item.id)

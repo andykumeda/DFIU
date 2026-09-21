@@ -16,6 +16,7 @@ import {
     parseDropBagTemplate,
 } from './drop-bag-shared'
 import { DropBagNotes } from './DropBagNotes'
+import { LIGHTING_DELAY_MINUTES } from './drop-bag-lighting'
 import { DropBagCoverage } from './DropBagCoverage'
 import { DropBagPrintPage } from './DropBagPrintPage'
 import { DropBagSummary } from './DropBagSummary'
@@ -26,6 +27,8 @@ interface DropBagModalProps {
     arrivalTime?: { arrivalTime: number, timeOfDay: string }
     coverageRows?: DropBagCoverageRow[]
     isNight: boolean
+    needsLight?: boolean
+    lightingMessage?: string
     cutoff?: string | null
     canEdit?: boolean
     /** Show only what's packed in the bag (no editor/template), like Crew View.
@@ -48,7 +51,7 @@ export interface DropBagCoverageRow {
     }>
 }
 
-export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], cutoff, isNight, canEdit = true, contentsOnly = false, onClose }: DropBagModalProps) {
+export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], cutoff, isNight, needsLight = isNight, lightingMessage, canEdit = true, contentsOnly = false, onClose }: DropBagModalProps) {
     const [printPreview, setPrintPreview] = useState(false)
     const queryClient = useQueryClient()
     const { isDemoMode, saveWaypoints } = useDemoRacePersist(race.id)
@@ -93,8 +96,8 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
                 : 'e.g. Change shoes here, grab headlamp for next section...'
 
     useEffect(() => {
-        setItems(getDropBagEditorItems(waypoint.drop_bag_items, template, { isNight, isHot, isCold }))
-    }, [waypoint.id, waypoint.drop_bag_items, template, isNight, isHot, isCold])
+        setItems(getDropBagEditorItems(waypoint.drop_bag_items, template, { isNight: needsLight, isHot, isCold }))
+    }, [waypoint.id, waypoint.drop_bag_items, template, needsLight, isHot, isCold])
 
     useEffect(() => {
         setBagName(waypoint.drop_bag_name || '')
@@ -188,7 +191,7 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
         return acc
     }, {} as Record<string, DropBagItem[]>)
 
-    if (printPreview) return <DropBagPrintPage waypoint={waypoint} raceName={race.name} bagName={bagName} notes={bagNotes} items={items} arrival={arrivalTime?.timeOfDay} cutoff={cutoff} coverageRows={coverageRows} onClose={() => setPrintPreview(false)} />
+    if (printPreview) return <DropBagPrintPage waypoint={waypoint} raceName={race.name} bagName={bagName} notes={bagNotes} items={items} arrival={arrivalTime?.timeOfDay} cutoff={cutoff} lightingMessage={lightingMessage} coverageRows={coverageRows} onClose={() => setPrintPreview(false)} />
 
     return createPortal(
         <div className="fixed inset-0 z-[200] overflow-y-auto bg-black/80 backdrop-blur-sm">
@@ -232,6 +235,8 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
                         </div>
                     )}
 
+                    {lightingMessage && <p className="rounded-xl border border-blue-900/50 bg-blue-900/20 p-4 text-sm text-blue-200">{lightingMessage}</p>}
+
                     {contentsOnly ? (
                     <div className="space-y-5">
                         {bagName && (
@@ -252,13 +257,13 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
                     </div>
                     ) : (
                     <>
-                    {(isNight || isHot || isCold) && (
+                    {(needsLight || isHot || isCold) && (
                         <div className="bg-blue-900/20 border border-blue-900/50 rounded-xl p-4 flex gap-3 text-sm">
                             <Info className="w-5 h-5 text-blue-400 shrink-0" />
                             <div>
                                 <strong className="text-white block mb-0.5">Smart Suggestions Active</strong>
                                 <span className="text-blue-200">
-                                    Condition-specific items are added based on estimated arrival time and race weather.
+                                    Lighting suggestions cover the leg to the next available bag, using sunset and a {LIGHTING_DELAY_MINUTES}-minute late-running allowance. Other suggestions use race weather.
                                 </span>
                             </div>
                         </div>

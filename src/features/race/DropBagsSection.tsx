@@ -20,6 +20,7 @@ import {
 import { getRaceSupport, isVisibleBag } from './race-support'
 import { formatPlanALabel } from './plan-label'
 import SunCalc from 'suncalc'
+import { getBagLighting, getBagLightingMessage, LIGHTING_DELAY_MINUTES } from './drop-bag-lighting'
 
 interface DropBagsSectionProps {
     race: Race
@@ -137,16 +138,11 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
     const getPlanArrival = (plan: Plan, wp: Waypoint) =>
         plan?.waypointArrivals.find(a => a.waypointId === wp.id)
 
-    const getWaypointIsNight = (wp: Waypoint) => {
-        const arrival = getWaypointArrival(wp)
-        return arrival ? isNight(arrival.arrivalTime, wp.lat, wp.lon) : false
-    }
-
     const getWaypointItems = (wp: Waypoint) => {
         const kind = getBagKind(wp) ?? 'official'
         const template = getDropBagTemplateForKind(kind, dropBagTemplate)
         return getDropBagEditorItems(wp.drop_bag_items, template, {
-            isNight: getWaypointIsNight(wp),
+            isNight: lightingByWaypoint.get(wp.id)?.needsLight ?? false,
             isHot,
             isCold,
         })
@@ -157,6 +153,19 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
 
     const getNextBagWaypoint = (wp: Waypoint) =>
         bagWaypoints.find(candidate => isAfterWaypoint(candidate, wp)) ?? null
+
+    const lightingByWaypoint = new Map(bagWaypoints.map(wp => {
+        // Coverage ends at the next available bag, not an intervening aid-only station.
+        const next = getNextBagWaypoint(wp) ?? sortedWaypoints.find(candidate => candidate.type === 'finish' && isAfterWaypoint(candidate, wp))
+        const lighting = next && getBagKind(wp) !== 'finish' ? getBagLighting({
+            startDatetime: race.start_datetime,
+            arrivalMinutes: getWaypointArrival(wp)?.arrivalTime,
+            nextArrivalMinutes: getWaypointArrival(next)?.arrivalTime,
+            from: wp,
+            to: next,
+        }) : null
+        return [wp.id, lighting ? { ...lighting, message: getBagLightingMessage(lighting, next!.name) } : null]
+    }))
 
     const getBagResourceLabel = (target: Waypoint | null) =>
         target && getBagKind(target) === 'crew'
@@ -236,6 +245,10 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                     </div>
                 </div>
 
+                <p className="text-sm text-neutral-400">
+                    Lighting covers each leg to the next available bag, using sunset and a {LIGHTING_DELAY_MINUTES}-minute late-running allowance. Shade, weather and longer delays can require light earlier; carry a backup.
+                </p>
+
                 {hasConditions && (
                     <div className="bg-neutral-900/50 border border-neutral-800 rounded-xl p-4 mb-6 flex gap-3">
                         <Info className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
@@ -310,6 +323,9 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                                     </div>
 
                                     {wp.cutoff_time && <p className="text-sm text-red-400">Cutoff <span className="font-mono font-semibold">{formatBagCutoff(wp.cutoff_time, race.timezone, clock24h)}</span></p>}
+                                    {lightingByWaypoint.get(wp.id)?.message && <p className="rounded border border-blue-900/60 bg-blue-950/30 p-2 text-sm text-blue-200">
+                                        {lightingByWaypoint.get(wp.id)!.message}
+                                    </p>}
                                     <div className="border-t border-neutral-800 pt-3">
                                         <DropBagCoverage rows={getCoverageRows(wp)} />
                                     </div>
@@ -342,6 +358,8 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                         arrivalTime={planA?.waypointArrivals.find(a => a.waypointId === selectedWaypoint.id)}
                         coverageRows={getCoverageRows(selectedWaypoint)}
                         cutoff={formatBagCutoff(selectedWaypoint.cutoff_time, race.timezone, clock24h)}
+                        needsLight={lightingByWaypoint.get(selectedWaypoint.id)?.needsLight ?? false}
+                        lightingMessage={lightingByWaypoint.get(selectedWaypoint.id)?.message ?? undefined}
                         isNight={
                             planA?.waypointArrivals.find(a => a.waypointId === selectedWaypoint.id)
                                 ? isNight(planA.waypointArrivals.find(a => a.waypointId === selectedWaypoint.id)!.arrivalTime, selectedWaypoint.lat, selectedWaypoint.lon)
