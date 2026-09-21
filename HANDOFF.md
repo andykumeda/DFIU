@@ -2,11 +2,11 @@
 
 **Date:** 2026-09-20
 **Branch:** `main`
-**Status:** Deployed on `main`: three trail classifications, existing assignment remap with pacing preserved, direct weather-location links. Product `037c7d0`.
+**Status:** Deployed on `main`: official-update notifications now appear only for actual compared differences. Product `11aa781`.
 
 ## Current work
 
-- **In progress — empty official-update notification**: main, root owns gating notifications on a successful complete comparison with actionable sections, including local course/waypoint/terrain readiness. Verify no-op revision regression, real changes remain available, build/deploy and live affected race. No review acceptance or database mutation.
+- **Deployed — suppress revision-only official-update notifications** (`main`, product `11aa781`): the revision banner previously appeared even when the comparison was empty after both official and clone terrain had been remapped. Notifications now require a successful comparison with actual sections; local course/waypoint/terrain loads must finish first. Added fetch cancellation for stale terrain results. No revision acceptance/dismissal or DB mutation performed for this fix. Verified 161 tests (including empty/loading/real-change notification regressions), lint 0 errors/49 existing warnings, build/deploy, and production reload of affected AC100 plan with no empty Review changes banner. User guide updated. Post-deploy git describe `11aa781`; main pushed, no other worktrees.
 
 - **Deployed — terrain consolidation and location weather links** (root terrain/migration/integration; location_weather_link agent direct links; product `037c7d0`, main): Non-technical replaces Smooth dirt; Somewhat technical combines low/medium and legacy track assignments; Very technical replaces high; Paved/Other retained. Hosted DFIU migration `consolidate_trail_classifications` remapped 48 of 246 boundaries; before/after hash of every non-type field identical (`05cb497803d2cfbb5406d8ebfafb0b8a`), preserving all IDs, mileages, coordinates and pacing adjustments. Sidebar grouping and compaction now require matching difficulty; bound-only edits retain saved difficulty. Three trail defaults remain +4/+18/+30 percent for new assignments. No auth/policy/schema changes; existing official-revision trigger remains active. Security advisors retain existing Strava/no-policy and SECURITY DEFINER notices. Source link opens Visual Crossing at race location; course samples link saved coordinates, date selected on provider site. Verified unsigned-in location loading, 158 tests, lint 0 errors/49 existing warnings, build/deploy; live desktop/mobile terrain list/legend and editor choices, saved custom rates, weather href. No browser data edits during verification. User/developer/algorithm docs updated. Post-deploy git describe `037c7d0`; main pushed, no other worktrees.
 
@@ -71,6 +71,8 @@
 - CI run `34105276946` passed for exact product SHA `ae144867997d8afe927dca690c4ab9262fb61280`. Product commit pushed; no side branches or worktrees.
 
 ## Latest deployed product
+
+- `11aa781`: suppress empty official-update notifications; complete-input gating and actual-difference regressions; affected production race verified.
 
 - `037c7d0`: terrain consolidation with hosted assignment migration and direct location weather links; production desktop/mobile verified.
 
