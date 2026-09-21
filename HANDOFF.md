@@ -2,11 +2,11 @@
 
 **Date:** 2026-09-21
 **Branch:** `main`
-**Status:** Deployed on `main`: official-update per-change review with side-by-side diffs. Notes tab WIP remains uncommitted.
+**Status:** Deployed on `main`: official-update per-change review with side-by-side diffs (`923ccc9`). Notes tab WIP remains uncommitted.
 
 ## Current work
 
-- **Deployed — official-update per-change review** (`main`): Blank/`null` empty values no longer appear as diffs. Review modal shows Current | Official side-by-side with full text, and each change has its own checkbox (event/resources apply field-level; course/waypoints/terrain/routes still apply as a set). AK's Plan remains merged `5` / source `14` — no accept/dismiss during this batch. Verified 169 tests, build, deploy. User/developer guides updated. Notes-tab WIP left uncommitted on the tree.
+- **Deployed — official-update per-change review** (`main`, product `923ccc9`): Blank/`null` empty values no longer appear as diffs. Review modal shows Current | Official side-by-side with full text, and each change has its own checkbox (event/resources apply field-level; course/waypoints/terrain/routes still apply as a set). AK's Plan remains merged `5` / source `14` — no accept/dismiss during this batch. Verified 169 tests, build/deploy, pushed. User/developer guides updated. Notes-tab WIP left uncommitted on the tree.
 
 - **In progress — Notes tab** (`main`): add `races.notes_config` jsonb, Notes tab UI (Todo 1 month / 1 week / night before + Personal / Crew / Pacer notes), per-item visibility (all/crew/pacer/runner), per-section print. Personal planning data: copy on clone, not overwritten by official sync. Uncommitted files present; not part of the official-update batch.
 
@@ -75,6 +75,8 @@
 - CI run `34105276946` passed for exact product SHA `ae144867997d8afe927dca690c4ab9262fb61280`. Product commit pushed; no side branches or worktrees.
 
 ## Latest deployed product
+
+- `923ccc9`: official-update per-change selection with side-by-side Current|Official panels and blank/null empty equivalence; event/resources field-level apply.
 
 - `11aa781`: suppress empty official-update notifications; complete-input gating and actual-difference regressions; affected production race verified.
 
