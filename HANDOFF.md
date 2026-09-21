@@ -2,11 +2,11 @@
 
 **Date:** 2026-09-20
 **Branch:** `main`
-**Status:** Deployed and verified on `main`: Review changes now opens immediately while the detailed official comparison loads.
+**Status:** Deployed on `main`: drop-bag cards include onward coverage and cutoffs; individual bag print previews prioritize bag identity and packed contents.
 
 ## Current work
 
-- **In progress — bag cards and printable bag sheet** (owner: current agent, `main`): cards show next aid/next bag and applicable cutoff, mileage matches arrival contrast; a single-bag print preview prioritizes bag identity, then packed bullets, then notes/coverage. Shared Drop Bags components require sequential implementation. Acceptance: desktop/mobile cards, individual print layout and existing print list; verification: lint, tests, build/deploy and production browser inspection. Documentation: user/developer guides. No additional branches or worktrees.
+- **Deployed — bag cards and printable bag sheet** (owner: current agent, `main`, product `5856225`): cards show next aid/next drop bag or crew, distances, Plan A arrivals, durations and applicable cutoffs; mileage matches arrival contrast. Print Bag opens a white individual sheet with large bag identity/station, packed bullets/quantities, then notes and coverage. Current editor state is printable without saving. User/developer guides updated. Verification: 144 tests pass, lint 0 errors / 49 existing warnings, build/deploy pass. Production in-app browser desktop and 390×844 checks verify Redbox coverage/cutoffs, empty-bag preview, Start Gear packed bullets/quantity, mobile fit and no browser warnings/errors. Print button exercised, but native print/PDF output was not exposed by this browser, so physical/PDF pagination remains unverified. Existing Print List code path retained. No bag data was saved during checks; no other branches/worktrees.
 
 
 - **Deployed — review-button loading state** (owner: current agent, `main`): the update banner previously appeared before its detailed comparison query finished while Review changes remained disabled. Review changes now opens immediately with `aria-busy`, shows the comparison-loading message, keeps both decision actions disabled until the diff is ready, and defaults arriving sections to selected without an effect-driven state sync. Production reload verification captured the exact loading interval: Review enabled with `aria-busy=true`, loading message visible, both decisions disabled; after completion, Resources and Training routes appeared, `Apply 2 selected` and Keep all current enabled, and browser warning/error logs remained empty. The 390×844 modal has no horizontal overflow. Lint is 0 errors / 49 existing warnings; all 141 tests, type checking, build, and deployment pass. User guide is current. Product hash `e43f110`.
@@ -56,6 +56,8 @@
 - CI run `34105276946` passed for exact product SHA `ae144867997d8afe927dca690c4ab9262fb61280`. Product commit pushed; no side branches or worktrees.
 
 ## Latest deployed product
+
+- `5856225`: onward coverage/cutoffs on bag cards, stronger mileage contrast, and individual printable bag sheets. See verification and print-output limitation above.
 
 - `fbafcd8`: selective official-update review and accurate live recomputation from the loaded clone. Scoped hosted migration applied; production desktop/mobile review verified without accepting or dismissing the pending AC100 update.
 
