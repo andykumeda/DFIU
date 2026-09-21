@@ -6,14 +6,12 @@ import { Backpack, Clock, Sun, Moon, Info, Printer, List, ChevronDown, ChevronUp
 import { DropBagModal, type DropBagCoverageRow } from './DropBagModal'
 import { DropBagCoverage } from './DropBagCoverage'
 import { formatBagCutoff } from './drop-bag-cutoff'
-import { DropBagNotes } from './DropBagNotes'
 import { DropBagTemplateEditor } from './DropBagTemplateEditor'
 import { usePermission } from '@/features/auth/usePermission'
 import type { RunnerPacingProfile } from './runner-profile'
 import {
     getBagKind,
     getBagKindLabel,
-    getDropBagNotes,
     getDropBagTemplateForKind,
     getDropBagEditorItems,
     hasSavedBagPlan,
@@ -170,7 +168,6 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
         return {
             label,
             labelClass,
-            cutoff: target ? formatBagCutoff(target.cutoff_time, race.timezone, clock24h) : null,
             targetName: target?.name ?? null,
             targetMile: target?.mile ?? null,
             milesUntil: target ? Math.max(0, target.mile - current.mile) : null,
@@ -187,10 +184,14 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
     }
 
     const getCoverageRows = (wp: Waypoint) => {
+        const nextAid = getNextAidStation(wp)
         const nextBag = getNextBagWaypoint(wp)
         const nextBagKind = nextBag ? getBagKind(nextBag) : null
+        if (nextAid && nextBag && nextAid.id === nextBag.id) {
+            return [buildCoverageRow(wp, nextBagKind === 'crew' ? 'Next Aid and Crew Bag' : 'Next Aid and Drop Bag', nextAid, 'text-blue-400')]
+        }
         return [
-            buildCoverageRow(wp, 'Next aid', getNextAidStation(wp), 'text-blue-400'),
+            buildCoverageRow(wp, 'Next aid', nextAid, 'text-blue-400'),
             buildCoverageRow(wp, getBagResourceLabel(nextBag), nextBag, nextBagKind === 'crew' ? 'text-emerald-400' : 'text-orange-400'),
         ]
     }
@@ -254,7 +255,6 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                         const isFinishBag = kind === 'finish'
                         const isCrewBag = kind === 'crew'
                         const displayName = isStartBag ? 'Start' : isFinishBag ? 'Finish' : wp.name
-                        const identityNotes = getDropBagNotes(wp)
                         const arrival = getWaypointArrival(wp)
                         const arrivalIsNight = !!arrival && !!race.start_datetime && isNight(arrival.arrivalTime, wp.lat, wp.lon)
                         const hasBagPlan = hasSavedBagPlan(wp)
@@ -309,7 +309,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                                         </div>
                                     </div>
 
-                                    {wp.cutoff_time && <p className="text-sm text-amber-300">Cutoff <span className="font-mono font-semibold">{formatBagCutoff(wp.cutoff_time, race.timezone, clock24h)}</span></p>}
+                                    {wp.cutoff_time && <p className="text-sm text-red-400">Cutoff <span className="font-mono font-semibold">{formatBagCutoff(wp.cutoff_time, race.timezone, clock24h)}</span></p>}
                                     <div className="border-t border-neutral-800 pt-3">
                                         <DropBagCoverage rows={getCoverageRows(wp)} />
                                     </div>
@@ -327,12 +327,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                                         </div>
                                     )}
 
-                                    {identityNotes && (
-                                        <p className="max-h-10 overflow-hidden text-sm leading-5 text-neutral-400 whitespace-pre-wrap">
-                                            {identityNotes}
-                                        </p>
-                                    )}
-                                    <DropBagNotes waypoint={wp} className="mt-2" showDropBagNotes={false} />
+
                                 </div>
                             </div>
                         )

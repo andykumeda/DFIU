@@ -6,6 +6,9 @@
 
 ## Current work
 
+- **In progress — bag card presentation corrections** (owner: current agent, `main`): green onward arrivals/durations in cards and editor, red current-station cutoffs, no onward cutoffs or card notes, and one combined heading when next aid and bag share a waypoint ID. Shared components require sequential implementation. Preserve saved values and editor/print notes. Verify tests/lint/build/deploy plus desktop/mobile production; update user/developer guides.
+
+
 - **Deployed — bag cards and printable bag sheet** (owner: current agent, `main`, product `5856225`): cards show next aid/next drop bag or crew, distances, Plan A arrivals, durations and applicable cutoffs; mileage matches arrival contrast. Print Bag opens a white individual sheet with large bag identity/station, packed bullets/quantities, then notes and coverage. Current editor state is printable without saving. User/developer guides updated. Verification: 144 tests pass, lint 0 errors / 49 existing warnings, build/deploy pass. Production in-app browser desktop and 390×844 checks verify Redbox coverage/cutoffs, empty-bag preview, Start Gear packed bullets/quantity, mobile fit and no browser warnings/errors. Print button exercised, but native print/PDF output was not exposed by this browser, so physical/PDF pagination remains unverified. Existing Print List code path retained. No bag data was saved during checks; no other branches/worktrees.
 
 
