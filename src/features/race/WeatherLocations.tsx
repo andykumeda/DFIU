@@ -180,6 +180,12 @@ export function WeatherLocations({ race, course, waypoints, terrainNodes, runner
                 )}
             </div>
 
+            <p className="mb-3 text-xs text-neutral-400">
+                Saved race-day daily highs, lows and precipitation chances at each aid station.
+                These use the race start date, not the Plan A arrival time or the next day for overnight arrivals.
+                They may be historical estimates rather than an updated forecast; see the source above.
+            </p>
+
             {locations.length === 0 && !adding && (
                 <p className="text-neutral-600 text-xs">
                     {canEdit

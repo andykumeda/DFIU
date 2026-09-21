@@ -323,9 +323,6 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                                     </div>
 
                                     {wp.cutoff_time && <p className="text-sm text-red-400">Cutoff <span className="font-mono font-semibold">{formatBagCutoff(wp.cutoff_time, race.timezone, clock24h)}</span></p>}
-                                    {lightingByWaypoint.get(wp.id)?.message && <p className="rounded border border-blue-900/60 bg-blue-950/30 p-2 text-sm text-blue-200">
-                                        {lightingByWaypoint.get(wp.id)!.message}
-                                    </p>}
                                     <div className="border-t border-neutral-800 pt-3">
                                         <DropBagCoverage rows={getCoverageRows(wp)} />
                                     </div>

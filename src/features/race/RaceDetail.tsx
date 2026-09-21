@@ -2446,14 +2446,23 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                     {fetchingWeather && <RefreshCw className="w-4 h-4 text-neutral-500 animate-spin ml-2" />}
                   </h3>
                 </div>
-                <div className="text-neutral-500 text-xs uppercase tracking-wider mb-2">Forecast for race day</div>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-2 text-xs">
+                  <span className="text-neutral-400 uppercase tracking-wider">Saved race-day weather</span>
+                  <a href="https://www.visualcrossing.com/weather-data/" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline">Source: Visual Crossing</a>
+                  <a href="https://www.visualcrossing.com/weather-query-builder/" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline">Explore weather data ↗</a>
+                </div>
+                <p className="mb-3 text-xs text-neutral-400">
+                  Daily values requested for the race start date, not your arrival hour.
+                  Visual Crossing uses forecasts within 15 days and historical estimates further out.
+                  Saved values may be older estimates; their fetch date and forecast type are not recorded.
+                </p>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-neutral-950/50 p-4 rounded-lg">
-                    <div className="text-neutral-500 text-xs uppercase tracking-wider mb-1">Avg High</div>
+                    <div className="text-neutral-500 text-xs uppercase tracking-wider mb-1">Daily High</div>
                     <div className="text-2xl font-mono text-white">{race?.avg_temp_high || '--'}</div>
                   </div>
                   <div className="bg-neutral-950/50 p-4 rounded-lg">
-                    <div className="text-neutral-500 text-xs uppercase tracking-wider mb-1">Avg Low</div>
+                    <div className="text-neutral-500 text-xs uppercase tracking-wider mb-1">Daily Low</div>
                     <div className="text-2xl font-mono text-white">{race?.avg_temp_low || '--'}</div>
                   </div>
                   <div className="bg-neutral-950/50 p-4 rounded-lg">
