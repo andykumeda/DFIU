@@ -2,11 +2,11 @@
 
 **Date:** 2026-09-20
 **Branch:** `main`
-**Status:** Deployed on `main`: onward-leg lighting recommendations with a 60-minute delay allowance; unclipped responsive template editor. Product `e5f243a`.
+**Status:** Deployed on `main`: cleaner bag cards and accurate saved-weather labeling/source links. Product `978e560`; terrain consolidation is a recommendation only.
 
 ## Current work
 
-- **In progress — card cleanup, weather provenance, terrain review**: root owns removal of card-only lighting messages, neutral in label with green duration, and terrain-category assessment (no category migration without agreed mapping). Weather agent owns verifying date/source semantics and accurate source/date labels. Acceptance: modal lighting remains; labels distinguish race-day forecast from historical estimates; public source link; inspect pacing defaults before recommending terrain consolidation. Integration: tests/build/deploy and live checks, docs, commit/push on main. Terrain review: existing defaults are +4/+10/+18/+30 percent for smooth dirt/low/medium/high. Recommendation is three trail labels (Non-technical, Somewhat technical, Very technical), with Paved separate; no terrain mapping or saved multiplier changes in this release.
+- **Deployed — card cleanup and weather provenance** (root card cleanup/integration; weather_provenance agent weather UI/docs; `main`, product `978e560`): card lighting messages removed while editor/print advice remains; in label matches neutral Arrival and numeric duration stays green. Overview and other locations identify saved race-start-date daily weather, not arrival-hour conditions; Visual Crossing source/explorer links and forecast-versus-historical-estimate explanation added. Saved values lack fetch/type provenance, so existing numbers cannot be confirmed as current forecasts. Existing UTC-date selection limitation documented in developer guide; no API/schema/data mutations. Verified: 152 tests, build/deploy pass, lint 0 errors / 49 existing warnings; production desktop/mobile source links, labels, clean cards and retained Chilao 1 editor advice verified. Browser logs contain earlier map feature-state filter errors from before this deployment, no new release errors observed. Terrain review: smooth dirt/low/medium/high defaults +4/+10/+18/+30 percent. Recommend three trail labels (Non-technical, Somewhat technical, Very technical), Paved separate; category mapping and saved multipliers unchanged pending decision. Post-deploy git describe `978e560`; committed/pushed main, no other worktrees.
 
 - **Deployed — lighting coverage and template clipping** (root integration; template_clipping agent scoped to template editor; `main`, product `e5f243a`, template commit `3c6967e`): lighting checks each leg to the next available bag against sunset/sunrise, including an explicit 60-minute late allowance. Cards, bag editor and print details explain pickup; packed condition items survive pace changes. Template editor portals above sticky navigation and fits mobile. User/developer guides updated. Verified: 152 tests, TypeScript, lint (0 errors / 49 existing warnings), build and deployment pass. Live production confirms Chilao 1 at 17:28 recommends headlamp and backup before Chilao 2 at 19:46, with both checklist items present; daytime Redbox has no lighting warning. Template title and footer remain visible at desktop and 390×844, including scrolling to the bottom. Browser warning/error log empty. No bag or template data saved during checks. Native printed output remains unverified. Post-deploy git describe: `e5f243a`; main pushed, no other worktrees or unmerged work.
 
@@ -67,6 +67,8 @@
 - CI run `34105276946` passed for exact product SHA `ae144867997d8afe927dca690c4ab9262fb61280`. Product commit pushed; no side branches or worktrees.
 
 ## Latest deployed product
+
+- `978e560`: card lighting message removal, neutral in label and weather provenance/source links; desktop/mobile production verification above.
 
 - `e5f243a`: onward-leg lighting and packed-item preservation, including template clipping fix `3c6967e`; live verification above.
 
