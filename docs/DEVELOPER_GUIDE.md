@@ -91,3 +91,7 @@ See [Deployment Guide](../DEPLOYMENT.md), [Algorithm Reference](ALGORITHMS.md), 
 ### Bag lighting coverage
 
 `drop-bag-lighting.ts` evaluates absolute Plan A arrival instants over each bag-to-next-visible-bag leg, extended by `LIGHTING_DELAY_MINUTES` (60). SunCalc's sunset threshold (-0.833 degrees) replaces civil dusk for gear recommendations; both endpoint coordinates are checked, including intervening sunsets for multi-day legs. The arrival sun/moon icon remains an arrival-state indicator. Calculations never use browser-local clock hours for gear planning. Missing inputs yield an explicit unavailable message. Terrain shade, weather and delays beyond the allowance are not modeled. `DropBagsSection` feeds the recommendation into editor suggestions, All Bags and the individual printable sheet; cards omit the lighting message. Checked smart-condition items survive recommendation changes. `DropBagTemplateEditor` portals to `document.body` so transformed/stacked race-tab ancestors cannot clip it.
+
+### Terrain vocabulary
+
+`terrain-constants.ts` owns the three trail categories and legacy normalization. The consolidation migration updates only `terrain_nodes.type` and asserts a hash of all other fields is unchanged. Existing database constraints continue accepting legacy values for old clients. Sidebar grouping and boundary compaction must compare difficulty as well as normalized type; unchanged-category bound edits retain saved difficulty. Public weather links use `weather-links.ts` to URL-encode the saved location query without credentials.

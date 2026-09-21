@@ -11,6 +11,7 @@ import { RACE_SELECT } from '@/lib/race-select'
 import { Race, Course, Waypoint, TerrainNode } from '@/types/database'
 import { RaceMembersSection } from './RaceMembersSection'
 import { fetchWeatherForRace, fetchCurrentWeather } from '@/lib/weather-service'
+import { getWeatherLocationUrl } from '@/lib/weather-links'
 import { sampleElevationProfile, type GpxParseResult } from '@/lib/gpx-parser'
 import { getCoordinateAtDistance, getNearestPointOnLine, getDistanceFromStart, getAllVisitsOnLine, getDistance } from '@/lib/geo-utils'
 import { formatDate, formatStoredClockTime } from '@/lib/utils'
@@ -31,7 +32,7 @@ import { EditRaceModal } from '@/features/race/EditRaceModal'
 import { EditWaypointModal } from '@/features/course/EditWaypointModal'
 import { ViewWaypointModal } from '@/features/course/ViewWaypointModal'
 import { TerrainSidebar, type TerrainSidebarSegment } from '@/features/course/TerrainSidebar'
-import { TerrainTypeValue, TERRAIN_TYPES, getTerrainColor, getTerrainDefaultDifficulty } from '@/features/course/terrain-constants'
+import { TerrainTypeValue, TERRAIN_TYPES, getTerrainColor, getTerrainDefaultDifficulty, normalizeTerrainType, canMergeTerrainNodes } from '@/features/course/terrain-constants'
 import { PaceCalculator } from '@/features/race/PaceCalculator'
 import { parseRunnerProfile } from '@/features/race/runner-profile'
 import { RaceResources } from '@/features/race/RaceResources'
@@ -160,7 +161,7 @@ function formatTimeZoneName(value: string | null | undefined, timeZone: string |
 }
 
 // Identify redundant terrain nodes that can be merged away so consecutive
-// same-type segments collapse into one. A short (<=0.1 mi) "other" gap between
+// same-type, same-difficulty segments collapse into one. A short (<=0.1 mi) "other" gap between
 // two matching terrain types is also collapsed.
 function getCompactableTerrainNodeIds(nodes: TerrainNode[]) {
   const GAP_TOL = 0.1 + 1e-6
@@ -171,7 +172,7 @@ function getCompactableTerrainNodeIds(nodes: TerrainNode[]) {
   for (let i = 1; i < sorted.length; i++) {
     const prev = sorted[i - 1]
     const node = sorted[i]
-    if (isKnownTerrain(prev) && node.type === prev.type) ids.add(node.id)
+    if (isKnownTerrain(prev) && canMergeTerrainNodes(node, prev)) ids.add(node.id)
   }
 
   for (let i = 1; i < sorted.length - 1; i++) {
@@ -181,7 +182,7 @@ function getCompactableTerrainNodeIds(nodes: TerrainNode[]) {
     if (
       isKnownTerrain(prev) &&
       gap.type === 'other' &&
-      next.type === prev.type &&
+      canMergeTerrainNodes(next, prev) &&
       next.mile - gap.mile <= GAP_TOL
     ) {
       ids.add(gap.id)
@@ -249,7 +250,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   // Pending segment: set by map 2-click or profile drag → triggers classification popup.
   // nodeId is set when editing an existing segment (vs defining a new range).
   const [pendingSegment, setPendingSegment] = useState<{ startMile: number; endMile: number; nodeId?: string } | null>(null)
-  const [pendingType, setPendingType] = useState<TerrainTypeValue>('single_track')
+  const [pendingType, setPendingType] = useState<TerrainTypeValue>('technical')
   const [pendingLinkedRanges, setPendingLinkedRanges] = useState<[number, number][]>([])
   const [selectedLinkedRangeKeys, setSelectedLinkedRangeKeys] = useState<Set<string>>(new Set())
 
@@ -1021,7 +1022,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     const endMile = segmentEndMile ?? sorted[index + 1]?.mile ?? course?.total_distance_miles ?? node.mile
     if (endMile <= node.mile) return
 
-    setPendingType((node.type === 'other' ? 'single_track' : node.type) as TerrainTypeValue)
+    setPendingType(node.type === 'other' ? 'technical' : normalizeTerrainType(node.type))
     openTerrainSelection(node.mile, endMile, node.id)
     setHoveredTerrainId(node.id)
     setSelectedTerrainId(node.id)
@@ -2448,13 +2449,12 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                 </div>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-2 text-xs">
                   <span className="text-neutral-400 uppercase tracking-wider">Saved race-day weather</span>
-                  <a href="https://www.visualcrossing.com/weather-data/" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline">Source: Visual Crossing</a>
-                  <a href="https://www.visualcrossing.com/weather-query-builder/" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline">Explore weather data ↗</a>
+                  <a href={getWeatherLocationUrl(race.location)} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline">Source: Visual Crossing ↗</a>
                 </div>
                 <p className="mb-3 text-xs text-neutral-400">
                   Daily values requested for the race start date, not your arrival hour.
                   Visual Crossing uses forecasts within 15 days and historical estimates further out.
-                  Saved values may be older estimates; their fetch date and forecast type are not recorded.
+                  Saved values may be older estimates; their fetch date and forecast type are not recorded. The source link opens this location; select the race date there.
                 </p>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-neutral-950/50 p-4 rounded-lg">

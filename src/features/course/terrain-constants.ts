@@ -2,6 +2,7 @@ export type TerrainTypeValue =
     | 'paved'
     | 'dirt'
     | 'runnable_trail'
+    | 'smooth_dirt_gravel'
     | 'technical'
     | 'highly_technical'
     // Legacy values remain readable so older courses retain their exact pacing.
@@ -18,10 +19,9 @@ export interface TerrainTypeDef {
 
 export const TERRAIN_TYPES: readonly TerrainTypeDef[] = [
     { value: 'paved',            label: 'Paved',              defaultDifficulty: 100, color: '#3b82f6' },
-    { value: 'dirt',             label: 'Smooth dirt',        defaultDifficulty: 104, color: '#eab308' },
-    { value: 'runnable_trail',   label: 'Technical (low)',    defaultDifficulty: 110, color: '#f97316' },
-    { value: 'technical',        label: 'Technical (med)',    defaultDifficulty: 118, color: '#ef4444' },
-    { value: 'highly_technical', label: 'Technical (high)',   defaultDifficulty: 130, color: '#7f1d1d' },
+    { value: 'dirt',             label: 'Non-technical',        defaultDifficulty: 104, color: '#eab308' },
+    { value: 'technical',        label: 'Somewhat technical',    defaultDifficulty: 118, color: '#ef4444' },
+    { value: 'highly_technical', label: 'Very technical',   defaultDifficulty: 130, color: '#7f1d1d' },
     { value: 'other',            label: 'Other',              defaultDifficulty: 100, color: '#9ca3af' },
 ]
 
@@ -29,24 +29,31 @@ const TERRAIN_BY_VALUE: Record<string, TerrainTypeDef> = Object.fromEntries(
     TERRAIN_TYPES.map(t => [t.value, t])
 )
 
-// Courses saved before the five-level vocabulary keep their original values.
-// These aliases preserve their visual meaning without exposing legacy choices
-// for new segments.
-TERRAIN_BY_VALUE.double_track = TERRAIN_BY_VALUE.runnable_trail
-TERRAIN_BY_VALUE.single_track = TERRAIN_BY_VALUE.technical
+// Normalize older assignments before displaying/editing them. The stored
+// difficulty remains independent of classification and is never rewritten here.
+export function normalizeTerrainType(type: string): TerrainTypeValue {
+    if (type === 'smooth_dirt_gravel') return 'dirt'
+    if (['runnable_trail', 'double_track', 'single_track'].includes(type)) return 'technical'
+    return type in TERRAIN_BY_VALUE ? type as TerrainTypeValue : 'other'
+}
+
+export function canMergeTerrainNodes(a: { type: string; difficulty: number | null }, b: { type: string; difficulty: number | null }): boolean {
+    return normalizeTerrainType(a.type) === normalizeTerrainType(b.type)
+        && (a.difficulty ?? 100) === (b.difficulty ?? 100)
+}
 
 export const DEFAULT_BASE_LAYER_COLOR = '#4b5563'
 export const FALLBACK_TERRAIN_COLOR = '#9ca3af'
 
 export function getTerrainDefaultDifficulty(type: string): number {
-    return TERRAIN_BY_VALUE[type]?.defaultDifficulty ?? 100
+    return TERRAIN_BY_VALUE[normalizeTerrainType(type)]?.defaultDifficulty ?? 100
 }
 
 export function getTerrainColor(type: string): string {
     if (type === 'default') return DEFAULT_BASE_LAYER_COLOR
-    return TERRAIN_BY_VALUE[type]?.color ?? FALLBACK_TERRAIN_COLOR
+    return TERRAIN_BY_VALUE[normalizeTerrainType(type)]?.color ?? FALLBACK_TERRAIN_COLOR
 }
 
 export function getTerrainLabel(type: string): string {
-    return TERRAIN_BY_VALUE[type]?.label ?? type
+    return TERRAIN_BY_VALUE[normalizeTerrainType(type)]?.label ?? type
 }

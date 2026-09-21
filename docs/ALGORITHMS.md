@@ -22,7 +22,7 @@ Grade comes from consecutive GPX elevation samples. DFIU uses the Minetti runnin
 
 Terrain is stored as boundaries along race mileage. A type stays active until the next boundary. Its difficulty value is used as a multiplier: 100 means no added terrain penalty; 130 means the terrain portion is 30% slower before other factors.
 
-Legacy double-track and single-track values remain readable and map to the current runnable-trail and technical visual vocabulary.
+Trail labels are Non-technical (`dirt`, default 104), Somewhat technical (`technical`, default 118), and Very technical (`highly_technical`, default 130). The classification migration maps runnable-trail and legacy track keys to `technical` without changing stored difficulty, coordinates, mileage or IDs. Legacy keys remain readable. Adjacent segments merge in the sidebar/compaction only when both normalized classification and difficulty match.
 
 ### Dynamic conditions
 

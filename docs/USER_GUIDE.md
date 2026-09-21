@@ -66,9 +66,11 @@ The Pace Plan page also shows that ability-based range after you calculate. With
 
 ## Overview, Crew, Pacer, and Live
 
+**Trail terrain** uses three classifications: **Non-technical** (smooth dirt), **Somewhat technical** (former low and medium), and **Very technical** (former high). **Paved** and **Other** remain separate. Existing assignments retain their exact pacing adjustments and mile boundaries. New segments default to +4%, +18%, and +30% respectively; changing a category applies its default, while editing the bounds of an unchanged category preserves its saved adjustment.
+
 **Overview** shows the event summary, selected aid-station weather temperatures, and Plan A arrival times. If the course visits an aid station multiple times, every predicted arrival is shown.
 
-Weather comes from **Visual Crossing**, linked beside **Saved race-day weather**, with a link to its public data explorer. Main and additional-location requests use the race start date and return daily highs, lows and precipitation chances—not conditions at the Plan A arrival hour or on the next day of an overnight race. Visual Crossing supplies forecasts within its 15-day window and historical estimates farther out. Saved values do not record the fetch date or forecast type, so they may still be older estimates. They are not labeled as a current forecast.
+Weather comes from **Visual Crossing**, linked beside **Saved race-day weather**, opening its public data explorer at the race location. Each additional course location has its own source link; select the race date on Visual Crossing. Main and additional-location requests use the race start date and return daily highs, lows and precipitation chances—not conditions at the Plan A arrival hour or on the next day of an overnight race. Visual Crossing supplies forecasts within its 15-day window and historical estimates farther out. Saved values do not record the fetch date or forecast type, so they may still be older estimates. They are not labeled as a current forecast.
 
 Use **Race Settings** in the race header to open **Edit Race** and configure **Support Plan** as **Solo**, **Crew only**, **Pacer only**, or **Crew and pacer**. Saving controls the Crew/Pacer tabs and crew-only bags. Existing plans default to Crew and pacer; turning support off preserves team assignments, notes, and packed items. This preference does not change the event's crew/pacer access rules or anyone's permissions. Members and sharing remain available.
 

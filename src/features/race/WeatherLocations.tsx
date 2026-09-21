@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { MapPin, Plus, Trash2, RefreshCw, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { fetchWeatherForRace } from '@/lib/weather-service'
+import { getWeatherLocationUrl } from '@/lib/weather-links'
 import { formatStoredClockTime } from '@/lib/utils'
 import { useAuth } from '@/features/auth/AuthContext'
 import type { Race, Course } from '@/types/database'
@@ -228,6 +229,11 @@ export function WeatherLocations({ race, course, waypoints, terrainNodes, runner
                                 )}
                             </div>
                         </div>
+                        {loc.query.trim() && (
+                            <a href={getWeatherLocationUrl(loc.query)} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-xs text-blue-400 hover:text-blue-300 underline">
+                                Weather at this location ↗
+                            </a>
+                        )}
                         {loc.waypoint_name && planA && (() => {
                             const visitTimes = planA.waypointArrivals
                                 .filter(arrival => aidStations.some(station => station.name === loc.waypoint_name && station.id === arrival.waypointId))

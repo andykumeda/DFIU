@@ -9,6 +9,8 @@ import {
   getTerrainColor,
   getTerrainLabel,
   getTerrainDefaultDifficulty,
+  normalizeTerrainType,
+  canMergeTerrainNodes,
 } from './terrain-constants'
 
 export interface TerrainSidebarSegment {
@@ -57,13 +59,13 @@ export function TerrainSidebar({
   const [adding, setAdding] = useState(false)
   const [newStart, setNewStart] = useState('')
   const [newEnd, setNewEnd] = useState('')
-  const [newType, setNewType] = useState<TerrainTypeValue>('single_track')
+  const [newType, setNewType] = useState<TerrainTypeValue>('technical')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [editingSegmentId, setEditingSegmentId] = useState<string | null>(null)
   const [editStart, setEditStart] = useState('')
   const [editEnd, setEditEnd] = useState('')
-  const [editType, setEditType] = useState<TerrainTypeValue>('single_track')
+  const [editType, setEditType] = useState<TerrainTypeValue>('technical')
 
   const segments = useMemo<TerrainSidebarSegment[]>(() => {
     const sorted = [...terrainNodes].sort((a, b) => a.mile - b.mile)
@@ -80,7 +82,7 @@ export function TerrainSidebar({
       while (endIndex < sorted.length) {
         const next = sorted[endIndex]
         const nextAfterGap = sorted[endIndex + 1]
-        if (isKnownTerrain(node) && next.type === node.type) {
+        if (isKnownTerrain(node) && canMergeTerrainNodes(next, node)) {
           mergedIds.push(next.id)
           endIndex += 1
           continue
@@ -88,7 +90,7 @@ export function TerrainSidebar({
         if (
           isKnownTerrain(node) &&
           next.type === 'other' &&
-          nextAfterGap?.type === node.type &&
+          nextAfterGap && canMergeTerrainNodes(nextAfterGap, node) &&
           nextAfterGap.mile - next.mile <= gapTol
         ) {
           mergedIds.push(next.id, nextAfterGap.id)
@@ -105,7 +107,7 @@ export function TerrainSidebar({
           nodeIds: mergedIds,
           startMile: startNode.mile,
           endMile: sorted[endIndex]?.mile ?? totalDistance,
-          type: startNode.type as TerrainTypeValue,
+          type: normalizeTerrainType(startNode.type),
           difficulty: startNode.difficulty ?? 100,
         })
       }
@@ -119,7 +121,7 @@ export function TerrainSidebar({
     setAdding(false)
     setNewStart('')
     setNewEnd('')
-    setNewType('single_track')
+    setNewType('technical')
     setError(null)
   }
 
@@ -189,7 +191,7 @@ export function TerrainSidebar({
     setEditingSegmentId(null)
     setEditStart('')
     setEditEnd('')
-    setEditType('single_track')
+    setEditType('technical')
     setError(null)
   }
 
@@ -221,9 +223,9 @@ export function TerrainSidebar({
     setError(null)
     try {
       if (onUpdateSegment) {
-        await onUpdateSegment(seg, start, end, editType, getTerrainDefaultDifficulty(editType))
+        await onUpdateSegment(seg, start, end, editType, (editType === seg.type ? seg.difficulty : getTerrainDefaultDifficulty(editType)))
       } else {
-        await onSaveSegment(start, end, editType, getTerrainDefaultDifficulty(editType))
+        await onSaveSegment(start, end, editType, (editType === seg.type ? seg.difficulty : getTerrainDefaultDifficulty(editType)))
       }
       cancelEditSegment()
     } catch (err: unknown) {
