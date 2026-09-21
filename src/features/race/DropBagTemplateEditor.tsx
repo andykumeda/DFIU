@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Race } from '@/types/database'
 import { supabase } from '@/lib/supabase'
 import { useQueryClient } from '@tanstack/react-query'
@@ -63,35 +64,35 @@ export function DropBagTemplateEditor({ race, canEdit }: DropBagTemplateEditorPr
                 Edit Template
             </button>
 
-            {open && (
+            {open && createPortal(
                 <div className="fixed inset-0 z-[200] overflow-y-auto bg-black/80 backdrop-blur-sm">
                     <div className="flex min-h-full items-center justify-center p-4">
                         <div className="bg-neutral-900 w-full max-w-2xl rounded-2xl border border-neutral-800 shadow-2xl flex flex-col max-h-[calc(100dvh-2rem)]">
-                            <div className="flex justify-between items-center p-6 border-b border-neutral-800 shrink-0">
-                                <div>
+                            <div className="flex justify-between items-center gap-3 p-4 sm:p-6 border-b border-neutral-800 shrink-0">
+                                <div className="min-w-0">
                                     <h2 className="text-xl font-bold text-white">Drop Bag Template</h2>
                                     <p className="text-sm text-neutral-400 mt-1">
                                         Default checklist for new drop bags. Runners can still customize per aid station.
                                     </p>
                                 </div>
-                                <button onClick={() => setOpen(false)} className="text-neutral-500 hover:text-white p-2 rounded-lg bg-neutral-800">
+                                <button onClick={() => setOpen(false)} aria-label="Close template editor" className="shrink-0 text-neutral-500 hover:text-white p-2 rounded-lg bg-neutral-800">
                                     <X className="w-5 h-5" />
                                 </button>
                             </div>
 
-                            <div className="p-6 overflow-y-auto flex-1 space-y-3">
+                            <div className="min-h-0 p-4 sm:p-6 overflow-y-auto overflow-x-hidden flex-1 space-y-3">
                                 {items.map((item, idx) => (
-                                    <div key={idx} className="flex items-center gap-2 bg-neutral-950/50 border border-neutral-800 rounded-lg p-2">
+                                    <div key={idx} className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1fr)_minmax(0,auto)_auto] items-center gap-2 bg-neutral-950/50 border border-neutral-800 rounded-lg p-2">
                                         <input
                                             type="text"
                                             value={item.text}
                                             onChange={e => setItems(prev => prev.map((it, i) => i === idx ? { ...it, text: e.target.value } : it))}
-                                            className="flex-1 bg-neutral-900 border border-neutral-800 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500"
+                                            className="col-span-2 sm:col-span-1 min-w-0 w-full bg-neutral-900 border border-neutral-800 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500"
                                         />
                                         <select
                                             value={item.category}
                                             onChange={e => setItems(prev => prev.map((it, i) => i === idx ? { ...it, category: e.target.value } : it))}
-                                            className="bg-neutral-900 border border-neutral-800 rounded px-2 py-2 text-xs text-white focus:outline-none focus:border-orange-500"
+                                            className="min-w-0 w-full bg-neutral-900 border border-neutral-800 rounded px-2 py-2 text-xs text-white focus:outline-none focus:border-orange-500"
                                         >
                                             {DROP_BAG_CATEGORIES.map(cat => (
                                                 <option key={cat.id} value={cat.id}>{cat.label}</option>
@@ -113,19 +114,19 @@ export function DropBagTemplateEditor({ race, canEdit }: DropBagTemplateEditorPr
                                         setItems(prev => [...prev, { text: newText.trim(), category: newCategory }])
                                         setNewText('')
                                     }}
-                                    className="flex gap-2 pt-2 border-t border-neutral-800"
+                                    className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1fr)_minmax(0,auto)_auto] gap-2 pt-2 border-t border-neutral-800"
                                 >
                                     <input
                                         type="text"
                                         value={newText}
                                         onChange={e => setNewText(e.target.value)}
                                         placeholder="Add template item..."
-                                        className="flex-1 bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-2 text-white text-sm focus:outline-none focus:border-orange-500"
+                                        className="col-span-2 sm:col-span-1 min-w-0 w-full bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-2 text-white text-sm focus:outline-none focus:border-orange-500"
                                     />
                                     <select
                                         value={newCategory}
                                         onChange={e => setNewCategory(e.target.value)}
-                                        className="bg-neutral-950 border border-neutral-800 rounded-lg px-2 py-2 text-xs text-white"
+                                        className="min-w-0 w-full bg-neutral-950 border border-neutral-800 rounded-lg px-2 py-2 text-xs text-white"
                                     >
                                         {DROP_BAG_CATEGORIES.filter(c => c.id !== 'conditions').map(cat => (
                                             <option key={cat.id} value={cat.id}>{cat.label}</option>
@@ -137,7 +138,7 @@ export function DropBagTemplateEditor({ race, canEdit }: DropBagTemplateEditorPr
                                 </form>
                             </div>
 
-                            <div className="p-6 border-t border-neutral-800 flex justify-end gap-3 shrink-0">
+                            <div className="p-4 sm:p-6 border-t border-neutral-800 flex flex-wrap justify-end gap-3 shrink-0">
                                 <button onClick={() => setOpen(false)} className="px-4 py-2 text-neutral-400 hover:text-white" disabled={saving}>
                                     Cancel
                                 </button>
@@ -152,7 +153,8 @@ export function DropBagTemplateEditor({ race, canEdit }: DropBagTemplateEditorPr
                             </div>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </>
     )
