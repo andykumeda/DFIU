@@ -2,11 +2,11 @@
 
 **Date:** 2026-09-20
 **Branch:** `main`
-**Status:** Deployed on `main`: corrected bag cards show green onward times, red current-station cutoffs, combined matching destinations, and no card notes/onward cutoffs.
+**Status:** Deployed on `main`: new logo/slogan across headers and footer, favicon and social images; fingerprinted logo fixes stale browser artwork.
 
 ## Current work
 
-- **In progress — supplied logo replacement** (owner: current agent, `main`): use supplied angular mountain/DFIU artwork with orange DON'T F* IT UP! tagline and transparent background. Replace header logo/favicon/social images, add shared footer logo, and remove duplicate adjacent wordmarks. Verify build/lint/deploy plus desktop/mobile live headers. Update branding documentation; preserve original screenshot outside repository.
+- **Deployed — supplied logo replacement** (owner: current agent, `main`, product `56e286d`; initial asset batch `1f28ac6`): replaced artwork with angular mountain, white DFIU and orange DON'T F* IT UP! slogan. Race, Events, Dashboard and public-page headers use the complete lockup; shared footer links the same logo to Events. Removed duplicate old wordmarks. New square favicon and landscape/square social images are published; index and OG server declare their actual dimensions and revised URLs. Reproduced stale old artwork under the public logo URL and fixed it with Vite's fingerprinted `/assets/dfiu-logo-3_Hpn48j.png`; retained public logo copy for older clients. Verified live Events header/footer and race header at 1048×1145 and 390×844, correct 1590×989 source artwork, no horizontal overflow or browser warning/errors. All four public image SHA-256 values match local files; public official-event Twitter/Facebook metadata selects landscape 1730×909 and square 1254×1254 images respectively. 144 tests, lint (0 errors / 49 existing warnings), build/deploy and OG-server syntax check pass. Developer branding docs updated; user-guide changes unnecessary because no workflow changed. No other branches/worktrees or saved race-data changes.
 
 
 - **Deployed — bag card presentation corrections** (owner: current agent, `main`, product `cdeacc0`): onward arrivals/durations are green in cards and editor; current-station card cutoffs are red. Removed onward cutoffs and card notes, preserving saved values and editor/print notes. Destinations sharing a waypoint ID appear once under Next Aid and Drop Bag (or Next Aid and Crew Bag); editor and print preview use the same rows. User/developer guides updated. Verified: 144 tests pass, lint 0 errors / 49 existing warnings, build/deploy pass. Production in-app browser at 1048×1145 and 390×844 confirms colors, no onward cutoffs/card notes, separate Redbox destinations, combined Shortcut Saddle 1 → Chilao 1 and Start → Clear Creek destinations, and no mobile overflow. Combined print preview verified; native print/PDF pagination remains unverified from the original release. A transient 502 during deployment service restart cleared after completion; final browser warning/error log is empty. No saved bag data changed; only main worktree exists.
@@ -62,6 +62,8 @@
 - CI run `34105276946` passed for exact product SHA `ae144867997d8afe927dca690c4ab9262fb61280`. Product commit pushed; no side branches or worktrees.
 
 ## Latest deployed product
+
+- `56e286d`: fingerprinted new logo, following branding asset release `1f28ac6`; live desktop/mobile headers/footer and public favicon/social bytes verified.
 
 - `cdeacc0`: bag card/editor presentation corrections verified on production desktop/mobile, with combined print coverage.
 
