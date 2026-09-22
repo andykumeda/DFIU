@@ -96,15 +96,8 @@ export function EditRaceModal({ race, onClose, onUpdate, onDelete }: EditRaceMod
         setIsLoading(true)
 
         try {
-            const existingResourcesConfig = race.resources_config
-                && typeof race.resources_config === 'object'
-                && !Array.isArray(race.resources_config)
-                ? race.resources_config
-                : savedResourcesConfig
-            const nextResourcesConfig = {
-                ...existingResourcesConfig,
-                registration_label: formData.registration_label.trim() || 'Register Now',
-            }
+            const nextRegistrationLabel = formData.registration_label.trim() || 'Register Now'
+            const registrationLabelChanged = nextRegistrationLabel !== savedResourcesConfig.registration_label
             const racePatch = {
                 name: formData.name,
                 location: formData.location || null,
@@ -113,7 +106,6 @@ export function EditRaceModal({ race, onClose, onUpdate, onDelete }: EditRaceMod
                 is_public: isDemoMode ? false : formData.is_public,
                 public_share_enabled: isDemoMode ? false : formData.public_share_enabled,
                 registration_url: formData.registration_url || null,
-                resources_config: nextResourcesConfig as unknown as Race['resources_config'],
                 support_mode: formData.support_mode,
                 avg_temp_high: formData.avg_temp_high || null,
                 avg_temp_low: formData.avg_temp_low || null,
@@ -131,10 +123,43 @@ export function EditRaceModal({ race, onClose, onUpdate, onDelete }: EditRaceMod
             }
 
             if (isDemoMode) {
-                await saveRacePatch(racePatch)
-                onUpdate({ ...race, ...racePatch })
+                const nextResourcesConfig = {
+                    ...savedResourcesConfig,
+                    registration_label: nextRegistrationLabel,
+                }
+                const demoPatch = {
+                    ...racePatch,
+                    resources_config: nextResourcesConfig as unknown as Race['resources_config'],
+                }
+                await saveRacePatch(demoPatch)
+                onUpdate({ ...race, ...demoPatch })
                 onClose()
                 return
+            }
+
+            // Race Settings normally has no reason to write Resources. Omitting
+            // the JSON prevents a stale settings dialog from replacing newer
+            // team-only notes. If the registration label actually changed,
+            // merge it into a freshly loaded config immediately before saving.
+            let resourcesPatch: Pick<Race, 'resources_config'> | Record<string, never> = {}
+            if (registrationLabelChanged) {
+                const { data: currentRace, error: resourcesError } = await supabase
+                    .from('races')
+                    .select('resources_config')
+                    .eq('id', race.id)
+                    .single()
+                if (resourcesError) throw resourcesError
+                const currentResourcesConfig = currentRace.resources_config
+                    && typeof currentRace.resources_config === 'object'
+                    && !Array.isArray(currentRace.resources_config)
+                    ? currentRace.resources_config
+                    : savedResourcesConfig
+                resourcesPatch = {
+                    resources_config: {
+                        ...currentResourcesConfig,
+                        registration_label: nextRegistrationLabel,
+                    } as unknown as Race['resources_config'],
+                }
             }
 
             const nextShareToken = formData.public_share_enabled
@@ -149,6 +174,7 @@ export function EditRaceModal({ race, onClose, onUpdate, onDelete }: EditRaceMod
                 .from('races') as any)
                 .update({
                     ...racePatch,
+                    ...resourcesPatch,
                     public_share_token: nextShareToken,
                 })
                 .eq('id', race.id)

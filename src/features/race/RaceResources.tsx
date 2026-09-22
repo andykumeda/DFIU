@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Race } from '@/types/database'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/features/auth/AuthContext'
@@ -118,6 +118,18 @@ ${body}
         }
         return drafts
     })
+
+    useEffect(() => {
+        if (isEditing) return
+        const parsed = parseResourcesConfig(race.resources_config, race)
+        const drafts: Record<string, ResourceDateDraft> = {}
+        for (const link of parsed.links) {
+            if (link.hasDate) drafts[link.id] = toLocalDateDraft(link.datetime)
+        }
+        setConfig(parsed)
+        setLodgingInfo(race.lodging_info || '')
+        setDateDrafts(drafts)
+    }, [isEditing, race, race.lodging_info, race.resources_config])
 
     const resetForm = () => {
         const parsed = parseResourcesConfig(race.resources_config, race)

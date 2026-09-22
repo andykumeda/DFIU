@@ -61,6 +61,8 @@ Waypoint synchronization owns official station structure and access fields. It m
 
 Official-update changes default to selected, except a Resources text change whose non-empty official value is an exact substring of longer current text. Treat that as a likely downgrade and leave it unchecked so accepting unrelated updates cannot silently remove appended local material; users can still select it explicitly.
 
+Race Settings must not rewrite `resources_config` during ordinary event-detail saves. It omits that JSON unless the registration-button label actually changed; in that case it reloads the current config immediately before merging the label. `RaceResources` also refreshes its display from changed race props while not editing, so an externally changed row cannot remain hidden behind stale local component state.
+
 - `strava-auth` — OAuth start/callback; gateway JWT verification is disabled because a user may not have a DFIU session yet. OAuth state provides CSRF protection.
 - `strava-activity` — authenticated activity lookup, connection status, and tagged-race listing.
 - `weather` — authenticated weather fetch using the server-side Visual Crossing key.
