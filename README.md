@@ -40,7 +40,7 @@ User-facing behavior and repository documentation are part of every product chan
 -   **Race Overview:** Event details, weather forecasts, course records, cutoffs, qualifiers, and direct links to registration.
 -   **Mile Markers:** Toggle mile markers along the route (auto-scaled by distance).
 -   **Terrain Segments:** Colored five-level terrain overlays, map/profile range selection, sidebar editing, selection highlighting, and reviewed reverse-direction out-and-back pairing.
--   **Pace Plans:** Automatically recalculated Plan A/B/C goal-time plans with grade, terrain, time-of-day, weather, runner-profile, and aid-station-delay factors; optional independent estimated finish and planning band from a baseline and selected history.
+-   **Pace Plans:** Automatically recalculated Plan A/B/C goal-time plans with grade, terrain, time-of-day, weather, the event creator's team-only runner profile, and aid-station-delay factors; optional independent estimated finish and planning band from a baseline and selected history.
 -   **Training & Strava:** GPX import or snapped manual route creation, direction-aware course-overlap detection, GPS-correlated multi-activity Strava analysis, and moving-time comparisons for each individual overlapping section.
 -   **Resources:** Reorderable links and Markdown text resources with icon choices and optional print-ready rendering.
 -   **Crew View:** Mobile-first `/race/:id/crew` view with predicted runner location, next crew aid station, Google Maps destination links, drop bag details, and runner arrival check-ins.

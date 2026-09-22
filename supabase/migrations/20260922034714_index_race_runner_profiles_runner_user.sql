@@ -1,0 +1,2 @@
+CREATE INDEX race_runner_profiles_runner_user_idx
+ON public.race_runner_profiles (runner_user_id);

@@ -39,6 +39,8 @@ Persisted overlap is derived data. Recompute it from current geometries after a 
 
 Plan A/B/C are target-time distributions. Use `formatPlanALabel` from `plan-label.ts` with `computePlanMinutes(...).a` (or the passed `planAGoalMinutes`) for event-specific labels. Never use a section duration or check-in-adjusted projection as the displayed goal. The race-scoped `dfiu:pace-plans:${raceId}` event synchronizes independent hook instances immediately; Supabase realtime handles remote changes. Any change to factor math should update `docs/ALGORITHMS.md`, tests in `src/features/race/*.test.ts`, and any saved model version/snapshot behavior.
 
+The event creator (`races.user_id`) is the runner whose profile drives every event calculation. `race_runner_profiles` stores a synchronized snapshot of that creator's profile; Pace Plan, Training, Crew, Live, Drop Bags, and weather-location timing must read it through `useRaceRunnerProfile`. Never substitute the signed-in viewer's profile. The snapshot has member-only RLS (creator, race membership, or site admin) and is not available through public or private share-link access.
+
 ## Local development
 
 1. Copy `.env.example` to `.env.local` and set Supabase and Mapbox client values.

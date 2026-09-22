@@ -34,7 +34,7 @@ import { ViewWaypointModal } from '@/features/course/ViewWaypointModal'
 import { TerrainSidebar, type TerrainSidebarSegment } from '@/features/course/TerrainSidebar'
 import { TerrainTypeValue, TERRAIN_TYPES, getTerrainColor, getTerrainDefaultDifficulty, normalizeTerrainType, canMergeTerrainNodes } from '@/features/course/terrain-constants'
 import { PaceCalculator } from '@/features/race/PaceCalculator'
-import { parseRunnerProfile } from '@/features/race/runner-profile'
+import { useRaceRunnerProfile } from '@/features/race/useRaceRunnerProfile'
 import { RaceResources } from '@/features/race/RaceResources'
 import { RaceNotes } from '@/features/race/RaceNotes'
 import { WeatherLocations } from '@/features/race/WeatherLocations'
@@ -388,8 +388,12 @@ export function RaceDetail({ raceId }: { raceId: string }) {
     }
   })
   const clock24h = profile?.clock_24h ?? false
-  // Runner pacing profile is per-user (follows the runner across events).
-  const userRunnerProfile = parseRunnerProfile(profile?.runner_profile)
+  // Every team surface uses the event creator/runner's shared snapshot. A
+  // signed-in crew member's personal profile must never affect this event.
+  const { runnerProfile: raceRunnerProfile, loading: raceRunnerProfileLoading } = useRaceRunnerProfile(
+    raceId,
+    isDemoMode ? profile?.runner_profile : undefined,
+  )
 
   const { data: course, isSuccess: courseLoaded } = useQuery({
     queryKey: ['course', raceId],
@@ -1605,7 +1609,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   const isShareView = isShareLinkView()
   const showOwnerChrome = isOwner || isShareView
 
-  if (raceLoading) return <div className='p-8 text-white'>Loading race...</div>
+  if (raceLoading || raceRunnerProfileLoading) return <div className='p-8 text-white'>Loading race...</div>
   if (raceLoadFailed || !race) return <div className='p-8 text-white'>Redirecting...</div>
 
   return (
@@ -1912,7 +1916,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                 waypoints={waypoints}
                 terrainNodes={terrainNodes}
                 clock24h={clock24h}
-                runnerProfile={userRunnerProfile}
+                runnerProfile={raceRunnerProfile}
                 canEditRunnerIdentity={isAdmin || hasOwnerMembership || isRunner}
                 canEditLive={canLogCheckins}
                 canEditLiveFeed={canEditRaceSettings}
@@ -2313,7 +2317,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                 terrainNodes={terrainNodes}
                 clock24h={clock24h}
                 unitsDistance={profile?.units_distance || 'miles'}
-                runnerProfile={userRunnerProfile}
+                runnerProfile={raceRunnerProfile}
                 onUpdateWaypointDelay={handleUpdateWaypointDelay}
               />
             ) : (
@@ -2331,7 +2335,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
             waypoints={waypoints}
             terrainNodes={terrainNodes}
             clock24h={clock24h}
-            runnerProfile={userRunnerProfile}
+            runnerProfile={raceRunnerProfile}
             resetToken={trainingResetToken}
             showDisabledActions={isShareView && !isOwner}
             isActive={visibleTab === 'training'}
@@ -2346,7 +2350,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
               waypoints={waypoints}
               terrainNodes={terrainNodes}
               clock24h={clock24h}
-              runnerProfile={userRunnerProfile}
+              runnerProfile={raceRunnerProfile}
               onGoToPacePlan={() => setActiveTab('plan')}
             />
           </div>
@@ -2571,7 +2575,7 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                   )
                 })()}
 
-                {race && <WeatherLocations race={race} course={course ?? null} waypoints={waypoints} terrainNodes={terrainNodes} runnerProfile={userRunnerProfile} canEdit={canEdit} />}
+                {race && <WeatherLocations race={race} course={course ?? null} waypoints={waypoints} terrainNodes={terrainNodes} runnerProfile={raceRunnerProfile} canEdit={canEdit} />}
               </div>
 
               <div className="bg-neutral-900/30 rounded-xl p-6 border border-neutral-800/50">

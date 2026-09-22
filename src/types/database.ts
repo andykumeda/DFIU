@@ -247,6 +247,42 @@ export type Database = {
           },
         ]
       }
+      race_runner_profiles: {
+        Row: {
+          race_id: string
+          runner_profile: Json
+          runner_user_id: string
+          updated_at: string
+        }
+        Insert: {
+          race_id: string
+          runner_profile?: Json
+          runner_user_id: string
+          updated_at?: string
+        }
+        Update: {
+          race_id?: string
+          runner_profile?: Json
+          runner_user_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "race_runner_profiles_race_id_fkey"
+            columns: ["race_id"]
+            isOneToOne: true
+            referencedRelation: "races"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "race_runner_profiles_runner_user_id_fkey"
+            columns: ["runner_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       training_routes: {
         Row: {
           id: string

@@ -9,7 +9,7 @@ import { RACE_SELECT } from '@/lib/race-select'
 import { useAuth } from '@/features/auth/AuthContext'
 import { usePermission } from '@/features/auth/usePermission'
 import { usePacePlans, computePlanMinutes } from './usePacePlans'
-import { parseRunnerProfile } from './runner-profile'
+import { useRaceRunnerProfile } from './useRaceRunnerProfile'
 import { useRunnerCheckins } from './useRunnerCheckins'
 import { useLatestRunnerLocation } from './useRunnerLocation'
 import { calculatePacePlan, ActualCheckin } from './pace-utils'
@@ -37,9 +37,9 @@ interface CrewViewProps {
 
 export function CrewView({ raceId, embedded = false }: CrewViewProps) {
     const navigate = useNavigate()
-    const { profile } = useAuth() as { profile: { clock_24h?: boolean; runner_profile?: unknown } | null }
+    const { profile } = useAuth() as { profile: { clock_24h?: boolean } | null }
     const clock24h = !!profile?.clock_24h
-    const runnerProfile = useMemo(() => parseRunnerProfile(profile?.runner_profile), [profile?.runner_profile])
+    const { runnerProfile, loading: runnerProfileLoading } = useRaceRunnerProfile(raceId)
     const { canLogCheckins } = usePermission(raceId)
 
     const [race, setRace] = useState<Race | null>(null)
@@ -291,7 +291,7 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
         }
     }
 
-    if (loading) return <div className='p-6 text-white text-center'>Loading...</div>
+    if (loading || runnerProfileLoading) return <div className='p-6 text-white text-center'>Loading...</div>
     if (!race) {
         return (
             <div className='p-6 text-white text-center'>
