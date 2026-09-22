@@ -57,6 +57,8 @@ Official changes are opt-in for clones. `buildOfficialUpdateSections` compares t
 
 Waypoint synchronization owns official station structure and access fields. It must preserve runner-owned `drop_bag_items`, `drop_bag_name`, `drop_bag_notes`, and `delay` on existing linked waypoints. Training routes use `official_source_training_route_id`; official inserts and route-content updates bump the source revision. Route sync owns the official name, notes, path/GPX, elevation, course overlap, and ordering fields while preserving `strava_activity_inputs`, `strava_activity_results`, and personal-only routes. Pace plans, check-ins, support mode, members, and the clone title remain outside every official-update section. Keep the diff field lists aligned with the columns each section writes so the review never applies an undisclosed field.
 
+Official-update changes default to selected, except a Resources text change whose non-empty official value is an exact substring of longer current text. Treat that as a likely downgrade and leave it unchecked so accepting unrelated updates cannot silently remove appended local material; users can still select it explicitly.
+
 - `strava-auth` — OAuth start/callback; gateway JWT verification is disabled because a user may not have a DFIU session yet. OAuth state provides CSRF protection.
 - `strava-activity` — authenticated activity lookup, connection status, and tagged-race listing.
 - `weather` — authenticated weather fetch using the server-side Visual Crossing key.

@@ -16,6 +16,8 @@ export type OfficialUpdateChange = {
   current: string
   official: string
   apply: OfficialUpdateApplyTarget
+  /** False when applying the official value is a likely content downgrade. */
+  defaultSelected?: boolean
 }
 
 export type OfficialUpdateSection = {
@@ -32,6 +34,11 @@ export type OfficialUpdateData = {
   terrain: TerrainNode[]
   trainingRoutes: TrainingRoute[]
 }
+
+export const getDefaultOfficialUpdateChangeIds = (sections: OfficialUpdateSection[]) =>
+  sections.flatMap(section => section.changes
+    .filter(change => change.defaultSelected !== false)
+    .map(change => change.id))
 
 /** Treat blank string, null, and undefined as the same empty value; omit null keys in objects. */
 export function normalizeComparable(value: unknown): unknown {
@@ -100,9 +107,20 @@ function replaceChange(
   apply: OfficialUpdateApplyTarget,
   currentDisplay = displayFull(current),
   officialDisplay = displayFull(official),
+  defaultSelected = true,
 ): OfficialUpdateChange[] {
   if (same(current, official)) return []
-  return [{ id, label, current: currentDisplay, official: officialDisplay, apply }]
+  return [{ id, label, current: currentDisplay, official: officialDisplay, apply, defaultSelected }]
+}
+
+/** Protect appended local prose when the official copy is an exact older subset. */
+function isLikelyTextDowngrade(current: unknown, official: unknown) {
+  if (typeof current !== 'string' || typeof official !== 'string') return false
+  const currentText = current.trim()
+  const officialText = official.trim()
+  return officialText.length > 0
+    && currentText.length > officialText.length
+    && currentText.includes(officialText)
 }
 
 function resourceConfigChanges(current: unknown, official: unknown): OfficialUpdateChange[] {
@@ -133,6 +151,9 @@ function resourceConfigChanges(current: unknown, official: unknown): OfficialUpd
         existing[field],
         entry[field],
         { kind: 'resources_link_field', linkKey: key, field, value: entry[field] },
+        displayFull(existing[field]),
+        displayFull(entry[field]),
+        !isLikelyTextDowngrade(existing[field], entry[field]),
       ))
     }
   }
@@ -156,6 +177,9 @@ function resourceConfigChanges(current: unknown, official: unknown): OfficialUpd
       currentConfig[field],
       officialConfig[field],
       { kind: 'resources_field', field, value: officialConfig[field] },
+      displayFull(currentConfig[field]),
+      displayFull(officialConfig[field]),
+      !isLikelyTextDowngrade(currentConfig[field], officialConfig[field]),
     ))
   }
   return changes.length ? changes : [{

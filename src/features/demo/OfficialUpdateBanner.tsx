@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Check, ChevronRight, X } from 'lucide-react'
-import type { OfficialUpdateChange, OfficialUpdateSection } from './official-update-diff'
+import { getDefaultOfficialUpdateChangeIds, type OfficialUpdateChange, type OfficialUpdateSection } from './official-update-diff'
 
 type OfficialUpdateBannerProps = {
   sections: OfficialUpdateSection[]
@@ -40,18 +40,18 @@ function ChangeCompare({ change, checked, onToggle }: {
 
 export function OfficialUpdateBanner({ sections, loading, busy, onApply }: OfficialUpdateBannerProps) {
   const [open, setOpen] = useState(false)
-  const allChangeIds = sections.flatMap(section => section.changes.map(change => change.id))
+  const defaultChangeIds = getDefaultOfficialUpdateChangeIds(sections)
   const [selected, setSelected] = useState<Set<string> | null>(null)
-  const selectedIds = selected ?? new Set(allChangeIds)
+  const selectedIds = selected ?? new Set(defaultChangeIds)
 
   const toggle = (id: string) => setSelected(current => {
-    const next = new Set(current ?? allChangeIds)
+    const next = new Set(current ?? defaultChangeIds)
     if (next.has(id)) next.delete(id)
     else next.add(id)
     return next
   })
   const toggleSection = (section: OfficialUpdateSection) => setSelected(current => {
-    const next = new Set(current ?? allChangeIds)
+    const next = new Set(current ?? defaultChangeIds)
     const ids = section.changes.map(change => change.id)
     const allOn = ids.every(id => next.has(id))
     for (const id of ids) {
@@ -84,7 +84,7 @@ export function OfficialUpdateBanner({ sections, loading, busy, onApply }: Offic
           <div className='flex items-start justify-between gap-4 border-b border-neutral-800 p-5'>
             <div>
               <h2 className='text-xl font-bold text-white'>Review official updates</h2>
-              <p className='mt-1 text-sm text-neutral-400'>Each change shows Current beside Official. Check only the values you want to replace; unchecked values stay as they are now.</p>
+              <p className='mt-1 text-sm text-neutral-400'>Each change shows Current beside Official. Check only the values you want to replace; unchecked values stay as they are now. Older official text is left unchecked when your current text contains additional content.</p>
             </div>
             <button type='button' onClick={() => setOpen(false)} className='rounded-lg bg-neutral-800 p-2 text-neutral-400 hover:text-white' aria-label='Close update review'><X className='w-5 h-5' /></button>
           </div>

@@ -6,6 +6,8 @@ DFIU brings a race course, pace plan, logistics, crew coordination, training rou
 
 Most people begin by opening a public event and choosing **Clone Race** to make a personal planning copy. Official event pages are shared, read-only sources for everyone except the site administrator. Clone the event before changing pace goals, training, course details, Resources, crew, or drop bags. You can also create a new event from **New Race** when you are starting without an existing public course.
 
+When an official update is available, compare **Current** with **Official** before applying it. Changes are normally selected for convenience, but an older official Resources text is left unchecked when your current text contains that official copy plus additional material. Select it manually only if you intentionally want the shorter official version.
+
 ### Clone an existing event
 
 1. Open a public event from **Public Events**.

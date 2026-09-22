@@ -2,9 +2,13 @@
 
 **Date:** 2026-09-21
 **Branch:** `main`
-**Status:** Deployed on `main`: all browser annotations for weather, drop bags, and configurable Notes sections are implemented.
+**Status:** In progress on `main`: protecting expanded Resources text from older official updates; pace-plan member consistency root cause confirmed and awaiting a privacy-boundary decision.
 
 ## Current work
+
+- **In progress — Resources downgrade protection** (`main`, owner: current agent): production AC100 clone `5c9ccb94…` has the expanded 1,428-character Runner Notes while official source `fca7696b…` still has the older 588-character subset. Revision 18's review preselected that older text beside an unrelated drop-bag change, so accepting selected updates could remove the appended Trail Workdays and Training Camp content. The review now leaves exact older-subset Resources text unchecked by default while preserving explicit opt-in. Focused/full verification, deploy, and production review-modal confirmation remain.
+
+- **Blocked for user privacy choice — shared pace-plan calculations** (`main`, owner: current agent): production data and code tracing confirm Plan A/B/C goals are shared per race, but Pace Plan, Training, Crew, Live, and Drop Bags recalculate with the signed-in viewer's private runner profile. Multi-member races have distinct profiles, producing different arrivals. A direct shared-profile snapshot would resolve every derived surface but would expose the runner's strength ratings, pacing style, baseline pace, and default stop time to authorized race members; the hosted change was rejected before execution and no production data changed. Await explicit approval for that member-readable scope, or implement a larger derived-schedule-only design.
 
 - **Deployed — browser annotations and template reset** (`main`, product `8906991`): removed annotated weather/lighting copy and per-location weather links; the Overview now uses a no-login National Weather Service point-forecast reference. Drop Bags now label Start time, let custom items choose a category, propagate template changes with stable IDs, and offer **Save & Replace All Bags** to clear item contents while preserving bag names/notes. Notes sections are addable, renameable, reorderable, type-selectable (checklist or Markdown note), and deletable; legacy fixed JSON is migrated at read time, so no schema migration was needed. Verified 176 tests, TypeScript, lint 0 errors / 48 existing warnings, build/deploy, and production desktop plus 390x844 mobile with no horizontal overflow or browser warnings/errors. No race data was saved during browser verification. Production footer and browser log rechecked after the clean deployment at `8906991`; no other worktrees or unmerged product work.
 

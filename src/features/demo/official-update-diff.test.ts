@@ -81,4 +81,27 @@ describe('official update review', () => {
     expect(merged.schedule_info).toBe(longCurrent)
     expect((merged.links as Array<{ content?: string }>)[0].content).toBe('longer official notes')
   })
+
+  it('does not preselect an older official text that is contained in expanded current notes', () => {
+    const oldNotes = '# Important Runner Information\n- Check your roster name.'
+    const expandedNotes = `${oldNotes}\n\n# Training Camp\n- RSVP before race week.`
+    const race = {
+      id: 'clone',
+      resources_config: { links: [{ id: 'notes', label: 'Runner Notes', content: expandedNotes }] },
+    } as unknown as Race
+    const officialRace = {
+      ...race,
+      id: 'source',
+      resources_config: { links: [{ id: 'notes', label: 'Runner Notes', content: oldNotes }] },
+    } as unknown as Race
+
+    const sections = buildOfficialUpdateSections(
+      { race, course: null, waypoints: [], terrain: [], trainingRoutes: [] },
+      { race: officialRace, course: null, waypoints: [], terrain: [], trainingRoutes: [] },
+    )
+    const notes = sections.find(section => section.id === 'resources')?.changes[0]
+
+    expect(notes?.id).toBe('resources.link.notes.content')
+    expect(notes?.defaultSelected).toBe(false)
+  })
 })

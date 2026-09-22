@@ -2,6 +2,7 @@ import { createElement } from 'react'
 import { describe, expect, it } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { OfficialUpdateBanner } from './OfficialUpdateBanner'
+import { getDefaultOfficialUpdateChangeIds } from './official-update-diff'
 import type { OfficialUpdateSection } from './official-update-diff'
 
 const sections: OfficialUpdateSection[] = [{
@@ -31,5 +32,23 @@ describe('official update notification', () => {
   it('carries current and official values for side-by-side review', () => {
     expect(sections[0].changes[0].current).toBe('110')
     expect(sections[0].changes[0].official).toBe('118')
+  })
+  it('leaves likely content downgrades unchecked while selecting normal changes', () => {
+    const guardedSections: OfficialUpdateSection[] = [{
+      ...sections[0],
+      changes: [
+        sections[0].changes[0],
+        {
+          id: 'resources.link.notes.content',
+          label: 'Runner Notes — content',
+          current: 'Expanded notes',
+          official: 'Old notes',
+          apply: { kind: 'resources_link_field', linkKey: 'notes', field: 'content', value: 'Old notes' },
+          defaultSelected: false,
+        },
+      ],
+    }]
+
+    expect(getDefaultOfficialUpdateChangeIds(guardedSections)).toEqual(['terrain.difficulty'])
   })
 })
