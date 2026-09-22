@@ -55,6 +55,7 @@ export function getBagKindLabel(kind: BagKind): string {
 }
 
 export interface DropBagTemplateItem {
+    id: string
     text: string
     category: string
 }
@@ -65,6 +66,8 @@ export interface DropBagItem {
     category: string
     checked: boolean
     quantity?: string
+    templateId?: string
+    templateText?: string
 }
 
 export const DROP_BAG_CATEGORIES = [
@@ -76,33 +79,33 @@ export const DROP_BAG_CATEGORIES = [
 ] as const
 
 export const DEFAULT_DROP_BAG_TEMPLATE: DropBagTemplateItem[] = [
-    { text: 'Flasks / Bladder refilled', category: 'hydration' },
-    { text: 'Gels / Chews', category: 'hydration' },
-    { text: 'Drink Mix / Electrolytes', category: 'hydration' },
-    { text: 'Solid Food (Bars, Waffles)', category: 'hydration' },
-    { text: 'Fresh Socks', category: 'gear' },
-    { text: 'Extra Shoes', category: 'gear' },
-    { text: 'Clean Shirt', category: 'gear' },
-    { text: 'Chafe Cream', category: 'medical' },
-    { text: 'Blister Kit / Tape', category: 'medical' },
-    { text: 'Sunscreen', category: 'medical' },
-    { text: 'Tissues / Wipes', category: 'medical' },
+    { id: 'hydration-refill', text: 'Flasks / Bladder refilled', category: 'hydration' },
+    { id: 'gels-chews', text: 'Gels / Chews', category: 'hydration' },
+    { id: 'drink-mix', text: 'Drink Mix / Electrolytes', category: 'hydration' },
+    { id: 'solid-food', text: 'Solid Food (Bars, Waffles)', category: 'hydration' },
+    { id: 'fresh-socks', text: 'Fresh Socks', category: 'gear' },
+    { id: 'extra-shoes', text: 'Extra Shoes', category: 'gear' },
+    { id: 'clean-shirt', text: 'Clean Shirt', category: 'gear' },
+    { id: 'chafe-cream', text: 'Chafe Cream', category: 'medical' },
+    { id: 'blister-kit', text: 'Blister Kit / Tape', category: 'medical' },
+    { id: 'sunscreen', text: 'Sunscreen', category: 'medical' },
+    { id: 'tissues-wipes', text: 'Tissues / Wipes', category: 'medical' },
 ]
 
 export const DEFAULT_START_BAG_TEMPLATE: DropBagTemplateItem[] = [
-    { text: 'Race bib / timing chip', category: 'gear' },
-    { text: 'Start bottles / bladder filled', category: 'hydration' },
-    { text: 'Start calories / gels', category: 'hydration' },
-    { text: 'Phone / watch charged', category: 'gear' },
-    { text: 'Sunscreen / anti-chafe applied', category: 'medical' },
-    { text: 'Headlamp if starting in the dark', category: 'conditions' },
+    { id: 'start-race-bib', text: 'Race bib / timing chip', category: 'gear' },
+    { id: 'start-hydration', text: 'Start bottles / bladder filled', category: 'hydration' },
+    { id: 'start-calories', text: 'Start calories / gels', category: 'hydration' },
+    { id: 'start-devices', text: 'Phone / watch charged', category: 'gear' },
+    { id: 'start-skin-care', text: 'Sunscreen / anti-chafe applied', category: 'medical' },
+    { id: 'start-headlamp', text: 'Headlamp if starting in the dark', category: 'conditions' },
 ]
 
 export const DEFAULT_FINISH_BAG_TEMPLATE: DropBagTemplateItem[] = [
-    { text: 'Dry clothes', category: 'gear' },
-    { text: 'Recovery shoes / sandals', category: 'gear' },
-    { text: 'Recovery drink / meal', category: 'hydration' },
-    { text: 'Warm layer', category: 'gear' },
+    { id: 'finish-dry-clothes', text: 'Dry clothes', category: 'gear' },
+    { id: 'finish-shoes', text: 'Recovery shoes / sandals', category: 'gear' },
+    { id: 'finish-food', text: 'Recovery drink / meal', category: 'hydration' },
+    { id: 'finish-warm-layer', text: 'Warm layer', category: 'gear' },
 ]
 
 function coerceTemplateArray(raw: unknown): unknown[] {
@@ -126,7 +129,7 @@ export function parseDropBagTemplate(raw: unknown): DropBagTemplateItem[] {
     if (!templateItems.length) return [...DEFAULT_DROP_BAG_TEMPLATE]
 
     const items = templateItems
-        .map((item): DropBagTemplateItem | null => {
+        .map((item, index): DropBagTemplateItem | null => {
             if (!item || typeof item !== 'object') return null
             const itemRecord = item as Record<string, unknown>
             const text = normalizeText(itemRecord)
@@ -134,7 +137,9 @@ export function parseDropBagTemplate(raw: unknown): DropBagTemplateItem[] {
             const category = typeof itemRecord.category === 'string' && itemRecord.category.trim()
                 ? itemRecord.category.trim()
                 : 'custom'
-            return { text, category }
+            const savedId = typeof itemRecord.id === 'string' ? itemRecord.id.trim() : ''
+            const id = savedId || `legacy-${index}-${text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'item'}`
+            return { id, text, category }
         })
         .filter((item): item is DropBagTemplateItem => item !== null)
         .filter(item => item.text.length > 0)
@@ -163,6 +168,12 @@ export function parseDropBagItems(raw: unknown): DropBagItem[] {
                 category,
                 checked: itemRecord.checked === true,
                 quantity: quantity == null ? undefined : String(quantity),
+                templateId: typeof itemRecord.templateId === 'string' && itemRecord.templateId.trim()
+                    ? itemRecord.templateId.trim()
+                    : undefined,
+                templateText: typeof itemRecord.templateText === 'string'
+                    ? itemRecord.templateText
+                    : undefined,
             }
         })
         .filter((item): item is DropBagItem => item !== null)
@@ -172,11 +183,13 @@ export function seedDropBagItems(
     template: DropBagTemplateItem[],
     opts: { isNight: boolean; isHot: boolean; isCold: boolean }
 ): DropBagItem[] {
-    const items: DropBagItem[] = template.map((item, i) => ({
-        id: `tpl_${i}`,
+    const items: DropBagItem[] = template.map((item) => ({
+        id: `tpl_${item.id}`,
         text: item.text,
         category: item.category,
         checked: false,
+        templateId: item.id,
+        templateText: item.text,
     }))
 
     if (opts.isNight) {
@@ -241,31 +254,31 @@ export function mergeTemplateIntoItems(
     opts: { isNight: boolean; isHot: boolean; isCold: boolean }
 ): DropBagItem[] {
     const existingByKey = new Map(existing.map(item => [itemKey(item), item]))
+    const existingByTemplateId = new Map(existing.flatMap(item => item.templateId ? [[item.templateId, item] as const] : []))
     const existingById = new Map(existing.map(item => [item.id, item]))
     const result: DropBagItem[] = []
     const usedKeys = new Set<string>()
     const usedIds = new Set<string>()
-    const templateKeys = new Set(template.map(itemKey))
-
     template.forEach((tpl, i) => {
         const key = itemKey(tpl)
         if (usedKeys.has(key)) return
-        const templateId = `tpl_${i}`
+        const templateItemId = `tpl_${tpl.id}`
         const priorByKey = existingByKey.get(key)
-        const priorById = existingById.get(templateId)
-        const priorByIdKey = priorById ? itemKey(priorById) : null
-        const idMatchIsUserRename = priorByIdKey !== null && priorByIdKey !== key && !templateKeys.has(priorByIdKey)
-        const prior = priorByKey ?? (idMatchIsUserRename ? priorById : undefined)
-        const id = prior && !usedIds.has(prior.id) ? prior.id : templateId
+        const priorByStableId = existingByTemplateId.get(tpl.id)
+        const legacyPrior = existingById.get(`tpl_${i}`)
+        const prior = priorByStableId ?? priorByKey ?? legacyPrior
+        const hasPerBagRename = !!prior?.templateText && prior.text !== prior.templateText
         result.push({
-            id,
-            text: prior && itemKey(prior) !== key ? prior.text : tpl.text,
+            id: templateItemId,
+            text: hasPerBagRename ? prior.text : tpl.text,
             category: tpl.category,
             checked: prior?.checked ?? false,
             quantity: prior?.quantity,
+            templateId: tpl.id,
+            templateText: tpl.text,
         })
         usedKeys.add(key)
-        usedIds.add(id)
+        usedIds.add(templateItemId)
         if (prior) {
             usedKeys.add(itemKey(prior))
             usedIds.add(prior.id)
@@ -295,7 +308,9 @@ export function mergeTemplateIntoItems(
     for (const item of existing) {
         const key = itemKey(item)
         if (usedKeys.has(key) || usedIds.has(item.id)) continue
-        if (item.category === 'custom' || (item.category === 'conditions' && item.checked)) {
+        const isLegacyTemplateItem = /^tpl_\d+$/.test(item.id)
+        const isPerBagItem = !item.templateId && !isLegacyTemplateItem
+        if (isPerBagItem || (item.category === 'conditions' && item.checked)) {
             result.push(item)
             usedKeys.add(key)
             usedIds.add(item.id)
@@ -303,6 +318,22 @@ export function mergeTemplateIntoItems(
     }
 
     return result
+}
+
+export function createDropBagItem(text: string, category: string, id = `custom_${Date.now()}`): DropBagItem {
+    return {
+        id,
+        text: text.trim(),
+        category,
+        checked: true,
+    }
+}
+
+export function clearDropBagChecklistItems(waypoints: Waypoint[], bagWaypointIds: readonly string[]): Waypoint[] {
+    const bagIds = new Set(bagWaypointIds)
+    return waypoints.map(waypoint => bagIds.has(waypoint.id)
+        ? { ...waypoint, drop_bag_items: null }
+        : waypoint)
 }
 
 export function getDropBagEditorItems(

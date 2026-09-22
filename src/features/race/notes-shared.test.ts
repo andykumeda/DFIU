@@ -4,36 +4,68 @@ import {
   canViewNotesItem,
   filterVisibleNotes,
   filterVisibleTodos,
+  newNotesSection,
   parseNotesConfig,
 } from './notes-shared'
 
 describe('parseNotesConfig', () => {
-  it('returns empty defaults for null/invalid input', () => {
+  it('returns the six default editable sections for null or invalid input', () => {
     expect(parseNotesConfig(null)).toEqual(buildDefaultNotesConfig())
     expect(parseNotesConfig('nope')).toEqual(buildDefaultNotesConfig())
   })
 
-  it('parses todos and notes with visibility fallbacks', () => {
+  it('migrates the original fixed todo and note records into ordered sections', () => {
     const parsed = parseNotesConfig({
       todos: {
         one_month: [{ id: 't1', text: 'Book lodging', done: true }],
-        one_week: [{ id: '', text: 'bad' }],
         night_before: [{ id: 't2', text: 'Pack bags', done: false, visibility: 'runner' }],
       },
       notes: {
         personal: [{ id: 'n1', content: 'Solo focus', visibility: 'runner' }],
         crew: [{ id: 'n2', content: 'Meet at Clear Creek', visibility: 'crew' }],
-        pacer: [{ id: 'n3', content: '' }],
       },
     })
 
-    expect(parsed.todos.one_month).toEqual([
+    expect(parsed.sections.map(section => [section.id, section.type, section.title])).toEqual([
+      ['one_month', 'todo', 'Todo 1 month before'],
+      ['one_week', 'todo', 'Todo 1 week before'],
+      ['night_before', 'todo', 'Todo night before'],
+      ['personal', 'note', 'Notes (Personal)'],
+      ['crew', 'note', 'Notes (Crew)'],
+      ['pacer', 'note', 'Notes (Pacer)'],
+    ])
+    expect(parsed.sections[0].items).toEqual([
       { id: 't1', text: 'Book lodging', done: true, visibility: 'all' },
     ])
-    expect(parsed.todos.one_week).toEqual([])
-    expect(parsed.todos.night_before[0].visibility).toBe('runner')
-    expect(parsed.notes.personal[0].content).toBe('Solo focus')
-    expect(parsed.notes.pacer[0]).toEqual({ id: 'n3', content: '', visibility: 'all' })
+    expect(parsed.sections[3].items).toEqual([
+      { id: 'n1', content: 'Solo focus', visibility: 'runner' },
+    ])
+  })
+
+  it('parses saved custom sections and removes invalid or duplicate sections', () => {
+    const parsed = parseNotesConfig({
+      sections: [
+        { id: 'travel', title: 'Travel', type: 'todo', items: [{ id: 't1', text: 'Fuel car', done: false }] },
+        { id: 'strategy', title: 'Race strategy', type: 'note', defaultVisibility: 'runner', items: [{ id: 'n1', content: 'Stay easy', visibility: 'runner' }] },
+        { id: 'travel', title: 'Duplicate', type: 'note', items: [] },
+        { id: '', title: 'Invalid', type: 'todo', items: [] },
+      ],
+    })
+
+    expect(parsed.sections).toHaveLength(2)
+    expect(parsed.sections[0]).toMatchObject({ id: 'travel', title: 'Travel', type: 'todo' })
+    expect(parsed.sections[1]).toMatchObject({ id: 'strategy', title: 'Race strategy', type: 'note', defaultVisibility: 'runner' })
+  })
+})
+
+describe('newNotesSection', () => {
+  it('creates the selected section type with an editable title and no items', () => {
+    expect(newNotesSection('todo', 'Race morning', 'section_1')).toEqual({
+      id: 'section_1', title: 'Race morning', type: 'todo', defaultVisibility: 'all', items: [],
+    })
+    expect(newNotesSection('note', 'Nutrition plan', 'section_2')).toEqual({
+      id: 'section_2', title: 'Nutrition plan', type: 'note', defaultVisibility: 'all', items: [],
+    })
   })
 })
 
@@ -58,24 +90,15 @@ describe('canViewNotesItem', () => {
 describe('filter helpers', () => {
   it('filters todo and note lists for the viewer', () => {
     const roles = { canEdit: false, isRunner: true, isCrew: false, isPacer: true }
-    const todos = filterVisibleTodos(
-      [
-        { id: '1', text: 'A', done: false, visibility: 'all' },
-        { id: '2', text: 'B', done: false, visibility: 'crew' },
-        { id: '3', text: 'C', done: true, visibility: 'pacer' },
-        { id: '4', text: 'D', done: false, visibility: 'runner' },
-      ],
-      roles,
-    )
-    const notes = filterVisibleNotes(
-      [
-        { id: 'n1', content: 'x', visibility: 'crew' },
-        { id: 'n2', content: 'y', visibility: 'runner' },
-      ],
-      roles,
-    )
-
-    expect(todos.map(t => t.id)).toEqual(['1', '3', '4'])
-    expect(notes.map(n => n.id)).toEqual(['n2'])
+    expect(filterVisibleTodos([
+      { id: '1', text: 'A', done: false, visibility: 'all' },
+      { id: '2', text: 'B', done: false, visibility: 'crew' },
+      { id: '3', text: 'C', done: true, visibility: 'pacer' },
+      { id: '4', text: 'D', done: false, visibility: 'runner' },
+    ], roles).map(item => item.id)).toEqual(['1', '3', '4'])
+    expect(filterVisibleNotes([
+      { id: 'n1', content: 'x', visibility: 'crew' },
+      { id: 'n2', content: 'y', visibility: 'runner' },
+    ], roles).map(item => item.id)).toEqual(['n2'])
   })
 })

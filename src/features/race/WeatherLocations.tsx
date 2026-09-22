@@ -4,7 +4,6 @@ import { useQueryClient } from '@tanstack/react-query'
 import { MapPin, Plus, Trash2, RefreshCw, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { fetchWeatherForRace } from '@/lib/weather-service'
-import { getWeatherLocationUrl } from '@/lib/weather-links'
 import { formatStoredClockTime } from '@/lib/utils'
 import { useAuth } from '@/features/auth/AuthContext'
 import type { Race, Course } from '@/types/database'
@@ -181,12 +180,6 @@ export function WeatherLocations({ race, course, waypoints, terrainNodes, runner
                 )}
             </div>
 
-            <p className="mb-3 text-xs text-neutral-400">
-                Saved race-day daily highs, lows and precipitation chances at each aid station.
-                These use the race start date, not the Plan A arrival time or the next day for overnight arrivals.
-                They may be historical estimates rather than an updated forecast; see the source above.
-            </p>
-
             {locations.length === 0 && !adding && (
                 <p className="text-neutral-600 text-xs">
                     {canEdit
@@ -229,11 +222,6 @@ export function WeatherLocations({ race, course, waypoints, terrainNodes, runner
                                 )}
                             </div>
                         </div>
-                        {loc.query.trim() && (
-                            <a href={getWeatherLocationUrl(loc.query)} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-xs text-blue-400 hover:text-blue-300 underline">
-                                Weather at this location ↗
-                            </a>
-                        )}
                         {loc.waypoint_name && planA && (() => {
                             const visitTimes = planA.waypointArrivals
                                 .filter(arrival => aidStations.some(station => station.name === loc.waypoint_name && station.id === arrival.waypointId))

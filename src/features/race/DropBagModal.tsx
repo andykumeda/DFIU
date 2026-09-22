@@ -8,6 +8,7 @@ import { useDemoRacePersist } from '@/features/demo/useDemoRacePersist'
 import {
     DROP_BAG_CATEGORIES,
     DropBagItem,
+    createDropBagItem,
     getDropBagEditorItems,
     getBagKind,
     getBagKindLabel,
@@ -57,6 +58,7 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
     const { isDemoMode, saveWaypoints } = useDemoRacePersist(race.id)
     const [items, setItems] = useState<DropBagItem[]>([])
     const [newItemText, setNewItemText] = useState('')
+    const [newItemCategory, setNewItemCategory] = useState('custom')
     const [saving, setSaving] = useState(false)
     const [bagName, setBagName] = useState(waypoint.drop_bag_name || '')
     const [bagNotes, setBagNotes] = useState(() => getDropBagNotes(waypoint))
@@ -175,12 +177,7 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
         e.preventDefault()
         if (!canEdit || !newItemText.trim()) return
 
-        const newItem: DropBagItem = {
-            id: `custom_${Date.now()}`,
-            text: newItemText.trim(),
-            category: 'custom',
-            checked: true
-        }
+        const newItem = createDropBagItem(newItemText, newItemCategory)
         setItems(prev => [...prev, newItem])
         setNewItemText('')
     }
@@ -212,7 +209,7 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
                             {arrivalTime && (
                                 <span className="flex items-center gap-1 bg-neutral-950 px-2 py-0.5 rounded border border-neutral-800">
                                     <Clock className="w-3.5 h-3.5" />
-                                    <span className="text-neutral-500">Arrival</span>
+                                    <span className="text-neutral-500">{isStartBag ? 'Start time' : 'Arrival'}</span>
                                     <span className="font-mono text-neutral-200">{arrivalTime.timeOfDay}</span>
                                     {isNight ? <Moon className="w-3 h-3 text-blue-300 ml-1" /> : <Sun className="w-3 h-3 text-yellow-500 ml-1" />}
                                 </span>
@@ -366,14 +363,24 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
                     {canEdit && (
                         <div className="pt-4 border-t border-neutral-800">
                             <h3 className="text-sm font-bold uppercase tracking-wider text-neutral-500 mb-3">Add Custom Item</h3>
-                            <form onSubmit={addItem} className="flex gap-2">
+                            <form onSubmit={addItem} className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto_auto] gap-2">
                                 <input
                                     type="text"
                                     value={newItemText}
                                     onChange={e => setNewItemText(e.target.value)}
                                     placeholder="Add custom item (e.g. Magic Noodle Soup)"
-                                    className="flex-1 bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-2.5 text-white placeholder-neutral-600 focus:outline-none focus:border-orange-500 transition-colors"
+                                    className="min-w-0 bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-2.5 text-white placeholder-neutral-600 focus:outline-none focus:border-orange-500 transition-colors"
                                 />
+                                <select
+                                    aria-label="Custom item category"
+                                    value={newItemCategory}
+                                    onChange={e => setNewItemCategory(e.target.value)}
+                                    className="bg-neutral-950 border border-neutral-800 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500"
+                                >
+                                    {DROP_BAG_CATEGORIES.filter(category => category.id !== 'conditions').map(category => (
+                                        <option key={category.id} value={category.id}>{category.label}</option>
+                                    ))}
+                                </select>
                                 <button
                                     type="submit"
                                     disabled={!newItemText.trim()}

@@ -2,9 +2,11 @@
 
 **Date:** 2026-09-21
 **Branch:** `main`
-**Status:** Deployed on `main`: Notes tab between Drop Bags and Resources. Hosted `notes_config` migration applied.
+**Status:** Verified and deployed on `main`: all browser annotations for weather, drop bags, and configurable Notes sections are implemented; final clean product hash follows after commit.
 
 ## Current work
+
+- **Verified — browser annotations and template reset**: removed annotated weather/lighting copy and per-location weather links; the Overview now uses a no-login National Weather Service point-forecast reference. Drop Bags now label Start time, let custom items choose a category, propagate template changes with stable IDs, and offer **Save & Replace All Bags** to clear item contents while preserving bag names/notes. Notes sections are addable, renameable, reorderable, type-selectable (checklist or Markdown note), and deletable; legacy fixed JSON is migrated at read time, so no schema migration was needed. Verified 176 tests, TypeScript, lint 0 errors / 48 existing warnings, build/deploy, and production desktop plus 390x844 mobile with no horizontal overflow or browser warnings/errors. No race data was saved during browser verification. Final clean product hash will be recorded after commit/deploy.
 
 - **Deployed — Notes tab** (`main`, product `b07bcfc`): Notes tab between Drop Bags and Resources with Todo 1 month / 1 week / night before checklists and Personal / Crew / Pacer Markdown notes. Per-item visibility (all / crew / pacer / runner); editors see all; others filtered by membership role. Per-section print via popup HTML. Stored in `races.notes_config` jsonb; clone copies it; official sync does not overwrite; not an official-update review area. Hosted DFIU migration applied. Verified 166 tests, lint 0 errors, build/deploy. User and developer guides updated. Post-deploy git describe `b07bcfc`; main pushed.
 

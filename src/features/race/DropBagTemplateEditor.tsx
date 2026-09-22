@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Race } from '@/types/database'
+import { Race, Waypoint } from '@/types/database'
 import { supabase } from '@/lib/supabase'
 import { useQueryClient } from '@tanstack/react-query'
 import { Plus, Save, Trash2, X, Settings2 } from 'lucide-react'
 import {
+    clearDropBagChecklistItems,
     DROP_BAG_CATEGORIES,
     DropBagTemplateItem,
     parseDropBagTemplate,
@@ -14,11 +15,13 @@ import { useDemoRacePersist } from '@/features/demo/useDemoRacePersist'
 interface DropBagTemplateEditorProps {
     race: Race
     canEdit: boolean
+    waypoints: Waypoint[]
+    bagWaypointIds: string[]
 }
 
-export function DropBagTemplateEditor({ race, canEdit }: DropBagTemplateEditorProps) {
+export function DropBagTemplateEditor({ race, canEdit, waypoints, bagWaypointIds }: DropBagTemplateEditorProps) {
     const queryClient = useQueryClient()
-    const { isDemoMode, saveRacePatch } = useDemoRacePersist(race.id)
+    const { isDemoMode, saveRacePatch, saveWaypoints } = useDemoRacePersist(race.id)
     const [open, setOpen] = useState(false)
     const [items, setItems] = useState<DropBagTemplateItem[]>(() => parseDropBagTemplate(race.drop_bag_template))
     const [newText, setNewText] = useState('')
@@ -30,18 +33,37 @@ export function DropBagTemplateEditor({ race, canEdit }: DropBagTemplateEditorPr
         setOpen(true)
     }
 
-    const handleSave = async () => {
+    const handleSave = async (replaceAllBags = false) => {
+        if (replaceAllBags && !window.confirm('Replace every existing bag checklist with this template? Checked items, quantities, custom items, and per-bag item edits will be cleared. Bag names and notes will remain.')) return
         setSaving(true)
         try {
+            const template = items
+                .map(item => ({ ...item, text: item.text.trim() }))
+                .filter(item => item.text)
             if (isDemoMode) {
-                await saveRacePatch({ drop_bag_template: items as unknown as Race['drop_bag_template'] })
+                await saveRacePatch({ drop_bag_template: template as unknown as Race['drop_bag_template'] })
+                if (replaceAllBags && waypoints[0]) {
+                    await saveWaypoints(waypoints[0].course_id, clearDropBagChecklistItems(waypoints, bagWaypointIds))
+                }
                 setOpen(false)
                 return
             }
-            const { error } = await (supabase.from('races') as any)
-                .update({ drop_bag_template: items })
+            const { error } = await supabase.from('races')
+                .update({ drop_bag_template: template as unknown as Race['drop_bag_template'] })
                 .eq('id', race.id)
+                .select('id')
+                .single()
             if (error) throw error
+            if (replaceAllBags && bagWaypointIds.length > 0) {
+                const { data: resetRows, error: bagError } = await supabase.from('waypoints')
+                    .update({ drop_bag_items: null })
+                    .in('id', bagWaypointIds)
+                    .select('id')
+                if (bagError) throw bagError
+                if (resetRows.length !== bagWaypointIds.length) throw new Error(`Only ${resetRows.length} of ${bagWaypointIds.length} bag checklists were replaced.`)
+                const courseIds = [...new Set(waypoints.map(waypoint => waypoint.course_id))]
+                courseIds.forEach(courseId => queryClient.invalidateQueries({ queryKey: ['waypoints', courseId] }))
+            }
             queryClient.invalidateQueries({ queryKey: ['race', race.id] })
             setOpen(false)
         } catch (err) {
@@ -72,7 +94,7 @@ export function DropBagTemplateEditor({ race, canEdit }: DropBagTemplateEditorPr
                                 <div className="min-w-0">
                                     <h2 className="text-xl font-bold text-white">Drop Bag Template</h2>
                                     <p className="text-sm text-neutral-400 mt-1">
-                                        Default checklist for new drop bags. Runners can still customize per aid station.
+                                        Shared checklist for every bag. Save preserves per-bag progress; replace clears every bag checklist and starts over from this template.
                                     </p>
                                 </div>
                                 <button onClick={() => setOpen(false)} aria-label="Close template editor" className="shrink-0 text-neutral-500 hover:text-white p-2 rounded-lg bg-neutral-800">
@@ -82,7 +104,7 @@ export function DropBagTemplateEditor({ race, canEdit }: DropBagTemplateEditorPr
 
                             <div className="min-h-0 p-4 sm:p-6 overflow-y-auto overflow-x-hidden flex-1 space-y-3">
                                 {items.map((item, idx) => (
-                                    <div key={idx} className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1fr)_minmax(0,auto)_auto] items-center gap-2 bg-neutral-950/50 border border-neutral-800 rounded-lg p-2">
+                                    <div key={item.id} className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1fr)_minmax(0,auto)_auto] items-center gap-2 bg-neutral-950/50 border border-neutral-800 rounded-lg p-2">
                                         <input
                                             type="text"
                                             value={item.text}
@@ -111,7 +133,7 @@ export function DropBagTemplateEditor({ race, canEdit }: DropBagTemplateEditorPr
                                     onSubmit={e => {
                                         e.preventDefault()
                                         if (!newText.trim()) return
-                                        setItems(prev => [...prev, { text: newText.trim(), category: newCategory }])
+                                        setItems(prev => [...prev, { id: `template_${crypto.randomUUID()}`, text: newText.trim(), category: newCategory }])
                                         setNewText('')
                                     }}
                                     className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1fr)_minmax(0,auto)_auto] gap-2 pt-2 border-t border-neutral-800"
@@ -143,7 +165,14 @@ export function DropBagTemplateEditor({ race, canEdit }: DropBagTemplateEditorPr
                                     Cancel
                                 </button>
                                 <button
-                                    onClick={handleSave}
+                                    onClick={() => handleSave(true)}
+                                    disabled={saving || items.length === 0 || bagWaypointIds.length === 0}
+                                    className="border border-red-800 bg-red-950/40 hover:bg-red-900/50 disabled:opacity-50 text-red-200 px-4 py-2 rounded-lg font-bold flex items-center gap-2"
+                                >
+                                    <Trash2 className="w-4 h-4" /> Save &amp; Replace All Bags
+                                </button>
+                                <button
+                                    onClick={() => handleSave(false)}
                                     disabled={saving || items.length === 0}
                                     className="bg-orange-600 hover:bg-orange-500 text-white px-6 py-2 rounded-lg font-bold flex items-center gap-2"
                                 >

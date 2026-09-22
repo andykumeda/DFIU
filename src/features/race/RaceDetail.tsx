@@ -1545,6 +1545,8 @@ export function RaceDetail({ raceId }: { raceId: string }) {
   const coordinates = (course?.geometry as { coordinates?: [number, number][] })?.coordinates || []
   const elevationProfile = (course?.elevation_samples as { distance: number; elevation: number }[]) || []
   const sampledProfile = sampleElevationProfile(elevationProfile, 200)
+  const startWaypoint = waypoints.find(waypoint => waypoint.type === 'start')
+    ?? waypoints.find(waypoint => waypoint.mile <= 0.01)
 
   // Memoize waypoints for CourseMap to prevent marker teardown/rebuild on every render
   const courseMapWaypoints = useMemo(() =>
@@ -2474,13 +2476,8 @@ export function RaceDetail({ raceId }: { raceId: string }) {
                 </div>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-2 text-xs">
                   <span className="text-neutral-400 uppercase tracking-wider">Saved race-day weather</span>
-                  <a href={getWeatherLocationUrl(race.location)} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline">Source: Visual Crossing ↗</a>
+                  <a href={getWeatherLocationUrl(race.location, startWaypoint?.lat, startWaypoint?.lon)} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline">National Weather Service ↗</a>
                 </div>
-                <p className="mb-3 text-xs text-neutral-400">
-                  Daily values requested for the race start date, not your arrival hour.
-                  Visual Crossing uses forecasts within 15 days and historical estimates further out.
-                  Saved values may be older estimates; their fetch date and forecast type are not recorded. The source link opens this location; select the race date there.
-                </p>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-neutral-950/50 p-4 rounded-lg">
                     <div className="text-neutral-500 text-xs uppercase tracking-wider mb-1">Daily High</div>

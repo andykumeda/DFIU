@@ -1,7 +1,5 @@
 export type NoteVisibility = 'all' | 'crew' | 'pacer' | 'runner'
-
-export type TodoSectionKey = 'one_month' | 'one_week' | 'night_before'
-export type NoteSectionKey = 'personal' | 'crew' | 'pacer'
+export type NotesSectionType = 'todo' | 'note'
 
 export interface TodoItem {
   id: string
@@ -16,21 +14,40 @@ export interface NoteBlock {
   visibility: NoteVisibility
 }
 
-export interface NotesConfig {
-  todos: Record<TodoSectionKey, TodoItem[]>
-  notes: Record<NoteSectionKey, NoteBlock[]>
+export interface TodoNotesSection {
+  id: string
+  title: string
+  type: 'todo'
+  defaultVisibility: NoteVisibility
+  items: TodoItem[]
 }
 
-export const TODO_SECTIONS: Array<{ key: TodoSectionKey; label: string }> = [
-  { key: 'one_month', label: 'Todo 1 month before' },
-  { key: 'one_week', label: 'Todo 1 week before' },
-  { key: 'night_before', label: 'Todo night before' },
-]
+export interface TextNotesSection {
+  id: string
+  title: string
+  type: 'note'
+  defaultVisibility: NoteVisibility
+  items: NoteBlock[]
+}
 
-export const NOTE_SECTIONS: Array<{ key: NoteSectionKey; label: string; defaultVisibility: NoteVisibility }> = [
-  { key: 'personal', label: 'Notes (Personal)', defaultVisibility: 'runner' },
-  { key: 'crew', label: 'Notes (Crew)', defaultVisibility: 'crew' },
-  { key: 'pacer', label: 'Notes (Pacer)', defaultVisibility: 'pacer' },
+export type NotesSection = TodoNotesSection | TextNotesSection
+
+export interface NotesConfig {
+  sections: NotesSection[]
+}
+
+const DEFAULT_SECTION_DEFINITIONS: Array<{
+  id: string
+  title: string
+  type: NotesSectionType
+  defaultVisibility: NoteVisibility
+}> = [
+  { id: 'one_month', title: 'Todo 1 month before', type: 'todo', defaultVisibility: 'all' },
+  { id: 'one_week', title: 'Todo 1 week before', type: 'todo', defaultVisibility: 'all' },
+  { id: 'night_before', title: 'Todo night before', type: 'todo', defaultVisibility: 'all' },
+  { id: 'personal', title: 'Notes (Personal)', type: 'note', defaultVisibility: 'runner' },
+  { id: 'crew', title: 'Notes (Crew)', type: 'note', defaultVisibility: 'crew' },
+  { id: 'pacer', title: 'Notes (Pacer)', type: 'note', defaultVisibility: 'pacer' },
 ]
 
 export const NOTE_VISIBILITY_OPTIONS: Array<{ value: NoteVisibility; label: string }> = [
@@ -42,16 +59,7 @@ export const NOTE_VISIBILITY_OPTIONS: Array<{ value: NoteVisibility; label: stri
 
 export function buildDefaultNotesConfig(): NotesConfig {
   return {
-    todos: {
-      one_month: [],
-      one_week: [],
-      night_before: [],
-    },
-    notes: {
-      personal: [],
-      crew: [],
-      pacer: [],
-    },
+    sections: DEFAULT_SECTION_DEFINITIONS.map(section => ({ ...section, items: [] } as NotesSection)),
   }
 }
 
@@ -82,36 +90,48 @@ function parseNoteBlock(raw: unknown): NoteBlock | null {
   }
 }
 
-function parseTodoList(raw: unknown): TodoItem[] {
+function parseItems<T>(raw: unknown, parser: (value: unknown) => T | null): T[] {
   if (!Array.isArray(raw)) return []
-  return raw.map(parseTodoItem).filter((item): item is TodoItem => !!item)
+  return raw.map(parser).filter((item): item is T => item !== null)
 }
 
-function parseNoteList(raw: unknown): NoteBlock[] {
+function parseSections(raw: unknown): NotesSection[] {
   if (!Array.isArray(raw)) return []
-  return raw.map(parseNoteBlock).filter((block): block is NoteBlock => !!block)
+  const seen = new Set<string>()
+  const sections: NotesSection[] = []
+
+  for (const value of raw) {
+    if (!value || typeof value !== 'object') continue
+    const section = value as Record<string, unknown>
+    const id = typeof section.id === 'string' ? section.id.trim() : ''
+    const title = typeof section.title === 'string' ? section.title.trim() : ''
+    const type = section.type
+    if (!id || !title || (type !== 'todo' && type !== 'note') || seen.has(id)) continue
+    const defaultVisibility = isVisibility(section.defaultVisibility) ? section.defaultVisibility : 'all'
+    sections.push(type === 'todo'
+      ? { id, title, type, defaultVisibility, items: parseItems(section.items, parseTodoItem) }
+      : { id, title, type, defaultVisibility, items: parseItems(section.items, parseNoteBlock) })
+    seen.add(id)
+  }
+
+  return sections
+}
+
+function parseLegacyConfig(raw: Record<string, unknown>): NotesConfig {
+  const todos = raw.todos && typeof raw.todos === 'object' ? raw.todos as Record<string, unknown> : {}
+  const notes = raw.notes && typeof raw.notes === 'object' ? raw.notes as Record<string, unknown> : {}
+  return {
+    sections: DEFAULT_SECTION_DEFINITIONS.map(section => section.type === 'todo'
+      ? { ...section, type: 'todo', items: parseItems(todos[section.id], parseTodoItem) }
+      : { ...section, type: 'note', items: parseItems(notes[section.id], parseNoteBlock) }),
+  }
 }
 
 export function parseNotesConfig(raw: unknown): NotesConfig {
-  const defaults = buildDefaultNotesConfig()
-  if (!raw || typeof raw !== 'object') return defaults
-
-  const config = raw as Partial<NotesConfig>
-  const todos = config.todos && typeof config.todos === 'object' ? config.todos : null
-  const notes = config.notes && typeof config.notes === 'object' ? config.notes : null
-
-  return {
-    todos: {
-      one_month: todos ? parseTodoList(todos.one_month) : defaults.todos.one_month,
-      one_week: todos ? parseTodoList(todos.one_week) : defaults.todos.one_week,
-      night_before: todos ? parseTodoList(todos.night_before) : defaults.todos.night_before,
-    },
-    notes: {
-      personal: notes ? parseNoteList(notes.personal) : defaults.notes.personal,
-      crew: notes ? parseNoteList(notes.crew) : defaults.notes.crew,
-      pacer: notes ? parseNoteList(notes.pacer) : defaults.notes.pacer,
-    },
-  }
+  if (!raw || typeof raw !== 'object') return buildDefaultNotesConfig()
+  const config = raw as Record<string, unknown>
+  if (Array.isArray(config.sections)) return { sections: parseSections(config.sections) }
+  return parseLegacyConfig(config)
 }
 
 export interface NotesViewerRoles {
@@ -121,10 +141,8 @@ export interface NotesViewerRoles {
   isPacer: boolean
 }
 
-/** Editors see everything; others see `all` plus items matching their roles. */
 export function canViewNotesItem(visibility: NoteVisibility, roles: NotesViewerRoles): boolean {
-  if (roles.canEdit) return true
-  if (visibility === 'all') return true
+  if (roles.canEdit || visibility === 'all') return true
   if (visibility === 'crew') return roles.isCrew
   if (visibility === 'pacer') return roles.isPacer
   if (visibility === 'runner') return roles.isRunner
@@ -140,26 +158,25 @@ export function filterVisibleNotes(items: NoteBlock[], roles: NotesViewerRoles):
 }
 
 export function newTodoItem(visibility: NoteVisibility = 'all'): TodoItem {
-  return {
-    id: crypto.randomUUID(),
-    text: '',
-    done: false,
-    visibility,
-  }
+  return { id: crypto.randomUUID(), text: '', done: false, visibility }
 }
 
 export function newNoteBlock(visibility: NoteVisibility = 'all'): NoteBlock {
-  return {
-    id: crypto.randomUUID(),
-    content: '',
-    visibility,
-  }
+  return { id: crypto.randomUUID(), content: '', visibility }
+}
+
+export function newNotesSection(
+  type: NotesSectionType,
+  title: string,
+  id = `section_${crypto.randomUUID()}`,
+): NotesSection {
+  return { id, title: title.trim(), type, defaultVisibility: 'all', items: [] } as NotesSection
 }
 
 export function moveItem<T>(list: T[], index: number, delta: number): T[] {
-  const next = [...list]
   const target = index + delta
-  if (target < 0 || target >= next.length) return list
+  if (target < 0 || target >= list.length) return list
+  const next = [...list]
   const [item] = next.splice(index, 1)
   next.splice(target, 0, item)
   return next

@@ -20,7 +20,7 @@ import {
 import { getRaceSupport, isVisibleBag } from './race-support'
 import { formatPlanALabel } from './plan-label'
 import SunCalc from 'suncalc'
-import { getBagLighting, getBagLightingMessage, LIGHTING_DELAY_MINUTES } from './drop-bag-lighting'
+import { getBagLighting, getBagLightingMessage } from './drop-bag-lighting'
 
 interface DropBagsSectionProps {
     race: Race
@@ -234,7 +234,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                         )}
                     </div>
                     <div className="flex items-center gap-2">
-                        <DropBagTemplateEditor race={race} canEdit={canEditRaceSettings} />
+                        <DropBagTemplateEditor race={race} canEdit={canEditRaceSettings} waypoints={waypoints} bagWaypointIds={waypoints.filter(waypoint => getBagKind(waypoint) !== null).map(waypoint => waypoint.id)} />
                         <button
                             onClick={() => window.print()}
                             className="print:hidden flex items-center gap-2 bg-neutral-800 hover:bg-neutral-700 text-white px-4 py-2 rounded-lg transition-colors text-sm font-medium"
@@ -244,10 +244,6 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                         </button>
                     </div>
                 </div>
-
-                <p className="text-sm text-neutral-400">
-                    Lighting covers each leg to the next available bag, using sunset and a {LIGHTING_DELAY_MINUTES}-minute late-running allowance. Shade, weather and longer delays can require light earlier; carry a backup.
-                </p>
 
                 {hasConditions && (
                     <div className="bg-neutral-900/50 border border-neutral-800 rounded-xl p-4 mb-6 flex gap-3">
@@ -309,7 +305,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                                             {arrival ? (
                                                 <span className="inline-flex items-center gap-1">
                                                     <Clock className="w-3.5 h-3.5" />
-                                                    <span className="text-neutral-500">Arrival</span>
+                                                    <span className="text-neutral-500">{getBagKind(wp) === 'start' ? 'Start time' : 'Arrival'}</span>
                                                     <span className="font-mono text-neutral-300">{arrival.timeOfDay}</span>
                                                     {arrivalIsNight
                                                         ? <Moon className="w-3.5 h-3.5 text-blue-300" />
@@ -416,7 +412,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                                         <div className="flex shrink-0 items-center gap-2">
                                             <span className="text-neutral-500 print:text-neutral-600 text-xs">
                                                 <span className="font-mono text-neutral-300">Mile {wp.mile.toFixed(1)}</span>
-                                                {getWaypointArrival(wp) && <span className="ml-2">Arrival <span className="font-mono">{getWaypointArrival(wp)!.timeOfDay}</span></span>}
+                                                {getWaypointArrival(wp) && <span className="ml-2">{getBagKind(wp) === 'start' ? 'Start time' : 'Arrival'} <span className="font-mono">{getWaypointArrival(wp)!.timeOfDay}</span></span>}
                                             </span>
                                             <button
                                                 type="button"

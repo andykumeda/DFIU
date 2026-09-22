@@ -60,7 +60,7 @@ Waypoint synchronization owns official station structure and access fields. It m
 - `strava-auth` — OAuth start/callback; gateway JWT verification is disabled because a user may not have a DFIU session yet. OAuth state provides CSRF protection.
 - `strava-activity` — authenticated activity lookup, connection status, and tagged-race listing.
 - `weather` — authenticated weather fetch using the server-side Visual Crossing key.
-  - Overview and `WeatherLocations` display saved daily values, not arrival-hour predictions. The Timeline API can return forecasts or statistical estimates; current storage discards the provider source and fetch timestamp. UI labels must not infer a stored value's source from today's distance to race day. Public source and query-builder links require no embedded API key. The existing function selects the UTC date of `start_datetime`, so race-local dates that differ from UTC need a separate service correction.
+  - Overview and `WeatherLocations` display saved daily values. Current storage discards provider source and fetch timestamp, so UI labels must not infer whether a stored value is a current forecast or historical estimate. The Overview's no-login National Weather Service link is a public point-forecast reference, not provenance for the saved Visual Crossing response; `WeatherLocations` intentionally omits per-location external links. The existing function selects the UTC date of `start_datetime`, so race-local dates that differ from UTC need a separate service correction.
 - `invite-race-member` — authenticated, permission-checked invite workflow.
 - `signup` — pre-session, access-code-gated email/password signup.
 - `share-preview` — public link-preview response. The production Nginx path also uses `server/og-server.mjs`; see Deployment Guide.
@@ -86,7 +86,11 @@ See [Deployment Guide](../DEPLOYMENT.md), [Algorithm Reference](ALGORITHMS.md), 
 
 ### Race notes
 
-`races.notes_config` stores personal timed todos and Markdown note blocks. `notes-shared.ts` parses the JSON and filters items by membership role; editors (`canEditRaceSettings`) always see everything. `RaceNotes` is the Notes tab between Drop Bags and Resources. Clone copies `notes_config`; official sync/merge must not overwrite it, and notes are not an official-update review area. Column SELECT is granted like other race planning fields after the share-token column revoke.
+`races.notes_config` stores an ordered `sections` array. Each section is a user-named `todo` checklist or Markdown `note` collection and includes per-item visibility. `notes-shared.ts` also migrates the legacy fixed `{ todos, notes }` JSON shape at read time, then filters items by membership role; editors (`canEditRaceSettings`) always see everything. `RaceNotes` is the Notes tab between Drop Bags and Resources and supports adding, renaming, reordering, and deleting sections without a schema migration. Clone copies `notes_config`; official sync/merge must not overwrite it, and notes are not an official-update review area. Column SELECT is granted like other race planning fields after the share-token column revoke.
+
+### Drop-bag templates
+
+Template items carry stable IDs. `mergeTemplateIntoItems` uses those IDs to propagate template additions, removals, and renames while preserving checked state, quantity, and explicitly customized per-bag entries. Legacy positional `tpl_N` items are migrated during reconciliation. The template editor's destructive replace action first saves the template, then sets only `waypoints.drop_bag_items` to `null` for all Start, Finish, official, and crew-bag candidates so each editor reseeds from the template; it must not clear `drop_bag_name` or `drop_bag_notes`. Supabase update calls select returned IDs so an RLS-filtered partial reset cannot be reported as success.
 
 ### Brand asset
 
