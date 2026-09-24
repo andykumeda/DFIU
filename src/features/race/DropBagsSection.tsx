@@ -390,12 +390,11 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                             const displayName = isStartBag ? 'Start' : isFinishBag ? 'Finish' : wp.name
                             const items = getWaypointItems(wp)
                             const packedItems = items.filter(i => i.checked)
-                            if (!canWriteDropBags && packedItems.length === 0) return null
 
                             const isCollapsed = collapsedStations[wp.id]
 
                             return (
-                                <div key={wp.id} className={`drop-bag-print-section print:break-inside-avoid ${packedItems.length === 0 ? 'print:hidden' : ''}`}>
+                                <div key={wp.id} className={`drop-bag-print-section print:break-inside-avoid ${!canWriteDropBags && packedItems.length === 0 ? 'hidden print:block' : ''}`}>
                                     <div className="mb-2 flex items-start justify-between gap-2">
                                         <button
                                             type="button"
@@ -444,7 +443,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                                                     ))}
                                                 </ul>
                                             ) : (
-                                                <div className="pl-5 text-sm italic text-neutral-600 print:hidden">
+                                                <div className="pl-5 text-sm italic text-neutral-600 print:text-neutral-700">
                                                     No items packed yet.
                                                 </div>
                                             )}

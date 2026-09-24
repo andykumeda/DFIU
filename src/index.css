@@ -143,6 +143,16 @@ body,
     color: #000 !important;
   }
 
+  body:has(.drop-bags-print-sheet) .race-tab-page {
+    display: block !important;
+    max-width: none !important;
+  }
+
+  .drop-bags-print-sheet > div {
+    position: static !important;
+    overflow: visible !important;
+  }
+
   .drop-bags-print-sheet,
   .drop-bags-print-sheet * {
     color: #000 !important;
@@ -157,10 +167,10 @@ body,
   }
 
   .drop-bags-print-sheet h3 {
-    font-size: 13px !important;
-    line-height: 1.1 !important;
-    margin: 0 0 0.06in !important;
-    padding-bottom: 0.03in !important;
+    font-size: 20px !important;
+    line-height: 1.2 !important;
+    margin: 0 0 0.2in !important;
+    padding-bottom: 0.08in !important;
     border-bottom-color: #d1d5db !important;
   }
 
@@ -169,25 +179,26 @@ body,
     column-count: 1 !important;
     column-gap: 0 !important;
     column-rule: none !important;
-    font-size: 8px;
-    line-height: 1.12;
+    font-size: 14px;
+    line-height: 1.4;
     margin: 0 !important;
     padding: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
 
   .drop-bag-print-section {
     break-inside: avoid-page;
     page-break-inside: avoid;
-    break-after: page;
-    page-break-after: always;
     border-bottom: 1px solid #e5e7eb;
-    margin: 0 0 0.055in !important;
-    padding: 0 0 0.035in !important;
+    margin: 0 !important;
+    padding: 0 0 0.2in !important;
   }
 
-  .drop-bag-print-section:last-child {
-    break-after: auto;
-    page-break-after: auto;
+  .drop-bag-print-section + .drop-bag-print-section {
+    break-before: page;
+    page-break-before: always;
+    padding-top: 0.2in !important;
   }
 
   .drop-bag-print-section > div.space-y-2 {
@@ -200,23 +211,28 @@ body,
 
   .drop-bag-print-section button,
   .drop-bag-print-section span {
-    font-size: 8px !important;
-    line-height: 1.1 !important;
+    font-size: 14px !important;
+    line-height: 1.4 !important;
+  }
+
+  .drop-bag-print-section > div > button span {
+    font-size: 20px !important;
+    font-weight: 700 !important;
   }
 
   .drop-bag-print-items {
-    margin: 0.015in 0 0 !important;
-    padding-left: 0.13in !important;
+    margin: 0.15in 0 0 !important;
+    padding-left: 0.2in !important;
   }
 
   .drop-bags-print-sheet li {
     break-inside: avoid;
     page-break-inside: avoid;
-    gap: 2px !important;
-    font-size: 8px !important;
-    line-height: 1.1 !important;
+    gap: 6px !important;
+    font-size: 14px !important;
+    line-height: 1.4 !important;
     margin: 0 !important;
-    padding: 0 !important;
+    padding: 0 0 0.06in !important;
   }
 }
 
