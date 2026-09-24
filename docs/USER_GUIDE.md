@@ -96,7 +96,7 @@ Lighting recommendations appear inside the bag editor and on the printable sheet
 
 Use **Edit Template** to change the shared checklist. A normal **Save Template** applies template additions, removals, and renames while retaining matching checked states, quantities, and genuine per-bag custom items. Use **Save & Replace All Bags** when you want the template to start every bag over: after confirmation it clears checked states, quantities, custom items, and per-bag item edits across Start, Finish, official, and crew bags. Bag names and bag notes remain. When adding a custom item inside one bag, choose the category where it should appear.
 
-Open a bag and choose **Print Bag** for an individual printable sheet. The bag name and station are largest, followed by a bullet list of packed items with quantities; notes and next-aid/next-bag details appear below. The preview includes current edits; printing does not save them. Choose **Back** to return to editing, then **Save Drop Bag** to persist changes. **Print List** remains the overview of all bags.
+Open a bag and choose **Print Bag** for an individual printable sheet. The bag name and station are largest, followed by a bullet list of packed items with quantities; notes and next-aid/next-bag details appear below. The preview includes current edits; printing does not save them. Choose **Back** to return to editing, then **Save Drop Bag** to persist changes. **Print List** prints each bag with packed contents on its own page, regardless of which bags are expanded on screen.
 
 ## Notes
 

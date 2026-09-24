@@ -165,9 +165,10 @@ body,
   }
 
   .drop-bags-print-list {
-    column-count: 2;
-    column-gap: 0.25in;
-    column-rule: 1px solid #e5e7eb;
+    display: block !important;
+    column-count: 1 !important;
+    column-gap: 0 !important;
+    column-rule: none !important;
     font-size: 8px;
     line-height: 1.12;
     margin: 0 !important;
@@ -175,11 +176,22 @@ body,
   }
 
   .drop-bag-print-section {
-    break-inside: avoid;
+    break-inside: avoid-page;
     page-break-inside: avoid;
+    break-after: page;
+    page-break-after: always;
     border-bottom: 1px solid #e5e7eb;
     margin: 0 0 0.055in !important;
     padding: 0 0 0.035in !important;
+  }
+
+  .drop-bag-print-section:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  .drop-bag-print-section > div.space-y-2 {
+    display: block !important;
   }
 
   .drop-bag-print-section > div {

@@ -1,10 +1,12 @@
 # DFIU Handoff
 
-**Date:** 2026-09-21
+**Date:** 2026-09-24
 **Branch:** `main`
 **Status:** Deployed on `main`: creator-owned team pacing and the Runner Notes stale-overwrite fix are live; restoring the recovered private notes requires the user's explicit approval for the embedded contact links.
 
 ## Current work
+
+- **Deployed — Drop Bag Print List reliability** (`main`, product `TO_BE_FILLED`): Print List no longer depends on All Bags being expanded and includes packed items when individual bags are collapsed onscreen. Print uses one column and forces a new page per non-empty bag. User guide updated. `npm run build` and `npm run deploy` pass; native print/PDF output is not exposed in this terminal session, so page pagination still needs confirmation in the browser print dialog. No race data changes. No other branches or worktrees.
 
 - **Deployed — Runner Notes stale-overwrite fix** (`main`, product `ad60954`): Race Settings previously submitted the whole `resources_config` from its opening race prop during every save, so an older open/cached race object could overwrite newer Runner Notes when saving unrelated event or share settings. Ordinary saves now omit Resources entirely; a changed registration label reloads the current JSON immediately before merging only that field. The Resources tab also refreshes its local display and date drafts from changed race props while not editing. The exact expanded 1,428-character private notes were recovered, but the live clone currently contains the older 588-character subset; restoration is intentionally pending explicit approval to send its private contact links back to DFIU. Verified focused regressions, all 180 tests, lint 0 errors / 48 existing warnings, build/deploy, production footer `ad60954`, both private-access controls off, and a real unchanged Race Settings save followed by a full reload with the existing Runner Notes preserved. Browser warning/error log is empty.
 

@@ -381,7 +381,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                         Drop Bag Contents{plans.hasCalculated && planAMinutes > 0 ? ` · ${formatPlanALabel(planAMinutes)}` : ''}
                     </h3>
 
-                    <div className={`drop-bags-print-list ${isSidePanelOpen ? 'block' : 'hidden'} print:block p-4 space-y-6 max-h-[calc(100vh-150px)] overflow-y-auto print:max-h-none print:overflow-visible`}>
+                    <div className="drop-bags-print-list block p-4 space-y-6 max-h-[calc(100vh-150px)] overflow-y-auto print:max-h-none print:overflow-visible">
                         {bagWaypoints.map(wp => {
                             const kind = getBagKind(wp) ?? 'official'
                             const isStartBag = kind === 'start'
@@ -430,8 +430,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                                             </button>
                                         </div>
                                     </div>
-                                    {!isCollapsed && (
-                                        <div className="space-y-2">
+                                    <div className={`space-y-2 ${isCollapsed ? 'hidden' : ''} print:block`}>
                                             {packedItems.length > 0 ? (
                                                 <ul className="drop-bag-print-items space-y-1 pl-5">
                                                     {packedItems.map((item, idx) => (
@@ -449,8 +448,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                                                     No items packed yet.
                                                 </div>
                                             )}
-                                        </div>
-                                    )}
+                                    </div>
                                 </div>
                             )
                         })}
