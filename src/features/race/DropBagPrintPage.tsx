@@ -2,11 +2,12 @@ import { createPortal } from 'react-dom'
 import { Printer, X } from 'lucide-react'
 import type { Waypoint } from '@/types/database'
 import type { DropBagItem } from './drop-bag-shared'
+import type { DropBagTextFieldValue } from './drop-bag-shared'
 import type { DropBagCoverageRow } from './DropBagModal'
 import { DropBagCoverage } from './DropBagCoverage'
 
-export function DropBagPrintPage({ waypoint, raceName, bagName, notes, items, arrival, cutoff, lightingMessage, coverageRows, onClose }: {
-    waypoint: Waypoint; raceName: string; bagName: string; notes: string; items: DropBagItem[];
+export function DropBagPrintPage({ waypoint, raceName, bagName, notes, items, textFields, arrival, cutoff, lightingMessage, coverageRows, onClose }: {
+    waypoint: Waypoint; raceName: string; bagName: string; notes: string; items: DropBagItem[]; textFields: DropBagTextFieldValue[];
     arrival?: string; cutoff?: string | null; lightingMessage?: string; coverageRows: DropBagCoverageRow[]; onClose: () => void
 }) {
     const packed = items.filter(item => item.checked)
@@ -33,6 +34,10 @@ export function DropBagPrintPage({ waypoint, raceName, bagName, notes, items, ar
                 </ul> : <p>No packed items yet.</p>}
             </section>
             <div className="mt-auto space-y-5 border-t-2 border-black pt-5">
+                {textFields.map(field => <section key={field.id}>
+                    <h2 className="text-sm font-bold uppercase tracking-wide">{field.label}</h2>
+                    <p className="mt-1 whitespace-pre-wrap break-words">{field.value || 'No text entered.'}</p>
+                </section>)}
                 {[['Notes', notes], ['Tell runner', waypoint.crew_relay_notes], ['Next leg reminder', waypoint.runner_next_leg_notes]].map(([label, text]) => text && <section key={label}>
                     <h2 className="text-sm font-bold uppercase tracking-wide">{label}</h2>
                     <p className="mt-1 whitespace-pre-wrap break-words">{text}</p>

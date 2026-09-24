@@ -60,6 +60,19 @@ export interface DropBagTemplateItem {
     category: string
 }
 
+export interface DropBagTemplateTextField {
+    id: string
+    label: string
+    defaultText: string
+}
+
+export interface DropBagTextFieldValue extends DropBagTemplateTextField {
+    type: 'text'
+    templateId: string
+    templateDefaultText: string
+    value: string
+}
+
 export interface DropBagItem {
     id: string
     text: string
@@ -146,6 +159,39 @@ export function parseDropBagTemplate(raw: unknown): DropBagTemplateItem[] {
     return items.length > 0 ? items : [...DEFAULT_DROP_BAG_TEMPLATE]
 }
 
+export function parseDropBagTemplateTextFields(raw: unknown): DropBagTemplateTextField[] {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return []
+    const fields = (raw as { textFields?: unknown }).textFields
+    if (!Array.isArray(fields)) return []
+    return fields.flatMap((field, index) => {
+        if (!field || typeof field !== 'object') return []
+        const value = field as Record<string, unknown>
+        const label = typeof value.label === 'string' ? value.label.trim() : ''
+        if (!label) return []
+        return [{
+            id: typeof value.id === 'string' && value.id.trim() ? value.id.trim() : `legacy-text-${index}`,
+            label,
+            defaultText: typeof value.defaultText === 'string' ? value.defaultText : '',
+        }]
+    })
+}
+
+export function getDropBagTextFields(raw: unknown, template: DropBagTemplateTextField[]): DropBagTextFieldValue[] {
+    const saved = Array.isArray(raw) ? raw.filter(item => item && typeof item === 'object' && item.type === 'text') as Record<string, unknown>[] : []
+    return template.map(field => {
+        const prior = saved.find(item => item.templateId === field.id)
+        const priorValue = typeof prior?.value === 'string' ? prior.value : null
+        const priorDefault = typeof prior?.templateDefaultText === 'string' ? prior.templateDefaultText : null
+        return {
+            ...field,
+            type: 'text',
+            templateId: field.id,
+            templateDefaultText: field.defaultText,
+            value: priorValue !== null && (priorDefault === null || priorValue !== priorDefault) ? priorValue : field.defaultText,
+        }
+    })
+}
+
 export function parseDropBagItems(raw: unknown): DropBagItem[] {
     if (!Array.isArray(raw)) return []
 
@@ -153,6 +199,7 @@ export function parseDropBagItems(raw: unknown): DropBagItem[] {
         .map((item, i): DropBagItem | null => {
             if (!item || typeof item !== 'object') return null
             const itemRecord = item as Record<string, unknown>
+            if (itemRecord.type === 'text') return null
             const text = normalizeText(itemRecord)
             if (!text) return null
             const category = typeof itemRecord.category === 'string' && itemRecord.category.trim()

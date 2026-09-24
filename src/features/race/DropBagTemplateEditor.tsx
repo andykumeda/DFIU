@@ -8,7 +8,9 @@ import {
     clearDropBagChecklistItems,
     DROP_BAG_CATEGORIES,
     DropBagTemplateItem,
+    DropBagTemplateTextField,
     parseDropBagTemplate,
+    parseDropBagTemplateTextFields,
 } from './drop-bag-shared'
 import { useDemoRacePersist } from '@/features/demo/useDemoRacePersist'
 
@@ -24,24 +26,34 @@ export function DropBagTemplateEditor({ race, canEdit, waypoints, bagWaypointIds
     const { isDemoMode, saveRacePatch, saveWaypoints } = useDemoRacePersist(race.id)
     const [open, setOpen] = useState(false)
     const [items, setItems] = useState<DropBagTemplateItem[]>(() => parseDropBagTemplate(race.drop_bag_template))
+    const [textFields, setTextFields] = useState<DropBagTemplateTextField[]>(() => parseDropBagTemplateTextFields(race.drop_bag_template))
     const [newText, setNewText] = useState('')
     const [newCategory, setNewCategory] = useState('hydration')
+    const [newFieldLabel, setNewFieldLabel] = useState('')
+    const [newFieldDefault, setNewFieldDefault] = useState('')
     const [saving, setSaving] = useState(false)
 
     const openEditor = () => {
         setItems(parseDropBagTemplate(race.drop_bag_template))
+        setTextFields(parseDropBagTemplateTextFields(race.drop_bag_template))
+        setNewFieldLabel('')
+        setNewFieldDefault('')
         setOpen(true)
     }
 
     const handleSave = async (replaceAllBags = false) => {
-        if (replaceAllBags && !window.confirm('Replace every existing bag checklist with this template? Checked items, quantities, custom items, and per-bag item edits will be cleared. Bag names and notes will remain.')) return
+        if (replaceAllBags && !window.confirm('Replace every existing bag checklist and template text field with this template? Checked items, quantities, custom items, and per-bag text field edits will be cleared. Bag names and bag notes will remain.')) return
         setSaving(true)
         try {
             const template = items
                 .map(item => ({ ...item, text: item.text.trim() }))
                 .filter(item => item.text)
+            const savedTextFields = textFields
+                .map(field => ({ ...field, label: field.label.trim() }))
+                .filter(field => field.label)
+            const savedTemplate = savedTextFields.length ? { items: template, textFields: savedTextFields } : template
             if (isDemoMode) {
-                await saveRacePatch({ drop_bag_template: template as unknown as Race['drop_bag_template'] })
+                await saveRacePatch({ drop_bag_template: savedTemplate as unknown as Race['drop_bag_template'] })
                 if (replaceAllBags && waypoints[0]) {
                     await saveWaypoints(waypoints[0].course_id, clearDropBagChecklistItems(waypoints, bagWaypointIds))
                 }
@@ -49,7 +61,7 @@ export function DropBagTemplateEditor({ race, canEdit, waypoints, bagWaypointIds
                 return
             }
             const { error } = await supabase.from('races')
-                .update({ drop_bag_template: template as unknown as Race['drop_bag_template'] })
+                .update({ drop_bag_template: savedTemplate as unknown as Race['drop_bag_template'] })
                 .eq('id', race.id)
                 .select('id')
                 .single()
@@ -94,7 +106,7 @@ export function DropBagTemplateEditor({ race, canEdit, waypoints, bagWaypointIds
                                 <div className="min-w-0">
                                     <h2 className="text-xl font-bold text-white">Drop Bag Template</h2>
                                     <p className="text-sm text-neutral-400 mt-1">
-                                        Shared checklist for every bag. Save preserves per-bag progress; replace clears every bag checklist and starts over from this template.
+                                        Shared checklist and text fields for every bag. Save preserves per-bag edits; replace resets bag contents and text fields to this template.
                                     </p>
                                 </div>
                                 <button onClick={() => setOpen(false)} aria-label="Close template editor" className="shrink-0 text-neutral-500 hover:text-white p-2 rounded-lg bg-neutral-800">
@@ -158,6 +170,61 @@ export function DropBagTemplateEditor({ race, canEdit, waypoints, bagWaypointIds
                                         <Plus className="w-4 h-4" />
                                     </button>
                                 </form>
+
+                                <div className="pt-5 border-t border-neutral-800 space-y-3">
+                                    <h3 className="text-sm font-bold uppercase tracking-wider text-neutral-400">Text fields</h3>
+                                    <p className="text-sm text-neutral-500">Each field appears in every bag with default text that can be changed for one bag.</p>
+                                    {textFields.map(field => (
+                                        <div key={field.id} className="rounded-lg border border-neutral-800 bg-neutral-950/50 p-3 space-y-2">
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    aria-label="Text field label"
+                                                    value={field.label}
+                                                    onChange={e => setTextFields(previous => previous.map(item => item.id === field.id ? { ...item, label: e.target.value } : item))}
+                                                    placeholder="Field label (e.g. Notes)"
+                                                    className="min-w-0 flex-1 rounded border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-white"
+                                                />
+                                                <button type="button" aria-label={`Remove ${field.label || 'text field'}`} onClick={() => setTextFields(previous => previous.filter(item => item.id !== field.id))} className="rounded p-2 text-neutral-500 hover:text-red-400"><Trash2 className="h-4 w-4" /></button>
+                                            </div>
+                                            <textarea
+                                                aria-label={`${field.label || 'Text field'} default text`}
+                                                value={field.defaultText}
+                                                onChange={e => setTextFields(previous => previous.map(item => item.id === field.id ? { ...item, defaultText: e.target.value } : item))}
+                                                placeholder="Default text for every bag"
+                                                rows={2}
+                                                className="w-full rounded border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-white resize-y"
+                                            />
+                                        </div>
+                                    ))}
+                                    <div className="rounded-lg border border-neutral-800 p-3 space-y-2">
+                                        <input
+                                            type="text"
+                                            value={newFieldLabel}
+                                            onChange={e => setNewFieldLabel(e.target.value)}
+                                            placeholder="New text field label (e.g. Notes)"
+                                            className="w-full rounded border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-white"
+                                        />
+                                        <textarea
+                                            value={newFieldDefault}
+                                            onChange={e => setNewFieldDefault(e.target.value)}
+                                            placeholder="Default text for every bag"
+                                            rows={2}
+                                            className="w-full rounded border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-white resize-y"
+                                        />
+                                        <button
+                                            type="button"
+                                            disabled={!newFieldLabel.trim()}
+                                            onClick={() => {
+                                                if (!newFieldLabel.trim()) return
+                                                setTextFields(previous => [...previous, { id: `text_${crypto.randomUUID()}`, label: newFieldLabel.trim(), defaultText: newFieldDefault }])
+                                                setNewFieldLabel('')
+                                                setNewFieldDefault('')
+                                            }}
+                                            className="flex items-center gap-2 rounded bg-neutral-800 px-3 py-2 text-sm text-white hover:bg-neutral-700 disabled:opacity-50"
+                                        ><Plus className="h-4 w-4" /> Add Text Field</button>
+                                    </div>
+                                </div>
                             </div>
 
                             <div className="p-4 sm:p-6 border-t border-neutral-800 flex flex-wrap justify-end gap-3 shrink-0">

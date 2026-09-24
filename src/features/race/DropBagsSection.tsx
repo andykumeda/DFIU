@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { Race, Course, Waypoint, TerrainNode } from '@/types/database'
 import { calculatePacePlan } from './pace-utils'
 import { usePacePlans, computePlanMinutes } from './usePacePlans'
-import { Backpack, Clock, Sun, Moon, Info, Printer, List, ChevronDown, ChevronUp, Target, Pencil } from 'lucide-react'
+import { Backpack, Clock, Sun, Moon, Info, Printer, List, ChevronDown, ChevronUp, Target, Eye } from 'lucide-react'
 import { DropBagModal, type DropBagCoverageRow } from './DropBagModal'
 import { DropBagCoverage } from './DropBagCoverage'
 import { formatBagCutoff } from './drop-bag-cutoff'
@@ -16,8 +16,10 @@ import {
     getDropBagTemplateForKind,
     getDropBagEditorItems,
     getDropBagNotes,
+    getDropBagTextFields,
     hasSavedBagPlan,
     parseDropBagTemplate,
+    parseDropBagTemplateTextFields,
 } from './drop-bag-shared'
 import { getRaceSupport, isVisibleBag } from './race-support'
 import { formatPlanALabel } from './plan-label'
@@ -142,6 +144,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
     const isCold = parseInt(race.avg_temp_low || '100') <= 40
     const hasConditions = isHot || isCold || !!race.weather_notes
     const dropBagTemplate = parseDropBagTemplate(race.drop_bag_template)
+    const dropBagTemplateTextFields = parseDropBagTemplateTextFields(race.drop_bag_template)
 
     const getWaypointArrival = (wp: Waypoint) =>
         planA?.waypointArrivals.find(a => a.waypointId === wp.id)
@@ -228,6 +231,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
             arrival: getWaypointArrival(wp)?.timeOfDay ?? null,
             cutoff: formatBagCutoff(wp.cutoff_time, race.timezone, clock24h),
             items: getWaypointItems(wp).filter(item => item.checked).map(item => ({ text: item.text, quantity: item.quantity })),
+            textFields: getDropBagTextFields(wp.drop_bag_items, dropBagTemplateTextFields).map(field => ({ label: field.label, value: field.value })),
             notes: getDropBagNotes(wp),
             tellRunner: wp.crew_relay_notes,
             nextLegReminder: wp.runner_next_leg_notes,
@@ -413,13 +417,10 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                 <div className="fixed inset-0 z-[220] flex items-center justify-center bg-black/80 p-4" role="dialog" aria-modal="true" aria-label="Printable drop bag list">
                     <div className="w-full max-w-md rounded-xl border border-neutral-700 bg-neutral-900 p-6 text-white shadow-2xl">
                         <h2 className="text-xl font-bold">Print Drop Bag List</h2>
-                        {printBusy ? <p className="mt-3 text-neutral-300">Preparing a PDF with one bag per page…</p> : printError ? <p className="mt-3 text-red-300" role="alert">{printError}</p> : <p className="mt-3 text-neutral-300">Your printable PDF is ready. Open it to print, or save a copy.</p>}
+                        {printBusy ? <p className="mt-3 text-neutral-300">Preparing a PDF with one bag per page…</p> : printError ? <p className="mt-3 text-red-300" role="alert">{printError}</p> : <p className="mt-3 text-neutral-300">Your printable PDF is ready. Download it, then print it from your PDF viewer.</p>}
                         <div className="mt-6 flex flex-wrap justify-end gap-3">
                             <button type="button" onClick={() => setPrintOpen(false)} className="rounded-lg bg-neutral-800 px-4 py-2 font-medium hover:bg-neutral-700">Close</button>
-                            {printPdf && <>
-                                <a href={printPdf.url} target="_blank" rel="noreferrer" className="rounded-lg bg-neutral-700 px-4 py-2 font-medium hover:bg-neutral-600">Open PDF</a>
-                                <a href={printPdf.url} download={printPdf.filename} className="rounded-lg bg-orange-600 px-4 py-2 font-semibold hover:bg-orange-500">Download PDF</a>
-                            </>}
+                            {printPdf && <a href={printPdf.url} download={printPdf.filename} className="rounded-lg bg-orange-600 px-4 py-2 font-semibold hover:bg-orange-500">Download PDF</a>}
                             {printError && <button type="button" onClick={handlePrintList} className="rounded-lg bg-orange-600 px-4 py-2 font-semibold hover:bg-orange-500">Try again</button>}
                         </div>
                     </div>
@@ -485,10 +486,10 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                                                         : 'border-orange-900/60 bg-orange-950/40 text-orange-200 hover:bg-orange-900/40'
                                                     : 'border-neutral-800 bg-neutral-950 text-neutral-300 hover:bg-neutral-800'
                                                     }`}
-                                                title={canWriteDropBags ? 'Edit bag contents' : 'View bag contents'}
+                                                title="View bag contents"
                                             >
-                                                <Pencil className="w-3.5 h-3.5" />
-                                                {canWriteDropBags ? 'Edit' : 'View'}
+                                                <Eye className="w-3.5 h-3.5" />
+                                                View
                                             </button>
                                         </div>
                                     </div>

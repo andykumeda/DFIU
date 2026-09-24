@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { Race, Waypoint, type Json } from '@/types/database'
-import { X, Save, Plus, Trash2, Clock, Sun, Moon, Info, CheckCircle2, Circle, Printer } from 'lucide-react'
+import { X, Save, Plus, Trash2, Clock, Sun, Moon, Info, CheckCircle2, Circle, Printer, Pencil } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useDemoRacePersist } from '@/features/demo/useDemoRacePersist'
@@ -10,17 +10,21 @@ import {
     DropBagItem,
     createDropBagItem,
     getDropBagEditorItems,
+    getDropBagTextFields,
     getBagKind,
     getBagKindLabel,
     getDropBagTemplateForKind,
     getDropBagNotes,
     parseDropBagTemplate,
+    parseDropBagTemplateTextFields,
+    type DropBagTextFieldValue,
 } from './drop-bag-shared'
 import { DropBagNotes } from './DropBagNotes'
 import { LIGHTING_DELAY_MINUTES } from './drop-bag-lighting'
 import { DropBagCoverage } from './DropBagCoverage'
 import { DropBagPrintPage } from './DropBagPrintPage'
 import { DropBagSummary } from './DropBagSummary'
+import { DropBagTextFields } from './DropBagTextFields'
 
 interface DropBagModalProps {
     waypoint: Waypoint
@@ -54,9 +58,11 @@ export interface DropBagCoverageRow {
 
 export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], cutoff, isNight, needsLight = isNight, lightingMessage, canEdit = true, contentsOnly = false, onClose }: DropBagModalProps) {
     const [printPreview, setPrintPreview] = useState(false)
+    const [isEditing, setIsEditing] = useState(false)
     const queryClient = useQueryClient()
     const { isDemoMode, saveWaypoints } = useDemoRacePersist(race.id)
     const [items, setItems] = useState<DropBagItem[]>([])
+    const [textFields, setTextFields] = useState<DropBagTextFieldValue[]>([])
     const [newItemText, setNewItemText] = useState('')
     const [newItemCategory, setNewItemCategory] = useState('custom')
     const [saving, setSaving] = useState(false)
@@ -73,6 +79,7 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
         () => getDropBagTemplateForKind(bagKind, parseDropBagTemplate(race.drop_bag_template)),
         [bagKind, race.drop_bag_template]
     )
+    const templateTextFields = useMemo(() => parseDropBagTemplateTextFields(race.drop_bag_template), [race.drop_bag_template])
     const bagNoun = isStartBag ? 'Start Gear' : isFinishBag ? 'Finish Gear' : isCrewBag ? 'Crew Bag' : 'Drop Bag'
     const bagNameLabel = isStartBag ? 'Start Gear' : isFinishBag ? 'Finish Gear' : isCrewBag ? 'Crew Bag' : 'Bag Name'
     const bagPlaceholder = isStartBag
@@ -99,7 +106,8 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
 
     useEffect(() => {
         setItems(getDropBagEditorItems(waypoint.drop_bag_items, template, { isNight: needsLight, isHot, isCold }))
-    }, [waypoint.id, waypoint.drop_bag_items, template, needsLight, isHot, isCold])
+        setTextFields(getDropBagTextFields(waypoint.drop_bag_items, templateTextFields))
+    }, [waypoint.id, waypoint.drop_bag_items, template, templateTextFields, needsLight, isHot, isCold])
 
     useEffect(() => {
         setBagName(waypoint.drop_bag_name || '')
@@ -122,7 +130,7 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
         }, [])
         try {
             const patch = {
-                drop_bag_items: itemsToSave as unknown as Json,
+                drop_bag_items: [...itemsToSave, ...textFields] as unknown as Json,
                 drop_bag_name: bagName,
                 drop_bag_notes: bagNotes
             }
@@ -151,6 +159,14 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
         } finally {
             setSaving(false)
         }
+    }
+
+    const cancelEdit = () => {
+        setItems(getDropBagEditorItems(waypoint.drop_bag_items, template, { isNight: needsLight, isHot, isCold }))
+        setTextFields(getDropBagTextFields(waypoint.drop_bag_items, templateTextFields))
+        setBagName(waypoint.drop_bag_name || '')
+        setBagNotes(getDropBagNotes(waypoint))
+        setIsEditing(false)
     }
 
     const toggleItem = (id: string) => {
@@ -188,7 +204,7 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
         return acc
     }, {} as Record<string, DropBagItem[]>)
 
-    if (printPreview) return <DropBagPrintPage waypoint={waypoint} raceName={race.name} bagName={bagName} notes={bagNotes} items={items} arrival={arrivalTime?.timeOfDay} cutoff={cutoff} lightingMessage={lightingMessage} coverageRows={coverageRows} onClose={() => setPrintPreview(false)} />
+    if (printPreview) return <DropBagPrintPage waypoint={waypoint} raceName={race.name} bagName={bagName} notes={bagNotes} items={items} textFields={textFields} arrival={arrivalTime?.timeOfDay} cutoff={cutoff} lightingMessage={lightingMessage} coverageRows={coverageRows} onClose={() => setPrintPreview(false)} />
 
     return createPortal(
         <div className="fixed inset-0 z-[200] overflow-y-auto bg-black/80 backdrop-blur-sm">
@@ -197,8 +213,9 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
 
                 <div className="flex justify-between items-center p-6 border-b border-neutral-800 shrink-0">
                     <div>
-                        <h2 className="text-xl font-bold text-white mb-1 flex items-center gap-2">
-                            {bagName || (isStartBag ? `Start: ${waypoint.name}` : isFinishBag ? `Finish: ${waypoint.name}` : `${bagNoun}: ${waypoint.name}`)}
+                        <h2 className="mb-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-xl font-bold text-white">
+                            <span>{waypoint.name}</span>
+                            {bagName && <span className="max-w-full break-words rounded border border-neutral-700 bg-neutral-950/70 px-2 py-0.5 text-sm font-semibold text-neutral-200">{bagName}</span>}
                             {!canEdit && <span className="text-xs font-normal text-neutral-500">(view only)</span>}
                         </h2>
                         <div className="flex flex-wrap items-center gap-3 text-sm text-neutral-400">
@@ -234,22 +251,15 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
 
                     {lightingMessage && <p className="rounded-xl border border-blue-900/50 bg-blue-900/20 p-4 text-sm text-blue-200">{lightingMessage}</p>}
 
-                    {contentsOnly ? (
+                    {contentsOnly || !isEditing ? (
                     <div className="space-y-5">
-                        {bagName && (
-                            <div className="bg-neutral-950/50 border border-neutral-800 rounded-xl p-4">
-                                <div className="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-0.5">
-                                    {bagNameLabel}
-                                </div>
-                                <div className="text-sm text-white font-medium">{bagName}</div>
-                            </div>
-                        )}
                         <div>
                             <h3 className="text-sm font-bold uppercase tracking-wider text-neutral-500 mb-2">
                                 {isStartBag ? "What's at the start" : isFinishBag ? "What's at the finish" : isCrewBag ? "What's at crew handoff" : "What's inside"}
                             </h3>
                             <DropBagSummary waypoint={waypoint} />
                         </div>
+                        <DropBagTextFields fields={textFields} />
                         <DropBagNotes waypoint={waypoint} showEmpty />
                     </div>
                     ) : (
@@ -279,6 +289,17 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
                             className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-white placeholder-neutral-600 focus:outline-none focus:border-orange-500 transition-colors disabled:opacity-70"
                         />
                     </div>
+
+                    {textFields.map(field => <div key={field.id} className="rounded-xl border border-neutral-800 bg-neutral-950/50 p-4">
+                        <label htmlFor={`bag-text-${field.id}`} className="mb-2 block text-xs font-bold uppercase tracking-wider text-neutral-500">{field.label}</label>
+                        <textarea
+                            id={`bag-text-${field.id}`}
+                            value={field.value}
+                            onChange={event => setTextFields(previous => previous.map(item => item.id === field.id ? { ...item, value: event.target.value } : item))}
+                            rows={3}
+                            className="w-full rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500 resize-y"
+                        />
+                    </div>)}
 
                     <div className="space-y-6">
                         {DROP_BAG_CATEGORIES.map(category => {
@@ -418,13 +439,21 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
                         <Printer className="h-4 w-4" /> Print Bag
                     </button>
                     <button
-                        onClick={onClose}
+                        onClick={isEditing ? cancelEdit : onClose}
                         className="px-6 py-2.5 rounded-lg font-medium text-neutral-400 hover:text-white transition-colors"
                         disabled={saving}
                     >
-                        {canEdit && !contentsOnly ? 'Cancel' : 'Close'}
+                        {isEditing ? 'Cancel' : 'Close'}
                     </button>
-                    {canEdit && !contentsOnly && (
+                    {canEdit && !contentsOnly && !isEditing && (
+                        <button
+                            onClick={() => setIsEditing(true)}
+                            className={`${isCrewBag ? 'bg-emerald-700 hover:bg-emerald-600' : 'bg-orange-600 hover:bg-orange-500'} text-white px-6 py-2.5 rounded-lg font-bold flex items-center gap-2`}
+                        >
+                            <Pencil className="w-4 h-4" /> Edit {bagNoun}
+                        </button>
+                    )}
+                    {canEdit && !contentsOnly && isEditing && (
                         <button
                             onClick={handleSave}
                             disabled={saving}

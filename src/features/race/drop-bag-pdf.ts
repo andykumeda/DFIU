@@ -9,6 +9,7 @@ export interface PrintableDropBag {
     arrival: string | null
     cutoff: string | null
     items: Array<{ text: string; quantity?: string }>
+    textFields: Array<{ label: string; value: string }>
     notes: string | null
     tellRunner: string | null
     nextLegReminder: string | null
@@ -62,6 +63,7 @@ export function buildDropBagListDefinition(raceName: string, planLabel: string |
         } else {
             content.push({ text: 'No items packed yet.', style: 'body' })
         }
+        bag.textFields.forEach(field => content.push(...detail(field.label, field.value || 'No text entered.')))
         content.push(...detail('Notes', bag.notes))
         content.push(...detail('Tell runner', bag.tellRunner))
         content.push(...detail('Next leg reminder', bag.nextLegReminder))
