@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Race, Course, Waypoint, TerrainNode } from '@/types/database'
 import { calculatePacePlan } from './pace-utils'
 import { usePacePlans, computePlanMinutes } from './usePacePlans'
@@ -14,6 +15,7 @@ import {
     getBagKindLabel,
     getDropBagTemplateForKind,
     getDropBagEditorItems,
+    getDropBagNotes,
     hasSavedBagPlan,
     parseDropBagTemplate,
 } from './drop-bag-shared'
@@ -21,6 +23,7 @@ import { getRaceSupport, isVisibleBag } from './race-support'
 import { formatPlanALabel } from './plan-label'
 import SunCalc from 'suncalc'
 import { getBagLighting, getBagLightingMessage } from './drop-bag-lighting'
+import type { PrintableDropBag } from './drop-bag-pdf'
 
 interface DropBagsSectionProps {
     race: Race
@@ -62,6 +65,14 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
     const [selectedWaypoint, setSelectedWaypoint] = useState<Waypoint | null>(null)
     const [isSidePanelOpen, setIsSidePanelOpen] = useState(true)
     const [collapsedStations, setCollapsedStations] = useState<Record<string, boolean>>({})
+    const [printOpen, setPrintOpen] = useState(false)
+    const [printBusy, setPrintBusy] = useState(false)
+    const [printError, setPrintError] = useState<string | null>(null)
+    const [printPdf, setPrintPdf] = useState<{ url: string; filename: string } | null>(null)
+
+    useEffect(() => () => {
+        if (printPdf) URL.revokeObjectURL(printPdf.url)
+    }, [printPdf])
 
     const toggleStation = (wpId: string) => {
         setCollapsedStations(prev => ({
@@ -205,6 +216,41 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
         ]
     }
 
+    const handlePrintList = async () => {
+        setPrintOpen(true)
+        setPrintBusy(true)
+        setPrintError(null)
+        setPrintPdf(null)
+        const printableBags: PrintableDropBag[] = bagWaypoints.map(wp => ({
+            stationName: wp.name,
+            bagName: wp.drop_bag_name,
+            mile: wp.mile,
+            arrival: getWaypointArrival(wp)?.timeOfDay ?? null,
+            cutoff: formatBagCutoff(wp.cutoff_time, race.timezone, clock24h),
+            items: getWaypointItems(wp).filter(item => item.checked).map(item => ({ text: item.text, quantity: item.quantity })),
+            notes: getDropBagNotes(wp),
+            tellRunner: wp.crew_relay_notes,
+            nextLegReminder: wp.runner_next_leg_notes,
+            lighting: lightingByWaypoint.get(wp.id)?.message ?? null,
+            coverageRows: getCoverageRows(wp),
+        }))
+        try {
+            const { createDropBagListPdf } = await import('./drop-bag-pdf')
+            const blob = await createDropBagListPdf(
+                race.name,
+                plans.hasCalculated && planAMinutes > 0 ? formatPlanALabel(planAMinutes) : null,
+                printableBags,
+            )
+            const filename = `${race.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'race'}-drop-bags.pdf`
+            setPrintPdf({ url: URL.createObjectURL(blob), filename })
+        } catch (error) {
+            console.error('Failed to prepare drop bag list:', error)
+            setPrintError('Could not prepare the PDF. Please try again.')
+        } finally {
+            setPrintBusy(false)
+        }
+    }
+
     if (bagWaypoints.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center p-12 text-center text-neutral-500 border-2 border-dashed border-neutral-800 rounded-xl my-6">
@@ -236,7 +282,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                     <div className="flex items-center gap-2">
                         <DropBagTemplateEditor race={race} canEdit={canEditRaceSettings} waypoints={waypoints} bagWaypointIds={waypoints.filter(waypoint => getBagKind(waypoint) !== null).map(waypoint => waypoint.id)} />
                         <button
-                            onClick={() => window.print()}
+                            onClick={handlePrintList}
                             className="print:hidden flex items-center gap-2 bg-neutral-800 hover:bg-neutral-700 text-white px-4 py-2 rounded-lg transition-colors text-sm font-medium"
                         >
                             <Printer className="w-4 h-4" />
@@ -362,6 +408,23 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                     />
                 )}
             </div>
+
+            {printOpen && createPortal(
+                <div className="fixed inset-0 z-[220] flex items-center justify-center bg-black/80 p-4" role="dialog" aria-modal="true" aria-label="Printable drop bag list">
+                    <div className="w-full max-w-md rounded-xl border border-neutral-700 bg-neutral-900 p-6 text-white shadow-2xl">
+                        <h2 className="text-xl font-bold">Print Drop Bag List</h2>
+                        {printBusy ? <p className="mt-3 text-neutral-300">Preparing a PDF with one bag per page…</p> : printError ? <p className="mt-3 text-red-300" role="alert">{printError}</p> : <p className="mt-3 text-neutral-300">Your printable PDF is ready. Open it to print, or save a copy.</p>}
+                        <div className="mt-6 flex flex-wrap justify-end gap-3">
+                            <button type="button" onClick={() => setPrintOpen(false)} className="rounded-lg bg-neutral-800 px-4 py-2 font-medium hover:bg-neutral-700">Close</button>
+                            {printPdf && <>
+                                <a href={printPdf.url} target="_blank" rel="noreferrer" className="rounded-lg bg-neutral-700 px-4 py-2 font-medium hover:bg-neutral-600">Open PDF</a>
+                                <a href={printPdf.url} download={printPdf.filename} className="rounded-lg bg-orange-600 px-4 py-2 font-semibold hover:bg-orange-500">Download PDF</a>
+                            </>}
+                            {printError && <button type="button" onClick={handlePrintList} className="rounded-lg bg-orange-600 px-4 py-2 font-semibold hover:bg-orange-500">Try again</button>}
+                        </div>
+                    </div>
+                </div>, document.body,
+            )}
 
             {/* Side Panel */}
             <div className={`drop-bags-print-sheet w-full shrink-0 print:w-full print:block ${isSidePanelOpen ? 'lg:w-80' : 'lg:w-auto'}`}>
