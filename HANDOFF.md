@@ -2,11 +2,11 @@
 
 **Date:** 2026-09-24
 **Branch:** `main`
-**Status:** Deployed on `main`: creator-owned team pacing and the Runner Notes stale-overwrite fix are live; restoring the recovered private notes requires the user's explicit approval for the embedded contact links.
+**Status:** Deployed on `main`: Drop Bag Print List includes empty bags and is stamped with the committed revision. The Runner Notes recovery remains pending the user's approval for its private contact links.
 
 ## Current work
 
-- **In progress — Drop Bag Print List reliability** (`main`, product `9e3acd4`): clean product commit was deployed and the live footer now reads `9e3acd4`. The affected race has no checked bag items, exposing a remaining print defect: all its bags are hidden in print. Include empty bags and confirm pagination. No race data changes or other worktrees.
+- **Deployed — Drop Bag Print List reliability** (`main`, product `387d5ef`): the first fix was deployed before commit and showed `6b44b97-dirty`. It was redeployed cleanly as `9e3acd4`; the affected race then revealed that all 12 bags have no checked items and were hidden in print. The final fix includes empty bags with a visible message, prints collapsed bags, removes the sticky/overflow pagination constraints, and puts each bag on a separate page. User guide updated. Build and deploy passed; the live footer shows `387d5ef` and all 12 empty bag sections render. Print List was clicked in the in-app browser, whose native print preview/PDF was not exposed, so physical page breaks remain unverified. No race data changes or other worktrees.
 
 - **Deployed — Runner Notes stale-overwrite fix** (`main`, product `ad60954`): Race Settings previously submitted the whole `resources_config` from its opening race prop during every save, so an older open/cached race object could overwrite newer Runner Notes when saving unrelated event or share settings. Ordinary saves now omit Resources entirely; a changed registration label reloads the current JSON immediately before merging only that field. The Resources tab also refreshes its local display and date drafts from changed race props while not editing. The exact expanded 1,428-character private notes were recovered, but the live clone currently contains the older 588-character subset; restoration is intentionally pending explicit approval to send its private contact links back to DFIU. Verified focused regressions, all 180 tests, lint 0 errors / 48 existing warnings, build/deploy, production footer `ad60954`, both private-access controls off, and a real unchanged Race Settings save followed by a full reload with the existing Runner Notes preserved. Browser warning/error log is empty.
 
