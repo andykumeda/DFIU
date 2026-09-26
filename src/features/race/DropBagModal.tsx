@@ -29,7 +29,7 @@ import { DropBagPrintPage } from './DropBagPrintPage'
 import { DropBagSummary } from './DropBagSummary'
 import { DropBagTextFields } from './DropBagTextFields'
 import { DropBagCrewSection } from './DropBagCrewSection'
-import { getRaceSupport } from './race-support'
+import { getRaceSupport, isCrewAccessWaypoint } from './race-support'
 
 interface DropBagModalProps {
     waypoint: Waypoint
@@ -80,7 +80,7 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
     const isStartBag = bagKind === 'start'
     const isFinishBag = bagKind === 'finish'
     const isCrewBag = bagKind === 'crew'
-    const hasCrew = getRaceSupport(race).crew
+    const showCrewSection = getRaceSupport(race).crew && isCrewAccessWaypoint(waypoint)
     const template = useMemo(
         () => getDropBagTemplateForKind(bagKind, parseDropBagTemplate(race.drop_bag_template), parseDropBagCrewItems(race.drop_bag_template)),
         [bagKind, race.drop_bag_template]
@@ -211,7 +211,7 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
         return acc
     }, {} as Record<string, DropBagItem[]>)
 
-    if (printPreview) return <DropBagPrintPage waypoint={waypoint} raceName={race.name} bagName={bagName} notes={bagNotes} items={items.filter(item => hasCrew || item.category !== 'crew')} textFields={textFields.filter(field => hasCrew || field.id !== CREW_NOTES_FIELD_ID)} arrival={arrivalTime?.timeOfDay} cutoff={cutoff} lightingMessage={lightingMessage} coverageRows={coverageRows} onClose={() => setPrintPreview(false)} />
+    if (printPreview) return <DropBagPrintPage waypoint={waypoint} raceName={race.name} bagName={bagName} notes={bagNotes} items={items.filter(item => showCrewSection || item.category !== 'crew')} textFields={textFields.filter(field => showCrewSection || field.id !== CREW_NOTES_FIELD_ID)} arrival={arrivalTime?.timeOfDay} cutoff={cutoff} lightingMessage={lightingMessage} coverageRows={coverageRows} onClose={() => setPrintPreview(false)} />
 
     return createPortal(
         <div className="fixed inset-0 z-[200] overflow-y-auto bg-black/80 backdrop-blur-sm">
@@ -267,7 +267,7 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
                             <DropBagSummary waypoint={waypoint} />
                         </div>
                         <DropBagTextFields fields={textFields.filter(field => field.id !== CREW_NOTES_FIELD_ID)} />
-                        {hasCrew && <DropBagCrewSection items={items} notes={crewNotes?.value ?? ''} />}
+                        {showCrewSection && <DropBagCrewSection items={items} notes={crewNotes?.value ?? ''} />}
                         <DropBagNotes waypoint={waypoint} showEmpty />
                     </div>
                     ) : (
@@ -312,7 +312,7 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
                     <div className="space-y-6">
                         {DROP_BAG_CATEGORIES.map(category => {
                             const catItems = itemsByCategory[category.id] ?? []
-                            if ((!catItems.length && category.id !== 'crew') || (category.id === 'crew' && !hasCrew)) return null
+                            if ((!catItems.length && category.id !== 'crew') || (category.id === 'crew' && !showCrewSection)) return null
 
                             const isConditionCat = category.id === 'conditions'
 
@@ -411,7 +411,7 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
                                     onChange={e => setNewItemCategory(e.target.value)}
                                     className="bg-neutral-950 border border-neutral-800 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500"
                                 >
-                                    {DROP_BAG_CATEGORIES.filter(category => category.id !== 'conditions' && (hasCrew || category.id !== 'crew')).map(category => (
+                                    {DROP_BAG_CATEGORIES.filter(category => category.id !== 'conditions' && (showCrewSection || category.id !== 'crew')).map(category => (
                                         <option key={category.id} value={category.id}>{category.label}</option>
                                     ))}
                                 </select>

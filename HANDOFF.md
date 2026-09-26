@@ -2,9 +2,11 @@
 
 **Date:** 2026-09-26
 **Branch:** `main`
-**Status:** Deployed on `main`: saved crew template gear now appears in Drop Bag views and printouts before packing. The Runner Notes recovery remains pending the user's approval for its private contact links.
+**Status:** In progress on `main`: restrict Crew Gear & Notes to crew-accessible stops when crew support is enabled. The Runner Notes recovery remains pending the user's approval for its private contact links.
 
 ## Current work
+
+- **In progress — crew section station scope** (`main`): a user reports Crew Gear & Notes at non-crew aid stations. Gate the bag view/editor, All Bags, Crew View, and print output by the existing crew-access rule (crew allowed, Start, or Finish) and race support. Preserve hidden saved per-bag crew data. Acceptance: non-crew aid stations hide the section, crew-accessible stops show template gear and notes; focused tests, build, lint, deploy, and desktop/mobile production checks remain pending. No other worktrees or unmerged branches.
 
 - **Deployed — crew template visibility** (`main`, product `9d02937`): production showed Bucket, Tarp, Chair, and Cooler in the saved Crew template and as unchecked items in Clear Creek's editor, but read-only surfaces filtered them out until packed. Bag view, All Bags, Crew View, and print now show planned vs packed crew gear; Save Template refreshes the current page immediately. All 184 tests, build, lint (0 errors, 48 existing warnings), diff check, and deploy passed. `git describe --always --dirty --abbrev=7` after deploy: `9d02937`. Fresh production reload showed footer `9d02937`, the four items as **To pack** in All Bags and Clear Creek's view. No race data was changed. The user's original tab was left untouched; the temporary verification tab was closed. No other worktrees or unmerged branches.
 

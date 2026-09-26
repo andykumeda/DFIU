@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Waypoint } from '@/types/database'
-import { getRaceSupport, isVisibleBag, type SupportMode } from './race-support'
+import { getRaceSupport, isCrewAccessWaypoint, isVisibleBag, type SupportMode } from './race-support'
 
 const station = (patch: Partial<Waypoint>): Waypoint => ({
     id: 'station', course_id: 'course', name: 'Station', mile: 10, order_index: 1,
@@ -12,6 +12,12 @@ const station = (patch: Partial<Waypoint>): Waypoint => ({
 })
 
 describe('race support', () => {
+    it('limits crew sections to crew-accessible stations, Start, and Finish', () => {
+        expect(isCrewAccessWaypoint(station({ crew_allowed: true }))).toBe(true)
+        expect(isCrewAccessWaypoint(station({ crew_allowed: false, has_drop_bag: true }))).toBe(false)
+        expect(isCrewAccessWaypoint(station({ crew_allowed: false, type: 'start' }))).toBe(true)
+        expect(isCrewAccessWaypoint(station({ crew_allowed: false, type: 'finish' }))).toBe(true)
+    })
     it.each<[SupportMode, boolean, boolean]>([
         ['solo', false, false], ['crew', true, false], ['pacer', false, true], ['both', true, true],
     ])('%s enables the corresponding support and bag access', (mode, crew, pacer) => {

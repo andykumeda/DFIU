@@ -14,6 +14,10 @@ export function getRaceSupport(race: Pick<Race, 'support_mode'> | undefined) {
     return { mode, crew: mode === 'crew' || mode === 'both', pacer: mode === 'pacer' || mode === 'both' }
 }
 
+export function isCrewAccessWaypoint(waypoint: Pick<Waypoint, 'crew_allowed' | 'type'>) {
+    return !!waypoint.crew_allowed || waypoint.type === 'start' || waypoint.type === 'finish'
+}
+
 export function isVisibleBag(waypoint: Waypoint, hasCrew: boolean, canEdit: boolean) {
     const kind = getBagKind(waypoint)
     return !!kind && (kind !== 'crew' || (hasCrew && (canEdit || hasSavedBagPlan(waypoint))))

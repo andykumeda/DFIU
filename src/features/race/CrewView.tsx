@@ -1,4 +1,4 @@
-import { getRaceSupport } from './race-support'
+import { getRaceSupport, isCrewAccessWaypoint } from './race-support'
 import { formatPlanALabel } from './plan-label'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -197,7 +197,6 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
         return getCourseCoordinates(course)
     }, [course])
 
-    const isCrewAccessible = (waypoint: Waypoint) => waypoint.crew_allowed || waypoint.type === 'start' || waypoint.type === 'finish'
     const mapWaypoints = useMemo(() => {
         return waypoints.filter(w => w.type === 'aid_station' || w.type === 'start' || w.type === 'finish').map(w => {
             const bagKind = getBagKind(w)
@@ -210,7 +209,7 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
                 mile: w.mile,
                 type: w.type,
                 has_drop_bag: w.has_drop_bag,
-                crew_allowed: isCrewAccessible(w),
+                crew_allowed: isCrewAccessWaypoint(w),
                 pacer_allowed: w.pacer_allowed,
                 bag_kind: showBagIcon ? bagKind : null,
             }
@@ -225,7 +224,7 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
 
     const nextCrewWaypoint: Waypoint | null = useMemo(() => {
         const sorted = [...waypoints].sort((a, b) => a.mile - b.mile)
-        return sorted.find(w => w.mile > predictedMile + 0.05 && isCrewAccessible(w)) ?? null
+        return sorted.find(w => w.mile > predictedMile + 0.05 && isCrewAccessWaypoint(w)) ?? null
     }, [waypoints, predictedMile])
 
     const mapFocus = useMemo(() => {
@@ -261,7 +260,7 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
     // Next crew-accessible aid station after a given station (for leg directions).
     const nextCrewAfter = (wp: Waypoint): Waypoint | null => {
         const sorted = [...waypoints].sort((a, b) => a.mile - b.mile)
-        return sorted.find(w => w.mile > wp.mile + 0.001 && isCrewAccessible(w)) ?? null
+        return sorted.find(w => w.mile > wp.mile + 0.001 && isCrewAccessWaypoint(w)) ?? null
     }
 
     const openCheckin = (wp: Waypoint) => {
@@ -493,7 +492,7 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
                                 </div>
                                 <DropBagSummary waypoint={nextCrewWaypoint} />
                                 <DropBagTextFields fields={bagFields(nextCrewWaypoint).filter(field => field.id !== CREW_NOTES_FIELD_ID)} />
-                                <DropBagCrewSection items={getCrewGearItems(nextCrewWaypoint.drop_bag_items, crewTemplate)} notes={bagFields(nextCrewWaypoint).find(field => field.id === CREW_NOTES_FIELD_ID)?.value ?? ''} />
+                                {isCrewAccessWaypoint(nextCrewWaypoint) && <DropBagCrewSection items={getCrewGearItems(nextCrewWaypoint.drop_bag_items, crewTemplate)} notes={bagFields(nextCrewWaypoint).find(field => field.id === CREW_NOTES_FIELD_ID)?.value ?? ''} />}
                                 <DropBagNotes waypoint={nextCrewWaypoint} className='mt-3' />
                             </section>
                         )
@@ -570,7 +569,7 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
                             const past = arrival ? arrival.arrivalTime <= elapsedMin : false
                             const checked = checkins.some(c => c.waypoint_id === wp.id)
                             const bagKind = getBagKind(wp)
-                            const crewAccessible = isCrewAccessible(wp)
+                            const crewAccessible = isCrewAccessWaypoint(wp)
                             const showBagButton = crewAccessible && !!bagKind && (bagKind !== 'crew' || hasSavedBagPlan(wp))
                             return (
                                 <div key={wp.id} className='py-2 flex items-center gap-2'>
@@ -736,7 +735,7 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
 
                         <DropBagSummary waypoint={dropBagWaypoint} />
                         <DropBagTextFields fields={bagFields(dropBagWaypoint).filter(field => field.id !== CREW_NOTES_FIELD_ID)} />
-                        <DropBagCrewSection items={getCrewGearItems(dropBagWaypoint.drop_bag_items, crewTemplate)} notes={bagFields(dropBagWaypoint).find(field => field.id === CREW_NOTES_FIELD_ID)?.value ?? ''} />
+                        {isCrewAccessWaypoint(dropBagWaypoint) && <DropBagCrewSection items={getCrewGearItems(dropBagWaypoint.drop_bag_items, crewTemplate)} notes={bagFields(dropBagWaypoint).find(field => field.id === CREW_NOTES_FIELD_ID)?.value ?? ''} />}
                         <DropBagNotes waypoint={dropBagWaypoint} showEmpty />
                     </div>
                 </div>

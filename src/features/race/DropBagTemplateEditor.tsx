@@ -253,7 +253,7 @@ export function DropBagTemplateEditor({ race, canEdit, waypoints, bagWaypointIds
 
                                 {getRaceSupport(race).crew && <div className="pt-5 border-t border-emerald-900/60 space-y-3">
                                     <h3 className="text-sm font-bold uppercase tracking-wider text-emerald-300">Crew section</h3>
-                                    <p className="text-sm text-neutral-400">Crew gear and notes appear separately in every bag. Each bag can have its own packed gear and notes.</p>
+                                    <p className="text-sm text-neutral-400">Crew gear and notes appear at crew-accessible stops, including Start and Finish. Each stop can have its own packed gear and notes.</p>
                                     {crewItems.map(item => <div key={item.id} className="flex gap-2 rounded-lg border border-neutral-800 bg-neutral-950/50 p-2">
                                         <input type="text" aria-label="Crew gear item" value={item.text} onChange={event => setCrewItems(previous => previous.map(gear => gear.id === item.id ? { ...gear, text: event.target.value } : gear))} className="min-w-0 flex-1 rounded border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-white" />
                                         <button type="button" aria-label={`Remove ${item.text || 'crew gear'}`} onClick={() => setCrewItems(previous => previous.filter(gear => gear.id !== item.id))} className="rounded p-2 text-neutral-500 hover:text-red-400"><Trash2 className="h-4 w-4" /></button>
