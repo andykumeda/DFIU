@@ -1,7 +1,7 @@
 import { createPortal } from 'react-dom'
 import { Printer, X } from 'lucide-react'
 import type { Waypoint } from '@/types/database'
-import type { DropBagItem } from './drop-bag-shared'
+import { CREW_NOTES_FIELD_ID, type DropBagItem } from './drop-bag-shared'
 import type { DropBagTextFieldValue } from './drop-bag-shared'
 import type { DropBagCoverageRow } from './DropBagModal'
 import { DropBagCoverage } from './DropBagCoverage'
@@ -11,6 +11,9 @@ export function DropBagPrintPage({ waypoint, raceName, bagName, notes, items, te
     arrival?: string; cutoff?: string | null; lightingMessage?: string; coverageRows: DropBagCoverageRow[]; onClose: () => void
 }) {
     const packed = items.filter(item => item.checked)
+    const runnerPacked = packed.filter(item => item.category !== 'crew')
+    const crewPacked = packed.filter(item => item.category === 'crew')
+    const crewNotes = textFields.find(field => field.id === CREW_NOTES_FIELD_ID)
     return createPortal(<div className="single-bag-print-overlay fixed inset-0 z-[210] overflow-y-auto bg-black/80 p-3 sm:p-8" role="dialog" aria-modal="true" aria-label="Printable drop bag">
         <div className="print:hidden mx-auto mb-3 flex max-w-3xl justify-end gap-3">
             <button onClick={() => window.print()} className="flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 font-semibold text-white"><Printer className="h-4 w-4" />Print</button>
@@ -29,12 +32,18 @@ export function DropBagPrintPage({ waypoint, raceName, bagName, notes, items, te
             </div>
             <section className="py-7">
                 <h2 className="mb-3 text-sm font-bold uppercase tracking-wider">Inside this bag</h2>
-                {packed.length ? <ul className="list-disc space-y-3 pl-6 text-xl">
-                    {packed.map(item => <li key={item.id} className="break-words">{item.quantity?.trim() && `${item.quantity} × `}{item.text}</li>)}
+                {runnerPacked.length ? <ul className="list-disc space-y-3 pl-6 text-xl">
+                    {runnerPacked.map(item => <li key={item.id} className="break-words">{item.quantity?.trim() && `${item.quantity} × `}{item.text}</li>)}
                 </ul> : <p>No packed items yet.</p>}
             </section>
+            {crewNotes && <section className="border-t-2 border-black py-5">
+                <h2 className="mb-3 text-sm font-bold uppercase tracking-wider">Crew Gear & Notes</h2>
+                {crewPacked.length ? <ul className="list-disc space-y-2 pl-6 text-lg">{crewPacked.map(item => <li key={item.id}>{item.quantity?.trim() && `${item.quantity} × `}{item.text}</li>)}</ul> : <p>No crew gear packed yet.</p>}
+                <h3 className="mt-4 text-sm font-bold uppercase tracking-wider">Crew notes</h3>
+                <p className="mt-1 whitespace-pre-wrap break-words">{crewNotes.value || 'No crew notes entered.'}</p>
+            </section>}
             <div className="mt-auto space-y-5 border-t-2 border-black pt-5">
-                {textFields.map(field => <section key={field.id}>
+                {textFields.filter(field => field.id !== CREW_NOTES_FIELD_ID).map(field => <section key={field.id}>
                     <h2 className="text-sm font-bold uppercase tracking-wide">{field.label}</h2>
                     <p className="mt-1 whitespace-pre-wrap break-words">{field.value || 'No text entered.'}</p>
                 </section>)}

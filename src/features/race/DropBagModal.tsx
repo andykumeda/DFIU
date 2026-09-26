@@ -15,6 +15,9 @@ import {
     getBagKindLabel,
     getDropBagTemplateForKind,
     getDropBagNotes,
+    parseDropBagCrewItems,
+    getCrewNotesTemplate,
+    CREW_NOTES_FIELD_ID,
     parseDropBagTemplate,
     parseDropBagTemplateTextFields,
     type DropBagTextFieldValue,
@@ -25,6 +28,8 @@ import { DropBagCoverage } from './DropBagCoverage'
 import { DropBagPrintPage } from './DropBagPrintPage'
 import { DropBagSummary } from './DropBagSummary'
 import { DropBagTextFields } from './DropBagTextFields'
+import { DropBagCrewSection } from './DropBagCrewSection'
+import { getRaceSupport } from './race-support'
 
 interface DropBagModalProps {
     waypoint: Waypoint
@@ -75,11 +80,13 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
     const isStartBag = bagKind === 'start'
     const isFinishBag = bagKind === 'finish'
     const isCrewBag = bagKind === 'crew'
+    const hasCrew = getRaceSupport(race).crew
     const template = useMemo(
-        () => getDropBagTemplateForKind(bagKind, parseDropBagTemplate(race.drop_bag_template)),
+        () => getDropBagTemplateForKind(bagKind, parseDropBagTemplate(race.drop_bag_template), parseDropBagCrewItems(race.drop_bag_template)),
         [bagKind, race.drop_bag_template]
     )
-    const templateTextFields = useMemo(() => parseDropBagTemplateTextFields(race.drop_bag_template), [race.drop_bag_template])
+    const templateTextFields = useMemo(() => [...parseDropBagTemplateTextFields(race.drop_bag_template), getCrewNotesTemplate(race.drop_bag_template)], [race.drop_bag_template])
+    const crewNotes = textFields.find(field => field.id === CREW_NOTES_FIELD_ID)
     const bagNoun = isStartBag ? 'Start Gear' : isFinishBag ? 'Finish Gear' : isCrewBag ? 'Crew Bag' : 'Drop Bag'
     const bagNameLabel = isStartBag ? 'Start Gear' : isFinishBag ? 'Finish Gear' : isCrewBag ? 'Crew Bag' : 'Bag Name'
     const bagPlaceholder = isStartBag
@@ -204,7 +211,7 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
         return acc
     }, {} as Record<string, DropBagItem[]>)
 
-    if (printPreview) return <DropBagPrintPage waypoint={waypoint} raceName={race.name} bagName={bagName} notes={bagNotes} items={items} textFields={textFields} arrival={arrivalTime?.timeOfDay} cutoff={cutoff} lightingMessage={lightingMessage} coverageRows={coverageRows} onClose={() => setPrintPreview(false)} />
+    if (printPreview) return <DropBagPrintPage waypoint={waypoint} raceName={race.name} bagName={bagName} notes={bagNotes} items={items.filter(item => hasCrew || item.category !== 'crew')} textFields={textFields.filter(field => hasCrew || field.id !== CREW_NOTES_FIELD_ID)} arrival={arrivalTime?.timeOfDay} cutoff={cutoff} lightingMessage={lightingMessage} coverageRows={coverageRows} onClose={() => setPrintPreview(false)} />
 
     return createPortal(
         <div className="fixed inset-0 z-[200] overflow-y-auto bg-black/80 backdrop-blur-sm">
@@ -259,7 +266,8 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
                             </h3>
                             <DropBagSummary waypoint={waypoint} />
                         </div>
-                        <DropBagTextFields fields={textFields} />
+                        <DropBagTextFields fields={textFields.filter(field => field.id !== CREW_NOTES_FIELD_ID)} />
+                        {hasCrew && <DropBagCrewSection waypoint={waypoint} notes={crewNotes?.value ?? ''} />}
                         <DropBagNotes waypoint={waypoint} showEmpty />
                     </div>
                     ) : (
@@ -290,7 +298,7 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
                         />
                     </div>
 
-                    {textFields.map(field => <div key={field.id} className="rounded-xl border border-neutral-800 bg-neutral-950/50 p-4">
+                    {textFields.filter(field => field.id !== CREW_NOTES_FIELD_ID).map(field => <div key={field.id} className="rounded-xl border border-neutral-800 bg-neutral-950/50 p-4">
                         <label htmlFor={`bag-text-${field.id}`} className="mb-2 block text-xs font-bold uppercase tracking-wider text-neutral-500">{field.label}</label>
                         <textarea
                             id={`bag-text-${field.id}`}
@@ -303,13 +311,13 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
 
                     <div className="space-y-6">
                         {DROP_BAG_CATEGORIES.map(category => {
-                            const catItems = itemsByCategory[category.id]
-                            if (!catItems) return null
+                            const catItems = itemsByCategory[category.id] ?? []
+                            if ((!catItems.length && category.id !== 'crew') || (category.id === 'crew' && !hasCrew)) return null
 
                             const isConditionCat = category.id === 'conditions'
 
                             return (
-                                <div key={category.id} className="space-y-3">
+                                <div key={category.id} className={`space-y-3 ${category.id === 'crew' ? 'rounded-xl border border-emerald-900/60 bg-emerald-950/20 p-4' : ''}`}>
                                     <h3 className={`text-sm font-bold uppercase tracking-wider ${isConditionCat ? 'text-blue-400' : 'text-neutral-500'}`}>
                                         {category.label}
                                     </h3>
@@ -376,6 +384,11 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
                                             </div>
                                         ))}
                                     </div>
+                                    {category.id === 'crew' && !catItems.length && <p className="text-sm text-neutral-500">Add crew gear in the template or to this bag.</p>}
+                                    {category.id === 'crew' && crewNotes && <div>
+                                        <label htmlFor="bag-crew-notes" className="mb-2 block text-xs font-bold uppercase tracking-wider text-emerald-300">Crew notes</label>
+                                        <textarea id="bag-crew-notes" value={crewNotes.value} onChange={event => setTextFields(previous => previous.map(field => field.id === CREW_NOTES_FIELD_ID ? { ...field, value: event.target.value } : field))} rows={3} className="w-full rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 resize-y" />
+                                    </div>}
                                 </div>
                             )
                         })}
@@ -398,7 +411,7 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
                                     onChange={e => setNewItemCategory(e.target.value)}
                                     className="bg-neutral-950 border border-neutral-800 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500"
                                 >
-                                    {DROP_BAG_CATEGORIES.filter(category => category.id !== 'conditions').map(category => (
+                                    {DROP_BAG_CATEGORIES.filter(category => category.id !== 'conditions' && (hasCrew || category.id !== 'crew')).map(category => (
                                         <option key={category.id} value={category.id}>{category.label}</option>
                                     ))}
                                 </select>

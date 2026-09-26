@@ -10,9 +10,12 @@ import {
     DropBagTemplateItem,
     DropBagTemplateTextField,
     parseDropBagTemplate,
+    parseDropBagCrewItems,
+    getCrewNotesTemplate,
     parseDropBagTemplateTextFields,
 } from './drop-bag-shared'
 import { useDemoRacePersist } from '@/features/demo/useDemoRacePersist'
+import { getRaceSupport } from './race-support'
 
 interface DropBagTemplateEditorProps {
     race: Race
@@ -27,6 +30,9 @@ export function DropBagTemplateEditor({ race, canEdit, waypoints, bagWaypointIds
     const [open, setOpen] = useState(false)
     const [items, setItems] = useState<DropBagTemplateItem[]>(() => parseDropBagTemplate(race.drop_bag_template))
     const [textFields, setTextFields] = useState<DropBagTemplateTextField[]>(() => parseDropBagTemplateTextFields(race.drop_bag_template))
+    const [crewItems, setCrewItems] = useState<DropBagTemplateItem[]>(() => parseDropBagCrewItems(race.drop_bag_template))
+    const [crewNotesDefault, setCrewNotesDefault] = useState(() => getCrewNotesTemplate(race.drop_bag_template).defaultText)
+    const [newCrewItem, setNewCrewItem] = useState('')
     const [newText, setNewText] = useState('')
     const [newCategory, setNewCategory] = useState('hydration')
     const [newFieldLabel, setNewFieldLabel] = useState('')
@@ -36,6 +42,9 @@ export function DropBagTemplateEditor({ race, canEdit, waypoints, bagWaypointIds
     const openEditor = () => {
         setItems(parseDropBagTemplate(race.drop_bag_template))
         setTextFields(parseDropBagTemplateTextFields(race.drop_bag_template))
+        setCrewItems(parseDropBagCrewItems(race.drop_bag_template))
+        setCrewNotesDefault(getCrewNotesTemplate(race.drop_bag_template).defaultText)
+        setNewCrewItem('')
         setNewFieldLabel('')
         setNewFieldDefault('')
         setOpen(true)
@@ -61,7 +70,12 @@ export function DropBagTemplateEditor({ race, canEdit, waypoints, bagWaypointIds
             const savedTextFields = [...textFields, ...pendingField]
                 .map(field => ({ ...field, label: field.label.trim() }))
                 .filter(field => field.label)
-            const savedTemplate = savedTextFields.length ? { items: template, textFields: savedTextFields } : template
+            const savedCrewItems = [...crewItems, ...(newCrewItem.trim() ? [{ id: `crew_${crypto.randomUUID()}`, text: newCrewItem.trim(), category: 'crew' }] : [])]
+                .map(item => ({ ...item, text: item.text.trim(), category: 'crew' }))
+                .filter(item => item.text)
+            const savedTemplate = savedTextFields.length || savedCrewItems.length || crewNotesDefault
+                ? { items: template, textFields: savedTextFields, crewItems: savedCrewItems, crewNotesDefault }
+                : template
             if (isDemoMode) {
                 await saveRacePatch({ drop_bag_template: savedTemplate as unknown as Race['drop_bag_template'] })
                 if (replaceAllBags && waypoints[0]) {
@@ -138,7 +152,7 @@ export function DropBagTemplateEditor({ race, canEdit, waypoints, bagWaypointIds
                                             onChange={e => setItems(prev => prev.map((it, i) => i === idx ? { ...it, category: e.target.value } : it))}
                                             className="min-w-0 w-full bg-neutral-900 border border-neutral-800 rounded px-2 py-2 text-xs text-white focus:outline-none focus:border-orange-500"
                                         >
-                                            {DROP_BAG_CATEGORIES.map(cat => (
+                                            {DROP_BAG_CATEGORIES.filter(cat => cat.id !== 'crew').map(cat => (
                                                 <option key={cat.id} value={cat.id}>{cat.label}</option>
                                             ))}
                                         </select>
@@ -172,7 +186,7 @@ export function DropBagTemplateEditor({ race, canEdit, waypoints, bagWaypointIds
                                         onChange={e => setNewCategory(e.target.value)}
                                         className="min-w-0 w-full bg-neutral-950 border border-neutral-800 rounded-lg px-2 py-2 text-xs text-white"
                                     >
-                                        {DROP_BAG_CATEGORIES.filter(c => c.id !== 'conditions').map(cat => (
+                                        {DROP_BAG_CATEGORIES.filter(c => c.id !== 'conditions' && c.id !== 'crew').map(cat => (
                                             <option key={cat.id} value={cat.id}>{cat.label}</option>
                                         ))}
                                     </select>
@@ -235,6 +249,21 @@ export function DropBagTemplateEditor({ race, canEdit, waypoints, bagWaypointIds
                                         ><Plus className="h-4 w-4" /> Add Text Field</button>
                                     </div>
                                 </div>
+
+                                {getRaceSupport(race).crew && <div className="pt-5 border-t border-emerald-900/60 space-y-3">
+                                    <h3 className="text-sm font-bold uppercase tracking-wider text-emerald-300">Crew section</h3>
+                                    <p className="text-sm text-neutral-400">Crew gear and notes appear separately in every bag. Each bag can have its own packed gear and notes.</p>
+                                    {crewItems.map(item => <div key={item.id} className="flex gap-2 rounded-lg border border-neutral-800 bg-neutral-950/50 p-2">
+                                        <input type="text" aria-label="Crew gear item" value={item.text} onChange={event => setCrewItems(previous => previous.map(gear => gear.id === item.id ? { ...gear, text: event.target.value } : gear))} className="min-w-0 flex-1 rounded border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-white" />
+                                        <button type="button" aria-label={`Remove ${item.text || 'crew gear'}`} onClick={() => setCrewItems(previous => previous.filter(gear => gear.id !== item.id))} className="rounded p-2 text-neutral-500 hover:text-red-400"><Trash2 className="h-4 w-4" /></button>
+                                    </div>)}
+                                    <form onSubmit={event => { event.preventDefault(); if (!newCrewItem.trim()) return; setCrewItems(previous => [...previous, { id: `crew_${crypto.randomUUID()}`, text: newCrewItem.trim(), category: 'crew' }]); setNewCrewItem('') }} className="flex gap-2">
+                                        <input type="text" value={newCrewItem} onChange={event => setNewCrewItem(event.target.value)} placeholder="Add crew gear..." className="min-w-0 flex-1 rounded border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-white" />
+                                        <button type="submit" aria-label="Add crew gear" className="rounded bg-neutral-800 px-3 text-white"><Plus className="h-4 w-4" /></button>
+                                    </form>
+                                    <label className="block text-sm font-medium text-neutral-300" htmlFor="crew-notes-default">Default crew notes</label>
+                                    <textarea id="crew-notes-default" value={crewNotesDefault} onChange={event => setCrewNotesDefault(event.target.value)} rows={3} placeholder="Default notes for every crew section" className="w-full rounded border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-white resize-y" />
+                                </div>}
                             </div>
 
                             <div className="p-4 sm:p-6 border-t border-neutral-800 flex flex-wrap justify-end gap-3 shrink-0">

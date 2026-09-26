@@ -17,7 +17,8 @@ import { CrewMap } from './CrewMap'
 import { DropBagNotes } from './DropBagNotes'
 import { DropBagSummary } from './DropBagSummary'
 import { DropBagTextFields } from './DropBagTextFields'
-import { getBagKind, getBagKindLabel, getDropBagTextFields, hasSavedBagPlan, parseDropBagTemplateTextFields } from './drop-bag-shared'
+import { CREW_NOTES_FIELD_ID, getBagKind, getBagKindLabel, getCrewNotesTemplate, getDropBagTextFields, hasSavedBagPlan, parseDropBagTemplateTextFields } from './drop-bag-shared'
+import { DropBagCrewSection } from './DropBagCrewSection'
 import { SiteFooter } from '@/components/ui/SiteFooter'
 import { getDistance } from '@/lib/geo-utils'
 import { getCourseCoordinates, getElapsedMinutes, getPredictedMile, getRunnerLatLonAtMile, getRunnerMapFocus } from './race-day-utils'
@@ -310,7 +311,8 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
         </div>
     )
 
-    const templateTextFields = parseDropBagTemplateTextFields(race.drop_bag_template)
+    const templateTextFields = [...parseDropBagTemplateTextFields(race.drop_bag_template), getCrewNotesTemplate(race.drop_bag_template)]
+    const bagFields = (waypoint: Waypoint) => getDropBagTextFields(waypoint.drop_bag_items, templateTextFields)
 
     const lastCheckin = checkins.length > 0 ? checkins[checkins.length - 1] : null
     const lastCheckinWp = lastCheckin ? waypoints.find(w => w.id === lastCheckin.waypoint_id) : null
@@ -489,7 +491,8 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
                                     <div className='text-sm font-semibold'>{label} · {nextCrewWaypoint.name}</div>
                                 </div>
                                 <DropBagSummary waypoint={nextCrewWaypoint} />
-                                <DropBagTextFields fields={getDropBagTextFields(nextCrewWaypoint.drop_bag_items, templateTextFields)} />
+                                <DropBagTextFields fields={bagFields(nextCrewWaypoint).filter(field => field.id !== CREW_NOTES_FIELD_ID)} />
+                                <DropBagCrewSection waypoint={nextCrewWaypoint} notes={bagFields(nextCrewWaypoint).find(field => field.id === CREW_NOTES_FIELD_ID)?.value ?? ''} />
                                 <DropBagNotes waypoint={nextCrewWaypoint} className='mt-3' />
                             </section>
                         )
@@ -731,7 +734,8 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
                         </div>
 
                         <DropBagSummary waypoint={dropBagWaypoint} />
-                        <DropBagTextFields fields={getDropBagTextFields(dropBagWaypoint.drop_bag_items, templateTextFields)} />
+                        <DropBagTextFields fields={bagFields(dropBagWaypoint).filter(field => field.id !== CREW_NOTES_FIELD_ID)} />
+                        <DropBagCrewSection waypoint={dropBagWaypoint} notes={bagFields(dropBagWaypoint).find(field => field.id === CREW_NOTES_FIELD_ID)?.value ?? ''} />
                         <DropBagNotes waypoint={dropBagWaypoint} showEmpty />
                     </div>
                 </div>

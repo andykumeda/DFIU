@@ -66,6 +66,8 @@ export interface DropBagTemplateTextField {
     defaultText: string
 }
 
+export const CREW_NOTES_FIELD_ID = 'crew-notes'
+
 export interface DropBagTextFieldValue extends DropBagTemplateTextField {
     type: 'text'
     templateId: string
@@ -89,6 +91,7 @@ export const DROP_BAG_CATEGORIES = [
     { id: 'medical', label: 'Medical & Care' },
     { id: 'conditions', label: 'Condition Specific (Smart)' },
     { id: 'custom', label: 'Custom' },
+    { id: 'crew', label: 'Crew Gear' },
 ] as const
 
 export const DEFAULT_DROP_BAG_TEMPLATE: DropBagTemplateItem[] = [
@@ -174,6 +177,26 @@ export function parseDropBagTemplateTextFields(raw: unknown): DropBagTemplateTex
             defaultText: typeof value.defaultText === 'string' ? value.defaultText : '',
         }]
     })
+}
+
+export function parseDropBagCrewItems(raw: unknown): DropBagTemplateItem[] {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return []
+    const items = (raw as { crewItems?: unknown }).crewItems
+    if (!Array.isArray(items)) return []
+    return items.flatMap((item, index) => {
+        if (!item || typeof item !== 'object') return []
+        const value = item as Record<string, unknown>
+        const text = normalizeText(value)
+        if (!text) return []
+        return [{ id: typeof value.id === 'string' && value.id.trim() ? value.id.trim() : `legacy-crew-${index}`, text, category: 'crew' }]
+    })
+}
+
+export function getCrewNotesTemplate(raw: unknown): DropBagTemplateTextField {
+    const defaultText = raw && typeof raw === 'object' && !Array.isArray(raw)
+        ? (raw as { crewNotesDefault?: unknown }).crewNotesDefault
+        : undefined
+    return { id: CREW_NOTES_FIELD_ID, label: 'Crew Notes', defaultText: typeof defaultText === 'string' ? defaultText : '' }
 }
 
 export function getDropBagTextFields(raw: unknown, template: DropBagTemplateTextField[]): DropBagTextFieldValue[] {
@@ -268,19 +291,20 @@ const itemKey = (item: { category: string; text: string }) =>
 
 export function getDropBagTemplateForKind(
     kind: BagKind,
-    dropBagTemplate: DropBagTemplateItem[]
+    dropBagTemplate: DropBagTemplateItem[],
+    crewItems: DropBagTemplateItem[] = [],
 ): DropBagTemplateItem[] {
     const endpointTemplate = kind === 'start'
         ? DEFAULT_START_BAG_TEMPLATE
         : kind === 'finish'
             ? DEFAULT_FINISH_BAG_TEMPLATE
             : null
-    if (!endpointTemplate) return dropBagTemplate
+    if (!endpointTemplate) return [...dropBagTemplate, ...crewItems]
 
     const result: DropBagTemplateItem[] = []
     const usedKeys = new Set<string>()
 
-    for (const item of [...dropBagTemplate, ...endpointTemplate]) {
+    for (const item of [...dropBagTemplate, ...endpointTemplate, ...crewItems]) {
         const key = itemKey(item)
         if (usedKeys.has(key)) continue
         result.push(item)

@@ -2,9 +2,11 @@
 
 **Date:** 2026-09-26
 **Branch:** `main`
-**Status:** Deployed on `main`: Save Template now includes unfinished new item/text-field entries. The Runner Notes recovery remains pending the user's approval for its private contact links.
+**Status:** In progress on `main`: crew-specific Drop Bag section and template. The Runner Notes recovery remains pending the user's approval for its private contact links.
 
 ## Current work
+
+- **Verified locally; deployment pending — crew Drop Bags** (`main`): per-bag crew gear and notes now appear as a distinct area in every bag when Race Support includes crew. A separate Crew template section supplies default gear and notes. Crew View, the All Bags list, individual print, and PDF print list show the new section; Solo/Pacer only hides saved crew details. The existing waypoint JSON stores per-bag edits; no migration was needed. Focused helper tests, all 183 tests, build, lint (0 errors, 48 existing warnings), and diff check passed. Live save/reload and rendered mobile verification remain. No other worktrees.
 
 - **Deployed — Drop Bag template propagation** (`main`, product `b7bdfa4`): the template editor dropped text left in either new-entry box unless its adjacent add button was clicked. Both Save actions now include pending valid entries; an unlabeled text-field default prompts for a label. The user guide explains that bag cards show packed items while Edit Drop Bag shows the full checklist. `npm run build`, `npm run lint` (0 errors, 48 existing warnings), and `git diff --check` passed; `npm run deploy` succeeded after limiting SSH to the verified `web` identity. `git describe --always --dirty --abbrev=7` after deploy: `b7bdfa4`. The live race footer showed `b7bdfa4` after reload. No race or bag data was changed during verification, so a real save and reload of a newly entered field remains unverified. No other branches or worktrees hold unmerged work.
 

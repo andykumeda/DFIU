@@ -17,6 +17,9 @@ import {
     getDropBagEditorItems,
     getDropBagNotes,
     getDropBagTextFields,
+    getCrewNotesTemplate,
+    parseDropBagCrewItems,
+    CREW_NOTES_FIELD_ID,
     hasSavedBagPlan,
     parseDropBagTemplate,
     parseDropBagTemplateTextFields,
@@ -84,8 +87,9 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
     }
 
     const sortedWaypoints = [...waypoints].sort(compareCourseOrder)
+    const hasCrew = getRaceSupport(race).crew
     const bagWaypoints = sortedWaypoints
-        .filter(wp => isVisibleBag(wp, getRaceSupport(race).crew, canWriteDropBags))
+        .filter(wp => isVisibleBag(wp, hasCrew, canWriteDropBags))
     const aidStationWaypoints = sortedWaypoints.filter(isAidStationWaypoint)
 
     const { plans } = usePacePlans(race.id)
@@ -144,7 +148,8 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
     const isCold = parseInt(race.avg_temp_low || '100') <= 40
     const hasConditions = isHot || isCold || !!race.weather_notes
     const dropBagTemplate = parseDropBagTemplate(race.drop_bag_template)
-    const dropBagTemplateTextFields = parseDropBagTemplateTextFields(race.drop_bag_template)
+    const dropBagCrewItems = parseDropBagCrewItems(race.drop_bag_template)
+    const dropBagTemplateTextFields = [...parseDropBagTemplateTextFields(race.drop_bag_template), getCrewNotesTemplate(race.drop_bag_template)]
 
     const getWaypointArrival = (wp: Waypoint) =>
         planA?.waypointArrivals.find(a => a.waypointId === wp.id)
@@ -154,7 +159,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
 
     const getWaypointItems = (wp: Waypoint) => {
         const kind = getBagKind(wp) ?? 'official'
-        const template = getDropBagTemplateForKind(kind, dropBagTemplate)
+        const template = getDropBagTemplateForKind(kind, dropBagTemplate, dropBagCrewItems)
         return getDropBagEditorItems(wp.drop_bag_items, template, {
             isNight: lightingByWaypoint.get(wp.id)?.needsLight ?? false,
             isHot,
@@ -230,8 +235,10 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
             mile: wp.mile,
             arrival: getWaypointArrival(wp)?.timeOfDay ?? null,
             cutoff: formatBagCutoff(wp.cutoff_time, race.timezone, clock24h),
-            items: getWaypointItems(wp).filter(item => item.checked).map(item => ({ text: item.text, quantity: item.quantity })),
-            textFields: getDropBagTextFields(wp.drop_bag_items, dropBagTemplateTextFields).map(field => ({ label: field.label, value: field.value })),
+            items: getWaypointItems(wp).filter(item => item.checked && item.category !== 'crew').map(item => ({ text: item.text, quantity: item.quantity })),
+            crewItems: hasCrew ? getWaypointItems(wp).filter(item => item.checked && item.category === 'crew').map(item => ({ text: item.text, quantity: item.quantity })) : null,
+            textFields: getDropBagTextFields(wp.drop_bag_items, dropBagTemplateTextFields).filter(field => field.id !== CREW_NOTES_FIELD_ID).map(field => ({ label: field.label, value: field.value })),
+            crewNotes: hasCrew ? getDropBagTextFields(wp.drop_bag_items, dropBagTemplateTextFields).find(field => field.id === CREW_NOTES_FIELD_ID)?.value ?? '' : null,
             notes: getDropBagNotes(wp),
             tellRunner: wp.crew_relay_notes,
             nextLegReminder: wp.runner_next_leg_notes,
@@ -453,7 +460,9 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                             const isCrewBag = kind === 'crew'
                             const displayName = isStartBag ? 'Start' : isFinishBag ? 'Finish' : wp.name
                             const items = getWaypointItems(wp)
-                            const packedItems = items.filter(i => i.checked)
+                            const packedItems = items.filter(i => i.checked && i.category !== 'crew')
+                            const packedCrewItems = hasCrew ? items.filter(i => i.checked && i.category === 'crew') : []
+                            const crewNotes = hasCrew ? getDropBagTextFields(wp.drop_bag_items, dropBagTemplateTextFields).find(field => field.id === CREW_NOTES_FIELD_ID)?.value : null
 
                             const isCollapsed = collapsedStations[wp.id]
 
@@ -511,6 +520,11 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                                                     No items packed yet.
                                                 </div>
                                             )}
+                                            {hasCrew && <div className="ml-5 rounded border border-emerald-900/50 bg-emerald-950/10 p-2 text-sm text-neutral-300">
+                                                <div className="mb-1 font-bold uppercase tracking-wider text-emerald-300 text-xs">Crew gear & notes</div>
+                                                {packedCrewItems.length ? <ul>{packedCrewItems.map(item => <li key={item.id}>• {item.quantity ? `${item.quantity} × ` : ''}{item.text}</li>)}</ul> : <p className="text-neutral-500">No crew gear packed yet.</p>}
+                                                <p className="mt-1 whitespace-pre-wrap">{crewNotes || 'No crew notes entered.'}</p>
+                                            </div>}
                                     </div>
                                 </div>
                             )

@@ -1,6 +1,35 @@
 import { describe, expect, it } from 'vitest'
 import type { Waypoint } from '@/types/database'
-import { clearDropBagChecklistItems, createDropBagItem, mergeTemplateIntoItems } from './drop-bag-shared'
+import { clearDropBagChecklistItems, createDropBagItem, getCrewNotesTemplate, getDropBagEditorItems, getDropBagTemplateForKind, getDropBagTextFields, mergeTemplateIntoItems, parseDropBagCrewItems } from './drop-bag-shared'
+
+describe('crew template', () => {
+    const template = {
+        items: [{ id: 'runner-flask', text: 'Flask', category: 'hydration' }],
+        crewItems: [{ id: 'crew-cooler', text: 'Cooler', category: 'crew' }],
+        crewNotesDefault: 'Bring ice',
+    }
+
+    it('adds crew gear to each bag without replacing the runner checklist', () => {
+        const bagTemplate = getDropBagTemplateForKind('official', template.items, parseDropBagCrewItems(template))
+        expect(bagTemplate.map(item => item.text)).toEqual(['Flask', 'Cooler'])
+        const items = getDropBagEditorItems([{ id: 'tpl_runner-flask', text: 'Flask', category: 'hydration', checked: true }], bagTemplate, { isNight: false, isHot: false, isCold: false })
+        expect(items.find(item => item.text === 'Flask')?.checked).toBe(true)
+        expect(items.find(item => item.text === 'Cooler')?.checked).toBe(false)
+    })
+
+    it('uses the new crew notes default while keeping each bag override', () => {
+        const field = getCrewNotesTemplate(template)
+        expect(getDropBagTextFields([], [field])[0].value).toBe('Bring ice')
+        const saved = [{ type: 'text', templateId: field.id, value: 'Meet at Redbox', templateDefaultText: 'Bring ice' }]
+        expect(getDropBagTextFields(saved, [{ ...field, defaultText: 'Bring cups' }])[0].value).toBe('Meet at Redbox')
+    })
+
+    it('preserves packed crew gear and quantity when the crew template changes', () => {
+        const saved = [{ id: 'tpl_crew-cooler', templateId: 'crew-cooler', templateText: 'Cooler', text: 'Cooler', category: 'crew', checked: true, quantity: '2' }]
+        const revised = [{ id: 'crew-cooler', text: 'Large cooler', category: 'crew' }]
+        expect(mergeTemplateIntoItems(saved, revised, { isNight: false, isHot: false, isCold: false })[0]).toMatchObject({ text: 'Large cooler', checked: true, quantity: '2' })
+    })
+})
 
 describe('mergeTemplateIntoItems', () => {
     it('applies renamed template items to an existing bag while preserving packed state and quantity', () => {
