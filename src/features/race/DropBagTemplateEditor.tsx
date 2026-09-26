@@ -43,12 +43,22 @@ export function DropBagTemplateEditor({ race, canEdit, waypoints, bagWaypointIds
 
     const handleSave = async (replaceAllBags = false) => {
         if (replaceAllBags && !window.confirm('Replace every existing bag checklist and template text field with this template? Checked items, quantities, custom items, and per-bag text field edits will be cleared. Bag names and bag notes will remain.')) return
+        if (newFieldDefault.trim() && !newFieldLabel.trim()) {
+            alert('Enter a label for the new text field before saving.')
+            return
+        }
         setSaving(true)
         try {
-            const template = items
+            const pendingItem: DropBagTemplateItem[] = newText.trim()
+                ? [{ id: `template_${crypto.randomUUID()}`, text: newText.trim(), category: newCategory }]
+                : []
+            const pendingField: DropBagTemplateTextField[] = newFieldLabel.trim()
+                ? [{ id: `text_${crypto.randomUUID()}`, label: newFieldLabel.trim(), defaultText: newFieldDefault }]
+                : []
+            const template = [...items, ...pendingItem]
                 .map(item => ({ ...item, text: item.text.trim() }))
                 .filter(item => item.text)
-            const savedTextFields = textFields
+            const savedTextFields = [...textFields, ...pendingField]
                 .map(field => ({ ...field, label: field.label.trim() }))
                 .filter(field => field.label)
             const savedTemplate = savedTextFields.length ? { items: template, textFields: savedTextFields } : template
@@ -233,14 +243,14 @@ export function DropBagTemplateEditor({ race, canEdit, waypoints, bagWaypointIds
                                 </button>
                                 <button
                                     onClick={() => handleSave(true)}
-                                    disabled={saving || items.length === 0 || bagWaypointIds.length === 0}
+                                    disabled={saving || (items.length === 0 && !newText.trim()) || bagWaypointIds.length === 0}
                                     className="border border-red-800 bg-red-950/40 hover:bg-red-900/50 disabled:opacity-50 text-red-200 px-4 py-2 rounded-lg font-bold flex items-center gap-2"
                                 >
                                     <Trash2 className="w-4 h-4" /> Save &amp; Replace All Bags
                                 </button>
                                 <button
                                     onClick={() => handleSave(false)}
-                                    disabled={saving || items.length === 0}
+                                    disabled={saving || (items.length === 0 && !newText.trim())}
                                     className="bg-orange-600 hover:bg-orange-500 text-white px-6 py-2 rounded-lg font-bold flex items-center gap-2"
                                 >
                                     <Save className="w-4 h-4" />

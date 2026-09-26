@@ -1,10 +1,12 @@
 # DFIU Handoff
 
-**Date:** 2026-09-24
+**Date:** 2026-09-26
 **Branch:** `main`
-**Status:** Deployed on `main`: Drop Bag Print List includes empty bags and is stamped with the committed revision. The Runner Notes recovery remains pending the user's approval for its private contact links.
+**Status:** In progress: investigate browser report that template changes do not update existing Drop Bags. Verify template save, bag display, and persistence before release. The Runner Notes recovery remains pending the user's approval for its private contact links.
 
 ## Current work
+
+- **Verified locally; deployment pending — Drop Bag template propagation** (`main`): the template editor dropped text left in either new-entry box unless its adjacent add button was clicked. Both Save actions now include pending valid entries; an unlabeled text-field default prompts for a label. Existing bag data is untouched. `npm run build`, `npm run lint` (0 errors, 48 existing warnings), and `git diff --check` passed. Live race save/persistence still needs verification after deploy. No other worktrees.
 
 - **Deployed — Drop Bag print, view, and template text fields** (`main`, product `6af6f75`): Print List prepares a downloadable PDF with one bag per page, including empty bags and their station, timing, cutoff, notes, and coverage. A local rendered sample confirmed pagination and empty-bag details. Opening a bag now shows contents first, with the aid station heading and bag name beside it, plus an explicit Edit action. Template text fields have defaults and per-bag edits; they appear in bag views, Crew View, and printouts. Legacy checklist templates remain readable. Build and deploy passed; production footer `6af6f75` and live Redbox heading/view/edit/cancel, template control, and PDF-ready dialog were verified. Browser automation blocked opening a `blob:` PDF, so actual download from the in-app browser remains unverified. No race data was changed. No other worktrees or unmerged work.
 
