@@ -90,6 +90,7 @@ export function DropBagTemplateEditor({ race, canEdit, waypoints, bagWaypointIds
                 .select('id')
                 .single()
             if (error) throw error
+            queryClient.setQueryData<Race>(['race', race.id], current => ({ ...(current ?? race), drop_bag_template: savedTemplate as unknown as Race['drop_bag_template'] }))
             if (replaceAllBags && bagWaypointIds.length > 0) {
                 const { data: resetRows, error: bagError } = await supabase.from('waypoints')
                     .update({ drop_bag_items: null })

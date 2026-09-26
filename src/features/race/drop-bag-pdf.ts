@@ -9,7 +9,7 @@ export interface PrintableDropBag {
     arrival: string | null
     cutoff: string | null
     items: Array<{ text: string; quantity?: string }>
-    crewItems: Array<{ text: string; quantity?: string }> | null
+    crewItems: Array<{ text: string; quantity?: string; checked: boolean }> | null
     crewNotes: string | null
     textFields: Array<{ label: string; value: string }>
     notes: string | null
@@ -68,8 +68,8 @@ export function buildDropBagListDefinition(raceName: string, planLabel: string |
         if (bag.crewItems) {
             content.push({ text: 'CREW GEAR & NOTES', style: 'sectionLabel', margin: [0, 14, 0, 6] })
             content.push(bag.crewItems.length
-                ? { ul: bag.crewItems.map(item => `${item.quantity?.trim() ? `${item.quantity.trim()} × ` : ''}${item.text}`), style: 'body' }
-                : { text: 'No crew gear packed yet.', style: 'body' })
+                ? { ul: bag.crewItems.map(item => `[${item.checked ? 'x' : ' '}] ${item.quantity?.trim() ? `${item.quantity.trim()} × ` : ''}${item.text}`), style: 'body' }
+                : { text: 'No crew gear planned yet.', style: 'body' })
             content.push(...detail('Crew notes', bag.crewNotes || 'No crew notes entered.'))
         }
         bag.textFields.forEach(field => content.push(...detail(field.label, field.value || 'No text entered.')))

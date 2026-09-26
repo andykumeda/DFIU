@@ -12,7 +12,7 @@ export function DropBagPrintPage({ waypoint, raceName, bagName, notes, items, te
 }) {
     const packed = items.filter(item => item.checked)
     const runnerPacked = packed.filter(item => item.category !== 'crew')
-    const crewPacked = packed.filter(item => item.category === 'crew')
+    const crewGear = items.filter(item => item.category === 'crew')
     const crewNotes = textFields.find(field => field.id === CREW_NOTES_FIELD_ID)
     return createPortal(<div className="single-bag-print-overlay fixed inset-0 z-[210] overflow-y-auto bg-black/80 p-3 sm:p-8" role="dialog" aria-modal="true" aria-label="Printable drop bag">
         <div className="print:hidden mx-auto mb-3 flex max-w-3xl justify-end gap-3">
@@ -38,7 +38,7 @@ export function DropBagPrintPage({ waypoint, raceName, bagName, notes, items, te
             </section>
             {crewNotes && <section className="border-t-2 border-black py-5">
                 <h2 className="mb-3 text-sm font-bold uppercase tracking-wider">Crew Gear & Notes</h2>
-                {crewPacked.length ? <ul className="list-disc space-y-2 pl-6 text-lg">{crewPacked.map(item => <li key={item.id}>{item.quantity?.trim() && `${item.quantity} × `}{item.text}</li>)}</ul> : <p>No crew gear packed yet.</p>}
+                {crewGear.length ? <ul className="space-y-2 text-lg">{crewGear.map(item => <li key={item.id}>[{item.checked ? 'x' : ' '}] {item.quantity?.trim() && `${item.quantity} × `}{item.text}</li>)}</ul> : <p>No crew gear planned yet.</p>}
                 <h3 className="mt-4 text-sm font-bold uppercase tracking-wider">Crew notes</h3>
                 <p className="mt-1 whitespace-pre-wrap break-words">{crewNotes.value || 'No crew notes entered.'}</p>
             </section>}

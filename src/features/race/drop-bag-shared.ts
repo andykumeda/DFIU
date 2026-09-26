@@ -417,3 +417,12 @@ export function getDropBagEditorItems(
         ? mergeTemplateIntoItems(existingItems, template, opts)
         : seedDropBagItems(template, opts)
 }
+
+/** Crew gear shown in read-only views, including unchecked template items. */
+export function getCrewGearItems(existing: unknown, template: DropBagTemplateItem[]): DropBagItem[] {
+    const savedCrewItems = parseDropBagItems(existing).filter(item => item.category === 'crew')
+    const crewItems = savedCrewItems.length
+        ? mergeTemplateIntoItems(savedCrewItems, template, { isNight: false, isHot: false, isCold: false })
+        : seedDropBagItems(template, { isNight: false, isHot: false, isCold: false })
+    return crewItems.filter(item => item.category === 'crew')
+}

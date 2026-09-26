@@ -267,7 +267,7 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
                             <DropBagSummary waypoint={waypoint} />
                         </div>
                         <DropBagTextFields fields={textFields.filter(field => field.id !== CREW_NOTES_FIELD_ID)} />
-                        {hasCrew && <DropBagCrewSection waypoint={waypoint} notes={crewNotes?.value ?? ''} />}
+                        {hasCrew && <DropBagCrewSection items={items} notes={crewNotes?.value ?? ''} />}
                         <DropBagNotes waypoint={waypoint} showEmpty />
                     </div>
                     ) : (

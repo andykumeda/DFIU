@@ -4,9 +4,9 @@ import type { Waypoint } from '@/types/database'
  * Read-only "what's inside the bag" list. Shows packed items (the `checked`
  * flag means packed). Used by Crew View and the contents-only drop bag popup.
  */
-export function DropBagSummary({ waypoint, crew = false }: { waypoint: Waypoint; crew?: boolean }) {
+export function DropBagSummary({ waypoint }: { waypoint: Waypoint }) {
     const allItems = (waypoint.drop_bag_items as Array<{ text?: string; label?: string; name?: string; category?: string; qty?: number; quantity?: number | string; checked?: boolean }> | null) ?? []
-    const items = allItems.filter(it => it.checked && (it.category === 'crew') === crew)
+    const items = allItems.filter(it => it.checked && it.category !== 'crew')
     if (!items.length) return <div className='text-sm text-neutral-400'>No packed items yet.</div>
     return (
         <ul className='space-y-1'>

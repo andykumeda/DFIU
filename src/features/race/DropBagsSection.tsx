@@ -236,7 +236,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
             arrival: getWaypointArrival(wp)?.timeOfDay ?? null,
             cutoff: formatBagCutoff(wp.cutoff_time, race.timezone, clock24h),
             items: getWaypointItems(wp).filter(item => item.checked && item.category !== 'crew').map(item => ({ text: item.text, quantity: item.quantity })),
-            crewItems: hasCrew ? getWaypointItems(wp).filter(item => item.checked && item.category === 'crew').map(item => ({ text: item.text, quantity: item.quantity })) : null,
+            crewItems: hasCrew ? getWaypointItems(wp).filter(item => item.category === 'crew').map(item => ({ text: item.text, quantity: item.quantity, checked: item.checked })) : null,
             textFields: getDropBagTextFields(wp.drop_bag_items, dropBagTemplateTextFields).filter(field => field.id !== CREW_NOTES_FIELD_ID).map(field => ({ label: field.label, value: field.value })),
             crewNotes: hasCrew ? getDropBagTextFields(wp.drop_bag_items, dropBagTemplateTextFields).find(field => field.id === CREW_NOTES_FIELD_ID)?.value ?? '' : null,
             notes: getDropBagNotes(wp),
@@ -461,7 +461,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                             const displayName = isStartBag ? 'Start' : isFinishBag ? 'Finish' : wp.name
                             const items = getWaypointItems(wp)
                             const packedItems = items.filter(i => i.checked && i.category !== 'crew')
-                            const packedCrewItems = hasCrew ? items.filter(i => i.checked && i.category === 'crew') : []
+                            const crewGearItems = hasCrew ? items.filter(i => i.category === 'crew') : []
                             const crewNotes = hasCrew ? getDropBagTextFields(wp.drop_bag_items, dropBagTemplateTextFields).find(field => field.id === CREW_NOTES_FIELD_ID)?.value : null
 
                             const isCollapsed = collapsedStations[wp.id]
@@ -522,7 +522,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                                             )}
                                             {hasCrew && <div className="ml-5 rounded border border-emerald-900/50 bg-emerald-950/10 p-2 text-sm text-neutral-300">
                                                 <div className="mb-1 font-bold uppercase tracking-wider text-emerald-300 text-xs">Crew gear & notes</div>
-                                                {packedCrewItems.length ? <ul>{packedCrewItems.map(item => <li key={item.id}>• {item.quantity ? `${item.quantity} × ` : ''}{item.text}</li>)}</ul> : <p className="text-neutral-500">No crew gear packed yet.</p>}
+                                                {crewGearItems.length ? <ul>{crewGearItems.map(item => <li key={item.id} className={item.checked ? 'text-emerald-100' : 'text-neutral-500'}>{item.checked ? '✓' : '○'} {item.quantity ? `${item.quantity} × ` : ''}{item.text} <span className="text-xs">({item.checked ? 'Packed' : 'To pack'})</span></li>)}</ul> : <p className="text-neutral-500">No crew gear planned yet.</p>}
                                                 <p className="mt-1 whitespace-pre-wrap">{crewNotes || 'No crew notes entered.'}</p>
                                             </div>}
                                     </div>

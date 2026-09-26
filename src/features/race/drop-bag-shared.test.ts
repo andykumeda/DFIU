@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Waypoint } from '@/types/database'
-import { clearDropBagChecklistItems, createDropBagItem, getCrewNotesTemplate, getDropBagEditorItems, getDropBagTemplateForKind, getDropBagTextFields, mergeTemplateIntoItems, parseDropBagCrewItems } from './drop-bag-shared'
+import { clearDropBagChecklistItems, createDropBagItem, getCrewGearItems, getCrewNotesTemplate, getDropBagEditorItems, getDropBagTemplateForKind, getDropBagTextFields, mergeTemplateIntoItems, parseDropBagCrewItems } from './drop-bag-shared'
 
 describe('crew template', () => {
     const template = {
@@ -28,6 +28,13 @@ describe('crew template', () => {
         const saved = [{ id: 'tpl_crew-cooler', templateId: 'crew-cooler', templateText: 'Cooler', text: 'Cooler', category: 'crew', checked: true, quantity: '2' }]
         const revised = [{ id: 'crew-cooler', text: 'Large cooler', category: 'crew' }]
         expect(mergeTemplateIntoItems(saved, revised, { isNight: false, isHot: false, isCold: false })[0]).toMatchObject({ text: 'Large cooler', checked: true, quantity: '2' })
+    })
+
+    it('shows new crew template gear as planned in existing bags without packing it', () => {
+        const crewTemplate = parseDropBagCrewItems(template)
+        expect(getCrewGearItems([{ id: 'runner-custom', text: 'Socks', category: 'gear', checked: true }], crewTemplate)).toEqual([
+            { id: 'tpl_crew-cooler', templateId: 'crew-cooler', templateText: 'Cooler', text: 'Cooler', category: 'crew', checked: false },
+        ])
     })
 })
 
