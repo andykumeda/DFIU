@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Printer, X } from 'lucide-react'
 import type { Waypoint } from '@/types/database'
@@ -10,6 +11,12 @@ export function DropBagPrintPage({ waypoint, raceName, bagName, notes, items, te
     waypoint: Waypoint; raceName: string; bagName: string; notes: string; items: DropBagItem[]; textFields: DropBagTextFieldValue[];
     arrival?: string; cutoff?: string | null; lightingMessage?: string; coverageRows: DropBagCoverageRow[]; onClose: () => void
 }) {
+    useEffect(() => {
+        const previousTitle = document.title
+        document.title = `${raceName} - ${waypoint.name} - Drop Bag`.replace(/[\\/:*?"<>|]/g, '-')
+        return () => { document.title = previousTitle }
+    }, [raceName, waypoint.name])
+
     const packed = items.filter(item => item.checked)
     const runnerPacked = packed.filter(item => item.category !== 'crew')
     const crewGear = items.filter(item => item.category === 'crew')
