@@ -1,10 +1,12 @@
 # DFIU Handoff
 
-**Date:** 2026-09-26
+**Date:** 2026-09-27
 **Branch:** `main`
-**Status:** In progress on `main`: publish an unofficial, readable AC100 race-rules copy at `dfiu.app/ac100-race-rules/`. The Runner Notes recovery remains pending the user's approval for its private contact links.
+**Status:** Deployed on `main`: an unofficial, readable AC100 race-rules copy is live at `https://dfiu.app/ac100-race-rules/`. Remove it on or after October 5, 2026. The Runner Notes recovery remains pending the user's approval for its private contact links.
 
 ## Current work
+
+- **Deployed — temporary AC100 rules copy** (`main`, product `b56ec80`): `public/ac100-race-rules/index.html` contains all 11 sections and 39 disclosures, with working section and rule links. All 39 disclosure texts matched the fetched official page. The pre-commit build passed and copied the HTML into `dist/`; `git describe --always --dirty --abbrev=7` for the deployed feature was `b56ec80`. The normal `npm run deploy` stopped during its fresh rebuild because macOS rejected Rollup's native module after `npm ci`; no app bundle was uploaded by that run. The static file was synced directly to `/var/www/dfiu/ac100-race-rules/`, and the matching nginx route reservation was installed with a backup, `nginx -t`, and reload. Remote and public SHA-256 matched the repository file (`70d4eee2…11fa8423bd0`); public HTTPS returned 200 and Chrome confirmed the direct `#drop-2` link plus section navigation and expansion. Nginx and `dfiu-og` remained active. Cloudflare DNS required no change because `dfiu.app` already resolves to this host. No other worktrees or unmerged branches.
 
 - **Scheduled removal — AC100 rules copy:** keep `https://dfiu.app/ac100-race-rules/` available through October 4, 2026. Remove the static page and its nginx route reservation on or after October 5, 2026, then verify the public URL no longer serves the copy. This is a follow-up note, not an automatic removal.
 
