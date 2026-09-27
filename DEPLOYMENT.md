@@ -132,17 +132,12 @@ browsers receive the SPA document without a JavaScript redirect. Facebook/Instag
 
 `npm run deploy` syncs `server/` and restarts `dfiu-og`.
 
-### AC100 race-rules copy
+### Retired AC100 race-rules copy
 
-`public/ac100-race-rules/index.html` is an unofficial, dated copy of the AC100
-rules with native expandable sections. Vite copies it to `dist/`, so the normal
-deployment publishes it at `https://dfiu.app/ac100-race-rules/` and preserves it
-through later `rsync --delete` releases. The nginx template reserves this path
-from the vanity-race Open Graph injector. Refresh the copy from the official
-page when its rules change; the page links back to that source.
-Keep this temporary copy through October 4, 2026. On or after October 5,
-remove `public/ac100-race-rules/` and its nginx route reservation, deploy,
-and verify the public URL no longer serves the copy.
+The temporary static copy at `dfiu.app/ac100-race-rules/` was removed at the
+user's request after the official page was fixed. The nginx template redirects
+the old URL to `https://ac100.com/race-rules/` so previously shared links still
+reach the current rules. There is no copy in `public/` or `/var/www/dfiu/`.
 
 After changing nginx:
 
