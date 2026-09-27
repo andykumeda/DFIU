@@ -124,7 +124,7 @@ DFIU uses Strava **moving time**, not elapsed time. When Strava GPS and timing s
 
 ## Resources
 
-Resources can be links or full-width text boxes. Link titles and links inside resource text open in the current tab; use your browser’s Back action to return. Text boxes support Markdown headings, lists, links, tables, and emphasis. Each custom resource can be reordered, enabled/hidden, assigned an icon, and optionally made printable. The Print button appears in the upper-right of the rendered text resource, like Schedule of Events.
+Resources can be links or full-width text boxes. Link titles and links inside resource text open in the current tab; use your browser’s Back action to return. Text boxes support Markdown headings, lists, links, tables, and emphasis. Links and text boxes appear in one top-to-bottom order. In Edit Resources, hold and drag a handle to move a resource, or focus the handle and use the up/down arrow keys, then Save Changes. Each resource can be enabled/hidden and assigned an icon; text boxes can also be made printable. The Print button appears in the upper-right of a printable text resource, like Schedule of Events.
 
 Lodging & Dining and Schedule of Events are built-in Markdown sections. The resource icon menu includes lodging/bed and calendar choices in addition to the standard icons.
 

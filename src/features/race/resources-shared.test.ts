@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { buildDefaultResourcesConfig, normalizeResourceUrl, parseResourcesConfig } from './resources-shared'
+import { buildDefaultResourcesConfig, normalizeResourceUrl, parseResourcesConfig, reorderResourceLinks } from './resources-shared'
 import type { Race } from '@/types/database'
 
 const race = { registration_url: 'https://example.com/register' } as Race
@@ -38,5 +38,15 @@ describe('resource card navigation', () => {
         expect(source).toContain('href={resourceUrl}')
         expect(source).not.toContain('target="_blank"')
         expect(source).toContain('<Markdown openLinksInNewTab={false}>')
+    })
+})
+
+describe('resource ordering', () => {
+    it('moves a link across a text resource in the saved array order', () => {
+        const links = buildDefaultResourcesConfig(race).links.slice(0, 2)
+        const mixed = [links[0], { ...links[0], id: 'text', kind: 'text' as const }, links[1]]
+        expect(reorderResourceLinks(mixed, links[1].id, links[0].id).map(link => link.id))
+            .toEqual([links[1].id, links[0].id, 'text'])
+        expect(mixed.map(link => link.id)).toEqual([links[0].id, 'text', links[1].id])
     })
 })

@@ -5,12 +5,13 @@ import { useAuth } from '@/features/auth/AuthContext'
 import { useDemoRacePersist } from '@/features/demo/useDemoRacePersist'
 import {
     BedDouble, CalendarDays, Edit2, Save, X, ExternalLink, Plus, Trash2,
-    ChevronUp, ChevronDown, Eye, EyeOff, Printer,
+    GripVertical, Eye, EyeOff, Printer,
 } from 'lucide-react'
 import {
     parseResourcesConfig,
     resourcesConfigToRacePatch,
     normalizeResourceUrl,
+    reorderResourceLinks,
     RESOURCE_ICON_MAP,
     type ResourceLinkEntry,
     type ResourcesConfig,
@@ -63,6 +64,9 @@ export function RaceResources({ race, canEdit = false, onUpdate }: RaceResources
     const [config, setConfig] = useState<ResourcesConfig>(() => parseResourcesConfig(race.resources_config, race))
     const [lodgingInfo, setLodgingInfo] = useState(race.lodging_info || '')
     const scheduleRef = useRef<HTMLDivElement>(null)
+    const resourceDrag = useRef<{ id: string; x: number; y: number; active: boolean } | null>(null)
+    const [draggedResourceId, setDraggedResourceId] = useState<string | null>(null)
+    const [dropTargetId, setDropTargetId] = useState<string | null>(null)
 
     const handlePrintSchedule = () => {
         const escapeHtml = (s: string) =>
@@ -149,29 +153,22 @@ ${body}
         }))
     }
 
-    const moveLink = (index: number, direction: -1 | 1) => {
-        setConfig(prev => {
-            const links = [...prev.links]
-            const target = index + direction
-            if (target < 0 || target >= links.length) return prev
-            ;[links[index], links[target]] = [links[target], links[index]]
-            return { ...prev, links }
-        })
+    const moveResource = (sourceId: string, targetId: string) => {
+        setConfig(prev => ({ ...prev, links: reorderResourceLinks(prev.links, sourceId, targetId) }))
     }
 
-    const moveTextResource = (id: string, direction: -1 | 1) => {
-        setConfig(prev => {
-            const textIndexes = prev.links.reduce<number[]>((indexes, link, index) => {
-                if (link.kind === 'text') indexes.push(index)
-                return indexes
-            }, [])
-            const current = textIndexes.findIndex(index => prev.links[index].id === id)
-            const target = current + direction
-            if (current < 0 || target < 0 || target >= textIndexes.length) return prev
-            const links = [...prev.links]
-            ;[links[textIndexes[current]], links[textIndexes[target]]] = [links[textIndexes[target]], links[textIndexes[current]]]
-            return { ...prev, links }
-        })
+    const resourceAtPoint = (x: number, y: number) =>
+        document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-resource-id]')?.dataset.resourceId ?? null
+
+    const finishResourceDrag = (x: number, y: number) => {
+        const drag = resourceDrag.current
+        if (drag?.active) {
+            const targetId = resourceAtPoint(x, y)
+            if (targetId && targetId !== drag.id) moveResource(drag.id, targetId)
+        }
+        resourceDrag.current = null
+        setDraggedResourceId(null)
+        setDropTargetId(null)
     }
 
     const addCustomResource = (kind: 'link' | 'text') => {
@@ -287,7 +284,8 @@ ${body}
             </div>
 
             {isEditing && (
-                <div className="flex justify-end">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-sm text-neutral-400">Hold and drag a handle to reorder. The list displays from top to bottom.</p>
                     <label className="flex items-center gap-2 text-sm text-blue-400">
                         <Plus className="w-4 h-4" /> Add custom resource
                         <select
@@ -304,24 +302,65 @@ ${body}
                 </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {(isEditing ? config.links : visibleLinks).filter(link => link.kind !== 'text').map((link, index) => {
+            <div className="space-y-4">
+                {(isEditing ? config.links : visibleLinks).map(link => {
                     const Icon = RESOURCE_ICON_MAP[link.icon] ?? RESOURCE_ICON_MAP.link
                     const resourceUrl = normalizeResourceUrl(link.url)
                     const hasContent = !!resourceUrl || isEditing
-                    const cardClass = `${isEditing ? 'bg-neutral-900/50' : 'bg-neutral-900'} border border-neutral-800 rounded-xl p-4 transition-colors ${!link.enabled && isEditing ? 'opacity-60' : ''} ${!isEditing && resourceUrl ? 'active:border-neutral-600' : ''}`
+                    const cardClass = `${isEditing ? 'bg-neutral-900/50' : 'bg-neutral-900'} border border-neutral-800 rounded-xl p-4 transition-colors ${!link.enabled && isEditing ? 'opacity-60' : ''} ${!isEditing && resourceUrl ? 'active:border-neutral-600' : ''} ${draggedResourceId === link.id ? 'opacity-60' : ''} ${dropTargetId === link.id ? 'ring-2 ring-blue-500' : ''}`
 
                     if (!isEditing && !link.enabled) return null
+
+                    if (!isEditing && link.kind === 'text') {
+                        return (
+                            <div key={link.id} className="bg-neutral-900 border border-neutral-800 rounded-xl p-6">
+                                <div className="flex items-start gap-3 mb-4">
+                                    <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0"><Icon className="w-5 h-5" /></div>
+                                    <h3 className="flex-1 text-lg font-bold text-white">{link.label}</h3>
+                                    {link.print_enabled && (
+                                        <button onClick={() => handlePrintTextResource(link.label, `text-resource-${link.id}`)} className="ml-auto flex items-center gap-2 bg-neutral-800 hover:bg-neutral-700 text-white px-3 py-1.5 rounded-lg transition-colors text-sm font-medium border border-neutral-700">
+                                            <Printer className="w-4 h-4" /> Print
+                                        </button>
+                                    )}
+                                </div>
+                                <div id={`text-resource-${link.id}`}>{link.content ? <Markdown openLinksInNewTab={false}>{link.content}</Markdown> : <p className="text-neutral-600 italic">No details provided yet.</p>}</div>
+                            </div>
+                        )
+                    }
 
                     const body = (
                             <div className="flex items-start gap-4">
                                 {isEditing && (
-                                    <div className="flex flex-col gap-1 shrink-0">
-                                        <button type="button" onClick={() => moveLink(index, -1)} disabled={index === 0} className="text-neutral-500 hover:text-white disabled:opacity-30 p-1">
-                                            <ChevronUp className="w-4 h-4" />
-                                        </button>
-                                        <button type="button" onClick={() => moveLink(index, 1)} disabled={index === config.links.length - 1} className="text-neutral-500 hover:text-white disabled:opacity-30 p-1">
-                                            <ChevronDown className="w-4 h-4" />
+                                    <div className="shrink-0">
+                                        <button
+                                            type="button"
+                                            aria-label={`Drag to reorder ${link.label}. Use arrow keys to move it one place.`}
+                                            title="Hold and drag to reorder"
+                                            className="text-neutral-400 hover:text-white p-2 cursor-grab active:cursor-grabbing touch-none rounded focus-visible:ring-2 focus-visible:ring-blue-500"
+                                            onPointerDown={event => {
+                                                resourceDrag.current = { id: link.id, x: event.clientX, y: event.clientY, active: false }
+                                                event.currentTarget.setPointerCapture(event.pointerId)
+                                            }}
+                                            onPointerMove={event => {
+                                                const drag = resourceDrag.current
+                                                if (!drag || drag.id !== link.id) return
+                                                if (!drag.active && Math.hypot(event.clientX - drag.x, event.clientY - drag.y) < 5) return
+                                                drag.active = true
+                                                setDraggedResourceId(drag.id)
+                                                const targetId = resourceAtPoint(event.clientX, event.clientY)
+                                                setDropTargetId(targetId && targetId !== drag.id ? targetId : null)
+                                            }}
+                                            onPointerUp={event => finishResourceDrag(event.clientX, event.clientY)}
+                                            onPointerCancel={() => finishResourceDrag(-1, -1)}
+                                            onKeyDown={event => {
+                                                if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return
+                                                event.preventDefault()
+                                                const index = config.links.findIndex(item => item.id === link.id)
+                                                const target = config.links[index + (event.key === 'ArrowUp' ? -1 : 1)]
+                                                if (target) moveResource(link.id, target.id)
+                                            }}
+                                        >
+                                            <GripVertical className="w-5 h-5" />
                                         </button>
                                     </div>
                                 )}
@@ -372,12 +411,12 @@ ${body}
                                                 </select>
                                             </div>
                                             {link.kind === 'text' ? (
-                                                <textarea
+                                                <><textarea
                                                     className="w-full min-h-24 bg-neutral-950 border border-neutral-800 rounded px-3 py-2 text-sm text-white placeholder-neutral-700 focus:ring-1 focus:ring-blue-500 outline-none resize-y"
                                                     placeholder="Resource details"
                                                     value={link.content ?? ''}
                                                     onChange={e => updateLink(link.id, { content: e.target.value })}
-                                                />
+                                                /><label className="inline-flex items-center gap-2 text-sm text-neutral-300"><input type="checkbox" checked={!!link.print_enabled} onChange={e => updateLink(link.id, { print_enabled: e.target.checked })} /> Allow printing</label></>
                                             ) : (
                                                 <input
                                                     type="url"
@@ -459,40 +498,12 @@ ${body}
                     }
 
                     return (
-                        <div key={link.id} className={cardClass}>
+                        <div key={link.id} data-resource-id={link.id} className={cardClass}>
                             {body}
                         </div>
                     )
                 })}
             </div>
-
-            {config.links.filter(link => link.kind === 'text' && (link.enabled || isEditing)).map((link, textIndex, textLinks) => {
-                const Icon = RESOURCE_ICON_MAP[link.icon] ?? RESOURCE_ICON_MAP.link
-                return (
-                    <div key={link.id} className={`bg-neutral-900 border border-neutral-800 rounded-xl p-6 ${!link.enabled && isEditing ? 'opacity-60' : ''}`}>
-                        <div className="flex items-start gap-3 mb-4">
-                            <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0"><Icon className="w-5 h-5" /></div>
-                            {isEditing ? <div className="flex-1 space-y-2">
-                                <div className="flex gap-2"><input value={link.label} onChange={e => updateLink(link.id, { label: e.target.value })} className="flex-1 bg-neutral-950 border border-neutral-800 rounded px-3 py-2 text-white font-bold" />
-                                <button onClick={() => moveTextResource(link.id, -1)} disabled={textIndex === 0} aria-label="Move text resource up" className="text-neutral-500 hover:text-white disabled:opacity-30 p-1"><ChevronUp className="w-4 h-4" /></button><button onClick={() => moveTextResource(link.id, 1)} disabled={textIndex === textLinks.length - 1} aria-label="Move text resource down" className="text-neutral-500 hover:text-white disabled:opacity-30 p-1"><ChevronDown className="w-4 h-4" /></button>
-                                <select aria-label="Resource icon" value={link.icon} onChange={e => updateLink(link.id, { icon: e.target.value as ResourceLinkEntry['icon'] })} className="bg-neutral-950 border border-neutral-800 rounded px-2 text-sm text-white">{Object.keys(RESOURCE_ICON_MAP).map(icon => <option key={icon} value={icon}>{icon.replace('-', ' ')}</option>)}</select>
-                                <label className="inline-flex items-center gap-1.5 text-xs text-neutral-300 whitespace-nowrap"><input type="checkbox" checked={!!link.print_enabled} onChange={e => updateLink(link.id, { print_enabled: e.target.checked })} /> Allow printing</label>
-                                <button onClick={() => updateLink(link.id, { enabled: !link.enabled })} className="text-neutral-500 hover:text-white p-1">{link.enabled ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}</button>
-                                <button onClick={() => removeLink(link.id)} className="text-neutral-500 hover:text-red-400 p-1"><Trash2 className="w-4 h-4" /></button></div>
-                            </div> : <>
-                                <h3 className="flex-1 text-lg font-bold text-white">{link.label}</h3>
-                                {link.print_enabled && (
-                                    <button onClick={() => handlePrintTextResource(link.label, `text-resource-${link.id}`)} className="ml-auto flex items-center gap-2 bg-neutral-800 hover:bg-neutral-700 text-white px-3 py-1.5 rounded-lg transition-colors text-sm font-medium border border-neutral-700">
-                                        <Printer className="w-4 h-4" />
-                                        Print
-                                    </button>
-                                )}
-                            </>}
-                        </div>
-                        {isEditing ? <textarea value={link.content ?? ''} onChange={e => updateLink(link.id, { content: e.target.value })} placeholder="Resource details" className="w-full h-64 bg-neutral-950 border border-neutral-800 rounded-lg p-4 text-white font-mono text-sm resize-y" /> : <div id={`text-resource-${link.id}`}>{link.content ? <Markdown openLinksInNewTab={false}>{link.content}</Markdown> : <p className="text-neutral-600 italic">No details provided yet.</p>}</div>}
-                    </div>
-                )
-            })}
 
             {(config.lodging_enabled || isEditing) && (
                 <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6">

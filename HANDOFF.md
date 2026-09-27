@@ -2,9 +2,11 @@
 
 **Date:** 2026-09-27
 **Branch:** `main`
-**Status:** In progress on `main`: tighten the Notes add-item layout, add an RBAC-aware overall Notes print, and include the aid station in an individual bag's PDF name. The temporary AC100 race-rules copy has been removed; its old URL redirects to the official site. The Runner Notes recovery remains pending the user's approval for its private contact links.
+**Status:** In progress on `main`: finish live verification of Notes/bag printing and fix Resources ordering with a single ordered, drag-reorderable list. The temporary AC100 race-rules copy has been removed; its old URL redirects to the official site. The Runner Notes recovery remains pending the user's approval for its private contact links.
 
 ## Current work
+
+- **In progress — Resources ordering** (`main`, owner: current agent): show links and text resources in one top-to-bottom order in edit and view modes, replace ambiguous arrow controls with a hold-drag handle, and save that exact order. Verify mixed link/text movement, build, deploy, and live desktop/mobile behavior. No schema change planned.
 
 - **In progress — Notes and bag printing** (`main`): (1) move Add item/Add note to the end of each editable section so new entries appear beside the control; verify in the Notes editor. (2) Add Print All Notes with one section per page, omitting sections with no content visible to the viewer under existing per-item RBAC; test mixed-role filtering and print layout. (3) Make individual Print Bag PDF titles include the aid station; verify title in print preview. Build, tests, lint, deploy, and live checks pending. No other worktrees or unmerged branches.
 

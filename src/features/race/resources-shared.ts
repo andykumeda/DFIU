@@ -31,6 +31,16 @@ export interface ResourcesConfig {
     schedule_info: string
 }
 
+export function reorderResourceLinks(links: ResourceLinkEntry[], sourceId: string, targetId: string): ResourceLinkEntry[] {
+    const sourceIndex = links.findIndex(link => link.id === sourceId)
+    const targetIndex = links.findIndex(link => link.id === targetId)
+    if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) return links
+    const reordered = [...links]
+    const [source] = reordered.splice(sourceIndex, 1)
+    reordered.splice(targetIndex, 0, source)
+    return reordered
+}
+
 export const RESOURCE_ICON_MAP: Record<ResourceIconId, LucideIcon> = {
     'bed-double': BedDouble,
     'calendar-days': CalendarDays,
