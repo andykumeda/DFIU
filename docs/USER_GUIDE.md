@@ -106,7 +106,7 @@ The **Notes** tab sits between Drop Bags and Resources. New plans begin with tim
 
 Each todo item and note block has a visibility setting: **All**, **Crew only**, **Pacer only**, or **Runner only**. People who can edit race settings see every item. Everyone else only sees items marked All or matching their membership role. Content stays on this tab; it does not appear on the standalone Crew, Runner, or Pacer views.
 
-Editors can add, rename, reorder, and delete entire sections. Each new section can be a **Checklist** with checkbox/text items or a **Text note** with Markdown blocks. Within a section, editors can add, reorder, and delete items, set visibility, and save; todos can also be checked without entering full edit mode. Each section has its own **Print** control when it has visible content. Notes use the same Markdown support as Resources. Personal notes and todos copy when you clone a race and are not overwritten by official-update sync.
+Use **Add Note or Checklist** at the top to create another section, then add its items and save. Each new section can be a **Checklist** with checkbox/text items or a **Text note** with Markdown blocks. Use **Edit** on a section to rename, reorder, or delete it, or to add, reorder, delete, and set visibility for its items; **Save** and **Cancel** apply to that section's edit. Todos can also be checked without entering edit mode. Each section has its own **Print** control when it has visible content. Notes use the same Markdown support as Resources. Personal notes and todos copy when you clone a race and are not overwritten by official-update sync.
 
 ## Training routes and Strava analysis
 

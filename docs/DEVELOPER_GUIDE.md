@@ -92,7 +92,7 @@ See [Deployment Guide](../DEPLOYMENT.md), [Algorithm Reference](ALGORITHMS.md), 
 
 ### Race notes
 
-`races.notes_config` stores an ordered `sections` array. Each section is a user-named `todo` checklist or Markdown `note` collection and includes per-item visibility. `notes-shared.ts` also migrates the legacy fixed `{ todos, notes }` JSON shape at read time, then filters items by membership role; editors (`canEditRaceSettings`) always see everything. `RaceNotes` is the Notes tab between Drop Bags and Resources and supports adding, renaming, reordering, and deleting sections without a schema migration. Clone copies `notes_config`; official sync/merge must not overwrite it, and notes are not an official-update review area. Column SELECT is granted like other race planning fields after the share-token column revoke.
+`races.notes_config` stores an ordered `sections` array. Each section is a user-named `todo` checklist or Markdown `note` collection and includes per-item visibility. `notes-shared.ts` also migrates the legacy fixed `{ todos, notes }` JSON shape at read time, then filters items by membership role; editors (`canEditRaceSettings`) always see everything. `RaceNotes` is the Notes tab between Drop Bags and Resources. Its top action adds a checklist or text note; per-section Edit exposes renaming, reordering, deletion, and item editing, with one section in edit mode at a time. Clone copies `notes_config`; official sync/merge must not overwrite it, and notes are not an official-update review area. Column SELECT is granted like other race planning fields after the share-token column revoke.
 
 ### Drop-bag templates
 

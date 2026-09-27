@@ -2,9 +2,11 @@
 
 **Date:** 2026-09-26
 **Branch:** `main`
-**Status:** Deployed on `main`: Crew Gear & Notes is scoped to crew-accessible stops when crew support is enabled. The Runner Notes recovery remains pending the user's approval for its private contact links.
+**Status:** In progress on `main`: move Notes editing to individual sections and make the page-level control add a new checklist or text note. The Runner Notes recovery remains pending the user's approval for its private contact links.
 
 ## Current work
+
+- **In progress — section-level Notes editing** (`main`): replace the page-wide Edit Notes mode with Edit on each section; change the page control to add a checklist or text note. Acceptance: one section edits at a time, section Save/Cancel remains functional, adding opens the new section for editing, existing notes and visibility behavior remain intact. Build, lint, deploy, desktop/mobile production checks pending. No other worktrees or unmerged branches.
 
 - **Deployed — crew section station scope** (`main`, product `eebd78c`): Crew Gear & Notes now appears only where crew access is allowed, including Start and Finish, when race support includes crew. The bag view/editor, All Bags, Crew View, individual print, and PDF print use the same station rule; hidden saved crew data is preserved. All 185 tests, build, lint (0 errors, 48 existing warnings), diff check, and deploy passed. `git describe --always --dirty --abbrev=7` after deploy: `eebd78c`. A separate production tab showed footer `eebd78c`, no crew section for non-crew Clear Creek in All Bags, view, or editor, and crew template gear/notes at Redbox. The 390×844 Drop Bags layout rendered without visible overflow. No race data was changed; the original browser tab was left untouched and the verification tab was closed. No other worktrees or unmerged branches.
 
