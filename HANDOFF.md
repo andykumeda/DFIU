@@ -2,11 +2,11 @@
 
 **Date:** 2026-09-26
 **Branch:** `main`
-**Status:** In progress on `main`: move Notes editing to individual sections and make the page-level control add a new checklist or text note. The Runner Notes recovery remains pending the user's approval for its private contact links.
+**Status:** Deployed on `main`: Notes editing is scoped to individual sections and the page-level control adds a checklist or text note. The Runner Notes recovery remains pending the user's approval for its private contact links.
 
 ## Current work
 
-- **In progress — section-level Notes editing** (`main`): replace the page-wide Edit Notes mode with Edit on each section; change the page control to add a checklist or text note. Acceptance: one section edits at a time, section Save/Cancel remains functional, adding opens the new section for editing, existing notes and visibility behavior remain intact. Build, lint, deploy, desktop/mobile production checks pending. No other worktrees or unmerged branches.
+- **Deployed — section-level Notes editing** (`main`, product `906b13a`): each Notes section now has Edit with its own Save/Cancel and existing rename, reorder, delete, item, and visibility controls. The top action only adds a checklist or text note, then opens the new section for editing and scrolls it into view. Other checkboxes pause during an active section edit to avoid mixing saved changes with a draft. All 185 tests, build, lint (0 errors, 48 existing warnings), and diff check passed; deploy succeeded. `git describe --always --dirty --abbrev=7` after deploy: `906b13a`. A separate production tab confirmed per-section controls, an unsaved added checklist entering its editor, Cancel discarding the draft, and the 390×844 layout without visible overflow. A real Save/reload was not exercised; no saved race notes changed. The original browser tab was untouched and the verification tab was closed. No other worktrees or unmerged branches.
 
 - **Deployed — crew section station scope** (`main`, product `eebd78c`): Crew Gear & Notes now appears only where crew access is allowed, including Start and Finish, when race support includes crew. The bag view/editor, All Bags, Crew View, individual print, and PDF print use the same station rule; hidden saved crew data is preserved. All 185 tests, build, lint (0 errors, 48 existing warnings), diff check, and deploy passed. `git describe --always --dirty --abbrev=7` after deploy: `eebd78c`. A separate production tab showed footer `eebd78c`, no crew section for non-crew Clear Creek in All Bags, view, or editor, and crew template gear/notes at Redbox. The 390×844 Drop Bags layout rendered without visible overflow. No race data was changed; the original browser tab was left untouched and the verification tab was closed. No other worktrees or unmerged branches.
 
@@ -97,6 +97,8 @@
 - CI run `34105276946` passed for exact product SHA `ae144867997d8afe927dca690c4ab9262fb61280`. Product commit pushed; no side branches or worktrees.
 
 ## Latest deployed product
+
+- `906b13a`: individual Notes section editing and page-level Add Note or Checklist; production desktop/mobile controls verified without saving race data.
 
 - `eebd78c`: crew section limited to crew-accessible stops in Drop Bags and print; production Clear Creek and Redbox comparison verified.
 
