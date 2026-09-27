@@ -157,6 +157,19 @@ export function filterVisibleNotes(items: NoteBlock[], roles: NotesViewerRoles):
   return items.filter(item => canViewNotesItem(item.visibility, roles))
 }
 
+export function getPrintableNotesSections(config: NotesConfig, roles: NotesViewerRoles): NotesSection[] {
+  return config.sections.reduce<NotesSection[]>((printable, section) => {
+    if (section.type === 'todo') {
+      const items = filterVisibleTodos(section.items, roles).filter(item => item.text.trim())
+      if (items.length) printable.push({ ...section, items })
+    } else {
+      const items = filterVisibleNotes(section.items, roles).filter(item => item.content.trim())
+      if (items.length) printable.push({ ...section, items })
+    }
+    return printable
+  }, [])
+}
+
 export function newTodoItem(visibility: NoteVisibility = 'all'): TodoItem {
   return { id: crypto.randomUUID(), text: '', done: false, visibility }
 }

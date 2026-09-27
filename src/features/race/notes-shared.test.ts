@@ -4,6 +4,7 @@ import {
   canViewNotesItem,
   filterVisibleNotes,
   filterVisibleTodos,
+  getPrintableNotesSections,
   newNotesSection,
   parseNotesConfig,
 } from './notes-shared'
@@ -100,5 +101,29 @@ describe('filter helpers', () => {
       { id: 'n1', content: 'x', visibility: 'crew' },
       { id: 'n2', content: 'y', visibility: 'runner' },
     ], roles).map(item => item.id)).toEqual(['n2'])
+  })
+})
+
+describe('getPrintableNotesSections', () => {
+  it('includes only nonempty content visible to the viewer and omits empty sections', () => {
+    const config = parseNotesConfig({ sections: [
+      { id: 'todo', title: 'Checklist', type: 'todo', items: [
+        { id: 'public', text: 'Pack shoes', visibility: 'all' },
+        { id: 'private', text: 'Personal task', visibility: 'runner' },
+        { id: 'blank', text: '  ', visibility: 'all' },
+      ] },
+      { id: 'crew', title: 'Crew instructions', type: 'note', items: [{ id: 'crew-note', content: 'Bring ice', visibility: 'crew' }] },
+      { id: 'empty', title: 'Empty note', type: 'note', items: [{ id: 'empty-note', content: ' ', visibility: 'all' }] },
+    ] })
+    const crew = { canEdit: false, isRunner: false, isCrew: true, isPacer: false }
+    expect(getPrintableNotesSections(config, crew).map(section => [section.id, section.items.map(item => item.id)])).toEqual([
+      ['todo', ['public']], ['crew', ['crew-note']],
+    ])
+    const runner = { canEdit: false, isRunner: true, isCrew: false, isPacer: false }
+    expect(getPrintableNotesSections(config, runner).map(section => [section.id, section.items.map(item => item.id)])).toEqual([
+      ['todo', ['public', 'private']],
+    ])
+    const editor = { canEdit: true, isRunner: false, isCrew: false, isPacer: false }
+    expect(getPrintableNotesSections(config, editor).map(section => section.id)).toEqual(['todo', 'crew'])
   })
 })

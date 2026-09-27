@@ -10,6 +10,7 @@ import {
   NOTE_VISIBILITY_OPTIONS,
   filterVisibleNotes,
   filterVisibleTodos,
+  getPrintableNotesSections,
   moveItem,
   newNoteBlock,
   newNotesSection,
@@ -57,6 +58,7 @@ function printHtmlDocument(title: string, bodyHtml: string) {
   a { color: #1d4ed8; }
   table { border-collapse: collapse; width: 100%; }
   th, td { border: 1px solid #ccc; padding: 5px 9px; text-align: left; }
+  .print-section + .print-section { break-before: page; page-break-before: always; }
   @media print { body { padding: 0; } }
 </style></head><body>${bodyHtml}</body></html>`)
   win.document.close()
@@ -109,6 +111,7 @@ export function RaceNotes({ race, canEdit = false, roles, onUpdate }: RaceNotesP
   }, [editingSectionId])
 
   const viewerRoles: NotesViewerRoles = { canEdit, isRunner: roles.isRunner, isCrew: roles.isCrew, isPacer: roles.isPacer }
+  const printableSections = getPrintableNotesSections(config, viewerRoles)
   const resetForm = () => setConfig(parseNotesConfig(race.notes_config))
 
   const updateSection = (sectionId: string, updater: (section: NotesSection) => NotesSection) => {
@@ -178,6 +181,16 @@ export function RaceNotes({ race, canEdit = false, roles, onUpdate }: RaceNotesP
     printHtmlDocument(`${race.name} — ${title}`, `<h1>${escapeHtml(title)}</h1><p class="sub">${escapeHtml(race.name)}</p>${body}`)
   }
 
+  const printAllNotes = () => {
+    const body = printableSections.map(section => {
+      const content = section.type === 'todo'
+        ? `<ul>${section.items.map(item => `<li${item.done ? ' class="done"' : ''}><span class="check">${item.done ? '☑' : '☐'}</span>${escapeHtml(item.text)}</li>`).join('')}</ul>`
+        : document.getElementById(`notes-section-${section.id}`)?.innerHTML ?? ''
+      return `<section class="print-section"><h1>${escapeHtml(section.title)}</h1><p class="sub">${escapeHtml(race.name)}</p>${content}</section>`
+    }).join('')
+    printHtmlDocument(`${race.name} — Notes`, body)
+  }
+
   return (
     <div className="race-tab-page max-w-5xl mx-auto p-6 space-y-8">
       <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -185,15 +198,22 @@ export function RaceNotes({ race, canEdit = false, roles, onUpdate }: RaceNotesP
           <h2 className="text-2xl font-bold text-white">Notes</h2>
           <p className="text-sm text-neutral-400 mt-1">Checklists and race notes. Visibility controls who on the team can see each item.</p>
         </div>
-        {canEdit && !isEditing && !isAddingSection ? (
-          <button type="button" onClick={() => { resetForm(); setIsAddingSection(true) }} className="flex items-center gap-2 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white rounded-lg transition-colors text-sm font-medium">
-            <Plus className="w-4 h-4" /> Add Note or Checklist
-          </button>
-        ) : canEdit && isAddingSection ? (
-          <button type="button" onClick={() => { setIsAddingSection(false); resetForm() }} className="flex items-center gap-2 px-4 py-2 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-lg text-sm font-medium">
-            <X className="w-4 h-4" /> Cancel
-          </button>
-        ) : null}
+        <div className="flex items-center gap-2 flex-wrap">
+          {!isEditing && !isAddingSection && printableSections.length > 0 && (
+            <button type="button" onClick={printAllNotes} className="flex items-center gap-2 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white rounded-lg transition-colors text-sm font-medium border border-neutral-700">
+              <Printer className="w-4 h-4" /> Print All
+            </button>
+          )}
+          {canEdit && !isEditing && !isAddingSection ? (
+            <button type="button" onClick={() => { resetForm(); setIsAddingSection(true) }} className="flex items-center gap-2 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white rounded-lg transition-colors text-sm font-medium">
+              <Plus className="w-4 h-4" /> Add Note or Checklist
+            </button>
+          ) : canEdit && isAddingSection ? (
+            <button type="button" onClick={() => { setIsAddingSection(false); resetForm() }} className="flex items-center gap-2 px-4 py-2 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-lg text-sm font-medium">
+              <X className="w-4 h-4" /> Cancel
+            </button>
+          ) : null}
+        </div>
       </div>
 
       {isAddingSection && (
@@ -282,18 +302,6 @@ export function RaceNotes({ race, canEdit = false, roles, onUpdate }: RaceNotesP
               </div>
             </div>
 
-            {isEditingSection && (
-              <button
-                type="button"
-                onClick={() => updateSection(section.id, current => current.type === 'todo'
-                  ? { ...current, items: [...current.items, newTodoItem(current.defaultVisibility)] }
-                  : { ...current, items: [...current.items, newNoteBlock(current.defaultVisibility)] })}
-                className="flex items-center gap-1.5 text-sm text-blue-400 hover:text-blue-300"
-              >
-                <Plus className="w-4 h-4" /> {section.type === 'todo' ? 'Add item' : 'Add note'}
-              </button>
-            )}
-
             {!hasContent ? (
               <p role="status" className="text-sm text-neutral-500 italic">No {section.type === 'todo' ? 'items' : 'notes'} yet.</p>
             ) : section.type === 'todo' ? (
@@ -352,6 +360,18 @@ export function RaceNotes({ race, canEdit = false, roles, onUpdate }: RaceNotesP
                   )
                 })}
               </div>
+            )}
+
+            {isEditingSection && (
+              <button
+                type="button"
+                onClick={() => updateSection(section.id, current => current.type === 'todo'
+                  ? { ...current, items: [...current.items, newTodoItem(current.defaultVisibility)] }
+                  : { ...current, items: [...current.items, newNoteBlock(current.defaultVisibility)] })}
+                className="flex items-center gap-1.5 text-sm text-blue-400 hover:text-blue-300"
+              >
+                <Plus className="w-4 h-4" /> {section.type === 'todo' ? 'Add item' : 'Add note'}
+              </button>
             )}
           </section>
         )
