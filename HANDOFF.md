@@ -2,9 +2,11 @@
 
 **Date:** 2026-09-26
 **Branch:** `main`
-**Status:** Deployed on `main`: Notes editing is scoped to individual sections and the page-level control adds a checklist or text note. The Runner Notes recovery remains pending the user's approval for its private contact links.
+**Status:** In progress on `main`: publish an unofficial, readable AC100 race-rules copy at `dfiu.app/ac100-race-rules/`. The Runner Notes recovery remains pending the user's approval for its private contact links.
 
 ## Current work
+
+- **Scheduled removal — AC100 rules copy:** keep `https://dfiu.app/ac100-race-rules/` available through October 4, 2026. Remove the static page and its nginx route reservation on or after October 5, 2026, then verify the public URL no longer serves the copy. This is a follow-up note, not an automatic removal.
 
 - **Deployed — section-level Notes editing** (`main`, product `906b13a`): each Notes section now has Edit with its own Save/Cancel and existing rename, reorder, delete, item, and visibility controls. The top action only adds a checklist or text note, then opens the new section for editing and scrolls it into view. Other checkboxes pause during an active section edit to avoid mixing saved changes with a draft. All 185 tests, build, lint (0 errors, 48 existing warnings), and diff check passed; deploy succeeded. `git describe --always --dirty --abbrev=7` after deploy: `906b13a`. A separate production tab confirmed per-section controls, an unsaved added checklist entering its editor, Cancel discarding the draft, and the 390×844 layout without visible overflow. A real Save/reload was not exercised; no saved race notes changed. The original browser tab was untouched and the verification tab was closed. No other worktrees or unmerged branches.
 
