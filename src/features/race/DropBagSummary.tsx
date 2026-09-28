@@ -17,8 +17,7 @@ export function DropBagSummary({ waypoint }: { waypoint: Waypoint }) {
                 return (
                     <li key={i} className='flex items-center gap-2 text-sm text-neutral-100'>
                         <span className='w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0' />
-                        <span className='flex-1'>{label}</span>
-                        {hasQty && <span className='text-neutral-400 text-xs'>×{qty}</span>}
+                        <span className='min-w-0 break-words'>{label}{hasQty && <span className='ml-2 inline-block whitespace-nowrap text-neutral-300'>×{qty}</span>}</span>
                     </li>
                 )
             })}
