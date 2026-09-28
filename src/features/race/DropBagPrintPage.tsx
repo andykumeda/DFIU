@@ -1,3 +1,4 @@
+import { Markdown } from '@/components/Markdown'
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Printer, X } from 'lucide-react'
@@ -47,16 +48,16 @@ export function DropBagPrintPage({ waypoint, raceName, bagName, notes, items, te
                 <h2 className="mb-3 text-sm font-bold uppercase tracking-wider">Crew Gear & Notes</h2>
                 {crewGear.length ? <ul className="space-y-2 text-lg">{crewGear.map(item => <li key={item.id}>[{item.checked ? 'x' : ' '}] {item.quantity?.trim() && `${item.quantity} × `}{item.text}</li>)}</ul> : <p>No crew gear planned yet.</p>}
                 <h3 className="mt-4 text-sm font-bold uppercase tracking-wider">Crew notes</h3>
-                <p className="mt-1 whitespace-pre-wrap break-words">{crewNotes.value || 'No crew notes entered.'}</p>
+                <Markdown className="mt-1 break-words [&_p]:whitespace-pre-line !text-black [&_*]:!text-black">{crewNotes.value || 'No crew notes entered.'}</Markdown>
             </section>}
             <div className="mt-auto space-y-5 border-t-2 border-black pt-5">
                 {textFields.filter(field => field.id !== CREW_NOTES_FIELD_ID).map(field => <section key={field.id}>
                     <h2 className="text-sm font-bold uppercase tracking-wide">{field.label}</h2>
-                    <p className="mt-1 whitespace-pre-wrap break-words">{field.value || 'No text entered.'}</p>
+                    <Markdown className="mt-1 break-words [&_p]:whitespace-pre-line !text-black [&_*]:!text-black">{field.value || 'No text entered.'}</Markdown>
                 </section>)}
                 {[['Notes', notes], ['Tell runner', waypoint.crew_relay_notes], ['Next leg reminder', waypoint.runner_next_leg_notes]].map(([label, text]) => text && <section key={label}>
                     <h2 className="text-sm font-bold uppercase tracking-wide">{label}</h2>
-                    <p className="mt-1 whitespace-pre-wrap break-words">{text}</p>
+                    <Markdown className="mt-1 break-words [&_p]:whitespace-pre-line !text-black [&_*]:!text-black">{text}</Markdown>
                 </section>)}
                 {lightingMessage && <section><h2 className="text-sm font-bold uppercase tracking-wide">Lighting</h2><p className="mt-1">{lightingMessage}</p></section>}
                 <DropBagCoverage rows={coverageRows} print />

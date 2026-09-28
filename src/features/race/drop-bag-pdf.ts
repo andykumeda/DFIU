@@ -1,4 +1,9 @@
-import type { Content } from 'pdfmake/interfaces'
+import { unified } from 'unified'
+import remarkParse from 'remark-parse'
+import remarkGfm from 'remark-gfm'
+import { defaultUrlTransform } from 'react-markdown'
+import type { Root, RootContent, PhrasingContent, Definition } from 'mdast'
+import type { Content, ContentText, Style } from 'pdfmake/interfaces'
 import type { TDocumentDefinitions } from 'pdfmake/interfaces'
 import type { DropBagCoverageRow } from './DropBagModal'
 
@@ -19,11 +24,68 @@ export interface PrintableDropBag {
     coverageRows: DropBagCoverageRow[]
 }
 
-function detail(label: string, value: string | null): Content[] {
+// Reuse the parser behind the app's Markdown renderer, including GFM lists/tables.
+const markdownParser = unified().use(remarkParse).use(remarkGfm)
+
+export function markdownPdfContent(value: string): Content[] {
+    const root = markdownParser.parse(value) as Root
+    const definitions = new Map<string, Definition>()
+    for (const node of root.children) {
+        if (node.type === 'definition') definitions.set(node.identifier.toLowerCase(), node)
+    }
+    function inline(nodes: PhrasingContent[], style: Style = {}): ContentText[] {
+        return nodes.flatMap((node): ContentText[] => {
+            if (node.type === 'text') return [{ text: node.value, ...style }]
+            if (node.type === 'break') return [{ text: '\n', ...style }]
+            if (node.type === 'inlineCode') return [{ text: node.value, ...style, background: '#f3f4f6' }]
+            if (node.type === 'image' || node.type === 'imageReference') return [{ text: node.alt || '', ...style }]
+            if (node.type === 'html') return [{ text: node.value, ...style }]
+            if (node.type === 'link' || node.type === 'linkReference') {
+                const url = node.type === 'link' ? node.url : definitions.get(node.identifier.toLowerCase())?.url
+                const safeUrl = url ? defaultUrlTransform(url) : ''
+                return inline(node.children, style).map(run => safeUrl ? { ...run, link: safeUrl, color: '#2563eb', decoration: 'underline' } : run)
+            }
+            if ('children' in node) {
+                return inline(node.children, {
+                    ...style,
+                    ...(node.type === 'strong' ? { bold: true } : {}),
+                    ...(node.type === 'emphasis' ? { italics: true } : {}),
+                    ...(node.type === 'delete' ? { decoration: 'lineThrough' as const } : {}),
+                })
+            }
+            return []
+        })
+    }
+    function blocks(nodes: RootContent[]): Content[] {
+        return nodes.flatMap((node): Content[] => {
+            switch (node.type) {
+                case 'paragraph': return [{ text: inline(node.children), margin: [0, 0, 0, 5] }]
+                case 'heading': return [{ text: inline(node.children), bold: true, fontSize: Math.max(12, 20 - node.depth * 2), margin: [0, 6, 0, 5] }]
+                case 'list': {
+                    const items = node.children.map(item => ({ stack: [
+                        ...(item.checked === null || item.checked === undefined ? [] : [{ text: item.checked ? '[x]' : '[ ]' }]),
+                        ...blocks(item.children),
+                    ] }))
+                    return [node.ordered ? { ol: items, start: node.start ?? 1 } : { ul: items }]
+                }
+                case 'blockquote': return [{ stack: blocks(node.children), italics: true, color: '#4b5563', margin: [12, 4, 0, 4] }]
+                case 'code': return [{ text: node.value, background: '#f3f4f6', margin: [0, 4, 0, 4] }]
+                case 'html': return [{ text: node.value }]
+                case 'thematicBreak': return [{ text: '────────────────────', color: '#9ca3af', margin: [0, 4, 0, 4] }]
+                case 'table': return [{ table: { headerRows: 1, body: node.children.map((row, index) => row.children.map(cell => ({ text: inline(cell.children), bold: index === 0 }))) }, layout: 'lightHorizontalLines' }]
+                default: return []
+            }
+        })
+    }
+    const content = blocks(root.children)
+    return content.length ? content : [{ text: '' }]
+}
+
+function detail(label: string, value: string | null, markdown = true): Content[] {
     if (!value?.trim()) return []
     return [
         { text: label.toUpperCase(), style: 'sectionLabel', margin: [0, 14, 0, 4] },
-        { text: value.trim(), style: 'body' },
+        markdown ? { stack: markdownPdfContent(value.trim()), style: 'body' } : { text: value.trim(), style: 'body' },
     ]
 }
 
@@ -36,7 +98,7 @@ function coverage(row: DropBagCoverageRow): Content[] {
             if (plan.timeOfDay) target.push(`Arrival ${plan.timeOfDay}${plan.duration ? ` · in ${plan.duration}` : ''}`)
         }
     }
-    return detail(row.label, target.join('\n'))
+    return detail(row.label, target.join('\n'), false)
 }
 
 export function buildDropBagListDefinition(raceName: string, planLabel: string | null, bags: PrintableDropBag[]): TDocumentDefinitions {
@@ -76,7 +138,7 @@ export function buildDropBagListDefinition(raceName: string, planLabel: string |
         content.push(...detail('Notes', bag.notes))
         content.push(...detail('Tell runner', bag.tellRunner))
         content.push(...detail('Next leg reminder', bag.nextLegReminder))
-        content.push(...detail('Lighting', bag.lighting))
+        content.push(...detail('Lighting', bag.lighting, false))
         bag.coverageRows.forEach(row => content.push(...coverage(row)))
     })
 

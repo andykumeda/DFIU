@@ -1,4 +1,4 @@
-import { getRaceSupport, isCrewAccessWaypoint } from './race-support'
+import { getRaceSupport, hasCrewBagSection, isCrewAccessWaypoint } from './race-support'
 import { formatPlanALabel } from './plan-label'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -492,7 +492,7 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
                                 </div>
                                 <DropBagSummary waypoint={nextCrewWaypoint} />
                                 <DropBagTextFields fields={bagFields(nextCrewWaypoint).filter(field => field.id !== CREW_NOTES_FIELD_ID)} />
-                                {isCrewAccessWaypoint(nextCrewWaypoint) && <DropBagCrewSection items={getCrewGearItems(nextCrewWaypoint.drop_bag_items, crewTemplate)} notes={bagFields(nextCrewWaypoint).find(field => field.id === CREW_NOTES_FIELD_ID)?.value ?? ''} />}
+                                {hasCrewBagSection(nextCrewWaypoint) && <DropBagCrewSection items={getCrewGearItems(nextCrewWaypoint.drop_bag_items, crewTemplate)} notes={bagFields(nextCrewWaypoint).find(field => field.id === CREW_NOTES_FIELD_ID)?.value ?? ''} />}
                                 <DropBagNotes waypoint={nextCrewWaypoint} className='mt-3' />
                             </section>
                         )
@@ -735,7 +735,7 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
 
                         <DropBagSummary waypoint={dropBagWaypoint} />
                         <DropBagTextFields fields={bagFields(dropBagWaypoint).filter(field => field.id !== CREW_NOTES_FIELD_ID)} />
-                        {isCrewAccessWaypoint(dropBagWaypoint) && <DropBagCrewSection items={getCrewGearItems(dropBagWaypoint.drop_bag_items, crewTemplate)} notes={bagFields(dropBagWaypoint).find(field => field.id === CREW_NOTES_FIELD_ID)?.value ?? ''} />}
+                        {hasCrewBagSection(dropBagWaypoint) && <DropBagCrewSection items={getCrewGearItems(dropBagWaypoint.drop_bag_items, crewTemplate)} notes={bagFields(dropBagWaypoint).find(field => field.id === CREW_NOTES_FIELD_ID)?.value ?? ''} />}
                         <DropBagNotes waypoint={dropBagWaypoint} showEmpty />
                     </div>
                 </div>

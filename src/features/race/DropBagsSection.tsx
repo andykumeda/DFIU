@@ -1,3 +1,4 @@
+import { Markdown } from '@/components/Markdown'
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Race, Course, Waypoint, TerrainNode } from '@/types/database'
@@ -24,7 +25,7 @@ import {
     parseDropBagTemplate,
     parseDropBagTemplateTextFields,
 } from './drop-bag-shared'
-import { getRaceSupport, isCrewAccessWaypoint, isVisibleBag } from './race-support'
+import { getRaceSupport, hasCrewBagSection, isVisibleBag } from './race-support'
 import { formatPlanALabel } from './plan-label'
 import SunCalc from 'suncalc'
 import { getBagLighting, getBagLightingMessage } from './drop-bag-lighting'
@@ -236,9 +237,9 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
             arrival: getWaypointArrival(wp)?.timeOfDay ?? null,
             cutoff: formatBagCutoff(wp.cutoff_time, race.timezone, clock24h),
             items: getWaypointItems(wp).filter(item => item.checked && item.category !== 'crew').map(item => ({ text: item.text, quantity: item.quantity })),
-            crewItems: hasCrew && isCrewAccessWaypoint(wp) ? getWaypointItems(wp).filter(item => item.category === 'crew').map(item => ({ text: item.text, quantity: item.quantity, checked: item.checked })) : null,
+            crewItems: hasCrew && hasCrewBagSection(wp) ? getWaypointItems(wp).filter(item => item.category === 'crew').map(item => ({ text: item.text, quantity: item.quantity, checked: item.checked })) : null,
             textFields: getDropBagTextFields(wp.drop_bag_items, dropBagTemplateTextFields).filter(field => field.id !== CREW_NOTES_FIELD_ID).map(field => ({ label: field.label, value: field.value })),
-            crewNotes: hasCrew && isCrewAccessWaypoint(wp) ? getDropBagTextFields(wp.drop_bag_items, dropBagTemplateTextFields).find(field => field.id === CREW_NOTES_FIELD_ID)?.value ?? '' : null,
+            crewNotes: hasCrew && hasCrewBagSection(wp) ? getDropBagTextFields(wp.drop_bag_items, dropBagTemplateTextFields).find(field => field.id === CREW_NOTES_FIELD_ID)?.value ?? '' : null,
             notes: getDropBagNotes(wp),
             tellRunner: wp.crew_relay_notes,
             nextLegReminder: wp.runner_next_leg_notes,
@@ -461,7 +462,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                             const displayName = isStartBag ? 'Start' : isFinishBag ? 'Finish' : wp.name
                             const items = getWaypointItems(wp)
                             const packedItems = items.filter(i => i.checked && i.category !== 'crew')
-                            const showCrewSection = hasCrew && isCrewAccessWaypoint(wp)
+                            const showCrewSection = hasCrew && hasCrewBagSection(wp)
                             const crewGearItems = showCrewSection ? items.filter(i => i.category === 'crew') : []
                             const crewNotes = showCrewSection ? getDropBagTextFields(wp.drop_bag_items, dropBagTemplateTextFields).find(field => field.id === CREW_NOTES_FIELD_ID)?.value : null
 
@@ -524,7 +525,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                                             {showCrewSection && <div className="ml-5 rounded border border-emerald-900/50 bg-emerald-950/10 p-2 text-sm text-neutral-300">
                                                 <div className="mb-1 font-bold uppercase tracking-wider text-emerald-300 text-xs">Crew gear & notes</div>
                                                 {crewGearItems.length ? <ul>{crewGearItems.map(item => <li key={item.id} className={item.checked ? 'text-emerald-100' : 'text-neutral-500'}>{item.checked ? '✓' : '○'} {item.quantity ? `${item.quantity} × ` : ''}{item.text} <span className="text-xs">({item.checked ? 'Packed' : 'To pack'})</span></li>)}</ul> : <p className="text-neutral-500">No crew gear planned yet.</p>}
-                                                <p className="mt-1 whitespace-pre-wrap">{crewNotes || 'No crew notes entered.'}</p>
+                                                <Markdown className="mt-1 break-words [&_p]:whitespace-pre-line">{crewNotes || 'No crew notes entered.'}</Markdown>
                                             </div>}
                                     </div>
                                 </div>

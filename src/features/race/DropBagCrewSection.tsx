@@ -1,3 +1,4 @@
+import { Markdown } from '@/components/Markdown'
 import type { DropBagItem } from './drop-bag-shared'
 
 export function DropBagCrewSection({ items, notes }: { items: DropBagItem[]; notes: string }) {
@@ -11,6 +12,6 @@ export function DropBagCrewSection({ items, notes }: { items: DropBagItem[]; not
             <span className={`text-xs ${item.checked ? 'text-emerald-300' : 'text-neutral-500'}`}>{item.checked ? 'Packed' : 'To pack'}</span>
         </li>)}</ul> : <p className="text-sm text-neutral-500">No crew gear planned yet.</p>}
         <div className="text-xs font-bold uppercase tracking-wider text-neutral-400">Crew notes</div>
-        <p className="whitespace-pre-wrap text-sm text-neutral-100">{notes || 'No crew notes entered.'}</p>
+        <Markdown className="break-words [&_p]:whitespace-pre-line">{notes || 'No crew notes entered.'}</Markdown>
     </div>
 }

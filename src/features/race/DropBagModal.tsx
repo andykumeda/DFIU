@@ -29,7 +29,7 @@ import { DropBagPrintPage } from './DropBagPrintPage'
 import { DropBagSummary } from './DropBagSummary'
 import { DropBagTextFields } from './DropBagTextFields'
 import { DropBagCrewSection } from './DropBagCrewSection'
-import { getRaceSupport, isCrewAccessWaypoint } from './race-support'
+import { getRaceSupport, hasCrewBagSection } from './race-support'
 
 interface DropBagModalProps {
     waypoint: Waypoint
@@ -80,7 +80,7 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
     const isStartBag = bagKind === 'start'
     const isFinishBag = bagKind === 'finish'
     const isCrewBag = bagKind === 'crew'
-    const showCrewSection = getRaceSupport(race).crew && isCrewAccessWaypoint(waypoint)
+    const showCrewSection = getRaceSupport(race).crew && hasCrewBagSection(waypoint)
     const template = useMemo(
         () => getDropBagTemplateForKind(bagKind, parseDropBagTemplate(race.drop_bag_template), parseDropBagCrewItems(race.drop_bag_template)),
         [bagKind, race.drop_bag_template]
@@ -304,7 +304,7 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
                             id={`bag-text-${field.id}`}
                             value={field.value}
                             onChange={event => setTextFields(previous => previous.map(item => item.id === field.id ? { ...item, value: event.target.value } : item))}
-                            rows={3}
+                            rows={6}
                             className="w-full rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500 resize-y"
                         />
                     </div>)}
@@ -387,7 +387,7 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
                                     {category.id === 'crew' && !catItems.length && <p className="text-sm text-neutral-500">Add crew gear in the template or to this bag.</p>}
                                     {category.id === 'crew' && crewNotes && <div>
                                         <label htmlFor="bag-crew-notes" className="mb-2 block text-xs font-bold uppercase tracking-wider text-emerald-300">Crew notes</label>
-                                        <textarea id="bag-crew-notes" value={crewNotes.value} onChange={event => setTextFields(previous => previous.map(field => field.id === CREW_NOTES_FIELD_ID ? { ...field, value: event.target.value } : field))} rows={3} className="w-full rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 resize-y" />
+                                        <textarea id="bag-crew-notes" value={crewNotes.value} onChange={event => setTextFields(previous => previous.map(field => field.id === CREW_NOTES_FIELD_ID ? { ...field, value: event.target.value } : field))} rows={6} className="w-full rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 resize-y" />
                                     </div>}
                                 </div>
                             )
@@ -436,7 +436,7 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
                                 onChange={e => setBagNotes(e.target.value)}
                                 readOnly={!canEdit}
                                 placeholder={notesPlaceholder}
-                                rows={2}
+                                rows={6}
                                 className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-white placeholder-neutral-600 focus:outline-none focus:border-orange-500 transition-colors resize-y"
                             />
                         </div>

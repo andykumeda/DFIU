@@ -1,3 +1,4 @@
+import { Markdown } from '@/components/Markdown'
 import { Waypoint } from '@/types/database'
 import { getDropBagNotes } from './drop-bag-shared'
 
@@ -27,9 +28,9 @@ export function DropBagNotes({
         <div className={`space-y-2 ${className}`}>
             {showDropBagNotes && (
                 dropBagNotes ? (
-                    <div className='bg-neutral-800 rounded p-2 text-sm text-neutral-100 whitespace-pre-wrap'>
+                    <div className='bg-neutral-800 rounded p-2 text-sm text-neutral-100'>
                         <div className='text-xs text-neutral-400 mb-1'>Drop bag notes</div>
-                        {dropBagNotes}
+                        <Markdown className="break-words [&_p]:whitespace-pre-line">{dropBagNotes}</Markdown>
                     </div>
                 ) : showEmpty ? (
                     <div className='bg-neutral-800 rounded p-2 text-sm text-neutral-500'>
@@ -39,15 +40,15 @@ export function DropBagNotes({
                 ) : null
             )}
             {waypoint.crew_relay_notes && (
-                <div className='bg-blue-950/50 border border-blue-900/60 rounded p-2 text-sm text-blue-50 whitespace-pre-wrap'>
+                <div className='bg-blue-950/50 border border-blue-900/60 rounded p-2 text-sm text-blue-50'>
                     <div className='text-xs text-blue-300 mb-1'>Tell runner</div>
-                    {waypoint.crew_relay_notes}
+                    <Markdown className="break-words [&_p]:whitespace-pre-line">{waypoint.crew_relay_notes}</Markdown>
                 </div>
             )}
             {waypoint.runner_next_leg_notes && (
-                <div className='bg-amber-950/40 border border-amber-900/60 rounded p-2 text-sm text-amber-50 whitespace-pre-wrap'>
+                <div className='bg-amber-950/40 border border-amber-900/60 rounded p-2 text-sm text-amber-50'>
                     <div className='text-xs text-amber-300 mb-1'>Next leg reminder</div>
-                    {waypoint.runner_next_leg_notes}
+                    <Markdown className="break-words [&_p]:whitespace-pre-line">{waypoint.runner_next_leg_notes}</Markdown>
                 </div>
             )}
         </div>

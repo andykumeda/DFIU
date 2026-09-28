@@ -22,3 +22,8 @@ export function isVisibleBag(waypoint: Waypoint, hasCrew: boolean, canEdit: bool
     const kind = getBagKind(waypoint)
     return !!kind && (kind !== 'crew' || (hasCrew && (canEdit || hasSavedBagPlan(waypoint))))
 }
+
+/** Bag-only crew section; endpoint crew access still applies to navigation. */
+export function hasCrewBagSection(waypoint: Pick<Waypoint, 'crew_allowed' | 'type'>) {
+    return waypoint.type !== 'start' && waypoint.type !== 'finish' && isCrewAccessWaypoint(waypoint)
+}
