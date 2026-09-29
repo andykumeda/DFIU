@@ -6,10 +6,8 @@ export function DropBagCrewSection({ items, notes }: { items: DropBagItem[]; not
     return <div className="rounded-xl border border-emerald-900/60 bg-emerald-950/20 p-4 space-y-3">
         <h3 className="text-sm font-bold uppercase tracking-wider text-emerald-300">Crew</h3>
         <div className="text-xs font-bold uppercase tracking-wider text-neutral-400">Crew gear</div>
-        {gear.length ? <ul className="space-y-2">{gear.map(item => <li key={item.id} className="flex items-start gap-2 text-sm text-neutral-100">
-            <span className={item.checked ? 'text-emerald-300' : 'text-neutral-500'} aria-hidden="true">{item.checked ? '✓' : '○'}</span>
+        {gear.length ? <ul className="list-disc space-y-2 pl-5">{gear.map(item => <li key={item.id} className="text-sm text-neutral-100">
             <span className="min-w-0 flex-1 break-words">{item.quantity?.trim() ? `${item.quantity.trim()} × ` : ''}{item.text}</span>
-            <span className={`text-xs ${item.checked ? 'text-emerald-300' : 'text-neutral-500'}`}>{item.checked ? 'Packed' : 'To pack'}</span>
         </li>)}</ul> : <p className="text-sm text-neutral-500">No crew gear planned yet.</p>}
         <div className="text-xs font-bold uppercase tracking-wider text-neutral-400">Crew notes</div>
         <Markdown className="break-words [&_p]:whitespace-pre-line">{notes || 'No crew notes entered.'}</Markdown>

@@ -7,8 +7,8 @@ export function DropBagCoverage({ rows, print = false }: { rows: DropBagCoverage
             {row.targetName ? <>
                 <div className={`font-semibold break-words ${print ? '' : 'text-neutral-200'}`}>{row.targetName}</div>
                 <div className={`flex flex-wrap gap-x-3 gap-y-1 ${print ? '' : 'text-neutral-400'}`}>
-                    <span className="font-mono">Mile {row.targetMile?.toFixed(1)} · +{row.milesUntil?.toFixed(1)} mi</span>
-                    {row.plans.map(plan => plan.timeOfDay && <span key={plan.label}>Arrival <span className={`font-mono font-semibold ${print ? '' : 'text-emerald-400'}`}>{plan.timeOfDay}</span>{plan.duration && <span> · in <span className={print ? '' : 'text-emerald-400'}>{plan.duration}</span></span>}</span>)}
+                    <span className={`font-mono ${print ? 'text-red-700' : ''}`}>Mile {row.targetMile?.toFixed(1)} · +{row.milesUntil?.toFixed(1)} mi</span>
+                    {row.plans.map(plan => plan.timeOfDay && <span key={plan.label} className={print ? 'text-red-700' : ''}>Arrival <span className={`font-mono font-semibold ${print ? '' : 'text-emerald-400'}`}>{plan.timeOfDay}</span>{plan.duration && <span> · in <span className={print ? '' : 'text-emerald-400'}>{plan.duration}</span></span>}</span>)}
                 </div>
             </> : <div className={print ? '' : 'text-neutral-400'}>None ahead</div>}
         </div>)}

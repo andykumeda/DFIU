@@ -1,10 +1,12 @@
 # DFIU Handoff
 
-**Date:** 2026-09-28
+**Date:** 2026-09-29
 **Branch:** `main`
-**Status:** The All Bags station-header layout and crew disclosures, Crew View's next-stop check-in, per-station crew presence, drop-bag Markdown, taller notes, endpoint crew-section removal, and adjacent quantities are deployed from `main`. Member-name changes are committed but await production database authorization and release. Notes/bag printing and Resources ordering are also deployed. The temporary AC100 race-rules copy has been removed; its old URL redirects to the official site. The Runner Notes recovery remains pending the user's approval for its private contact links.
+**Status:** In progress: revise the AC100 Drop Bag List PDF and app print layout to fit one aid station per page, tighten spacing, prioritize station names, mark timing and distance in red, remove lighting advice and page numbers, and show crew gear as plain bullets without packing labels. The existing member-name release remains blocked as documented below.
 
 ## Current work
+
+- **In progress — Drop Bag print and crew presentation (2026-09-29)** (`main`): Source PDF is a 16-page AC100 export with several bags split across pages. Update the PDF generator and individual print view, remove checkboxes/status labels from read-only crew gear, revise the attached PDF, then verify page count/rendering, focused tests, build, deploy, and live view where available. No race data or schema edits planned.
 
 - **Blocked for production approval — member names (2026-09-29)** (`main`, code `44ecb6c`): Prepared a manager-only `update_race_member_name` RPC with target-membership and name validation; Members gets inline correction, invite completion and both email/Strava signup require a name. The change modifies only profile names, not memberships. All 196 tests, TypeScript, build, lint (0 errors / 48 existing warnings), and diff check passed. Production database inspection was rejected by automatic approval review, so the migration, signup Edge Function, app deploy, and live save/reload remain blocked. The app build was deliberately not deployed without its required RPC. The remote migration history diverges from local, so do not use a broad `supabase db push`; apply only the reviewed migration. No production member data changed. Post-commit `git describe`: `44ecb6c`. Only the `main` worktree exists; no unmerged branch. Owner: current agent.
 

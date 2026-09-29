@@ -244,7 +244,6 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
             notes: getDropBagNotes(wp),
             tellRunner: wp.crew_relay_notes,
             nextLegReminder: wp.runner_next_leg_notes,
-            lighting: lightingByWaypoint.get(wp.id)?.message ?? null,
             coverageRows: getCoverageRows(wp),
         }))
         try {
@@ -540,7 +539,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                                                 </button>
                                                 <div className="mb-1 hidden font-bold uppercase tracking-wider text-emerald-300 text-xs print:block">Crew gear & notes</div>
                                                 <div id={`bag-crew-${wp.id}`} className={isCrewExpanded ? 'mt-2 print:mt-0' : 'hidden print:block'}>
-                                                    {crewGearItems.length ? <ul>{crewGearItems.map(item => <li key={item.id} className={item.checked ? 'text-emerald-100' : 'text-neutral-500'}>{item.checked ? '✓' : '○'} {item.quantity ? `${item.quantity} × ` : ''}{item.text} <span className="text-xs">({item.checked ? 'Packed' : 'To pack'})</span></li>)}</ul> : <p className="text-neutral-500">No crew gear planned yet.</p>}
+                                                    {crewGearItems.length ? <ul className="list-disc pl-5">{crewGearItems.map(item => <li key={item.id} className="text-neutral-300">{item.quantity ? `${item.quantity} × ` : ''}{item.text}</li>)}</ul> : <p className="text-neutral-500">No crew gear planned yet.</p>}
                                                     <Markdown className="mt-1 break-words [&_p]:whitespace-pre-line">{crewNotes || 'No crew notes entered.'}</Markdown>
                                                 </div>
                                             </div>}

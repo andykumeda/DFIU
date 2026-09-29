@@ -215,7 +215,7 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
         return acc
     }, {} as Record<string, DropBagItem[]>)
 
-    if (printPreview) return <DropBagPrintPage waypoint={waypoint} raceName={race.name} bagName={bagName} notes={bagNotes} items={items.filter(item => showCrewSection || item.category !== 'crew')} textFields={textFields.filter(field => showCrewSection || field.id !== CREW_NOTES_FIELD_ID)} arrival={arrivalTime?.timeOfDay} cutoff={cutoff} lightingMessage={lightingMessage} coverageRows={coverageRows} onClose={() => setPrintPreview(false)} />
+    if (printPreview) return <DropBagPrintPage waypoint={waypoint} raceName={race.name} bagName={bagName} notes={bagNotes} items={items.filter(item => showCrewSection || item.category !== 'crew')} textFields={textFields.filter(field => showCrewSection || field.id !== CREW_NOTES_FIELD_ID)} arrival={arrivalTime?.timeOfDay} cutoff={cutoff} coverageRows={coverageRows} onClose={() => setPrintPreview(false)} />
 
     return createPortal(
         <div className="fixed inset-0 z-[200] overflow-y-auto bg-black/80 backdrop-blur-sm">
