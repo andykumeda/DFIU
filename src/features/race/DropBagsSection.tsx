@@ -71,6 +71,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
     const [selectedWaypoint, setSelectedWaypoint] = useState<Waypoint | null>(null)
     const [isSidePanelOpen, setIsSidePanelOpen] = useState(true)
     const [collapsedStations, setCollapsedStations] = useState<Record<string, boolean>>({})
+    const [expandedCrewSections, setExpandedCrewSections] = useState<Record<string, boolean>>({})
     const [printOpen, setPrintOpen] = useState(false)
     const [printBusy, setPrintBusy] = useState(false)
     const [printError, setPrintError] = useState<string | null>(null)
@@ -467,6 +468,7 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                             const crewNotes = showCrewSection ? getDropBagTextFields(wp.drop_bag_items, dropBagTemplateTextFields).find(field => field.id === CREW_NOTES_FIELD_ID)?.value : null
 
                             const isCollapsed = collapsedStations[wp.id]
+                            const isCrewExpanded = !!expandedCrewSections[wp.id]
 
                             return (
                                 <div key={wp.id} className={`drop-bag-print-section print:break-inside-avoid ${!canWriteDropBags && packedItems.length === 0 ? 'hidden print:block' : ''}`}>
@@ -523,9 +525,21 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
                                                 </div>
                                             )}
                                             {showCrewSection && <div className="ml-5 rounded border border-emerald-900/50 bg-emerald-950/10 p-2 text-sm text-neutral-300">
-                                                <div className="mb-1 font-bold uppercase tracking-wider text-emerald-300 text-xs">Crew gear & notes</div>
-                                                {crewGearItems.length ? <ul>{crewGearItems.map(item => <li key={item.id} className={item.checked ? 'text-emerald-100' : 'text-neutral-500'}>{item.checked ? '✓' : '○'} {item.quantity ? `${item.quantity} × ` : ''}{item.text} <span className="text-xs">({item.checked ? 'Packed' : 'To pack'})</span></li>)}</ul> : <p className="text-neutral-500">No crew gear planned yet.</p>}
-                                                <Markdown className="mt-1 break-words [&_p]:whitespace-pre-line">{crewNotes || 'No crew notes entered.'}</Markdown>
+                                                <button
+                                                    type="button"
+                                                    aria-expanded={isCrewExpanded}
+                                                    aria-controls={`bag-crew-${wp.id}`}
+                                                    onClick={() => setExpandedCrewSections(previous => ({ ...previous, [wp.id]: !previous[wp.id] }))}
+                                                    className="flex w-full items-center gap-1 text-left text-xs font-bold uppercase tracking-wider text-emerald-300 hover:text-emerald-200 print:hidden"
+                                                >
+                                                    {isCrewExpanded ? <ChevronUp className="h-4 w-4 shrink-0" /> : <ChevronDown className="h-4 w-4 shrink-0" />}
+                                                    Crew gear & notes
+                                                </button>
+                                                <div className="mb-1 hidden font-bold uppercase tracking-wider text-emerald-300 text-xs print:block">Crew gear & notes</div>
+                                                <div id={`bag-crew-${wp.id}`} className={isCrewExpanded ? 'mt-2 print:mt-0' : 'hidden print:block'}>
+                                                    {crewGearItems.length ? <ul>{crewGearItems.map(item => <li key={item.id} className={item.checked ? 'text-emerald-100' : 'text-neutral-500'}>{item.checked ? '✓' : '○'} {item.quantity ? `${item.quantity} × ` : ''}{item.text} <span className="text-xs">({item.checked ? 'Packed' : 'To pack'})</span></li>)}</ul> : <p className="text-neutral-500">No crew gear planned yet.</p>}
+                                                    <Markdown className="mt-1 break-words [&_p]:whitespace-pre-line">{crewNotes || 'No crew notes entered.'}</Markdown>
+                                                </div>
                                             </div>}
                                     </div>
                                 </div>
