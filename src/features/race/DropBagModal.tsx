@@ -73,6 +73,7 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
     const [saving, setSaving] = useState(false)
     const [bagName, setBagName] = useState(waypoint.drop_bag_name || '')
     const [bagNotes, setBagNotes] = useState(() => getDropBagNotes(waypoint))
+    const [crewAtStop, setCrewAtStop] = useState(!!waypoint.crew_allowed)
 
     const isHot = parseInt(race.avg_temp_high || '0') >= 80
     const isCold = parseInt(race.avg_temp_low || '100') <= 40
@@ -80,7 +81,7 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
     const isStartBag = bagKind === 'start'
     const isFinishBag = bagKind === 'finish'
     const isCrewBag = bagKind === 'crew'
-    const showCrewSection = getRaceSupport(race).crew && hasCrewBagSection(waypoint)
+    const showCrewSection = getRaceSupport(race).crew && hasCrewBagSection({ ...waypoint, crew_allowed: crewAtStop })
     const template = useMemo(
         () => getDropBagTemplateForKind(bagKind, parseDropBagTemplate(race.drop_bag_template), parseDropBagCrewItems(race.drop_bag_template)),
         [bagKind, race.drop_bag_template]
@@ -119,7 +120,8 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
     useEffect(() => {
         setBagName(waypoint.drop_bag_name || '')
         setBagNotes(waypoint.drop_bag_notes || waypoint.notes || '')
-    }, [waypoint.id, waypoint.drop_bag_name, waypoint.drop_bag_notes, waypoint.notes])
+        setCrewAtStop(!!waypoint.crew_allowed)
+    }, [waypoint.id, waypoint.drop_bag_name, waypoint.drop_bag_notes, waypoint.notes, waypoint.crew_allowed])
 
     const handleSave = async () => {
         if (!canEdit) return
@@ -139,7 +141,8 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
             const patch = {
                 drop_bag_items: [...itemsToSave, ...textFields] as unknown as Json,
                 drop_bag_name: bagName,
-                drop_bag_notes: bagNotes
+                drop_bag_notes: bagNotes,
+                ...(crewAtStop !== !!waypoint.crew_allowed ? { crew_allowed: crewAtStop } : {}),
             }
             if (isDemoMode) {
                 const current = queryClient.getQueryData<Waypoint[]>(['waypoints', waypoint.course_id]) ?? []
@@ -173,6 +176,7 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
         setTextFields(getDropBagTextFields(waypoint.drop_bag_items, templateTextFields))
         setBagName(waypoint.drop_bag_name || '')
         setBagNotes(getDropBagNotes(waypoint))
+        setCrewAtStop(!!waypoint.crew_allowed)
         setIsEditing(false)
     }
 
@@ -297,6 +301,27 @@ export function DropBagModal({ waypoint, race, arrivalTime, coverageRows = [], c
                             className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-white placeholder-neutral-600 focus:outline-none focus:border-orange-500 transition-colors disabled:opacity-70"
                         />
                     </div>
+
+                    {getRaceSupport(race).crew && !isStartBag && !isFinishBag && (
+                        <div className="rounded-xl border border-emerald-900/60 bg-emerald-950/20 p-4">
+                            <label className="flex items-center gap-3 text-sm font-semibold text-emerald-200">
+                                <input
+                                    type="checkbox"
+                                    checked={crewAtStop}
+                                    onChange={event => {
+                                        setCrewAtStop(event.target.checked)
+                                        if (!event.target.checked && newItemCategory === 'crew') setNewItemCategory('custom')
+                                    }}
+                                    className="accent-emerald-500"
+                                />
+                                Crew present at this stop
+                            </label>
+                            <p className="mt-2 text-xs text-neutral-400">
+                                Turning this off hides crew gear and notes here and removes this stop from Crew View's crew destinations. Saved crew details return if crew is enabled here again.
+                                {isCrewBag && ' This crew-only bag will also disappear from Drop Bags.'}
+                            </p>
+                        </div>
+                    )}
 
                     {textFields.filter(field => field.id !== CREW_NOTES_FIELD_ID).map(field => <div key={field.id} className="rounded-xl border border-neutral-800 bg-neutral-950/50 p-4">
                         <label htmlFor={`bag-text-${field.id}`} className="mb-2 block text-xs font-bold uppercase tracking-wider text-neutral-500">{field.label}</label>
