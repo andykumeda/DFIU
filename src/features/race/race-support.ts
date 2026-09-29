@@ -18,6 +18,12 @@ export function isCrewAccessWaypoint(waypoint: Pick<Waypoint, 'crew_allowed' | '
     return !!waypoint.crew_allowed || waypoint.type === 'start' || waypoint.type === 'finish'
 }
 
+export function findNextCrewWaypoint(waypoints: Waypoint[], predictedMile: number): Waypoint | null {
+    return [...waypoints]
+        .sort((a, b) => a.mile - b.mile)
+        .find(waypoint => waypoint.mile > predictedMile + 0.05 && isCrewAccessWaypoint(waypoint)) ?? null
+}
+
 export function isVisibleBag(waypoint: Waypoint, hasCrew: boolean, canEdit: boolean) {
     const kind = getBagKind(waypoint)
     return !!kind && (kind !== 'crew' || (hasCrew && (canEdit || hasSavedBagPlan(waypoint))))

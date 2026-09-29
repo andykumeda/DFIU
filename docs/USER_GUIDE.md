@@ -82,7 +82,7 @@ The header's **Event Plan** opens the complete planning workspace and appears se
 
 **Pacer** lists course waypoints marked for pacer pickup, with their mileage and notes. Existing Pacer View links open this tab. Team assignments remain under **Members**.
 
-**Crew** is a mobile-first course-day view. It shows aid stations only, current/predicted runner position, the next crew-accessible stop, its planned arrival, drop-bag details, check-ins, and a directions link. Directions open the selected destination in Google Maps; they are not in-app navigation or traffic-aware travel estimates.
+**Crew** is a mobile-first course-day view. It shows aid stations only, current/predicted runner position, the next crew-accessible stop, its planned arrival, drop-bag details, check-ins, and a directions link. The sticky arrival action follows the next crew-accessible stop; individual aid-station rows still offer a Log action for that station. Directions open the selected destination in Google Maps; they are not in-app navigation or traffic-aware travel estimates.
 
 **Live** supports an optional livestream/results embed, followed-runner ETAs, and runner check-ins. Check-ins re-anchor the remaining plan to observed progress.
 

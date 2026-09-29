@@ -1,4 +1,4 @@
-import { getRaceSupport, hasCrewBagSection, isCrewAccessWaypoint } from './race-support'
+import { findNextCrewWaypoint, getRaceSupport, hasCrewBagSection, isCrewAccessWaypoint } from './race-support'
 import { formatPlanALabel } from './plan-label'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -223,8 +223,7 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
     }, [waypoints, predictedMile])
 
     const nextCrewWaypoint: Waypoint | null = useMemo(() => {
-        const sorted = [...waypoints].sort((a, b) => a.mile - b.mile)
-        return sorted.find(w => w.mile > predictedMile + 0.05 && isCrewAccessWaypoint(w)) ?? null
+        return findNextCrewWaypoint(waypoints, predictedMile)
     }, [waypoints, predictedMile])
 
     const mapFocus = useMemo(() => {
@@ -631,14 +630,14 @@ export function CrewView({ raceId, embedded = false }: CrewViewProps) {
             </main>
 
             {/* Sticky check-in CTA */}
-            {canLogCheckins && nextWaypoint && !showCheckin && (
+            {canLogCheckins && nextCrewWaypoint && !showCheckin && (
                 <div className='sticky bottom-0 inset-x-0 bg-neutral-950/95 backdrop-blur border-t border-neutral-800 py-3'>
                     <div className='max-w-3xl mx-auto px-3'>
                         <button
-                            onClick={() => openCheckin(nextWaypoint)}
+                            onClick={() => openCheckin(nextCrewWaypoint)}
                             className='w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 rounded py-3 font-semibold'
                         >
-                            Log arrival at {nextWaypoint.name}
+                            Log arrival at {nextCrewWaypoint.name}
                         </button>
                     </div>
                 </div>

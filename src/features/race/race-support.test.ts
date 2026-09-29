@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Waypoint } from '@/types/database'
-import { getRaceSupport, hasCrewBagSection, isCrewAccessWaypoint, isVisibleBag, type SupportMode } from './race-support'
+import { findNextCrewWaypoint, getRaceSupport, hasCrewBagSection, isCrewAccessWaypoint, isVisibleBag, type SupportMode } from './race-support'
 
 const station = (patch: Partial<Waypoint>): Waypoint => ({
     id: 'station', course_id: 'course', name: 'Station', mile: 10, order_index: 1,
@@ -12,6 +12,16 @@ const station = (patch: Partial<Waypoint>): Waypoint => ({
 })
 
 describe('race support', () => {
+    it('chooses the next crew-accessible stop rather than the next aid station', () => {
+        const waypoints = [
+            station({ id: 'redbox', name: 'Redbox', mile: 24.6, crew_allowed: true }),
+            station({ id: 'clear-creek', name: 'Clear Creek', mile: 11.2, crew_allowed: false }),
+            station({ id: 'finish', name: 'Finish', mile: 101.4, type: 'finish', crew_allowed: false }),
+        ]
+        expect(findNextCrewWaypoint(waypoints, 0)?.name).toBe('Redbox')
+        expect(findNextCrewWaypoint(waypoints, 30)?.name).toBe('Finish')
+        expect(findNextCrewWaypoint(waypoints, 102)).toBeNull()
+    })
     it('preserves crew navigation access at Start and Finish', () => {
         expect(isCrewAccessWaypoint(station({ crew_allowed: true }))).toBe(true)
         expect(isCrewAccessWaypoint(station({ crew_allowed: false, has_drop_bag: true }))).toBe(false)
