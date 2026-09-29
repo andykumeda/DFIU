@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-28
 **Branch:** `main`
-**Status:** Per-station crew presence, drop-bag Markdown, taller notes, endpoint crew-section removal, and adjacent quantities are deployed from `main`. Notes/bag printing and Resources ordering are also deployed. The temporary AC100 race-rules copy has been removed; its old URL redirects to the official site. The Runner Notes recovery remains pending the user's approval for its private contact links.
+**Status:** Collapsible All Bags crew details, per-station crew presence, drop-bag Markdown, taller notes, endpoint crew-section removal, and adjacent quantities are deployed from `main`. Notes/bag printing and Resources ordering are also deployed. The temporary AC100 race-rules copy has been removed; its old URL redirects to the official site. The Runner Notes recovery remains pending the user's approval for its private contact links.
 
 ## Current work
 
