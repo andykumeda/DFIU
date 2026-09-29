@@ -101,6 +101,7 @@ Template items carry stable IDs. `mergeTemplateIntoItems` uses those IDs to prop
 Bag freeform text uses the shared `Markdown` renderer in views and individual print; downloadable PDF text is converted to pdfmake formatting. Keep source strings unchanged in storage/editors. `hasCrewBagSection` excludes Start/Finish for bag views, editors, Crew View details, and print exports; `isCrewAccessWaypoint` remains the navigation/access rule and still includes endpoints. The bag editor's **Crew present at this stop** toggle updates the existing waypoint `crew_allowed` field only when changed. Its draft controls crew visibility and custom-item categories; cancel restores the saved value. This same field controls Crew View destinations, while hidden crew items and notes remain in `drop_bag_items` through saves. A crew-only candidate with crew disabled is no longer a visible bag; it can be restored from the waypoint editor.
 
 `DropBagsSection` keeps each All Bags crew disclosure in local UI state, initially closed and independent of station collapse. The print media rule displays its contents even when the screen disclosure is closed; downloadable PDF generation reads bag data directly and is unaffected by disclosure state.
+All Bags station headers give the station name a dedicated untruncated line, keep bag identification below it, and put mile/arrival on a separate row. The icon-only bag view button has an accessible name. `drop-bag-station-name` preserves the larger heading in print media.
 
 ### Brand asset
 

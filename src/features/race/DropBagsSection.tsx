@@ -472,41 +472,44 @@ export function DropBagsSection({ race, course, waypoints, terrainNodes, clock24
 
                             return (
                                 <div key={wp.id} className={`drop-bag-print-section print:break-inside-avoid ${!canWriteDropBags && packedItems.length === 0 ? 'hidden print:block' : ''}`}>
-                                    <div className="mb-2 flex items-start justify-between gap-2">
-                                        <button
-                                            type="button"
-                                            className={`min-w-0 flex items-center gap-1 text-left text-sm font-bold text-neutral-300 print:text-neutral-800 hover:text-white transition-colors ${isCrewBag ? 'text-emerald-400' : 'text-orange-400'}`}
-                                            onClick={() => toggleStation(wp.id)}
-                                        >
-                                            {isCollapsed ? <ChevronDown className="w-4 h-4 print:hidden" /> : <ChevronUp className="w-4 h-4 print:hidden" />}
-                                            <span className="min-w-0 truncate text-neutral-300">
-                                                {displayName}
-                                                {wp.drop_bag_name ? ` (${wp.drop_bag_name})` : ''}
-                                                {isCrewBag ? ' · Crew bag' : ''}
-                                            </span>
-                                        </button>
-                                        <div className="flex shrink-0 items-center gap-2">
-                                            <span className="text-neutral-500 print:text-neutral-600 text-xs">
-                                                <span className="font-mono text-neutral-300">Mile {wp.mile.toFixed(1)}</span>
-                                                {getWaypointArrival(wp) && <span className="ml-2">{getBagKind(wp) === 'start' ? 'Start time' : 'Arrival'} <span className="font-mono">{getWaypointArrival(wp)!.timeOfDay}</span></span>}
-                                            </span>
+                                    <div className="mb-2 space-y-1">
+                                        <div className="flex items-start justify-between gap-2">
+                                            <button
+                                                type="button"
+                                                aria-expanded={!isCollapsed}
+                                                aria-controls={`bag-items-${wp.id}`}
+                                                className={`flex min-w-0 flex-1 items-start gap-1 text-left text-sm font-bold text-neutral-300 print:text-neutral-800 hover:text-white transition-colors ${isCrewBag ? 'text-emerald-400' : 'text-orange-400'}`}
+                                                onClick={() => toggleStation(wp.id)}
+                                            >
+                                                {isCollapsed ? <ChevronDown className="mt-0.5 h-4 w-4 shrink-0 print:hidden" /> : <ChevronUp className="mt-0.5 h-4 w-4 shrink-0 print:hidden" />}
+                                                <span className="min-w-0">
+                                                    <span className="drop-bag-station-name block break-words text-neutral-300">{displayName}</span>
+                                                    {(wp.drop_bag_name || isCrewBag) && <span className="block break-words text-xs font-normal text-neutral-500 print:text-neutral-600">
+                                                        {wp.drop_bag_name || 'Crew bag'}
+                                                    </span>}
+                                                </span>
+                                            </button>
                                             <button
                                                 type="button"
                                                 onClick={() => setSelectedWaypoint(wp)}
-                                                className={`print:hidden flex items-center gap-1 rounded border px-2 py-1 text-xs font-semibold transition-colors ${canWriteDropBags
+                                                aria-label={`View ${displayName} bag contents`}
+                                                className={`print:hidden shrink-0 rounded border p-1.5 transition-colors ${canWriteDropBags
                                                     ? isCrewBag
                                                         ? 'border-emerald-800 bg-emerald-950/40 text-emerald-200 hover:bg-emerald-900/50'
                                                         : 'border-orange-900/60 bg-orange-950/40 text-orange-200 hover:bg-orange-900/40'
                                                     : 'border-neutral-800 bg-neutral-950 text-neutral-300 hover:bg-neutral-800'
                                                     }`}
-                                                title="View bag contents"
+                                                title={`View ${displayName} bag contents`}
                                             >
-                                                <Eye className="w-3.5 h-3.5" />
-                                                View
+                                                <Eye className="h-4 w-4" aria-hidden="true" />
                                             </button>
                                         </div>
+                                        <div className="pl-5 text-xs text-neutral-500 print:pl-0 print:text-neutral-600">
+                                            <span className="font-mono text-neutral-300 print:text-neutral-800">Mile {wp.mile.toFixed(1)}</span>
+                                            {getWaypointArrival(wp) && <span className="ml-2">{isStartBag ? 'Start time' : 'Arrival'} <span className="font-mono">{getWaypointArrival(wp)!.timeOfDay}</span></span>}
+                                        </div>
                                     </div>
-                                    <div className={`space-y-2 ${isCollapsed ? 'hidden' : ''} print:block`}>
+                                    <div id={`bag-items-${wp.id}`} className={`space-y-2 ${isCollapsed ? 'hidden' : ''} print:block`}>
                                             {packedItems.length > 0 ? (
                                                 <ul className="drop-bag-print-items space-y-1 pl-5">
                                                     {packedItems.map((item, idx) => (

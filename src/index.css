@@ -215,7 +215,7 @@ body,
     line-height: 1.4 !important;
   }
 
-  .drop-bag-print-section > div > button span {
+  .drop-bag-print-section .drop-bag-station-name {
     font-size: 20px !important;
     font-weight: 700 !important;
   }
