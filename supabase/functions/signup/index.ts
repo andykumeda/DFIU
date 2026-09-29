@@ -12,12 +12,16 @@ serve(async (req) => {
     }
 
     try {
-        const { email, password, accessCode } = await req.json()
+        const { email, password, name, accessCode } = await req.json()
         if (typeof accessCode !== 'string' || accessCode.trim() !== '67') {
             return json({ error: 'A valid access code is required to create an account.' }, 400)
         }
         if (typeof email !== 'string' || !email.trim() || typeof password !== 'string') {
             return json({ error: 'Email and password are required.' }, 400)
+        }
+        const normalizedName = typeof name === 'string' ? name.trim() : ''
+        if (!normalizedName || normalizedName.length > 100) {
+            return json({ error: 'Name must be between 1 and 100 characters.' }, 400)
         }
 
         const supabase = createClient(
@@ -27,6 +31,7 @@ serve(async (req) => {
         const { data, error } = await supabase.auth.signUp({
             email: email.trim(),
             password,
+            options: { data: { name: normalizedName } },
         })
 
         if (error) return json({ error: error.message }, 400)

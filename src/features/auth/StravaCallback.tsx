@@ -8,6 +8,7 @@ import { SiteFooter } from '@/components/ui/SiteFooter'
 
 const STATE_STORAGE_KEY = 'strava_oauth_state'
 export const STRAVA_RETURN_TO_STORAGE_KEY = 'strava_oauth_return_to'
+export const STRAVA_SIGNUP_NAME_STORAGE_KEY = 'strava_signup_name'
 
 function safeReturnTo(returnTo: string | null): string | null {
     if (!returnTo || !returnTo.startsWith('/') || returnTo.startsWith('//')) return null
@@ -67,6 +68,15 @@ export default function StravaCallback() {
             } else if (data?.session) {
                 const { error: sessionError } = await supabase.auth.setSession(data.session)
                 if (sessionError) throw sessionError
+                const signupName = getSignupNameForState(state)
+                if (signupName) {
+                    const { error: profileError } = await supabase.from('profiles')
+                        .upsert({ id: data.session.user.id, name: signupName }, { onConflict: 'id' })
+                    if (profileError) throw profileError
+                    const { error: metadataError } = await supabase.auth.updateUser({ data: { name: signupName } })
+                    if (metadataError) throw metadataError
+                    sessionStorage.removeItem(STRAVA_SIGNUP_NAME_STORAGE_KEY)
+                }
                 toast.success('Successfully connected to Strava!')
                 const returnTo = sessionStorage.getItem(STRAVA_RETURN_TO_STORAGE_KEY)
                 sessionStorage.removeItem(STRAVA_RETURN_TO_STORAGE_KEY)
@@ -83,6 +93,7 @@ export default function StravaCallback() {
             console.error('Callback error:', e)
             sessionStorage.removeItem(STATE_STORAGE_KEY)
             sessionStorage.removeItem(STRAVA_RETURN_TO_STORAGE_KEY)
+            sessionStorage.removeItem(STRAVA_SIGNUP_NAME_STORAGE_KEY)
             setError(await messageFromFunctionError(e, 'Failed to complete authentication'))
         }
     }
@@ -118,4 +129,13 @@ export default function StravaCallback() {
             <SiteFooter />
         </div>
     )
+}
+
+function getSignupNameForState(state: string): string | null {
+    try {
+        const saved = JSON.parse(sessionStorage.getItem(STRAVA_SIGNUP_NAME_STORAGE_KEY) ?? 'null')
+        return saved?.state === state && typeof saved.name === 'string' ? saved.name : null
+    } catch {
+        return null
+    }
 }

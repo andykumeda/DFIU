@@ -10,9 +10,10 @@ import { SiteFooter } from '@/components/ui/SiteFooter'
 export default function SetPasswordPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { user, loading, refreshMemberships } = useAuth()
+  const { user, loading, refreshMemberships, refreshProfile } = useAuth()
   const isRecovery = searchParams.get('mode') === 'recovery'
   const [password, setPassword] = useState('')
+  const [name, setName] = useState('')
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -31,6 +32,7 @@ export default function SetPasswordPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+    if (!user) return
 
     if (password.length < 6) {
       setError('Password must be at least 6 characters')
@@ -40,9 +42,25 @@ export default function SetPasswordPage() {
       setError('Passwords do not match')
       return
     }
+    const trimmedName = name.trim()
+    if (!isRecovery && (!trimmedName || trimmedName.length > 100)) {
+      setError('Enter your name (1–100 characters).')
+      return
+    }
 
     setSubmitting(true)
-    const { error: updateErr } = await supabase.auth.updateUser({ password })
+    if (!isRecovery) {
+      const { error: profileError } = await supabase.from('profiles')
+        .upsert({ id: user.id, name: trimmedName }, { onConflict: 'id' })
+      if (profileError) {
+        setError(profileError.message)
+        setSubmitting(false)
+        return
+      }
+    }
+    const { error: updateErr } = await supabase.auth.updateUser(
+      isRecovery ? { password } : { password, data: { name: trimmedName } }
+    )
     setSubmitting(false)
 
     if (updateErr) {
@@ -50,6 +68,7 @@ export default function SetPasswordPage() {
       return
     }
     await refreshMemberships?.()
+    if (!isRecovery) await refreshProfile?.()
     setSuccess(true)
     setTimeout(() => navigate(destination), 800)
   }
@@ -106,6 +125,20 @@ export default function SetPasswordPage() {
         )}
 
         <div className='space-y-4'>
+          {!isRecovery && <div>
+            <label htmlFor='name' className='block text-sm font-medium text-neutral-300 mb-1'>Your name</label>
+            <input
+              id='name'
+              type='text'
+              value={name}
+              onChange={event => setName(event.target.value)}
+              required
+              maxLength={100}
+              autoComplete='name'
+              placeholder='First and last name'
+              className='w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500'
+            />
+          </div>}
           <div>
             <label htmlFor='password' className='block text-sm font-medium text-neutral-300 mb-1'>Password</label>
             <input

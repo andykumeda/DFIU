@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { setClaimDemoIntent } from '@/features/demo/demoStore'
-import { STRAVA_RETURN_TO_STORAGE_KEY } from '@/features/auth/StravaCallback'
+import { STRAVA_RETURN_TO_STORAGE_KEY, STRAVA_SIGNUP_NAME_STORAGE_KEY } from '@/features/auth/StravaCallback'
 
 const POST_SIGNUP_PATH = '/settings#runner-profile'
 
@@ -31,6 +31,7 @@ async function getSignupErrorMessage(error: unknown): Promise<string> {
 }
 
 export function SignupForm({ accessCode }: { accessCode: string }) {
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -43,6 +44,11 @@ export function SignupForm({ accessCode }: { accessCode: string }) {
   const handleStravaSignup = async () => {
     try {
       setError(null)
+      const trimmedName = name.trim()
+      if (!trimmedName || trimmedName.length > 100) {
+        setError('Enter your name (1–100 characters) before creating an account.')
+        return
+      }
       setLoading(true)
       if (claimDemo) {
         setClaimDemoIntent(claimDemo)
@@ -58,10 +64,14 @@ export function SignupForm({ accessCode }: { accessCode: string }) {
         }
       })
       if (error) throw error
-      if (data?.state) sessionStorage.setItem('strava_oauth_state', data.state)
+      if (data?.state) {
+        sessionStorage.setItem('strava_oauth_state', data.state)
+        sessionStorage.setItem(STRAVA_SIGNUP_NAME_STORAGE_KEY, JSON.stringify({ state: data.state, name: trimmedName }))
+      }
       if (data?.url) window.location.href = data.url
     } catch (e) {
       console.error('Strava auth error:', e)
+      sessionStorage.removeItem(STRAVA_SIGNUP_NAME_STORAGE_KEY)
       const message = e instanceof Error ? e.message : 'Failed to start Strava signup'
       setError(message)
       setLoading(false)
@@ -80,12 +90,17 @@ export function SignupForm({ accessCode }: { accessCode: string }) {
       setError('Password must be at least 6 characters')
       return
     }
+    const trimmedName = name.trim()
+    if (!trimmedName || trimmedName.length > 100) {
+      setError('Enter your name (1–100 characters).')
+      return
+    }
 
     setLoading(true)
     if (claimDemo) setClaimDemoIntent(claimDemo)
 
     const { data, error } = await supabase.functions.invoke('signup', {
-      body: { email, password, accessCode },
+      body: { email, password, name: trimmedName, accessCode },
     })
 
     if (error) {
@@ -110,6 +125,21 @@ export function SignupForm({ accessCode }: { accessCode: string }) {
       <p className='text-neutral-500 text-sm mb-6'>
         Linking Strava is recommended — it powers training overlap and activity analysis. Email and password works too.
       </p>
+
+      <div className='mb-6'>
+        <label htmlFor='name' className='block text-sm font-medium text-neutral-300 mb-1'>Your name</label>
+        <input
+          id='name'
+          type='text'
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+          maxLength={100}
+          autoComplete='name'
+          placeholder='First and last name'
+          className='w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 transition-colors'
+        />
+      </div>
 
       <div className="mb-6">
         <button

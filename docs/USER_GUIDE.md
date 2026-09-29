@@ -132,6 +132,8 @@ Lodging & Dining and Schedule of Events are built-in Markdown sections. The reso
 
 Use **Members** to add people with view or edit access, designate crew/pacer roles, keep an invitation pending without email, optionally send an email invite, or create a private read-only share link. Share links are intended for the exact recipient; do not post them publicly.
 
+New accounts must enter a name during signup or invite completion. A runner or admin managing the race can use the pencil beside a member to correct their displayed name. This changes that person's profile name throughout DFIU; members can also edit their own name in Settings.
+
 ## Important limits
 
 - GPX, GPS, weather, mapping, and Strava data can be incomplete or inaccurate. Verify critical navigation, cutoffs, access, and safety decisions independently.

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Trash2, Search, UserPlus, Mail, X, RefreshCw, Link as LinkIcon, Copy, ExternalLink } from 'lucide-react'
+import { Trash2, Search, UserPlus, Mail, X, RefreshCw, Link as LinkIcon, Copy, ExternalLink, Pencil } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/features/auth/AuthContext'
 import type { Race } from '@/types/database'
@@ -52,7 +52,10 @@ interface Props {
 
 export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
   const queryClient = useQueryClient()
-  const { user, refreshMemberships } = useAuth()
+  const { user, refreshMemberships, refreshProfile } = useAuth()
+  const [editingNameId, setEditingNameId] = useState<string | null>(null)
+  const [nameDraft, setNameDraft] = useState('')
+  const [nameError, setNameError] = useState<string | null>(null)
   const [emailInput, setEmailInput] = useState('')
   const [searchError, setSearchError] = useState<string | null>(null)
   const [foundUser, setFoundUser] = useState<FoundUser | null>(null)
@@ -232,6 +235,26 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
       await queryClient.invalidateQueries({ queryKey: ['race_members', raceId] })
       await refreshMemberships?.()
     },
+  })
+
+  const updateNameMutation = useMutation({
+    mutationFn: async (input: { userId: string; name: string }) => {
+      const name = input.name.trim()
+      if (!name || name.length > 100) throw new Error('Enter a name of 1–100 characters.')
+      const { error } = await supabase.rpc('update_race_member_name', {
+        p_race_id: raceId,
+        p_user_id: input.userId,
+        p_name: name,
+      })
+      if (error) throw error
+    },
+    onSuccess: async (_, input) => {
+      setEditingNameId(null)
+      setNameError(null)
+      await queryClient.invalidateQueries({ queryKey: ['race_members', raceId] })
+      if (input.userId === user?.id) await refreshProfile?.()
+    },
+    onError: (error: Error) => setNameError(error.message),
   })
 
   const removeMutation = useMutation({
@@ -488,9 +511,9 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
           {members.map((m) => (
             <li
               key={m.user_id}
-              className='flex items-center justify-between gap-4 p-3 rounded-lg border border-neutral-800 bg-neutral-900'
+              className='flex flex-wrap items-center justify-between gap-4 p-3 rounded-lg border border-neutral-800 bg-neutral-900'
             >
-              <div className='flex items-center gap-3 min-w-0'>
+              <div className='flex flex-1 items-center gap-3 min-w-0'>
                 {m.avatar_url ? (
                   <img src={m.avatar_url} alt='' className='w-8 h-8 rounded-full object-cover shrink-0' />
                 ) : (
@@ -505,36 +528,73 @@ export function RaceMembersSection({ raceId, canInvite, canManage }: Props) {
                   </div>
                 </div>
               </div>
-              {canManage && m.role !== 'owner' && (
+              {canManage && (
                 <div className='flex items-center gap-2'>
-                  <select
-                    value={m.permission}
-                    onChange={(e) =>
-                      updateMutation.mutate({
-                        userId: m.user_id,
-                        permission: e.target.value as Permission,
-                      })
-                    }
-                    className='bg-neutral-800 border border-neutral-700 rounded text-sm text-white px-2 py-1'
-                    disabled={updateMutation.isPending}
-                  >
-                    <option value='view'>View</option>
-                    <option value='edit'>Edit</option>
-                  </select>
                   <button
+                    type='button'
                     onClick={() => {
-                      if (confirm(`Remove ${m.name ?? 'this user'} from the race?`)) {
-                        removeMutation.mutate(m.user_id)
-                      }
+                      setEditingNameId(m.user_id)
+                      setNameDraft(m.name ?? '')
+                      setNameError(null)
                     }}
-                    className='p-1.5 text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded transition-colors'
-                    disabled={removeMutation.isPending}
-                    title='Remove member'
+                    className='p-1.5 text-neutral-300 hover:text-white hover:bg-neutral-800 rounded'
+                    aria-label={`Edit name for ${m.name ?? 'unnamed user'}`}
+                    title='Edit member name'
                   >
-                    <Trash2 className='w-4 h-4' />
+                    <Pencil className='w-4 h-4' />
                   </button>
+                  {m.role !== 'owner' && <>
+                    <select
+                      value={m.permission}
+                      onChange={(e) =>
+                        updateMutation.mutate({
+                          userId: m.user_id,
+                          permission: e.target.value as Permission,
+                        })
+                      }
+                      className='bg-neutral-800 border border-neutral-700 rounded text-sm text-white px-2 py-1'
+                      disabled={updateMutation.isPending}
+                    >
+                      <option value='view'>View</option>
+                      <option value='edit'>Edit</option>
+                    </select>
+                    <button
+                      onClick={() => {
+                        if (confirm(`Remove ${m.name ?? 'this user'} from the race?`)) {
+                          removeMutation.mutate(m.user_id)
+                        }
+                      }}
+                      className='p-1.5 text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded transition-colors'
+                      disabled={removeMutation.isPending}
+                      title='Remove member'
+                    >
+                      <Trash2 className='w-4 h-4' />
+                    </button>
+                  </>}
                 </div>
               )}
+              {editingNameId === m.user_id && <form
+                onSubmit={event => {
+                  event.preventDefault()
+                  updateNameMutation.mutate({ userId: m.user_id, name: nameDraft })
+                }}
+                className='w-full flex flex-wrap items-center gap-2'
+              >
+                <label className='sr-only' htmlFor={`member-name-${m.user_id}`}>Member name</label>
+                <input
+                  id={`member-name-${m.user_id}`}
+                  value={nameDraft}
+                  onChange={event => setNameDraft(event.target.value)}
+                  maxLength={100}
+                  required
+                  autoFocus
+                  className='min-w-40 flex-1 rounded border border-neutral-700 bg-neutral-950 px-2 py-1 text-sm text-white'
+                />
+                <button type='submit' disabled={updateNameMutation.isPending} className='rounded bg-blue-600 px-2 py-1 text-sm text-white disabled:opacity-50'>Save</button>
+                <button type='button' onClick={() => { setEditingNameId(null); setNameError(null) }} className='rounded bg-neutral-800 px-2 py-1 text-sm text-white'>Cancel</button>
+                {nameError && <span role='alert' className='w-full text-xs text-red-400'>{nameError}</span>}
+                <span className='w-full text-xs text-neutral-500'>This changes the name shown across DFIU.</span>
+              </form>}
             </li>
           ))}
         </ul>

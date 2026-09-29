@@ -1012,6 +1012,7 @@ export type Database = {
       user_can_edit_race: { Args: { rid: string }; Returns: boolean }
       user_can_log_race_execution: { Args: { rid: string }; Returns: boolean }
       user_can_manage_team: { Args: { rid: string }; Returns: boolean }
+      update_race_member_name: { Args: { p_race_id: string; p_user_id: string; p_name: string }; Returns: string }
       user_can_view_race: { Args: { rid: string }; Returns: boolean }
       user_is_race_member: { Args: { rid: string }; Returns: boolean }
       user_is_race_director: { Args: { rid: string }; Returns: boolean }
