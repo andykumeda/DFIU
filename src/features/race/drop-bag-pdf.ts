@@ -58,7 +58,7 @@ export function markdownPdfContent(value: string): Content[] {
     function blocks(nodes: RootContent[]): Content[] {
         return nodes.flatMap((node): Content[] => {
             switch (node.type) {
-                case 'paragraph': return [{ text: inline(node.children), margin: [0, 0, 0, 2] }]
+                case 'paragraph': return [{ text: inline(node.children), margin: [0, 0, 0, 4] }]
                 case 'heading': return [{ text: inline(node.children), bold: true, fontSize: Math.max(12, 20 - node.depth * 2), margin: [0, 6, 0, 5] }]
                 case 'list': {
                     const items = node.children.map(item => ({ stack: [
@@ -83,14 +83,14 @@ export function markdownPdfContent(value: string): Content[] {
 function detail(label: string, value: string | null, markdown = true): Content[] {
     if (!value?.trim()) return []
     return [
-        { text: label.toUpperCase(), style: 'sectionLabel', margin: [0, 7, 0, 2] },
+        { text: label.toUpperCase(), style: 'sectionLabel', margin: [0, 14, 0, 5] },
         markdown ? { stack: markdownPdfContent(value.trim()), style: 'body' } : { text: value.trim(), style: 'body' },
     ]
 }
 
 function coverage(row: DropBagCoverageRow): Content[] {
     return [
-        { text: row.label.toUpperCase(), style: 'sectionLabel', margin: [0, 5, 0, 2] },
+        { text: row.label.toUpperCase(), style: 'sectionLabel', margin: [0, 8, 0, 4] },
         row.targetName ? { stack: [
             { text: row.targetName, bold: true },
             { text: [
@@ -105,10 +105,26 @@ function bagItems(items: PrintableDropBag['items']): Content {
     if (!items.length) return { text: 'No items packed yet.', style: 'body' }
     const halfway = Math.ceil(items.length / 2)
     const list = (entries: PrintableDropBag['items']): Content => ({
-        ul: entries.map(item => `${item.quantity?.trim() ? `${item.quantity.trim()} × ` : ''}${item.text}`),
+        ul: entries.map(item => ({ text: `${item.quantity?.trim() ? `${item.quantity.trim()} × ` : ''}${item.text}`, margin: [0, 0, 0, 4] })),
         style: 'body',
     })
     return { columns: [list(items.slice(0, halfway)), list(items.slice(halfway))], columnGap: 18 }
+}
+
+function estimatedLines(value: string | null, charactersPerLine: number): number {
+    if (!value) return 0
+    return value.split('\n').reduce((count, line) => count + Math.max(1, Math.ceil(line.length / charactersPerLine)), 0)
+}
+
+function canAnchorCoverage(bag: PrintableDropBag): boolean {
+    const itemRows = Math.ceil(bag.items.length / 2)
+    const crewRows = bag.crewItems
+        ? Math.max(bag.crewItems.length, estimatedLines(bag.crewNotes, 38))
+        : 0
+    const otherRows = bag.textFields.reduce((count, field) => count + estimatedLines(field.value, 70) + 2, 0)
+        + [bag.notes, bag.tellRunner, bag.nextLegReminder].reduce<number>((count, value) => count + estimatedLines(value, 70) + (value ? 2 : 0), 0)
+    // Long custom text stays in normal flow so it cannot collide with bottom coverage.
+    return itemRows + crewRows + otherRows <= 20
 }
 
 export function buildDropBagListDefinition(raceName: string, planLabel: string | null, bags: PrintableDropBag[]): TDocumentDefinitions {
@@ -119,33 +135,44 @@ export function buildDropBagListDefinition(raceName: string, planLabel: string |
             style: 'eyebrow',
             pageBreak: index > 0 ? 'before' : undefined,
         })
-        content.push({ text: bag.stationName, style: 'bagTitle', margin: [0, 8, 0, 0] })
+        content.push({ text: bag.stationName, style: 'bagTitle', margin: [0, 13, 0, 0] })
         if (bag.bagName && bag.bagName !== bag.stationName) {
-            content.push({ text: bag.bagName, style: 'station', margin: [0, 2, 0, 0] })
+            content.push({ text: bag.bagName, style: 'station', margin: [0, 4, 0, 0] })
         }
         const time = bag.arrival ? `${bag.mile === 0 ? 'Start time' : 'Arrival'} ${bag.arrival}` : null
         content.push({
             text: [`Mile ${bag.mile.toFixed(1)}`, time, bag.cutoff ? `Cutoff ${bag.cutoff}` : null].filter(Boolean).join('     '),
-            style: 'redMetadata', margin: [0, 5, 0, 8],
+            style: 'redMetadata', margin: [0, 10, 0, 17],
         })
-        content.push({ text: 'INSIDE THIS BAG', style: 'sectionLabel', margin: [0, 3, 0, 3] })
+        content.push({ text: 'INSIDE THIS BAG', style: 'sectionLabel', margin: [0, 5, 0, 8] })
         content.push(bagItems(bag.items))
         if (bag.crewItems) {
             content.push({ columns: [
                 { width: '45%', stack: [
-                    { text: 'CREW GEAR', style: 'sectionLabel', margin: [0, 7, 0, 3] },
+                    { text: 'CREW GEAR', style: 'sectionLabel', margin: [0, 0, 0, 8] },
                     bag.crewItems.length
-                        ? { ul: bag.crewItems.map(item => `${item.quantity?.trim() ? `${item.quantity.trim()} × ` : ''}${item.text}`), style: 'body' }
+                        ? { ul: bag.crewItems.map(item => ({ text: `${item.quantity?.trim() ? `${item.quantity.trim()} × ` : ''}${item.text}`, margin: [0, 0, 0, 4] })), style: 'body' }
                         : { text: 'No crew gear planned yet.', style: 'body' },
                 ] },
-                { width: '55%', stack: detail('Crew notes', bag.crewNotes || 'No crew notes entered.') },
-            ], columnGap: 14 })
+                { width: '55%', stack: [
+                    { text: 'CREW NOTES', style: 'sectionLabel', margin: [0, 0, 0, 8] },
+                    { stack: markdownPdfContent(bag.crewNotes || 'No crew notes entered.'), style: 'body' },
+                ] },
+            ], columnGap: 14, margin: [0, 28, 0, 0] })
         }
         bag.textFields.forEach(field => content.push(...detail(field.label, field.value || 'No text entered.')))
         content.push(...detail('Notes', bag.notes))
         content.push(...detail('Tell runner', bag.tellRunner))
         content.push(...detail('Next leg reminder', bag.nextLegReminder))
-        bag.coverageRows.forEach(row => content.push(...coverage(row)))
+        const coverageLines = bag.coverageRows.reduce((count, row) => count + (row.targetName
+            ? 2 + Math.max(1, row.plans.filter(plan => plan.timeOfDay).length)
+            : 2), 0)
+        content.push(canAnchorCoverage(bag)
+            ? {
+                stack: bag.coverageRows.flatMap(coverage),
+                absolutePosition: { x: 40, y: 735 - coverageLines * 16 - Math.max(0, bag.coverageRows.length - 1) * 8 },
+            }
+            : { stack: bag.coverageRows.flatMap(coverage), margin: [0, 20, 0, 0] })
     })
 
     return {
@@ -153,14 +180,14 @@ export function buildDropBagListDefinition(raceName: string, planLabel: string |
         pageMargins: [40, 34, 40, 34],
         info: { title: `${raceName} Drop Bag List` },
         content,
-        defaultStyle: { font: 'Roboto', fontSize: 10, color: '#111827', lineHeight: 1.05 },
+        defaultStyle: { font: 'Roboto', fontSize: 11, color: '#111827', lineHeight: 1.18 },
         styles: {
             eyebrow: { fontSize: 9, bold: true, color: '#6b7280' },
-            bagTitle: { fontSize: 23, bold: true, color: '#111827' },
-            station: { fontSize: 14, bold: true, color: '#374151' },
-            redMetadata: { fontSize: 10, bold: true, color: '#b91c1c' },
-            sectionLabel: { fontSize: 9, bold: true, color: '#374151' },
-            body: { fontSize: 10, color: '#111827' },
+            bagTitle: { fontSize: 26, bold: true, color: '#111827' },
+            station: { fontSize: 16, bold: true, color: '#374151' },
+            redMetadata: { fontSize: 11, bold: true, color: '#b91c1c' },
+            sectionLabel: { fontSize: 10, bold: true, color: '#374151' },
+            body: { fontSize: 11, color: '#111827' },
         },
     }
 }

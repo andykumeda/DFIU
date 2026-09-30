@@ -4,10 +4,10 @@ import { buildDropBagListDefinition, markdownPdfContent } from './drop-bag-pdf'
 describe('drop bag PDF markdown', () => {
     it('formats the reported crew notes with bold text and real list items', () => {
         expect(markdownPdfContent('**Take headlamp and poles**\n* Bucket with water\n* Gatorade')).toEqual([
-            { text: [{ text: 'Take headlamp and poles', bold: true }], margin: [0, 0, 0, 2] },
+            { text: [{ text: 'Take headlamp and poles', bold: true }], margin: [0, 0, 0, 4] },
             { ul: [
-                { stack: [{ text: [{ text: 'Bucket with water' }], margin: [0, 0, 0, 2] }] },
-                { stack: [{ text: [{ text: 'Gatorade' }], margin: [0, 0, 0, 2] }] },
+                { stack: [{ text: [{ text: 'Bucket with water' }], margin: [0, 0, 0, 4] }] },
+                { stack: [{ text: [{ text: 'Gatorade' }], margin: [0, 0, 0, 4] }] },
             ] },
         ])
     })
@@ -26,7 +26,7 @@ describe('drop bag PDF markdown', () => {
 
     it('preserves plain text and newlines', () => {
         expect(markdownPdfContent('First line\nSecond line')).toEqual([
-            { text: [{ text: 'First line\nSecond line' }], margin: [0, 0, 0, 2] },
+            { text: [{ text: 'First line\nSecond line' }], margin: [0, 0, 0, 4] },
         ])
     })
 
@@ -62,8 +62,20 @@ describe('drop bag PDF markdown', () => {
         expect(output).toContain('"text":"Black Duffel","style":"station"')
         expect(output).toContain('"style":"redMetadata"')
         expect(output).toContain('"columns"')
-        expect(output).toContain('"ul":["Bucket"]')
+        expect(output).toContain('"text":"Bucket","margin":[0,0,0,4]')
+        expect(output).toContain('"margin":[0,28,0,0]')
+        expect(output).toContain('"absolutePosition"')
         expect(output).not.toContain('[ ]')
         expect(output).not.toContain('To pack')
+    })
+
+    it('keeps unusually long crew notes in normal flow to avoid covering next-stop details', () => {
+        const definition = buildDropBagListDefinition('Race', null, [{
+            stationName: 'Redbox', bagName: null, mile: 24.6, arrival: '11:21', cutoff: null,
+            items: [{ text: 'Chews' }], crewItems: [{ text: 'Bucket', checked: false }],
+            crewNotes: Array(25).fill('A long instruction for the crew at this stop').join('\n'),
+            textFields: [], notes: null, tellRunner: null, nextLegReminder: null, coverageRows: [],
+        }])
+        expect(JSON.stringify(definition)).not.toContain('absolutePosition')
     })
 })

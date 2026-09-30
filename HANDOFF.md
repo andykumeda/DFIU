@@ -2,9 +2,11 @@
 
 **Date:** 2026-09-29
 **Branch:** `main`
-**Status:** The AC100 Drop Bag List print update is deployed from a scoped release (`5f74184`); the same product changes and documentation are committed and pushed on `main` (`d45417f`). Member-name changes remain committed on `main` but are not deployed because their database approval gate remains open.
+**Status:** In progress: rebalance vertical spacing in the AC100 Drop Bag List PDF after the user supplied a new 12-page export. The previous print update is deployed from scoped release `5f74184`. Member-name changes remain committed on `main` but are not deployed because their database approval gate remains open.
 
 ## Current work
+
+- **In progress — Drop Bag PDF vertical layout (2026-09-29)** (`main`): Increase row spacing and the gap before crew details; move onward coverage toward the page bottom while retaining exactly one bag per page. Verify the newly supplied export's contents and all 12 pages, run focused PDF tests/build, deploy from a scoped release without gated member-name code, and download the final PDF from production. No race data or schema edits.
 
 - **Deployed — Drop Bag print and crew presentation (2026-09-29)** (`main` product/docs `d45417f`, scoped release `5f74184`): The attached 16-page AC100 PDF was regenerated from the live Print List as 12 pages for 12 bags at `/Users/andy/Downloads/angeles-crest-100-ak-s-plan-drop-bags-revised.pdf`. Station names lead; bag labels are secondary; contents use two columns; crew gear sits beside crew notes with plain bullets; mileage, arrival, cutoff, and onward distance/time are red. Lighting advice, packing labels/checkboxes, and page numbers are omitted from print. Focused PDF tests (6), main and scoped builds, lint (0 errors / 49 warnings), and diff check passed. The first scoped deploy stopped at SSH identity selection before upload; explicit `id_ed25519` retry completed. Chrome showed live footer `5f74184`, Redbox crew bullets, and the individual print layout. The production-downloaded PDF has 12 pages and 12 bag sections, with no omitted-content markers. No race data or schema was changed. The detached release checkout was archived; only `main` remains active. Browser-native Print Bag pagination was not checked.
 
