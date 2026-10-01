@@ -250,7 +250,8 @@ body,
   .single-bag-print-page {
     width: 100%;
     max-width: none;
-    min-height: 0;
+    /* Keep the flex spacer above Notes in browser print output. */
+    min-height: 9in;
     padding: 0.3in;
     color: black !important;
   }

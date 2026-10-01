@@ -1,10 +1,12 @@
 # DFIU Handoff
 
-**Date:** 2026-09-29
+**Date:** 2026-10-01
 **Branch:** `main`
-**Status:** The AC100 Drop Bag List now uses roomier rows, a larger gap before crew details, and next-stop coverage near the page bottom. The scoped release is deployed (`5ce383f`); source and documentation are pushed on `main` (`dd17316`). Member-name changes remain committed on `main` but are not deployed because their database approval gate remains open.
+**Status:** Individual Drop Bag native printing now preserves bottom Notes/onward coverage, matching the preview. Scoped release `f2a0cf4` is deployed. Pending member-name changes remain undeployed; their database approval gate is unchanged.
 
 ## Current work
+
+- **Deployed — individual Drop Bag native print placement (2026-10-01)** (`main`, scoped release `f2a0cf4`): Print CSS keeps the same 9-inch minimum page height as the preview, preserving the flex spacer above Notes/onward coverage. Chrome rendering with the actual component and synthetic Clear Creek data reproduced the old collapse (440px page / Notes at 220px) and verified the fix (864px page / Notes at 643px, preview 640px). Chrome-generated Letter PDF has one page, with Notes and both onward stops at the bottom. Main build, scoped deploy/build, lint (0 errors / 48 existing warnings), diff check and live published CSS verification passed. Exact signed-in race/native OS print dialog and physical printing were not tested. No user guide update needed for this layout correction; no race data/schema changed. The temporary detached scoped release is archived after deployment; only `main` remains active.
 
 - **Deployed — Drop Bag PDF vertical layout (2026-09-29)** (`main` product/docs `dd17316`, scoped release `5ce383f`): Increased list and note row spacing, the bag-to-crew gap, and heading sizes. Ordinary-sized bags place onward coverage near the page bottom; very long custom notes keep coverage in normal flow to prevent overlap. Final artifact `/Users/andy/Downloads/angeles-crest-100-ak-s-plan-drop-bags-spaced.pdf` was rebuilt from the user-supplied `(4).pdf` to preserve its exact contents. All 12 pages retain the same per-page text, one bag per page, coverage separated from body content, and all content within the printable page. Live Chrome footer showed `5ce383f`; the live Print List generated 12 pages, while the delivered file uses the attachment's earlier data because saved bag quantities/notes changed during this work. Focused tests (7), main and release builds, lint (0 errors / 48 warnings), diff check, deployment, PDF text/geometry comparison, and rendered Redbox/Finish inspection passed. No race data or schema changed. The detached release checkout was archived; only `main` remains active.
 
